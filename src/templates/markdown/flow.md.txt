@@ -1,0 +1,374 @@
+# Development Workflow
+
+> Based on [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+
+---
+
+## Table of Contents
+
+1. [Workflow Overview](#workflow-overview)
+2. [Session Start Process](#session-start-process)
+3. [Development Process](#development-process)
+4. [Session End](#session-end)
+5. [File Descriptions](#file-descriptions)
+6. [Best Practices](#best-practices)
+
+---
+
+## Workflow Overview
+
+### Core Principles
+
+1. **Read Before Write** - Understand context before starting
+2. **Follow Standards** - [!] **MUST read `workflow/structure/` guidelines before coding**
+3. **Incremental Development** - Complete one feature at a time
+4. **Record Promptly** - Update tracking files immediately after completion
+5. **Document Limits** - [!] **Max 2000 lines per agent-traces document**
+
+### File System
+
+```
+workflow/
+|-- .developer           # Developer identity (gitignored)
+|-- scripts/
+|   |-- common/              # Shared utilities
+|   |   |-- paths.sh         # Path utilities
+|   |   |-- developer.sh     # Developer management
+|   |   \-- git-context.sh   # Git context implementation
+|   |-- init-developer.sh    # Initialize developer identity
+|   |-- get-developer.sh     # Get current developer name
+|   |-- feature.sh           # Manage features
+|   |-- get-context.sh       # Get session context
+|   \-- add-session.sh       # One-click session recording
+|-- agent-traces/       # AI Agent work progress records
+|   |-- index.md         # Progress index + Session template
+|   \-- {developer}/     # Per-developer directories
+|       |-- index.md     # Personal index (with @@@auto markers)
+|       |-- features/    # Feature directories
+|       |   \-- {day}-{name}/
+|       |       \-- feature.json
+|       \-- progress-N.md  # Progress files (sequential numbering)
+|-- structure/           # [!] MUST READ before coding
+|   |-- frontend/        # Frontend guidelines (multi-doc)
+|   |   |-- index.md               # Start here - guidelines index
+|   |   |-- directory-structure.md # Directory layout
+|   |   |-- type-safety.md         # TypeScript patterns
+|   |   |-- hook-guidelines.md     # React Query hooks
+|   |   |-- component-guidelines.md # Component patterns
+|   |   |-- state-management.md    # State patterns
+|   |   \-- quality-guidelines.md  # Code standards
+|   |-- backend/         # Backend guidelines (multi-doc)
+|   |   |-- index.md               # Start here - guidelines index
+|   |   |-- directory-structure.md # Directory layout
+|   |   |-- type-safety.md         # Zod, TypeScript patterns
+|   |   |-- database-guidelines.md # ORM, batch operations
+|   |   |-- logging-guidelines.md  # Structured logging
+|   |   |-- error-handling.md      # Error types, handling
+|   |   \-- quality-guidelines.md  # Code standards
+|   \-- flows/           # Cross-layer specifications
+|       |-- index.md                      # Flow specs index
+|       |-- cross-layer-thinking-guide.md # Pre-implementation checklist
+|       \-- spec-flow-template.md         # Template for new flows
+\-- flow.md             # This document
+```
+
+---
+
+## Session Start Process
+
+### Step 1: Get Session Context
+
+Use the unified context script:
+
+```bash
+# Get all context in one command
+./workflow/scripts/get-context.sh
+
+# Or get JSON format
+./workflow/scripts/get-context.sh --json
+```
+
+### Step 2: Read Development Guidelines [!] REQUIRED
+
+**[!] CRITICAL: MUST read guidelines before writing any code**
+
+Based on what you'll develop (frontend/backend), read the corresponding guidelines:
+
+**Frontend Development**:
+```bash
+# 1. Read index first
+cat workflow/structure/frontend/index.md
+
+# 2. Read specific doc based on task
+cat workflow/structure/frontend/hook-guidelines.md      # For hooks
+cat workflow/structure/frontend/component-guidelines.md # For components
+cat workflow/structure/frontend/type-safety.md          # For types
+```
+
+**Backend Development**:
+```bash
+# 1. Read index first
+cat workflow/structure/backend/index.md
+
+# 2. Read specific doc based on task
+cat workflow/structure/backend/database-guidelines.md   # For DB operations
+cat workflow/structure/backend/type-safety.md           # For Zod/types
+cat workflow/structure/backend/logging-guidelines.md    # For logging
+```
+
+**Cross-Layer Features**:
+```bash
+# For features spanning multiple layers
+cat workflow/structure/flows/cross-layer-thinking-guide.md
+```
+
+### Step 3: Select Feature to Develop
+
+Use the feature management script:
+
+```bash
+# List active features
+./workflow/scripts/feature.sh list
+
+# Create new feature (creates directory with feature.json)
+./workflow/scripts/feature.sh create <feature-name>
+```
+
+---
+
+## Development Process
+
+### Feature Development Flow
+
+```
+1. Create or select feature
+   \-> ./workflow/scripts/feature.sh create <name> or list
+
+2. Write code according to guidelines
+   \-> Read workflow/structure/[frontend|backend]/ docs
+   \-> For cross-layer: read workflow/structure/flows/
+   \-> Frontend: Type safety, Hook standards, Component standards
+   \-> Backend: Directory structure, Type safety, Database, Logging
+
+3. Self-test
+   \-> pnpm lint (must pass)
+   \-> pnpm type-check (must pass)
+   \-> Manual feature testing
+
+4. Commit code
+   \-> git add <files>
+   \-> git commit -m "type(scope): description"
+       Format: feat/fix/docs/refactor/test/chore
+
+5. Record session (one command)
+   \-> ./workflow/scripts/add-session.sh --title "Title" --commit "hash"
+```
+
+### Code Quality Checklist
+
+**Must pass before commit**:
+- [OK] `pnpm lint` - 0 errors
+- [OK] `pnpm type-check` - No type errors
+- [OK] Manual feature testing passes
+
+**Frontend-specific checks** (see `frontend/quality-guidelines.md`):
+- [OK] Use semantic HTML (`<button>` not `<div role="button">`)
+- [OK] Use Next.js `<Image>` instead of `<img>`
+- [OK] Import types from backend, don't redefine
+- [OK] Avoid non-null assertions `!`
+
+**Backend-specific checks** (see `backend/quality-guidelines.md`):
+- [OK] Strictly avoid non-null assertion `!`
+- [OK] All API inputs/outputs have Zod Schema
+- [OK] Use structured logging (`logger`), forbidden `console.log`
+- [OK] Database operations avoid `await` in loops
+
+---
+
+## Session End
+
+### One-Click Session Recording
+
+After code is committed, use:
+
+```bash
+./workflow/scripts/add-session.sh \
+  --title "Session Title" \
+  --commit "abc1234" \
+  --summary "Brief summary"
+```
+
+This automatically:
+1. Detects current progress file
+2. Creates new file if 2000-line limit exceeded
+3. Appends session content
+4. Updates index.md (sessions count, history table)
+
+### Pre-end Checklist
+
+Use `/finish-work` command to run through:
+1. [OK] All code committed, commit message follows convention
+2. [OK] Session recorded via `add-session.sh`
+3. [OK] No lint/type-check errors
+4. [OK] Working directory clean (or WIP noted)
+5. [OK] Structure docs updated if needed
+
+---
+
+## File Descriptions
+
+### 1. agent-traces/ - Agent Work Progress
+
+**Purpose**: Record each AI Agent session's work content
+
+**Structure** (Multi-developer support):
+```
+agent-traces/
+|-- index.md              # Main index (Active Developers table)
+\-- {developer}/          # Per-developer directory
+    |-- index.md          # Personal index (with @@@auto markers)
+    |-- features/         # Feature directories
+    |   \-- {day}-{name}/ # Each feature is a directory
+    |       \-- feature.json
+    \-- progress-N.md     # Progress files (sequential: 1, 2, 3...)
+```
+
+**When to update**:
+- [OK] End of each session
+- [OK] Complete important feature
+- [OK] Fix important bug
+
+### 2. structure/ - Development Guidelines
+
+**Purpose**: Documented standards for consistent development
+
+**Structure** (Multi-doc format):
+```
+structure/
+|-- frontend/           # Frontend docs
+|   |-- index.md        # Start here
+|   \-- *.md            # Topic-specific docs
+|-- backend/            # Backend docs
+|   |-- index.md        # Start here
+|   \-- *.md            # Topic-specific docs
+\-- flows/              # Cross-layer specs
+    |-- index.md        # Start here
+    \-- *.md            # Flow-specific docs
+```
+
+**When to update**:
+- [OK] New pattern discovered
+- [OK] Bug fixed that reveals missing guidance
+- [OK] New convention established
+
+### 3. Features - Feature Tracking
+
+Each feature is a directory containing `feature.json`:
+
+```
+features/
+|-- 13-my-feature/
+|   \-- feature.json
+\-- archive/
+    \-- 2025-01/
+        \-- 13-old-feature/
+            \-- feature.json
+```
+
+**Commands**:
+```bash
+./workflow/scripts/feature.sh create <name>   # Create feature directory
+./workflow/scripts/feature.sh archive <name>  # Archive to archive/{year-month}/
+./workflow/scripts/feature.sh list            # List active features
+./workflow/scripts/feature.sh list-archive    # List archived features
+```
+
+---
+
+## Best Practices
+
+### [OK] DO - Should Do
+
+1. **Before session start**:
+   - Run `./workflow/scripts/get-context.sh` for full context
+   - [!] **MUST read** relevant `workflow/structure/` docs
+
+2. **During development**:
+   - [!] **Follow** `workflow/structure/` guidelines
+   - For cross-layer features, use `/check-cross-layer`
+   - Develop only one feature at a time
+   - Run lint and type-check frequently
+
+3. **After development complete**:
+   - Use `/finish-work` for completion checklist
+   - After fix bug, use `/break-loop` for deep analysis
+   - Human commits after testing passes
+   - Use `add-session.sh` to record progress
+
+### [X] DON'T - Should Not Do
+
+1. [!] **Don't** skip reading `workflow/structure/` guidelines
+2. [!] **Don't** let agent-traces single file exceed 2000 lines
+3. **Don't** develop multiple unrelated features simultaneously
+4. **Don't** commit code with lint/type-check errors
+5. **Don't** forget to update structure docs after learning something
+6. [!] **Don't** execute `git commit` - AI should not commit code
+7. **Don't** write `workflow/structure/` docs in Chinese - **English only**
+
+---
+
+## Quick Reference
+
+### Must-read Before Development
+
+| Task Type | Must-read Document |
+|-----------|-------------------|
+| New Query Hook | `frontend/hook-guidelines.md` |
+| New Component | `frontend/component-guidelines.md` |
+| New Backend API | `backend/directory-structure.md`, `backend/type-safety.md` |
+| Database Operations | `backend/database-guidelines.md` |
+| Cross-Layer Feature | `flows/cross-layer-thinking-guide.md` |
+
+### Commit Convention
+
+```bash
+git commit -m "type(scope): description"
+```
+
+**Type**: feat, fix, docs, refactor, test, chore
+**Scope**: Module name (e.g., mail, auth, api)
+
+### Common Commands
+
+```bash
+# Session management
+./workflow/scripts/get-context.sh    # Get full context
+./workflow/scripts/add-session.sh    # Record session
+
+# Feature management
+./workflow/scripts/feature.sh list   # List features
+./workflow/scripts/feature.sh create # Create feature
+
+# Development
+pnpm dev              # Start dev server
+pnpm lint             # Lint check
+pnpm type-check       # Type check
+
+# Slash commands
+/finish-work          # Pre-commit checklist
+/break-loop           # Post-debug analysis
+/check-cross-layer    # Cross-layer verification
+```
+
+---
+
+## Summary
+
+Following this workflow ensures:
+- [OK] Continuity across multiple sessions
+- [OK] Consistent code quality
+- [OK] Trackable progress
+- [OK] Knowledge accumulation in structure docs
+- [OK] Transparent team collaboration
+
+**Core Philosophy**: Read before write, follow standards, record promptly, capture learnings

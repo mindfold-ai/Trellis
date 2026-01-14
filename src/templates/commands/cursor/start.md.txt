@@ -1,0 +1,94 @@
+# Initialize AI Agent Session
+
+Read project context and prepare for development work.
+
+---
+
+## Execution Steps
+
+### Step 1: Get Session Context
+
+```bash
+./workflow/scripts/get-context.sh
+```
+
+This returns:
+- Developer identity
+- Git status (branch, uncommitted changes)
+- Recent commits
+- Active features
+- Progress file status
+
+### Step 2: Read Relevant Guidelines
+
+Based on the upcoming task, read appropriate structure docs:
+
+**For Frontend Work**:
+```bash
+cat workflow/structure/frontend/index.md
+```
+Then read specific docs based on task type.
+
+**For Backend Work**:
+```bash
+cat workflow/structure/backend/index.md
+```
+Then read specific docs based on task type.
+
+**For Cross-Layer Features**:
+```bash
+cat workflow/structure/flows/index.md
+cat workflow/structure/flows/cross-layer-thinking-guide.md
+```
+
+### Step 3: Check Active Features
+
+```bash
+./workflow/scripts/feature.sh list
+```
+
+If continuing previous work, review the feature file.
+
+### Step 4: Report Ready Status
+
+Output a summary:
+
+```markdown
+## Session Initialized
+
+| Item | Status |
+|------|--------|
+| Developer | {name} |
+| Branch | {branch} |
+| Uncommitted | {count} file(s) |
+| Progress | {file} ({lines}/2000 lines) |
+| Active Features | {count} |
+
+### Available Commands
+- `/before-frontend-dev` - Read frontend guidelines
+- `/before-backend-dev` - Read backend guidelines
+- `/check-cross-layer` - Cross-layer verification
+- `/finish-work` - Pre-commit checklist
+- `/record-agent-flow` - Record session progress
+
+Ready for your task. What would you like to work on?
+```
+
+---
+
+## Quick Reference
+
+| Scenario | Next Step |
+|----------|-----------|
+| New feature | Run `./workflow/scripts/feature.sh create <name>` |
+| Continue feature | Read feature file, continue work |
+| Bug fix | Investigate, fix, then remind user to run `/break-loop` |
+| First time | Remind user to run `/onboard-developer` for full setup |
+
+---
+
+## Notes
+
+- Always read structure guidelines before coding
+- One feature at a time
+- At session end, remind user to run `/record-agent-flow` to record progress

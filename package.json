@@ -1,0 +1,70 @@
+{
+  "name": "@mind-fold/trellis",
+  "version": "0.1.0",
+  "description": "AI capabilities grow like ivy — Trellis provides the structure to guide them along a disciplined path",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "trellis": "./bin/trellis.js",
+    "tl": "./bin/trellis.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc && pnpm run copy-templates",
+    "copy-templates": "node scripts/copy-templates.js",
+    "dev": "tsc --watch",
+    "start": "node ./dist/cli/index.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build",
+    "release": "git add -A && git diff-index --quiet HEAD || git commit -m 'chore: pre-release updates' && pnpm version patch && git push origin main --tags",
+    "release:minor": "git add -A && git diff-index --quiet HEAD || git commit -m 'chore: pre-release updates' && pnpm version minor && git push origin main --tags",
+    "release:major": "git add -A && git diff-index --quiet HEAD || git commit -m 'chore: pre-release updates' && pnpm version major && git push origin main --tags"
+  },
+  "keywords": [
+    "ai",
+    "workflow",
+    "cursor",
+    "claude",
+    "cli",
+    "developer-tools",
+    "agent",
+    "memory",
+    "trellis"
+  ],
+  "author": "Mindfold LLC",
+  "license": "FSL-1.1-MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "inquirer": "^9.3.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.17.10",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mindfold-ai/trellis.git"
+  }
+}
