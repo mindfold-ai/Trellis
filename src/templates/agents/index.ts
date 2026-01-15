@@ -1,38 +1,128 @@
 /**
  * Agent templates for Multi-Agent Pipeline
  *
- * These agents work together in a pipeline:
- * - dispatch: Pure dispatcher, orchestrates other agents
- * - implement: Code implementation expert
- * - check: Code and cross-layer check expert
- * - debug: Issue fixing expert
- * - research: Code and tech search expert
+ * Supports multiple output formats:
+ * - Claude Code: YAML frontmatter with name, description, tools (string), model
+ * - OpenCode: YAML frontmatter with description, tools (object)
+ *
+ * The agent body content is shared across formats.
  */
 
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import {
+  AGENT_METADATA,
+  getAgentMetadata,
+  getAgentNamesForFormat,
+  type AgentMetadata,
+  type AgentTools,
+} from "./metadata.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Read an agent template
+ * Output format type
  */
-function readAgent(filename: string): string {
-  const filePath = join(__dirname, filename);
+export type AgentFormat = "claude" | "opencode";
+
+/**
+ * Read an agent body template (without frontmatter)
+ */
+function readAgentBody(name: string): string {
+  const filePath = join(__dirname, "bodies", `${name}.md`);
   return readFileSync(filePath, "utf-8");
 }
 
-// Agent templates
-export const implementAgentTemplate: string = readAgent("implement.txt");
-export const checkAgentTemplate: string = readAgent("check.txt");
-export const debugAgentTemplate: string = readAgent("debug.txt");
-export const researchAgentTemplate: string = readAgent("research.txt");
-export const dispatchAgentTemplate: string = readAgent("dispatch.txt");
+/**
+ * Format tools as Claude Code style (comma-separated string)
+ */
+function formatClaudeTools(tools: AgentTools): string {
+  const toolNames: string[] = [];
+  if (tools.read) toolNames.push("Read");
+  if (tools.write) toolNames.push("Write");
+  if (tools.edit) toolNames.push("Edit");
+  if (tools.bash) toolNames.push("Bash");
+  if (tools.glob) toolNames.push("Glob");
+  if (tools.grep) toolNames.push("Grep");
+  // Add external tools for agents that have them
+  toolNames.push("mcp__exa__web_search_exa", "mcp__exa__get_code_context_exa");
+  return toolNames.join(", ");
+}
 
 /**
- * Agent template definition
+ * Format tools as OpenCode style (YAML object)
+ */
+function formatOpenCodeTools(tools: AgentTools): string {
+  const lines = [
+    `  read: ${tools.read}`,
+    `  write: ${tools.write}`,
+    `  edit: ${tools.edit}`,
+    `  bash: ${tools.bash}`,
+    `  glob: ${tools.glob}`,
+    `  grep: ${tools.grep}`,
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Generate Claude Code frontmatter
+ */
+function generateClaudeFrontmatter(meta: AgentMetadata): string {
+  const lines = [
+    "---",
+    `name: ${meta.name}`,
+    `description: |`,
+    `  ${meta.description}`,
+    `tools: ${formatClaudeTools(meta.tools)}`,
+  ];
+  if (meta.model) {
+    lines.push(`model: ${meta.model}`);
+  }
+  lines.push("---", "");
+  return lines.join("\n");
+}
+
+/**
+ * Generate OpenCode frontmatter
+ */
+function generateOpenCodeFrontmatter(meta: AgentMetadata): string {
+  const lines = [
+    "---",
+    `description: ${meta.description}`,
+    "tools:",
+    formatOpenCodeTools(meta.tools),
+    "---",
+    "",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Get full agent content with format-specific frontmatter
+ */
+export function getAgentContent(name: string, format: AgentFormat): string {
+  const meta = getAgentMetadata(name);
+  if (!meta) {
+    throw new Error(`Unknown agent: ${name}`);
+  }
+
+  if (format === "opencode" && !meta.supportsOpenCode) {
+    throw new Error(`Agent ${name} does not support OpenCode format`);
+  }
+
+  const body = readAgentBody(name);
+  const frontmatter =
+    format === "claude"
+      ? generateClaudeFrontmatter(meta)
+      : generateOpenCodeFrontmatter(meta);
+
+  return frontmatter + body;
+}
+
+/**
+ * Agent template definition (for backwards compatibility)
  */
 export interface AgentTemplate {
   /** Agent name (used for filename) */
@@ -44,48 +134,53 @@ export interface AgentTemplate {
 }
 
 /**
- * All available agent templates
+ * Get all agent templates for a specific format
  */
-const ALL_AGENTS: AgentTemplate[] = [
-  {
-    name: "implement",
-    content: implementAgentTemplate,
-    description:
-      "Code implementation expert - implements features following specs",
-  },
-  {
-    name: "check",
-    content: checkAgentTemplate,
-    description:
-      "Check expert - validates code quality and cross-layer consistency",
-  },
-  {
-    name: "debug",
-    content: debugAgentTemplate,
-    description: "Debug expert - fixes code review issues",
-  },
-  {
-    name: "research",
-    content: researchAgentTemplate,
-    description: "Research expert - finds code patterns and tech solutions",
-  },
-  {
-    name: "dispatch",
-    content: dispatchAgentTemplate,
-    description: "Pipeline dispatcher - orchestrates other agents",
-  },
-];
-
-/**
- * Get all agent templates
- */
-export function getAllAgents(): AgentTemplate[] {
-  return ALL_AGENTS;
+export function getAllAgents(format: AgentFormat = "claude"): AgentTemplate[] {
+  const names = getAgentNamesForFormat(format);
+  return names.map((name) => {
+    const meta = AGENT_METADATA[name];
+    return {
+      name,
+      content: getAgentContent(name, format),
+      description: meta.description,
+    };
+  });
 }
 
 /**
  * Get a specific agent template by name
  */
-export function getAgentByName(name: string): AgentTemplate | undefined {
-  return ALL_AGENTS.find((a) => a.name === name);
+export function getAgentByName(
+  name: string,
+  format: AgentFormat = "claude",
+): AgentTemplate | undefined {
+  const meta = getAgentMetadata(name);
+  if (!meta) return undefined;
+
+  if (format === "opencode" && !meta.supportsOpenCode) {
+    return undefined;
+  }
+
+  return {
+    name,
+    content: getAgentContent(name, format),
+    description: meta.description,
+  };
 }
+
+// Legacy exports for backwards compatibility
+export const implementAgentTemplate: string = getAgentContent(
+  "implement",
+  "claude",
+);
+export const checkAgentTemplate: string = getAgentContent("check", "claude");
+export const debugAgentTemplate: string = getAgentContent("debug", "claude");
+export const researchAgentTemplate: string = getAgentContent(
+  "research",
+  "claude",
+);
+export const dispatchAgentTemplate: string = getAgentContent(
+  "dispatch",
+  "claude",
+);

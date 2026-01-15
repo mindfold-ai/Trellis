@@ -38,6 +38,12 @@ export const cursorStartTemplate: string = readCommand(
   "start.md.txt",
 );
 
+// OpenCode-specific commands
+export const opencodeStartTemplate: string = readCommand(
+  "opencode",
+  "start.md.txt",
+);
+
 // =============================================================================
 // Common Templates (work with all AI tools)
 // =============================================================================
@@ -131,6 +137,13 @@ const ALL_TEMPLATES: CommandTemplate[] = [
     content: cursorStartTemplate,
     description: "Initialize AI agent with project context",
     category: "cursor",
+  },
+  // OpenCode-specific
+  {
+    name: "start",
+    content: opencodeStartTemplate,
+    description: "Initialize AI agent with project context",
+    category: "opencode",
   },
   // Common
   {
