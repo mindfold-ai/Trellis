@@ -9,9 +9,7 @@ Based on Anthropic's [Effective Harnesses for Long-Running Agents](https://www.a
 ## Installation
 
 ```bash
-pnpm install -g @mind-fold/trellis
-# or
-npm install -g @mind-fold/trellis
+npm install -g @mindfoldhq/trellis    # or pnpm/yarn
 ```
 
 ## Quick Start

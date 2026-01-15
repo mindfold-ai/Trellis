@@ -9,9 +9,7 @@ AI 能力像常春藤一样生长——充满活力但四处蔓延。Trellis 提
 ## 安装
 
 ```bash
-pnpm install -g @mind-fold/trellis@latest
-# 或
-npm install -g @mind-fold/trellis@latest
+npm install -g @mindfoldhq/trellis    # 或 pnpm/yarn
 ```
 
 ## 快速开始
