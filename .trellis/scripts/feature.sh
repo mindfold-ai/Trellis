@@ -1,0 +1,700 @@
+#!/bin/bash
+# Feature Management Script for Multi-Agent Pipeline
+#
+# Usage:
+#   ./.trellis/scripts/feature.sh create <feature-name>       # Create new feature
+#   ./.trellis/scripts/feature.sh init-context <dir> <type>   # Initialize jsonl files
+#   ./.trellis/scripts/feature.sh add-context <dir> <file> <path> [reason] # Add jsonl entry
+#   ./.trellis/scripts/feature.sh validate <dir>              # Validate jsonl files
+#   ./.trellis/scripts/feature.sh list-context <dir>          # List jsonl entries
+#   ./.trellis/scripts/feature.sh start <dir>                 # Set as current feature
+#   ./.trellis/scripts/feature.sh finish                      # Clear current feature
+#   ./.trellis/scripts/feature.sh archive <feature-name>      # Archive completed feature
+#   ./.trellis/scripts/feature.sh list                        # List active features
+#   ./.trellis/scripts/feature.sh list-archive [month]        # List archived features
+#
+# Feature Directory Structure:
+#   features/
+#     ├── 13-my-feature/
+#     │   ├── feature.json      # Metadata
+#     │   ├── prd.md            # Requirements
+#     │   ├── info.md           # Technical design (optional)
+#     │   ├── implement.jsonl   # Implement agent context
+#     │   ├── check.jsonl       # Check agent context
+#     │   └── debug.jsonl       # Debug agent context
+#     └── archive/
+#         └── 2026-01/
+#             └── 13-old-feature/
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common/paths.sh"
+source "$SCRIPT_DIR/common/developer.sh"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+REPO_ROOT=$(get_repo_root)
+
+# =============================================================================
+# jsonl Default Content Generators
+# =============================================================================
+
+get_implement_base() {
+  cat << EOF
+{"file": "$DIR_WORKFLOW/workflow.md", "reason": "Project workflow and conventions"}
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/shared/index.md", "reason": "Shared coding standards"}
+EOF
+}
+
+get_implement_backend() {
+  cat << EOF
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/backend/index.md", "reason": "Backend development guide"}
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/backend/api-module.md", "reason": "API module conventions"}
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/backend/quality.md", "reason": "Code quality requirements"}
+EOF
+}
+
+get_implement_frontend() {
+  cat << EOF
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/frontend/components.md", "reason": "Component conventions"}
+EOF
+}
+
+get_check_context() {
+  local dev_type="$1"
+
+  cat << EOF
+{"file": ".claude/commands/finish-work.md", "reason": "Finish work checklist"}
+{"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/shared/index.md", "reason": "Shared coding standards"}
+EOF
+
+  if [[ "$dev_type" == "backend" ]] || [[ "$dev_type" == "fullstack" ]]; then
+    echo '{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}'
+  fi
+  if [[ "$dev_type" == "frontend" ]] || [[ "$dev_type" == "fullstack" ]]; then
+    echo '{"file": ".claude/commands/check-frontend.md", "reason": "Frontend check spec"}'
+  fi
+}
+
+get_debug_context() {
+  local dev_type="$1"
+
+  echo "{\"file\": \"$DIR_WORKFLOW/$DIR_STRUCTURE/shared/index.md\", \"reason\": \"Shared coding standards\"}"
+
+  if [[ "$dev_type" == "backend" ]] || [[ "$dev_type" == "fullstack" ]]; then
+    echo '{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}'
+  fi
+  if [[ "$dev_type" == "frontend" ]] || [[ "$dev_type" == "fullstack" ]]; then
+    echo '{"file": ".claude/commands/check-frontend.md", "reason": "Frontend check spec"}'
+  fi
+}
+
+# =============================================================================
+# Feature Operations
+# =============================================================================
+
+ensure_features_dir() {
+  local features_dir=$(get_features_dir)
+  local archive_dir="$features_dir/archive"
+
+  if [[ ! -d "$features_dir" ]]; then
+    mkdir -p "$features_dir"
+    echo -e "${GREEN}Created features directory: $features_dir${NC}" >&2
+  fi
+
+  if [[ ! -d "$archive_dir" ]]; then
+    mkdir -p "$archive_dir"
+  fi
+}
+
+# =============================================================================
+# Command: create
+# =============================================================================
+
+cmd_create() {
+  local feature_name="$1"
+
+  if [[ -z "$feature_name" ]]; then
+    echo -e "${RED}Error: Feature name is required${NC}" >&2
+    echo "Usage: $0 create <feature-name>" >&2
+    exit 1
+  fi
+
+  ensure_developer
+  ensure_features_dir
+
+  local features_dir=$(get_features_dir)
+  local day=$(date +%d)
+  local dir_name="${day}-${feature_name}"
+  local feature_dir="$features_dir/$dir_name"
+  local feature_json="$feature_dir/feature.json"
+
+  if [[ -d "$feature_dir" ]]; then
+    echo -e "${YELLOW}Warning: Feature already exists: $feature_dir${NC}" >&2
+    echo "$DIR_WORKFLOW/$DIR_PROGRESS/$(get_developer)/$DIR_FEATURES/$dir_name"
+    exit 0
+  fi
+
+  mkdir -p "$feature_dir"
+
+  local today=$(date +%Y-%m-%d)
+  local developer=$(get_developer)
+
+  cat > "$feature_json" << EOF
+{
+  "id": "$feature_name",
+  "name": "$feature_name",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "priority": "medium",
+  "developer": "$developer",
+  "createdAt": "$today",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}
+EOF
+
+  echo -e "${GREEN}Created feature: $dir_name${NC}" >&2
+  echo -e "" >&2
+  echo -e "${BLUE}Next steps:${NC}" >&2
+  echo -e "  1. Create prd.md with requirements" >&2
+  echo -e "  2. Run: $0 init-context <dir> <dev_type>" >&2
+  echo -e "  3. Run: $0 start <dir>" >&2
+  echo "" >&2
+
+  # Output relative path for script chaining
+  echo "$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES/$dir_name"
+}
+
+# =============================================================================
+# Command: init-context
+# =============================================================================
+
+cmd_init_context() {
+  local target_dir="$1"
+  local dev_type="$2"
+
+  if [[ -z "$target_dir" ]] || [[ -z "$dev_type" ]]; then
+    echo -e "${RED}Error: Missing arguments${NC}"
+    echo "Usage: $0 init-context <feature-dir> <dev_type>"
+    echo "  dev_type: backend | frontend | fullstack | test | docs"
+    exit 1
+  fi
+
+  # Support relative paths
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  if [[ ! -d "$target_dir" ]]; then
+    echo -e "${RED}Error: Directory not found: $target_dir${NC}"
+    exit 1
+  fi
+
+  echo -e "${BLUE}=== Initializing Agent Context Files ===${NC}"
+  echo -e "Target dir: $target_dir"
+  echo -e "Dev type: $dev_type"
+  echo ""
+
+  # implement.jsonl
+  echo -e "${CYAN}Creating implement.jsonl...${NC}"
+  local implement_file="$target_dir/implement.jsonl"
+  {
+    get_implement_base
+    case "$dev_type" in
+      backend|test) get_implement_backend ;;
+      frontend) get_implement_frontend ;;
+      fullstack)
+        get_implement_backend
+        get_implement_frontend
+        ;;
+    esac
+  } > "$implement_file"
+  echo -e "  ${GREEN}✓${NC} $(wc -l < "$implement_file" | tr -d ' ') entries"
+
+  # check.jsonl
+  echo -e "${CYAN}Creating check.jsonl...${NC}"
+  local check_file="$target_dir/check.jsonl"
+  get_check_context "$dev_type" > "$check_file"
+  echo -e "  ${GREEN}✓${NC} $(wc -l < "$check_file" | tr -d ' ') entries"
+
+  # debug.jsonl
+  echo -e "${CYAN}Creating debug.jsonl...${NC}"
+  local debug_file="$target_dir/debug.jsonl"
+  get_debug_context "$dev_type" > "$debug_file"
+  echo -e "  ${GREEN}✓${NC} $(wc -l < "$debug_file" | tr -d ' ') entries"
+
+  echo ""
+  echo -e "${GREEN}✓ All context files created${NC}"
+  echo -e ""
+  echo -e "${BLUE}Next steps:${NC}"
+  echo -e "  1. Add task-specific specs: $0 add-context <dir> <jsonl> <path>"
+  echo -e "  2. Set as current: $0 start <dir>"
+}
+
+# =============================================================================
+# Command: add-context
+# =============================================================================
+
+cmd_add_context() {
+  local target_dir="$1"
+  local jsonl_name="$2"
+  local path="$3"
+  local reason="${4:-Added manually}"
+
+  if [[ -z "$target_dir" ]] || [[ -z "$jsonl_name" ]] || [[ -z "$path" ]]; then
+    echo -e "${RED}Error: Missing arguments${NC}"
+    echo "Usage: $0 add-context <feature-dir> <jsonl-file> <path> [reason]"
+    echo "  jsonl-file: implement | check | debug (or full filename)"
+    exit 1
+  fi
+
+  # Support relative paths
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  # Support shorthand
+  if [[ "$jsonl_name" != *.jsonl ]]; then
+    jsonl_name="${jsonl_name}.jsonl"
+  fi
+
+  local jsonl_file="$target_dir/$jsonl_name"
+  local full_path="$REPO_ROOT/$path"
+  local entry_type="file"
+
+  if [[ -d "$full_path" ]]; then
+    entry_type="directory"
+    [[ "$path" != */ ]] && path="$path/"
+  elif [[ ! -f "$full_path" ]]; then
+    echo -e "${RED}Error: Path not found: $path${NC}"
+    exit 1
+  fi
+
+  # Check if already exists
+  if [[ -f "$jsonl_file" ]] && grep -q "\"$path\"" "$jsonl_file" 2>/dev/null; then
+    echo -e "${YELLOW}Warning: Entry already exists for $path${NC}"
+    exit 0
+  fi
+
+  # Add entry
+  if [[ "$entry_type" == "directory" ]]; then
+    echo "{\"file\": \"$path\", \"type\": \"directory\", \"reason\": \"$reason\"}" >> "$jsonl_file"
+  else
+    echo "{\"file\": \"$path\", \"reason\": \"$reason\"}" >> "$jsonl_file"
+  fi
+
+  echo -e "${GREEN}Added $entry_type: $path${NC}"
+}
+
+# =============================================================================
+# Command: validate
+# =============================================================================
+
+validate_jsonl() {
+  local jsonl_file="$1"
+  local file_name=$(basename "$jsonl_file")
+  local errors=0
+  local line_num=0
+
+  if [[ ! -f "$jsonl_file" ]]; then
+    echo -e "  ${YELLOW}$file_name: not found (skipped)${NC}"
+    return 0
+  fi
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line_num=$((line_num + 1))
+    [[ -z "$line" ]] && continue
+
+    if ! echo "$line" | jq -e . > /dev/null 2>&1; then
+      echo -e "  ${RED}$file_name:$line_num: Invalid JSON${NC}"
+      errors=$((errors + 1))
+      continue
+    fi
+
+    local file_path=$(echo "$line" | jq -r '.file // empty')
+    local entry_type=$(echo "$line" | jq -r '.type // "file"')
+
+    if [[ -z "$file_path" ]]; then
+      echo -e "  ${RED}$file_name:$line_num: Missing 'file' field${NC}"
+      errors=$((errors + 1))
+      continue
+    fi
+
+    local full_path="$REPO_ROOT/$file_path"
+    if [[ "$entry_type" == "directory" ]]; then
+      if [[ ! -d "$full_path" ]]; then
+        echo -e "  ${RED}$file_name:$line_num: Directory not found: $file_path${NC}"
+        errors=$((errors + 1))
+      fi
+    else
+      if [[ ! -f "$full_path" ]]; then
+        echo -e "  ${RED}$file_name:$line_num: File not found: $file_path${NC}"
+        errors=$((errors + 1))
+      fi
+    fi
+  done < "$jsonl_file"
+
+  if [[ $errors -eq 0 ]]; then
+    echo -e "  ${GREEN}$file_name: ✓ ($line_num entries)${NC}"
+  else
+    echo -e "  ${RED}$file_name: ✗ ($errors errors)${NC}"
+  fi
+
+  return $errors
+}
+
+cmd_validate() {
+  local target_dir="$1"
+
+  if [[ -z "$target_dir" ]]; then
+    echo -e "${RED}Error: feature directory required${NC}"
+    exit 1
+  fi
+
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  echo -e "${BLUE}=== Validating Context Files ===${NC}"
+  echo -e "Target dir: $target_dir"
+  echo ""
+
+  local total_errors=0
+  for jsonl_file in "$target_dir"/{implement,check,debug}.jsonl; do
+    validate_jsonl "$jsonl_file"
+    total_errors=$((total_errors + $?))
+  done
+
+  echo ""
+  if [[ $total_errors -eq 0 ]]; then
+    echo -e "${GREEN}✓ All validations passed${NC}"
+  else
+    echo -e "${RED}✗ Validation failed ($total_errors errors)${NC}"
+    exit 1
+  fi
+}
+
+# =============================================================================
+# Command: list-context
+# =============================================================================
+
+cmd_list_context() {
+  local target_dir="$1"
+
+  if [[ -z "$target_dir" ]]; then
+    echo -e "${RED}Error: feature directory required${NC}"
+    exit 1
+  fi
+
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  echo -e "${BLUE}=== Context Files ===${NC}"
+  echo ""
+
+  for jsonl_file in "$target_dir"/{implement,check,debug}.jsonl; do
+    local file_name=$(basename "$jsonl_file")
+    [[ ! -f "$jsonl_file" ]] && continue
+
+    echo -e "${CYAN}[$file_name]${NC}"
+
+    local count=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -z "$line" ]] && continue
+
+      local file_path=$(echo "$line" | jq -r '.file // "?"')
+      local entry_type=$(echo "$line" | jq -r '.type // "file"')
+      local reason=$(echo "$line" | jq -r '.reason // "-"')
+      count=$((count + 1))
+
+      if [[ "$entry_type" == "directory" ]]; then
+        echo -e "  ${GREEN}$count.${NC} [DIR] $file_path"
+      else
+        echo -e "  ${GREEN}$count.${NC} $file_path"
+      fi
+      echo -e "     ${YELLOW}→${NC} $reason"
+    done < "$jsonl_file"
+
+    echo ""
+  done
+}
+
+# =============================================================================
+# Command: start / finish
+# =============================================================================
+
+cmd_start() {
+  local feature_dir="$1"
+
+  if [[ -z "$feature_dir" ]]; then
+    echo -e "${RED}Error: feature directory required${NC}"
+    exit 1
+  fi
+
+  # Convert to relative path
+  if [[ "$feature_dir" = /* ]]; then
+    feature_dir="${feature_dir#$REPO_ROOT/}"
+  fi
+
+  # Verify directory exists
+  if [[ ! -d "$REPO_ROOT/$feature_dir" ]]; then
+    echo -e "${RED}Error: Feature directory not found: $feature_dir${NC}"
+    exit 1
+  fi
+
+  set_current_feature "$feature_dir"
+  echo -e "${GREEN}✓ Current feature set to: $feature_dir${NC}"
+  echo ""
+  echo -e "${BLUE}The hook will now inject context from this feature's jsonl files.${NC}"
+}
+
+cmd_finish() {
+  local current=$(get_current_feature)
+
+  if [[ -z "$current" ]]; then
+    echo -e "${YELLOW}No current feature set${NC}"
+    exit 0
+  fi
+
+  clear_current_feature
+  echo -e "${GREEN}✓ Cleared current feature (was: $current)${NC}"
+}
+
+# =============================================================================
+# Command: archive
+# =============================================================================
+
+cmd_archive() {
+  local feature_name="$1"
+
+  if [[ -z "$feature_name" ]]; then
+    echo -e "${RED}Error: Feature name is required${NC}" >&2
+    echo "Usage: $0 archive <feature-name>" >&2
+    exit 1
+  fi
+
+  ensure_developer
+
+  local features_dir=$(get_features_dir)
+  local archive_dir="$features_dir/archive"
+  local year_month=$(date +%Y-%m)
+  local month_dir="$archive_dir/$year_month"
+
+  # Find feature directory (try exact match first, then suffix match)
+  local feature_dir=$(find "$features_dir" -maxdepth 1 -type d -name "${feature_name}" 2>/dev/null | head -1)
+  if [[ -z "$feature_dir" ]]; then
+    feature_dir=$(find "$features_dir" -maxdepth 1 -type d -name "*-${feature_name}" 2>/dev/null | head -1)
+  fi
+
+  if [[ -z "$feature_dir" ]] || [[ ! -d "$feature_dir" ]]; then
+    echo -e "${RED}Error: Feature not found: $feature_name${NC}" >&2
+    echo "Active features:" >&2
+    cmd_list >&2
+    exit 1
+  fi
+
+  if [[ ! -d "$month_dir" ]]; then
+    mkdir -p "$month_dir"
+  fi
+
+  local dir_name=$(basename "$feature_dir")
+  local feature_json="$feature_dir/feature.json"
+
+  # Update status
+  local today=$(date +%Y-%m-%d)
+  if [[ -f "$feature_json" ]] && command -v jq &> /dev/null; then
+    local temp_file=$(mktemp)
+    jq --arg date "$today" '.status = "completed" | .completedAt = $date' "$feature_json" > "$temp_file"
+    mv "$temp_file" "$feature_json"
+  elif [[ -f "$feature_json" ]]; then
+    sed -i.bak 's/"status": "in-progress"/"status": "completed"/' "$feature_json"
+    sed -i.bak "s/\"completedAt\": null/\"completedAt\": \"$today\"/" "$feature_json"
+    rm -f "${feature_json}.bak"
+  fi
+
+  # Clear if current feature
+  local current=$(get_current_feature)
+  if [[ "$current" == *"$dir_name"* ]]; then
+    clear_current_feature
+  fi
+
+  mv "$feature_dir" "$month_dir/"
+
+  echo -e "${GREEN}Archived: $dir_name -> archive/$year_month/${NC}" >&2
+  echo "$DIR_WORKFLOW/$DIR_PROGRESS/$(get_developer)/$DIR_FEATURES/$DIR_ARCHIVE/$year_month/$dir_name"
+}
+
+# =============================================================================
+# Command: list
+# =============================================================================
+
+cmd_list() {
+  ensure_developer
+
+  local features_dir=$(get_features_dir)
+  local developer=$(get_developer)
+  local current_feature=$(get_current_feature)
+
+  echo -e "${BLUE}Active features for $developer:${NC}"
+  echo ""
+
+  local count=0
+
+  for d in "$features_dir"/*/; do
+    if [[ -d "$d" ]] && [[ "$(basename "$d")" != "archive" ]]; then
+      local dir_name=$(basename "$d")
+      local feature_json="$d/feature.json"
+      local status="unknown"
+      local relative_path="$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES/$dir_name"
+
+      if [[ -f "$feature_json" ]] && command -v jq &> /dev/null; then
+        status=$(jq -r '.status // "unknown"' "$feature_json")
+      fi
+
+      local marker=""
+      if [[ "$relative_path" == "$current_feature" ]]; then
+        marker=" ${GREEN}<- current${NC}"
+      fi
+
+      echo -e "  - $dir_name/ ($status)$marker"
+      ((count++))
+    fi
+  done
+
+  if [[ $count -eq 0 ]]; then
+    echo "  (no active features)"
+  fi
+
+  echo ""
+  echo "Total: $count active feature(s)"
+}
+
+# =============================================================================
+# Command: list-archive
+# =============================================================================
+
+cmd_list_archive() {
+  local month="$1"
+
+  ensure_developer
+
+  local features_dir=$(get_features_dir)
+  local archive_dir="$features_dir/archive"
+  local developer=$(get_developer)
+
+  echo -e "${BLUE}Archived features for $developer:${NC}"
+  echo ""
+
+  if [[ -n "$month" ]]; then
+    local month_dir="$archive_dir/$month"
+    if [[ -d "$month_dir" ]]; then
+      echo "[$month]"
+      for d in "$month_dir"/*/; do
+        if [[ -d "$d" ]]; then
+          echo "  - $(basename "$d")/"
+        fi
+      done
+    else
+      echo "  No archives for $month"
+    fi
+  else
+    for month_dir in "$archive_dir"/*/; do
+      if [[ -d "$month_dir" ]]; then
+        local month_name=$(basename "$month_dir")
+        local count=$(find "$month_dir" -maxdepth 1 -type d ! -name "$(basename "$month_dir")" | wc -l | tr -d ' ')
+        echo "[$month_name] - $count feature(s)"
+      fi
+    done
+  fi
+}
+
+# =============================================================================
+# Help
+# =============================================================================
+
+show_usage() {
+  cat << EOF
+Feature Management Script for Multi-Agent Pipeline
+
+Usage:
+  $0 create <feature-name>              Create new feature directory
+  $0 init-context <dir> <dev_type>      Initialize jsonl files
+  $0 add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
+  $0 validate <dir>                     Validate jsonl files
+  $0 list-context <dir>                 List jsonl entries
+  $0 start <dir>                        Set as current feature
+  $0 finish                             Clear current feature
+  $0 archive <feature-name>             Archive completed feature
+  $0 list                               List active features
+  $0 list-archive [YYYY-MM]             List archived features
+
+Arguments:
+  dev_type: backend | frontend | fullstack | test | docs
+
+Examples:
+  $0 create add-login-feature
+  $0 init-context .trellis/agent-traces/john/features/13-add-login-feature backend
+  $0 add-context <dir> implement .trellis/structure/backend/auth.md "Auth guidelines"
+  $0 start .trellis/agent-traces/john/features/13-add-login-feature
+  $0 finish
+  $0 archive add-login-feature
+EOF
+}
+
+# =============================================================================
+# Main Entry
+# =============================================================================
+
+case "${1:-}" in
+  create)
+    cmd_create "$2"
+    ;;
+  init-context)
+    cmd_init_context "$2" "$3"
+    ;;
+  add-context)
+    cmd_add_context "$2" "$3" "$4" "$5"
+    ;;
+  validate)
+    cmd_validate "$2"
+    ;;
+  list-context)
+    cmd_list_context "$2"
+    ;;
+  start)
+    cmd_start "$2"
+    ;;
+  finish)
+    cmd_finish
+    ;;
+  archive)
+    cmd_archive "$2"
+    ;;
+  list)
+    cmd_list
+    ;;
+  list-archive)
+    cmd_list_archive "$2"
+    ;;
+  -h|--help|help)
+    show_usage
+    ;;
+  *)
+    show_usage
+    exit 1
+    ;;
+esac

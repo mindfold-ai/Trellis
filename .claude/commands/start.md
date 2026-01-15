@@ -1,0 +1,127 @@
+# Start Session
+
+Initialize your AI development session and begin working on tasks.
+
+## Initialization
+
+1. Get session context:
+   ```bash
+   ./.trellis/scripts/get-context.sh
+   ```
+
+2. Read `.trellis/structure/guides/index.md` for thinking guidelines
+
+3. Report ready status and ask for task
+
+---
+
+## Working on Tasks
+
+### For Simple Tasks
+
+1. Read relevant guidelines based on task type:
+   - Frontend: `.trellis/structure/frontend/`
+   - Backend: `.trellis/structure/backend/`
+
+2. Implement the task directly
+
+3. Before committing, remind user to run `/finish-work`
+
+### For Complex Tasks (Multi-Step Features)
+
+Use feature tracking and delegate to specialized agents for better quality.
+
+#### Step 1: Create Feature
+
+```bash
+./.trellis/scripts/feature.sh create <name>
+# Example: ./.trellis/scripts/feature.sh create user-auth
+```
+
+#### Step 2: Initialize Context
+
+```bash
+FEATURE_DIR=".trellis/agent-traces/{developer}/features/{feature-name}"
+./.trellis/scripts/feature.sh init-context "$FEATURE_DIR" <type>
+# type: backend | frontend | fullstack
+```
+
+#### Step 3: Add Task-Specific Guidelines
+
+Based on what the task involves, add relevant spec files:
+
+```bash
+# Example: adding database and API guidelines for a backend task
+./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement ".trellis/structure/backend/database-guidelines.md"
+./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement ".trellis/structure/backend/api-module.md"
+```
+
+Verify with:
+```bash
+./.trellis/scripts/feature.sh list-context "$FEATURE_DIR"
+```
+
+#### Step 4: Document Requirements
+
+Create `prd.md` in the feature directory describing what needs to be done.
+
+For complex tasks, also create `info.md` with technical approach.
+
+#### Step 5: Start Feature
+
+```bash
+./.trellis/scripts/feature.sh start "$FEATURE_DIR"
+```
+
+#### Step 6: Delegate Work
+
+Use specialized agents for implementation:
+
+```
+Task(subagent_type: "implement", prompt: "Implement the feature described in prd.md", model: "sonnet")
+```
+
+After implementation, verify quality:
+
+```
+Task(subagent_type: "check", prompt: "Check code changes and fix any issues", model: "sonnet")
+```
+
+#### Step 7: Complete
+
+1. Verify typecheck and lint pass
+2. Remind user to test
+3. Remind user to commit
+4. **Record session progress**: Ask user to run `/record-agent-flow`
+5. Archive feature (if fully completed):
+   ```bash
+   ./.trellis/scripts/feature.sh archive <feature-name>
+   ```
+
+---
+
+## Session End Reminder
+
+**IMPORTANT**: When a task or session is completed, always remind the user:
+
+> Before ending this session, please run `/record-agent-flow` to record what we accomplished.
+> This helps maintain continuity across sessions.
+
+---
+
+## Quick Reference
+
+| Task Size | Approach |
+|-----------|----------|
+| Small fix / simple change | Implement directly |
+| New feature / multi-file change | Use feature tracking + delegation |
+| Research / exploration | Use research agent |
+
+| Command | Purpose |
+|---------|---------|
+| `feature.sh create <name>` | Create feature directory |
+| `feature.sh start <dir>` | Set as current feature |
+| `feature.sh finish` | Clear current feature |
+| `feature.sh archive <name>` | Archive completed feature |
+| `feature.sh list` | List all features |
+| `/record-agent-flow` | **Record session progress (run at session end)** |

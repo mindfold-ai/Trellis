@@ -2,6 +2,8 @@
 
 English | [中文](./README-zh.md)
 
+![Trellis](./trellis.png)
+
 AI capabilities grow like ivy — full of vitality but climbing in all directions. Trellis provides the structure to guide them along a disciplined path.
 
 Based on Anthropic's [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), with engineering practices and improvements for real-world usage.
