@@ -2,8 +2,8 @@
 # Git and Session Context utilities
 #
 # Usage:
-#   ./workflow/scripts/common/git-context.sh           # Full context output
-#   ./workflow/scripts/common/git-context.sh --json    # JSON format
+#   ./.trellis/scripts/common/git-context.sh           # Full context output
+#   ./.trellis/scripts/common/git-context.sh --json    # JSON format
 #
 # Or source in other scripts:
 #   source "$(dirname "$0")/common/git-context.sh"

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import chalk from "chalk";
+import figlet from "figlet";
 import inquirer from "inquirer";
 import {
   configureClaude,
@@ -43,9 +44,10 @@ interface InitAnswers {
 export async function init(options: InitOptions): Promise<void> {
   const cwd = process.cwd();
 
-  console.log(
-    chalk.cyan("\n🌿 Trellis - AI-assisted development workflow framework\n"),
-  );
+  // Generate ASCII art banner dynamically using FIGlet "Rebel" font
+  const banner = figlet.textSync("Trellis", { font: "Rebel" });
+  console.log(chalk.cyan(`\n${banner.trimEnd()}`));
+  console.log(chalk.gray("\n  AI-assisted development workflow framework\n"));
 
   // Set write mode based on options
   let writeMode: WriteMode = "ask";
@@ -82,7 +84,7 @@ export async function init(options: InitOptions): Promise<void> {
     console.log(
       chalk.gray(
         "\nTrellis supports team collaboration - each developer has their own\n" +
-          `progress directory (${PATHS.PROGRESS}/<name>/) to track AI sessions.\n` +
+          `progress directory (${PATHS.PROGRESS}/{name}/) to track AI sessions.\n` +
           "Tip: Usually this is your git username (git config user.name).\n",
       ),
     );
@@ -209,7 +211,6 @@ export async function init(options: InitOptions): Promise<void> {
       developerInitialized = true;
 
       // Create bootstrap feature to guide user through filling guidelines
-      console.log(chalk.blue("📋 Creating bootstrap feature..."));
       const bootstrapScriptPath = path.join(
         cwd,
         PATHS.SCRIPTS,
@@ -217,7 +218,7 @@ export async function init(options: InitOptions): Promise<void> {
       );
       execSync(`bash "${bootstrapScriptPath}" "${projectType}"`, {
         cwd,
-        stdio: "inherit",
+        stdio: "pipe", // Silent - we handle output in init
       });
       bootstrapCreated = true;
     } catch (error) {
@@ -250,22 +251,28 @@ export async function init(options: InitOptions): Promise<void> {
     stepNum++;
   } else if (bootstrapCreated) {
     console.log(
-      chalk.gray(`${stepNum}. Your first task: `) +
-        chalk.white("Fill in project guidelines") +
-        chalk.gray(" (a bootstrap feature has been created to guide you)"),
+      chalk.gray(`${stepNum}. Use `) +
+        chalk.white("/start") +
+        chalk.gray(" command in your AI tool to begin a session"),
     );
     stepNum++;
+    console.log(
+      chalk.gray(`${stepNum}. Ask AI to help you `) +
+        chalk.white("fill in project guidelines") +
+        chalk.gray(` in ${PATHS.STRUCTURE}/\n`),
+    );
+  } else {
+    console.log(
+      chalk.gray(`${stepNum}. Use `) +
+        chalk.white("/start") +
+        chalk.gray(" command in your AI tool to begin a session\n"),
+    );
   }
-  console.log(
-    chalk.gray(`${stepNum}. Use `) +
-      chalk.white("/start") +
-      chalk.gray(" command in your AI tool to begin a session\n"),
-  );
 
   // Print structure info
   console.log(chalk.cyan("Generated structure files:"));
   console.log(
-    chalk.gray(`  ${PATHS.STRUCTURE}/flows/    - Thinking guides (filled)`),
+    chalk.gray(`  ${PATHS.STRUCTURE}/guides/   - Thinking guides (filled)`),
   );
   if (
     projectType === "frontend" ||

@@ -8,8 +8,8 @@ Use the `/start` command when starting a new session to:
 - Understand current project context
 - Read relevant guidelines
 
-Use `@/workflow/` to learn:
-- Development workflow (`flow.md`)
+Use `@/.trellis/` to learn:
+- Development workflow (`workflow.md`)
 - Project structure guidelines (`structure/`)
 - Progress tracking (`agent-traces/`)
 

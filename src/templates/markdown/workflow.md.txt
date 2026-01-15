@@ -20,7 +20,7 @@
 ### Core Principles
 
 1. **Read Before Write** - Understand context before starting
-2. **Follow Standards** - [!] **MUST read `workflow/structure/` guidelines before coding**
+2. **Follow Standards** - [!] **MUST read `.trellis/structure/` guidelines before coding**
 3. **Incremental Development** - Complete one feature at a time
 4. **Record Promptly** - Update tracking files immediately after completion
 5. **Document Limits** - [!] **Max 2000 lines per agent-traces document**
@@ -28,7 +28,7 @@
 ### File System
 
 ```
-workflow/
+.trellis/
 |-- .developer           # Developer identity (gitignored)
 |-- scripts/
 |   |-- common/              # Shared utilities
@@ -49,27 +49,17 @@ workflow/
 |       |       \-- feature.json
 |       \-- progress-N.md  # Progress files (sequential numbering)
 |-- structure/           # [!] MUST READ before coding
-|   |-- frontend/        # Frontend guidelines (multi-doc)
+|   |-- frontend/        # Frontend guidelines (if applicable)
 |   |   |-- index.md               # Start here - guidelines index
-|   |   |-- directory-structure.md # Directory layout
-|   |   |-- type-safety.md         # TypeScript patterns
-|   |   |-- hook-guidelines.md     # React Query hooks
-|   |   |-- component-guidelines.md # Component patterns
-|   |   |-- state-management.md    # State patterns
-|   |   \-- quality-guidelines.md  # Code standards
-|   |-- backend/         # Backend guidelines (multi-doc)
+|   |   \-- *.md                   # Topic-specific docs
+|   |-- backend/         # Backend guidelines (if applicable)
 |   |   |-- index.md               # Start here - guidelines index
-|   |   |-- directory-structure.md # Directory layout
-|   |   |-- type-safety.md         # Zod, TypeScript patterns
-|   |   |-- database-guidelines.md # ORM, batch operations
-|   |   |-- logging-guidelines.md  # Structured logging
-|   |   |-- error-handling.md      # Error types, handling
-|   |   \-- quality-guidelines.md  # Code standards
-|   \-- flows/           # Cross-layer specifications
-|       |-- index.md                      # Flow specs index
+|   |   \-- *.md                   # Topic-specific docs
+|   \-- guides/          # Thinking guides
+|       |-- index.md                      # Guides index
 |       |-- cross-layer-thinking-guide.md # Pre-implementation checklist
-|       \-- spec-flow-template.md         # Template for new flows
-\-- flow.md             # This document
+|       \-- *.md                          # Other guides
+\-- workflow.md             # This document
 ```
 
 ---
@@ -82,44 +72,34 @@ Use the unified context script:
 
 ```bash
 # Get all context in one command
-./workflow/scripts/get-context.sh
+./.trellis/scripts/get-context.sh
 
 # Or get JSON format
-./workflow/scripts/get-context.sh --json
+./.trellis/scripts/get-context.sh --json
 ```
 
 ### Step 2: Read Development Guidelines [!] REQUIRED
 
 **[!] CRITICAL: MUST read guidelines before writing any code**
 
-Based on what you'll develop (frontend/backend), read the corresponding guidelines:
+Based on what you'll develop, read the corresponding guidelines:
 
-**Frontend Development**:
+**Frontend Development** (if applicable):
 ```bash
-# 1. Read index first
-cat workflow/structure/frontend/index.md
-
-# 2. Read specific doc based on task
-cat workflow/structure/frontend/hook-guidelines.md      # For hooks
-cat workflow/structure/frontend/component-guidelines.md # For components
-cat workflow/structure/frontend/type-safety.md          # For types
+# Read index first, then specific docs based on task
+cat .trellis/structure/frontend/index.md
 ```
 
-**Backend Development**:
+**Backend Development** (if applicable):
 ```bash
-# 1. Read index first
-cat workflow/structure/backend/index.md
-
-# 2. Read specific doc based on task
-cat workflow/structure/backend/database-guidelines.md   # For DB operations
-cat workflow/structure/backend/type-safety.md           # For Zod/types
-cat workflow/structure/backend/logging-guidelines.md    # For logging
+# Read index first, then specific docs based on task
+cat .trellis/structure/backend/index.md
 ```
 
 **Cross-Layer Features**:
 ```bash
 # For features spanning multiple layers
-cat workflow/structure/flows/cross-layer-thinking-guide.md
+cat .trellis/structure/guides/cross-layer-thinking-guide.md
 ```
 
 ### Step 3: Select Feature to Develop
@@ -128,10 +108,10 @@ Use the feature management script:
 
 ```bash
 # List active features
-./workflow/scripts/feature.sh list
+./.trellis/scripts/feature.sh list
 
 # Create new feature (creates directory with feature.json)
-./workflow/scripts/feature.sh create <feature-name>
+./.trellis/scripts/feature.sh create <feature-name>
 ```
 
 ---
@@ -142,17 +122,14 @@ Use the feature management script:
 
 ```
 1. Create or select feature
-   \-> ./workflow/scripts/feature.sh create <name> or list
+   \-> ./.trellis/scripts/feature.sh create <name> or list
 
 2. Write code according to guidelines
-   \-> Read workflow/structure/[frontend|backend]/ docs
-   \-> For cross-layer: read workflow/structure/flows/
-   \-> Frontend: Type safety, Hook standards, Component standards
-   \-> Backend: Directory structure, Type safety, Database, Logging
+   \-> Read .trellis/structure/ docs relevant to your task
+   \-> For cross-layer: read .trellis/structure/guides/
 
 3. Self-test
-   \-> pnpm lint (must pass)
-   \-> pnpm type-check (must pass)
+   \-> Run project's lint/test commands (see structure docs)
    \-> Manual feature testing
 
 4. Commit code
@@ -161,27 +138,19 @@ Use the feature management script:
        Format: feat/fix/docs/refactor/test/chore
 
 5. Record session (one command)
-   \-> ./workflow/scripts/add-session.sh --title "Title" --commit "hash"
+   \-> ./.trellis/scripts/add-session.sh --title "Title" --commit "hash"
 ```
 
 ### Code Quality Checklist
 
 **Must pass before commit**:
-- [OK] `pnpm lint` - 0 errors
-- [OK] `pnpm type-check` - No type errors
+- [OK] Lint checks pass (project-specific command)
+- [OK] Type checks pass (if applicable)
 - [OK] Manual feature testing passes
 
-**Frontend-specific checks** (see `frontend/quality-guidelines.md`):
-- [OK] Use semantic HTML (`<button>` not `<div role="button">`)
-- [OK] Use Next.js `<Image>` instead of `<img>`
-- [OK] Import types from backend, don't redefine
-- [OK] Avoid non-null assertions `!`
-
-**Backend-specific checks** (see `backend/quality-guidelines.md`):
-- [OK] Strictly avoid non-null assertion `!`
-- [OK] All API inputs/outputs have Zod Schema
-- [OK] Use structured logging (`logger`), forbidden `console.log`
-- [OK] Database operations avoid `await` in loops
+**Project-specific checks**:
+- See `.trellis/structure/frontend/quality-guidelines.md` for frontend
+- See `.trellis/structure/backend/quality-guidelines.md` for backend
 
 ---
 
@@ -192,7 +161,7 @@ Use the feature management script:
 After code is committed, use:
 
 ```bash
-./workflow/scripts/add-session.sh \
+./.trellis/scripts/add-session.sh \
   --title "Session Title" \
   --commit "abc1234" \
   --summary "Brief summary"
@@ -209,7 +178,7 @@ This automatically:
 Use `/finish-work` command to run through:
 1. [OK] All code committed, commit message follows convention
 2. [OK] Session recorded via `add-session.sh`
-3. [OK] No lint/type-check errors
+3. [OK] No lint/test errors
 4. [OK] Working directory clean (or WIP noted)
 5. [OK] Structure docs updated if needed
 
@@ -245,15 +214,15 @@ agent-traces/
 **Structure** (Multi-doc format):
 ```
 structure/
-|-- frontend/           # Frontend docs
+|-- frontend/           # Frontend docs (if applicable)
 |   |-- index.md        # Start here
 |   \-- *.md            # Topic-specific docs
-|-- backend/            # Backend docs
+|-- backend/            # Backend docs (if applicable)
 |   |-- index.md        # Start here
 |   \-- *.md            # Topic-specific docs
-\-- flows/              # Cross-layer specs
+\-- guides/             # Thinking guides
     |-- index.md        # Start here
-    \-- *.md            # Flow-specific docs
+    \-- *.md            # Guide-specific docs
 ```
 
 **When to update**:
@@ -277,10 +246,10 @@ features/
 
 **Commands**:
 ```bash
-./workflow/scripts/feature.sh create <name>   # Create feature directory
-./workflow/scripts/feature.sh archive <name>  # Archive to archive/{year-month}/
-./workflow/scripts/feature.sh list            # List active features
-./workflow/scripts/feature.sh list-archive    # List archived features
+./.trellis/scripts/feature.sh create <name>   # Create feature directory
+./.trellis/scripts/feature.sh archive <name>  # Archive to archive/{year-month}/
+./.trellis/scripts/feature.sh list            # List active features
+./.trellis/scripts/feature.sh list-archive    # List archived features
 ```
 
 ---
@@ -290,14 +259,14 @@ features/
 ### [OK] DO - Should Do
 
 1. **Before session start**:
-   - Run `./workflow/scripts/get-context.sh` for full context
-   - [!] **MUST read** relevant `workflow/structure/` docs
+   - Run `./.trellis/scripts/get-context.sh` for full context
+   - [!] **MUST read** relevant `.trellis/structure/` docs
 
 2. **During development**:
-   - [!] **Follow** `workflow/structure/` guidelines
+   - [!] **Follow** `.trellis/structure/` guidelines
    - For cross-layer features, use `/check-cross-layer`
    - Develop only one feature at a time
-   - Run lint and type-check frequently
+   - Run lint and tests frequently
 
 3. **After development complete**:
    - Use `/finish-work` for completion checklist
@@ -307,13 +276,12 @@ features/
 
 ### [X] DON'T - Should Not Do
 
-1. [!] **Don't** skip reading `workflow/structure/` guidelines
+1. [!] **Don't** skip reading `.trellis/structure/` guidelines
 2. [!] **Don't** let agent-traces single file exceed 2000 lines
 3. **Don't** develop multiple unrelated features simultaneously
-4. **Don't** commit code with lint/type-check errors
+4. **Don't** commit code with lint/test errors
 5. **Don't** forget to update structure docs after learning something
 6. [!] **Don't** execute `git commit` - AI should not commit code
-7. **Don't** write `workflow/structure/` docs in Chinese - **English only**
 
 ---
 
@@ -323,11 +291,9 @@ features/
 
 | Task Type | Must-read Document |
 |-----------|-------------------|
-| New Query Hook | `frontend/hook-guidelines.md` |
-| New Component | `frontend/component-guidelines.md` |
-| New Backend API | `backend/directory-structure.md`, `backend/type-safety.md` |
-| Database Operations | `backend/database-guidelines.md` |
-| Cross-Layer Feature | `flows/cross-layer-thinking-guide.md` |
+| Frontend work | `frontend/index.md` → relevant docs |
+| Backend work | `backend/index.md` → relevant docs |
+| Cross-Layer Feature | `guides/cross-layer-thinking-guide.md` |
 
 ### Commit Convention
 
@@ -336,23 +302,18 @@ git commit -m "type(scope): description"
 ```
 
 **Type**: feat, fix, docs, refactor, test, chore
-**Scope**: Module name (e.g., mail, auth, api)
+**Scope**: Module name (e.g., auth, api, ui)
 
 ### Common Commands
 
 ```bash
 # Session management
-./workflow/scripts/get-context.sh    # Get full context
-./workflow/scripts/add-session.sh    # Record session
+./.trellis/scripts/get-context.sh    # Get full context
+./.trellis/scripts/add-session.sh    # Record session
 
 # Feature management
-./workflow/scripts/feature.sh list   # List features
-./workflow/scripts/feature.sh create # Create feature
-
-# Development
-pnpm dev              # Start dev server
-pnpm lint             # Lint check
-pnpm type-check       # Type check
+./.trellis/scripts/feature.sh list   # List features
+./.trellis/scripts/feature.sh create # Create feature
 
 # Slash commands
 /finish-work          # Pre-commit checklist

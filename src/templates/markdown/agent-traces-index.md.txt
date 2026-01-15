@@ -38,7 +38,7 @@ agent-traces/
 Run the initialization script:
 
 ```bash
-./workflow/scripts/init-developer.sh <your-name>
+./.trellis/scripts/init-developer.sh <your-name>
 ```
 
 This will:
@@ -51,12 +51,12 @@ This will:
 
 1. Get your developer name:
    ```bash
-   ./workflow/scripts/get-developer.sh
+   ./.trellis/scripts/get-developer.sh
    ```
 
 2. Read your personal index:
    ```bash
-   cat workflow/agent-traces/$(./workflow/scripts/get-developer.sh)/index.md
+   cat .trellis/agent-traces/$(./.trellis/scripts/get-developer.sh)/index.md
    ```
 
 ---

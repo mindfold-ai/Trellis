@@ -8,16 +8,16 @@
 // Directory names (can be renamed)
 export const DIR_NAMES = {
   /** Root workflow directory */
-  WORKFLOW: "workflow",
-  /** Progress tracking directory (under workflow/) */
+  WORKFLOW: ".trellis",
+  /** Progress tracking directory (under .trellis/) */
   PROGRESS: "agent-traces",
   /** Features directory (under progress/{developer}/) */
   FEATURES: "features",
   /** Archive directory (under features/) */
   ARCHIVE: "archive",
-  /** Structure/guidelines directory (under workflow/) */
+  /** Structure/guidelines directory (under .trellis/) */
   STRUCTURE: "structure",
-  /** Scripts directory (under workflow/) */
+  /** Scripts directory (under .trellis/) */
   SCRIPTS: "scripts",
 } as const;
 
@@ -32,30 +32,30 @@ export const FILE_NAMES = {
   /** Requirements document */
   PRD: "prd.md",
   /** Workflow guide */
-  FLOW: "flow.md",
+  WORKFLOW_GUIDE: "workflow.md",
 } as const;
 
 // Constructed paths (relative to project root)
 export const PATHS = {
-  /** workflow/ */
+  /** .trellis/ */
   WORKFLOW: DIR_NAMES.WORKFLOW,
-  /** workflow/agent-traces/ */
+  /** .trellis/agent-traces/ */
   PROGRESS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.PROGRESS}`,
-  /** workflow/structure/ */
+  /** .trellis/structure/ */
   STRUCTURE: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.STRUCTURE}`,
-  /** workflow/scripts/ */
+  /** .trellis/scripts/ */
   SCRIPTS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.SCRIPTS}`,
-  /** workflow/.developer */
+  /** .trellis/.developer */
   DEVELOPER_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.DEVELOPER}`,
-  /** workflow/.current-feature */
+  /** .trellis/.current-feature */
   CURRENT_FEATURE_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.CURRENT_FEATURE}`,
-  /** workflow/flow.md */
-  FLOW_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.FLOW}`,
+  /** .trellis/workflow.md */
+  WORKFLOW_GUIDE_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_GUIDE}`,
 } as const;
 
 /**
  * Get developer's progress directory path
- * @example getProgressDir("john") => "workflow/agent-traces/john"
+ * @example getProgressDir("john") => ".trellis/agent-traces/john"
  */
 export function getProgressDir(developer: string): string {
   return `${PATHS.PROGRESS}/${developer}`;
@@ -63,7 +63,7 @@ export function getProgressDir(developer: string): string {
 
 /**
  * Get developer's features directory path
- * @example getFeaturesDir("john") => "workflow/agent-traces/john/features"
+ * @example getFeaturesDir("john") => ".trellis/agent-traces/john/features"
  */
 export function getFeaturesDir(developer: string): string {
   return `${getProgressDir(developer)}/${DIR_NAMES.FEATURES}`;
@@ -71,7 +71,7 @@ export function getFeaturesDir(developer: string): string {
 
 /**
  * Get feature directory path
- * @example getFeatureDir("john", "my-feature") => "workflow/agent-traces/john/features/my-feature"
+ * @example getFeatureDir("john", "my-feature") => ".trellis/agent-traces/john/features/my-feature"
  */
 export function getFeatureDir(developer: string, featureName: string): string {
   return `${getFeaturesDir(developer)}/${featureName}`;
@@ -79,7 +79,7 @@ export function getFeatureDir(developer: string, featureName: string): string {
 
 /**
  * Get archive directory path
- * @example getArchiveDir("john") => "workflow/agent-traces/john/features/archive"
+ * @example getArchiveDir("john") => ".trellis/agent-traces/john/features/archive"
  */
 export function getArchiveDir(developer: string): string {
   return `${getFeaturesDir(developer)}/${DIR_NAMES.ARCHIVE}`;

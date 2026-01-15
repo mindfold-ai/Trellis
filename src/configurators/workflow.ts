@@ -20,7 +20,7 @@ import {
 // Import markdown templates
 import {
   agentProgressIndexContent,
-  flowMdContent,
+  workflowMdContent,
   workflowGitignoreContent,
   // Backend structure (multi-doc)
   backendIndexContent,
@@ -37,10 +37,10 @@ import {
   frontendComponentGuidelinesContent,
   frontendQualityGuidelinesContent,
   frontendStateManagementContent,
-  // Flows structure
-  flowsIndexContent,
-  flowsCrossLayerThinkingGuideContent,
-  flowsCodeReuseThinkingGuideContent,
+  // Guides structure
+  guidesIndexContent,
+  guidesCrossLayerThinkingGuideContent,
+  guidesCodeReuseThinkingGuideContent,
 } from "../templates/markdown/index.js";
 
 import { writeFile, ensureDir } from "../utils/file-writer.js";
@@ -83,7 +83,7 @@ export async function createWorkflowStructure(
     `${PATHS.SCRIPTS}/common`,
     PATHS.PROGRESS,
     PATHS.STRUCTURE,
-    `${PATHS.STRUCTURE}/flows`, // Always created
+    `${PATHS.STRUCTURE}/guides`, // Always created
   ];
 
   // Add type-specific directories
@@ -112,8 +112,8 @@ export async function createWorkflowStructure(
   // Create structure templates based on project type
   await createStructureTemplates(cwd, projectType);
 
-  // Create flow.md
-  await createFlowMd(cwd);
+  // Create workflow.md
+  await createWorkflowMd(cwd);
 
   // Create .gitignore for workflow
   await createWorkflowGitignore(cwd);
@@ -159,22 +159,22 @@ async function createStructureTemplates(
   cwd: string,
   projectType: ProjectType,
 ): Promise<void> {
-  // Flows structure - always created
-  const flowsDocs: DocDefinition[] = [
-    { name: "index.md", content: flowsIndexContent },
+  // Guides structure - always created
+  const guidesDocs: DocDefinition[] = [
+    { name: "index.md", content: guidesIndexContent },
     {
       name: "cross-layer-thinking-guide.md",
-      content: flowsCrossLayerThinkingGuideContent,
+      content: guidesCrossLayerThinkingGuideContent,
     },
     {
       name: "code-reuse-thinking-guide.md",
-      content: flowsCodeReuseThinkingGuideContent,
+      content: guidesCodeReuseThinkingGuideContent,
     },
   ];
 
-  for (const doc of flowsDocs) {
+  for (const doc of guidesDocs) {
     await writeFile(
-      path.join(cwd, `${PATHS.STRUCTURE}/flows`, doc.name),
+      path.join(cwd, `${PATHS.STRUCTURE}/guides`, doc.name),
       doc.content,
     );
   }
@@ -251,8 +251,8 @@ async function createStructureTemplates(
   }
 }
 
-async function createFlowMd(cwd: string): Promise<void> {
-  await writeFile(path.join(cwd, PATHS.FLOW_FILE), flowMdContent);
+async function createWorkflowMd(cwd: string): Promise<void> {
+  await writeFile(path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE), workflowMdContent);
 }
 
 async function createWorkflowGitignore(cwd: string): Promise<void> {

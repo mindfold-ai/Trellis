@@ -5,16 +5,16 @@
 # after initializing Trellis for the first time.
 #
 # Usage:
-#   ./workflow/scripts/create-bootstrap.sh [project-type]
+#   ./.trellis/scripts/create-bootstrap.sh [project-type]
 #
 # Arguments:
 #   project-type: frontend | backend | fullstack (default: fullstack)
 #
 # Prerequisites:
-#   - workflow/.developer must exist (run init-developer.sh first)
+#   - .trellis/.developer must exist (run init-developer.sh first)
 #
 # Creates:
-#   workflow/agent-traces/{developer}/features/00-bootstrap-guidelines/
+#   .trellis/agent-traces/{developer}/features/00-bootstrap-guidelines/
 #     ├── feature.json    # Feature metadata
 #     └── prd.md          # Task description and guidance
 
@@ -58,7 +58,7 @@ write_prd_header() {
 
 Welcome to Trellis! This is your first task.
 
-AI agents use `workflow/structure/` to understand YOUR project's coding conventions.
+AI agents use `.trellis/structure/` to understand YOUR project's coding conventions.
 **Empty templates = AI writes generic code that doesn't match your project style.**
 
 Filling these guidelines is a one-time setup that pays off for every future AI session.
@@ -78,11 +78,11 @@ write_prd_backend_section() {
 
 | File | What to Document |
 |------|------------------|
-| `workflow/structure/backend/directory-structure.md` | Where different file types go (routes, services, utils) |
-| `workflow/structure/backend/database-guidelines.md` | ORM, migrations, query patterns, naming conventions |
-| `workflow/structure/backend/error-handling.md` | How errors are caught, logged, and returned |
-| `workflow/structure/backend/logging-guidelines.md` | Log levels, format, what to log |
-| `workflow/structure/backend/quality-guidelines.md` | Code review standards, testing requirements |
+| `.trellis/structure/backend/directory-structure.md` | Where different file types go (routes, services, utils) |
+| `.trellis/structure/backend/database-guidelines.md` | ORM, migrations, query patterns, naming conventions |
+| `.trellis/structure/backend/error-handling.md` | How errors are caught, logged, and returned |
+| `.trellis/structure/backend/logging-guidelines.md` | Log levels, format, what to log |
+| `.trellis/structure/backend/quality-guidelines.md` | Code review standards, testing requirements |
 EOF
 }
 
@@ -93,12 +93,12 @@ write_prd_frontend_section() {
 
 | File | What to Document |
 |------|------------------|
-| `workflow/structure/frontend/directory-structure.md` | Component/page/hook organization |
-| `workflow/structure/frontend/component-guidelines.md` | Component patterns, props conventions |
-| `workflow/structure/frontend/hook-guidelines.md` | Custom hook naming, patterns |
-| `workflow/structure/frontend/state-management.md` | State library, patterns, what goes where |
-| `workflow/structure/frontend/type-safety.md` | TypeScript conventions, type organization |
-| `workflow/structure/frontend/quality-guidelines.md` | Linting, testing, accessibility |
+| `.trellis/structure/frontend/directory-structure.md` | Component/page/hook organization |
+| `.trellis/structure/frontend/component-guidelines.md` | Component patterns, props conventions |
+| `.trellis/structure/frontend/hook-guidelines.md` | Custom hook naming, patterns |
+| `.trellis/structure/frontend/state-management.md` | State library, patterns, what goes where |
+| `.trellis/structure/frontend/type-safety.md` | TypeScript conventions, type organization |
+| `.trellis/structure/frontend/quality-guidelines.md` | Linting, testing, accessibility |
 EOF
 }
 
@@ -107,7 +107,7 @@ write_prd_footer() {
 
 ### Thinking Guides (Optional)
 
-The `workflow/structure/flows/` directory contains thinking guides that are already
+The `.trellis/structure/guides/` directory contains thinking guides that are already
 filled with general best practices. You can customize them for your project if needed.
 
 ---
@@ -149,8 +149,8 @@ The AI will read your code and help you document it.
 When done:
 
 ```bash
-./workflow/scripts/feature.sh finish
-./workflow/scripts/feature.sh archive 00-bootstrap-guidelines
+./.trellis/scripts/feature.sh finish
+./.trellis/scripts/feature.sh archive 00-bootstrap-guidelines
 ```
 
 ---
@@ -211,7 +211,7 @@ write_feature_json() {
     {"name": "Add code examples", "status": "pending"}
   ]'
       related_files='[
-    "workflow/structure/frontend/"
+    ".trellis/structure/frontend/"
   ]'
       ;;
     backend)
@@ -220,7 +220,7 @@ write_feature_json() {
     {"name": "Add code examples", "status": "pending"}
   ]'
       related_files='[
-    "workflow/structure/backend/"
+    ".trellis/structure/backend/"
   ]'
       ;;
     fullstack)
@@ -230,8 +230,8 @@ write_feature_json() {
     {"name": "Add code examples", "status": "pending"}
   ]'
       related_files='[
-    "workflow/structure/backend/",
-    "workflow/structure/frontend/"
+    ".trellis/structure/backend/",
+    ".trellis/structure/frontend/"
   ]'
       ;;
   esac
@@ -290,20 +290,9 @@ main() {
   # Set as current feature
   set_current_feature "$relative_path" "$repo_root"
 
-  echo -e "${GREEN}Bootstrap feature created!${NC}"
-  echo ""
-  echo -e "Location: ${BLUE}$relative_path${NC}"
-  echo ""
-  echo -e "${YELLOW}Your first task:${NC}"
-  echo "  Fill in the project guidelines in workflow/structure/"
-  echo "  This helps AI understand YOUR project's coding conventions."
-  echo ""
-  echo -e "${BLUE}Next steps:${NC}"
-  echo "  1. Run /start to begin your AI session"
-  echo "  2. Read prd.md for detailed instructions"
-  echo "  3. Ask AI to help analyze your codebase"
-  echo ""
-  echo -e "When done: ${GREEN}./workflow/scripts/feature.sh archive $FEATURE_NAME${NC}"
+  # Silent output - init command handles user-facing messages
+  # Only output the feature path for programmatic use
+  echo "$relative_path"
 }
 
 main "$@"

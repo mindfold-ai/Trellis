@@ -31,11 +31,11 @@ export async function configureClaude(cwd: string): Promise<void> {
  * Configure Claude Code agents for Multi-Agent Pipeline
  *
  * Agents are specialized subagents that work together:
- * - coder: Code writing expert
- * - checker: Code self-check expert
- * - fixer: Issue fixing expert
- * - searcher: Search expert
- * - router: Pipeline dispatcher
+ * - implement: Code implementation expert
+ * - check: Code and cross-layer check expert
+ * - debug: Issue fixing expert
+ * - research: Search expert
+ * - dispatch: Pipeline dispatcher
  */
 export async function configureClaudeAgents(cwd: string): Promise<void> {
   const agentsDir = path.join(cwd, ".claude", "agents");

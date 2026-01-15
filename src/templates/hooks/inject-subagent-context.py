@@ -3,21 +3,21 @@
 Multi-Agent Pipeline Context Injection Hook
 
 Core Design Philosophy:
-- Router becomes a pure dispatcher, only responsible for "calling subagents"
+- Dispatch becomes a pure dispatcher, only responsible for "calling subagents"
 - Hook is responsible for injecting all context, subagent works autonomously with complete info
 - Each agent has a dedicated jsonl file defining its context
 - No resume needed, no segmentation, behavior controlled by code not prompt
 
 Trigger: PreToolUse (before Task tool call)
 
-Context Source: workflow/.current-feature points to feature directory
-- coder.jsonl   - Coder agent dedicated context
-- checker.jsonl - Checker agent dedicated context
-- fixer.jsonl   - Fixer agent dedicated context
-- searcher.jsonl - Searcher agent dedicated context (optional, usually not needed)
-- cr.jsonl      - Code review dedicated context
-- prd.md        - Requirements document
-- info.md       - Technical design
+Context Source: .trellis/.current-feature points to feature directory
+- implement.jsonl - Implement agent dedicated context
+- check.jsonl     - Check agent dedicated context
+- debug.jsonl     - Debug agent dedicated context
+- research.jsonl  - Research agent dedicated context (optional, usually not needed)
+- cr.jsonl        - Code review dedicated context
+- prd.md          - Requirements document
+- info.md         - Technical design
 - codex-review-output.txt - Code Review results
 """
 
@@ -30,7 +30,7 @@ from pathlib import Path
 # Path Constants (change here to rename directories)
 # =============================================================================
 
-DIR_WORKFLOW = "workflow"
+DIR_WORKFLOW = ".trellis"
 DIR_PROGRESS = "agent-traces"
 DIR_FEATURES = "features"
 DIR_STRUCTURE = "structure"
@@ -40,15 +40,15 @@ FILE_CURRENT_FEATURE = ".current-feature"
 # Subagent Constants (change here to rename subagent types)
 # =============================================================================
 
-AGENT_CODER = "coder"
-AGENT_CHECKER = "checker"
-AGENT_FIXER = "fixer"
-AGENT_SEARCHER = "searcher"
+AGENT_IMPLEMENT = "implement"
+AGENT_CHECK = "check"
+AGENT_DEBUG = "debug"
+AGENT_RESEARCH = "research"
 
 # Agents that require a feature directory
-AGENTS_REQUIRE_FEATURE = (AGENT_CODER, AGENT_CHECKER, AGENT_FIXER)
+AGENTS_REQUIRE_FEATURE = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_DEBUG)
 # All supported agents
-AGENTS_ALL = (AGENT_CODER, AGENT_CHECKER, AGENT_FIXER, AGENT_SEARCHER)
+AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_DEBUG, AGENT_RESEARCH)
 
 
 def find_repo_root(start_path: str) -> str | None:
@@ -68,7 +68,7 @@ def find_repo_root(start_path: str) -> str | None:
 
 def get_current_feature(repo_root: str) -> str | None:
     """
-    Read current feature directory path from workflow/.current-feature
+    Read current feature directory path from .trellis/.current-feature
 
     Returns:
         Feature directory relative path (relative to repo_root)
@@ -212,19 +212,19 @@ def get_agent_context(repo_root: str, feature_dir: str, agent_type: str) -> str:
     return "\n\n".join(context_parts)
 
 
-def get_coder_context(repo_root: str, feature_dir: str) -> str:
+def get_implement_context(repo_root: str, feature_dir: str) -> str:
     """
-    Complete context for Coder Agent
+    Complete context for Implement Agent
 
     Read order:
-    1. All files in coder.jsonl (dev specs)
+    1. All files in implement.jsonl (dev specs)
     2. prd.md (requirements)
     3. info.md (technical design)
     """
     context_parts = []
 
-    # 1. Read coder.jsonl (or fallback to spec.jsonl)
-    base_context = get_agent_context(repo_root, feature_dir, "coder")
+    # 1. Read implement.jsonl (or fallback to spec.jsonl)
+    base_context = get_agent_context(repo_root, feature_dir, "implement")
     if base_context:
         context_parts.append(base_context)
 
@@ -245,21 +245,21 @@ def get_coder_context(repo_root: str, feature_dir: str) -> str:
     return "\n\n".join(context_parts)
 
 
-def get_checker_context(repo_root: str, feature_dir: str) -> str:
+def get_check_context(repo_root: str, feature_dir: str) -> str:
     """
-    Complete context for Checker Agent
+    Complete context for Check Agent
 
     Read order:
-    1. All files in checker.jsonl (check specs + dev specs)
+    1. All files in check.jsonl (check specs + dev specs)
     2. prd.md (for understanding feature intent)
     """
     context_parts = []
 
-    # 1. Read checker.jsonl (or fallback to spec.jsonl + hardcoded check files)
-    checker_entries = read_jsonl_entries(repo_root, f"{feature_dir}/checker.jsonl")
+    # 1. Read check.jsonl (or fallback to spec.jsonl + hardcoded check files)
+    check_entries = read_jsonl_entries(repo_root, f"{feature_dir}/check.jsonl")
 
-    if checker_entries:
-        for file_path, content in checker_entries:
+    if check_entries:
+        for file_path, content in check_entries:
             context_parts.append(f"=== {file_path} ===\n{content}")
     else:
         # Fallback: use hardcoded check files + spec.jsonl
@@ -289,21 +289,21 @@ def get_checker_context(repo_root: str, feature_dir: str) -> str:
     return "\n\n".join(context_parts)
 
 
-def get_fixer_context(repo_root: str, feature_dir: str) -> str:
+def get_debug_context(repo_root: str, feature_dir: str) -> str:
     """
-    Complete context for Fixer Agent
+    Complete context for Debug Agent
 
     Read order:
-    1. All files in fixer.jsonl (specs needed for fixing)
+    1. All files in debug.jsonl (specs needed for fixing)
     2. codex-review-output.txt (Codex Review results)
     """
     context_parts = []
 
-    # 1. Read fixer.jsonl (or fallback to spec.jsonl + hardcoded check files)
-    fixer_entries = read_jsonl_entries(repo_root, f"{feature_dir}/fixer.jsonl")
+    # 1. Read debug.jsonl (or fallback to spec.jsonl + hardcoded check files)
+    debug_entries = read_jsonl_entries(repo_root, f"{feature_dir}/debug.jsonl")
 
-    if fixer_entries:
-        for file_path, content in fixer_entries:
+    if debug_entries:
+        for file_path, content in debug_entries:
             context_parts.append(f"=== {file_path} ===\n{content}")
     else:
         # Fallback: use spec.jsonl + hardcoded check files
@@ -333,11 +333,11 @@ def get_fixer_context(repo_root: str, feature_dir: str) -> str:
     return "\n\n".join(context_parts)
 
 
-def build_coder_prompt(original_prompt: str, context: str) -> str:
-    """Build complete prompt for Coder"""
-    return f"""# Coder Agent Task
+def build_implement_prompt(original_prompt: str, context: str) -> str:
+    """Build complete prompt for Implement"""
+    return f"""# Implement Agent Task
 
-You are the Coder Agent in the Multi-Agent Pipeline.
+You are the Implement Agent in the Multi-Agent Pipeline.
 
 ## Your Context
 
@@ -367,11 +367,11 @@ All the information you need has been prepared for you:
 - Report list of modified/created files when done"""
 
 
-def build_checker_prompt(original_prompt: str, context: str) -> str:
-    """Build complete prompt for Checker"""
-    return f"""# Checker Agent Task
+def build_check_prompt(original_prompt: str, context: str) -> str:
+    """Build complete prompt for Check"""
+    return f"""# Check Agent Task
 
-You are the Checker Agent in the Multi-Agent Pipeline (code checker).
+You are the Check Agent in the Multi-Agent Pipeline (code and cross-layer checker).
 
 ## Your Context
 
@@ -401,11 +401,11 @@ All check specs and dev specs you need:
 - Pay special attention to impact radius analysis (L1-L5)"""
 
 
-def build_fixer_prompt(original_prompt: str, context: str) -> str:
-    """Build complete prompt for Fixer"""
-    return f"""# Fixer Agent Task
+def build_debug_prompt(original_prompt: str, context: str) -> str:
+    """Build complete prompt for Debug"""
+    return f"""# Debug Agent Task
 
-You are the Fixer Agent in the Multi-Agent Pipeline (issue fixer).
+You are the Debug Agent in the Multi-Agent Pipeline (issue fixer).
 
 ## Your Context
 
@@ -435,13 +435,13 @@ Dev specs and Codex Review results:
 - Report which issues were fixed and which files were modified"""
 
 
-def get_searcher_context(repo_root: str, feature_dir: str | None) -> str:
+def get_research_context(repo_root: str, feature_dir: str | None) -> str:
     """
-    Context for Searcher Agent
+    Context for Research Agent
 
-    Searcher doesn't need much preset context, only needs:
+    Research doesn't need much preset context, only needs:
     1. Project structure overview (where spec directories are)
-    2. Optional searcher.jsonl (if there are specific search needs)
+    2. Optional research.jsonl (if there are specific search needs)
     """
     context_parts = []
 
@@ -454,7 +454,7 @@ def get_searcher_context(repo_root: str, feature_dir: str | None) -> str:
 ├── shared/      # Cross-project common specs (TypeScript, code quality, git)
 ├── frontend/    # Frontend standards
 ├── backend/     # Backend standards
-└── flows/       # Thinking guides (cross-layer, code reuse, etc.)
+└── guides/      # Thinking guides (cross-layer, code reuse, etc.)
 
 {DIR_WORKFLOW}/big-question/  # Known issues and pitfalls
 ```
@@ -468,26 +468,26 @@ def get_searcher_context(repo_root: str, feature_dir: str | None) -> str:
 
     context_parts.append(project_structure)
 
-    # 2. If feature directory exists, try reading searcher.jsonl (optional)
+    # 2. If feature directory exists, try reading research.jsonl (optional)
     if feature_dir:
-        searcher_entries = read_jsonl_entries(
-            repo_root, f"{feature_dir}/searcher.jsonl"
+        research_entries = read_jsonl_entries(
+            repo_root, f"{feature_dir}/research.jsonl"
         )
-        if searcher_entries:
+        if research_entries:
             context_parts.append(
-                "\n## Additional Search Context (from searcher.jsonl)\n"
+                "\n## Additional Search Context (from research.jsonl)\n"
             )
-            for file_path, content in searcher_entries:
+            for file_path, content in research_entries:
                 context_parts.append(f"=== {file_path} ===\n{content}")
 
     return "\n\n".join(context_parts)
 
 
-def build_searcher_prompt(original_prompt: str, context: str) -> str:
-    """Build complete prompt for Searcher"""
-    return f"""# Searcher Agent Task
+def build_research_prompt(original_prompt: str, context: str) -> str:
+    """Build complete prompt for Research"""
+    return f"""# Research Agent Task
 
-You are the Searcher Agent in the Multi-Agent Pipeline (search researcher).
+You are the Research Agent in the Multi-Agent Pipeline (search researcher).
 
 ## Core Principle
 
@@ -568,10 +568,10 @@ def main():
     if not repo_root:
         sys.exit(0)
 
-    # Get current feature directory (searcher doesn't require it)
+    # Get current feature directory (research doesn't require it)
     feature_dir = get_current_feature(repo_root)
 
-    # coder/checker/fixer need feature directory
+    # implement/check/debug need feature directory
     if subagent_type in AGENTS_REQUIRE_FEATURE:
         if not feature_dir:
             sys.exit(0)
@@ -581,22 +581,22 @@ def main():
             sys.exit(0)
 
     # Get context and build prompt based on subagent type
-    if subagent_type == AGENT_CODER:
+    if subagent_type == AGENT_IMPLEMENT:
         assert feature_dir is not None  # validated above
-        context = get_coder_context(repo_root, feature_dir)
-        new_prompt = build_coder_prompt(original_prompt, context)
-    elif subagent_type == AGENT_CHECKER:
+        context = get_implement_context(repo_root, feature_dir)
+        new_prompt = build_implement_prompt(original_prompt, context)
+    elif subagent_type == AGENT_CHECK:
         assert feature_dir is not None  # validated above
-        context = get_checker_context(repo_root, feature_dir)
-        new_prompt = build_checker_prompt(original_prompt, context)
-    elif subagent_type == AGENT_FIXER:
+        context = get_check_context(repo_root, feature_dir)
+        new_prompt = build_check_prompt(original_prompt, context)
+    elif subagent_type == AGENT_DEBUG:
         assert feature_dir is not None  # validated above
-        context = get_fixer_context(repo_root, feature_dir)
-        new_prompt = build_fixer_prompt(original_prompt, context)
-    elif subagent_type == AGENT_SEARCHER:
-        # Searcher can work without feature directory
-        context = get_searcher_context(repo_root, feature_dir)
-        new_prompt = build_searcher_prompt(original_prompt, context)
+        context = get_debug_context(repo_root, feature_dir)
+        new_prompt = build_debug_prompt(original_prompt, context)
+    elif subagent_type == AGENT_RESEARCH:
+        # Research can work without feature directory
+        context = get_research_context(repo_root, feature_dir)
+        new_prompt = build_research_prompt(original_prompt, context)
     else:
         sys.exit(0)
 

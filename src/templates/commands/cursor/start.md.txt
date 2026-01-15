@@ -9,7 +9,7 @@ Read project context and prepare for development work.
 ### Step 1: Get Session Context
 
 ```bash
-./workflow/scripts/get-context.sh
+./.trellis/scripts/get-context.sh
 ```
 
 This returns:
@@ -25,26 +25,26 @@ Based on the upcoming task, read appropriate structure docs:
 
 **For Frontend Work**:
 ```bash
-cat workflow/structure/frontend/index.md
+cat .trellis/structure/frontend/index.md
 ```
 Then read specific docs based on task type.
 
 **For Backend Work**:
 ```bash
-cat workflow/structure/backend/index.md
+cat .trellis/structure/backend/index.md
 ```
 Then read specific docs based on task type.
 
 **For Cross-Layer Features**:
 ```bash
-cat workflow/structure/flows/index.md
-cat workflow/structure/flows/cross-layer-thinking-guide.md
+cat .trellis/structure/guides/index.md
+cat .trellis/structure/guides/cross-layer-thinking-guide.md
 ```
 
 ### Step 3: Check Active Features
 
 ```bash
-./workflow/scripts/feature.sh list
+./.trellis/scripts/feature.sh list
 ```
 
 If continuing previous work, review the feature file.
@@ -80,7 +80,7 @@ Ready for your task. What would you like to work on?
 
 | Scenario | Next Step |
 |----------|-----------|
-| New feature | Run `./workflow/scripts/feature.sh create <name>` |
+| New feature | Run `./.trellis/scripts/feature.sh create <name>` |
 | Continue feature | Read feature file, continue work |
 | Bug fix | Investigate, fix, then remind user to run `/break-loop` |
 | First time | Remind user to run `/onboard-developer` for full setup |

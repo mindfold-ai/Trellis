@@ -41,7 +41,7 @@ Every AI session starts with a blank slate. Unlike human engineers who accumulat
 
 **The Problem**: Without memory, AI asks the same questions repeatedly, makes the same mistakes, and can't build on previous work.
 
-**The Solution**: The `workflow/agent-traces/` system captures what happened in each session - what was done, what was learned, what problems were solved. The `/start` command reads this history at session start, giving AI "artificial memory."
+**The Solution**: The `.trellis/agent-traces/` system captures what happened in each session - what was done, what was learned, what problems were solved. The `/start` command reads this history at session start, giving AI "artificial memory."
 
 ### Challenge 2: AI Has Generic Knowledge, Not Project-Specific Knowledge
 
@@ -49,7 +49,7 @@ AI models are trained on millions of codebases - they know general patterns for 
 
 **The Problem**: AI writes code that "works" but doesn't match your project's style. It uses patterns that conflict with existing code. It makes decisions that violate unwritten team rules.
 
-**The Solution**: The `workflow/structure/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
+**The Solution**: The `.trellis/structure/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
 
 ### Challenge 3: AI Context Window Is Limited
 
@@ -64,9 +64,9 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 ## SYSTEM STRUCTURE
 
 ```
-workflow/
+.trellis/
 |-- .developer              # Your identity (gitignored)
-|-- flow.md                 # Complete workflow documentation
+|-- workflow.md                 # Complete workflow documentation
 |-- agent-traces/         # "AI Memory" - session history
 |   |-- index.md            # All developers' progress
 |   \-- {developer}/        # Per-developer directory
@@ -76,7 +76,7 @@ workflow/
 |-- structure/              # "AI Training Data" - project knowledge
 |   |-- frontend/           # Frontend conventions
 |   |-- backend/            # Backend conventions
-|   \-- flows/              # Cross-layer patterns
+|   \-- guides/             # Thinking patterns
 \-- scripts/                # Automation tools
 ```
 
@@ -94,7 +94,7 @@ workflow/
 - Error handling standards
 - Logging and monitoring rules
 
-**flows/** - Cross-layer thinking guides:
+**guides/** - Cross-layer thinking guides:
 - Code reuse thinking guide
 - Cross-layer thinking guide
 - Pre-implementation checklists
@@ -129,7 +129,7 @@ AI needs the same onboarding - but compressed into seconds at session start.
 AI models have "pre-trained knowledge" - general patterns from millions of codebases. But YOUR project has specific conventions that differ from generic patterns.
 
 **WHAT IT ACTUALLY DOES**:
-1. Reads `workflow/structure/frontend/` or `workflow/structure/backend/`
+1. Reads `.trellis/structure/frontend/` or `.trellis/structure/backend/`
 2. Loads project-specific patterns into AI's working context:
    - Component naming conventions
    - State management patterns
@@ -207,7 +207,7 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 1: Bug Fix Session
 
 **[1/8] /start** - AI needs project context before touching code
-**[2/8] ./workflow/scripts/feature.sh create fix-bug** - Track work for future reference
+**[2/8] ./.trellis/scripts/feature.sh create fix-bug** - Track work for future reference
 **[3/8] /before-frontend-dev** - Inject project-specific frontend knowledge
 **[4/8] Investigate and fix the bug** - Actual development work
 **[5/8] /check-frontend** - Re-verify code against guidelines
@@ -218,7 +218,7 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 2: Planning Session (No Code)
 
 **[1/4] /start** - Context needed even for non-coding work
-**[2/4] ./workflow/scripts/feature.sh create planning-task** - Planning is valuable work
+**[2/4] ./.trellis/scripts/feature.sh create planning-task** - Planning is valuable work
 **[3/4] Review docs, create subtask list** - Actual planning work
 **[4/4] /record-agent-flow (with --summary)** - Planning decisions must be recorded
 
@@ -265,12 +265,12 @@ After explaining Part 1 and Part 2, check if the project's development guideline
 
 ## Step 1: Check Current Guidelines Status
 
-Check if `workflow/structure/` contains empty templates or customized guidelines:
+Check if `.trellis/structure/` contains empty templates or customized guidelines:
 
 ```bash
 # Check if files are still empty templates (look for placeholder text)
-grep -l "To be filled by the team" workflow/structure/backend/*.md 2>/dev/null | wc -l
-grep -l "To be filled by the team" workflow/structure/frontend/*.md 2>/dev/null | wc -l
+grep -l "To be filled by the team" .trellis/structure/backend/*.md 2>/dev/null | wc -l
+grep -l "To be filled by the team" .trellis/structure/frontend/*.md 2>/dev/null | wc -l
 ```
 
 ## Step 2: Determine Situation
@@ -281,7 +281,7 @@ If guidelines are empty templates (contain "To be filled by the team"), this is 
 
 Explain to the developer:
 
-"I see that the development guidelines in `workflow/structure/` are still empty templates. This is normal for a new Trellis setup!
+"I see that the development guidelines in `.trellis/structure/` are still empty templates. This is normal for a new Trellis setup!
 
 The templates contain placeholder text that needs to be replaced with YOUR project's actual conventions. Without this, `/before-*-dev` commands won't provide useful guidance.
 
@@ -291,7 +291,7 @@ The templates contain placeholder text that needs to be replaced with YOUR proje
 2. Identify the patterns and conventions already in use
 3. Document them in the guideline files
 
-For example, for `workflow/structure/backend/database-guidelines.md`:
+For example, for `.trellis/structure/backend/database-guidelines.md`:
 - What ORM/query library does your project use?
 - How are migrations managed?
 - What naming conventions for tables/columns?
@@ -306,14 +306,14 @@ Explain to the developer:
 
 "Great! Your team has already customized the development guidelines. You can start using `/before-*-dev` commands right away.
 
-I recommend reading through `workflow/structure/` to familiarize yourself with the team's coding standards."
+I recommend reading through `.trellis/structure/` to familiarize yourself with the team's coding standards."
 
 ## Step 3: Help Fill Guidelines (If Empty)
 
 If the developer wants help filling guidelines, create a feature to track this:
 
 ```bash
-./workflow/scripts/feature.sh create fill-structure-guidelines
+./.trellis/scripts/feature.sh create fill-structure-guidelines
 ```
 
 Then systematically analyze the codebase and fill each guideline file:
@@ -349,7 +349,7 @@ After covering all three parts, summarize:
 
 **Next steps** (tell user):
 1. Run `/record-agent-flow` to record this onboard session
-2. [If guidelines empty] Start filling in `workflow/structure/` guidelines
+2. [If guidelines empty] Start filling in `.trellis/structure/` guidelines
 3. [If guidelines ready] Start your first development task
 
 What would you like to do first?"

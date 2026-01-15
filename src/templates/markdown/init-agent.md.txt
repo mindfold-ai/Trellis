@@ -12,16 +12,16 @@
 
 ```bash
 # Check if already initialized
-./workflow/scripts/get-developer.sh
+./.trellis/scripts/get-developer.sh
 
 # If not initialized, run:
-./workflow/scripts/init-developer.sh <your-name>
-# Example: ./workflow/scripts/init-developer.sh cursor-agent
+./.trellis/scripts/init-developer.sh <your-name>
+# Example: ./.trellis/scripts/init-developer.sh cursor-agent
 ```
 
 This creates:
-- `workflow/.developer` - Your identity file (gitignored, not committed)
-- `workflow/agent-traces/<your-name>/` - Your personal progress directory
+- `.trellis/.developer` - Your identity file (gitignored, not committed)
+- `.trellis/agent-traces/<your-name>/` - Your personal progress directory
 
 **Naming suggestions**:
 - Human developers: Use your name, e.g., `john-doe`
@@ -32,11 +32,11 @@ This creates:
 
 ```bash
 # Get full context in one command
-./workflow/scripts/get-context.sh
+./.trellis/scripts/get-context.sh
 
 # Or check manually:
-./workflow/scripts/get-developer.sh      # Your identity
-./workflow/scripts/feature.sh list       # Active features
+./.trellis/scripts/get-developer.sh      # Your identity
+./.trellis/scripts/feature.sh list       # Active features
 git status && git log --oneline -10      # Git state
 ```
 
@@ -46,10 +46,10 @@ git status && git log --oneline -10      # Git state
 
 ```bash
 # Read frontend guidelines index (REQUIRED - even for backend tasks)
-cat workflow/structure/frontend/index.md
+cat .trellis/structure/frontend/index.md
 
 # Read backend guidelines index (REQUIRED - even for frontend tasks)
-cat workflow/structure/backend/index.md
+cat .trellis/structure/backend/index.md
 ```
 
 **Why read both?**
@@ -61,7 +61,7 @@ cat workflow/structure/backend/index.md
 ### Step 3: Read Workflow Guide (5 min)
 
 ```bash
-cat workflow/flow.md
+cat .trellis/workflow.md
 ```
 
 **CRITICAL**: This document defines the entire development workflow. You MUST follow it.
@@ -72,16 +72,16 @@ Based on your task, read the **detailed** guidelines:
 
 **Frontend Task**:
 ```bash
-cat workflow/structure/frontend/hook-guidelines.md      # For hooks
-cat workflow/structure/frontend/component-guidelines.md # For components
-cat workflow/structure/frontend/type-safety.md          # For types
+cat .trellis/structure/frontend/hook-guidelines.md      # For hooks
+cat .trellis/structure/frontend/component-guidelines.md # For components
+cat .trellis/structure/frontend/type-safety.md          # For types
 ```
 
 **Backend Task**:
 ```bash
-cat workflow/structure/backend/database-guidelines.md   # For DB operations
-cat workflow/structure/backend/type-safety.md           # For Zod/types
-cat workflow/structure/backend/logging-guidelines.md    # For logging
+cat .trellis/structure/backend/database-guidelines.md   # For DB operations
+cat .trellis/structure/backend/type-safety.md           # For Zod/types
+cat .trellis/structure/backend/logging-guidelines.md    # For logging
 ```
 
 ---
@@ -109,8 +109,8 @@ cat workflow/structure/backend/logging-guidelines.md    # For logging
 
 ```
 your-project/
-├── workflow/                 # [!] Agent-Human collaboration system
-│   ├── flow.md              # Workflow guide (MUST READ)
+├── .trellis/                 # [!] Agent-Human collaboration system
+│   ├── workflow.md              # Workflow guide (MUST READ)
 │   ├── scripts/             # Workflow scripts
 │   │   ├── common/          # Shared utilities
 │   │   ├── feature.sh       # Feature management
@@ -129,7 +129,7 @@ your-project/
 │   │   ├── backend/
 │   │   │   ├── index.md     # Backend guidelines index
 │   │   │   └── *.md         # Topic-specific docs
-│   │   └── flows/           # Cross-layer specs
+│   │   └── guides/          # Thinking guides
 ├── init-agent.md            # This initialization guide
 └── AGENTS.md                # Compatible with agents.md protocol
 ```
@@ -146,15 +146,15 @@ This project uses a structured workflow system based on [Anthropic's best practi
 
 | File | Purpose | When to Update |
 |------|---------|----------------|
-| `workflow/flow.md` | Complete workflow guide | Read at session start |
-| `workflow/agent-traces/{developer}/features/` | Feature tracking | When creating/completing features |
-| `workflow/agent-traces/{developer}/progress-N.md` | Session work records | After each session |
+| `.trellis/workflow.md` | Complete workflow guide | Read at session start |
+| `.trellis/agent-traces/{developer}/features/` | Feature tracking | When creating/completing features |
+| `.trellis/agent-traces/{developer}/progress-N.md` | Session work records | After each session |
 
 ### Key Rules (CRITICAL - Must Follow)
 
 **1. Read Guidelines Before Coding**
-   - Frontend: `workflow/structure/frontend/index.md` -> specific docs
-   - Backend: `workflow/structure/backend/index.md` -> specific docs
+   - Frontend: `.trellis/structure/frontend/index.md` -> specific docs
+   - Backend: `.trellis/structure/backend/index.md` -> specific docs
    - This is **mandatory**, not optional
 
 **2. Document Limits** **CRITICAL RULE**
@@ -172,10 +172,10 @@ This project uses a structured workflow system based on [Anthropic's best practi
 
 ### At Session Start
 
-1. **Get context** - Run `./workflow/scripts/get-context.sh`
+1. **Get context** - Run `./.trellis/scripts/get-context.sh`
 2. **Read ALL guideline indexes** (see Quick Start Step 2 above)
    - **MANDATORY**: Read both frontend AND backend indexes
-3. **Read workflow guide** - `cat workflow/flow.md`
+3. **Read workflow guide** - `cat .trellis/workflow.md`
 4. **Identify your task** from feature list
 5. **Read specific guidelines** for your task
 6. **Create or select feature** to work on
@@ -184,7 +184,7 @@ This project uses a structured workflow system based on [Anthropic's best practi
 
 1. **Create feature** (if new)
    ```bash
-   ./workflow/scripts/feature.sh create <feature-name>
+   ./.trellis/scripts/feature.sh create <feature-name>
    ```
 
 2. **Follow guidelines strictly**
@@ -207,7 +207,7 @@ This project uses a structured workflow system based on [Anthropic's best practi
 
 **Record your session**:
 ```bash
-./workflow/scripts/add-session.sh \
+./.trellis/scripts/add-session.sh \
   --title "Session Title" \
   --commit "abc1234" \
   --summary "Brief summary"
@@ -220,7 +220,7 @@ This automatically:
 
 **Archive completed feature**:
 ```bash
-./workflow/scripts/feature.sh archive <feature-name>
+./.trellis/scripts/feature.sh archive <feature-name>
 ```
 
 ---
@@ -229,13 +229,13 @@ This automatically:
 
 ### Workflow Scripts
 ```bash
-./workflow/scripts/get-context.sh           # Get full context
-./workflow/scripts/get-developer.sh         # Get current developer
-./workflow/scripts/init-developer.sh <name> # Initialize developer
-./workflow/scripts/feature.sh list          # List features
-./workflow/scripts/feature.sh create <name> # Create feature
-./workflow/scripts/feature.sh archive <name># Archive feature
-./workflow/scripts/add-session.sh           # Record session
+./.trellis/scripts/get-context.sh           # Get full context
+./.trellis/scripts/get-developer.sh         # Get current developer
+./.trellis/scripts/init-developer.sh <name> # Initialize developer
+./.trellis/scripts/feature.sh list          # List features
+./.trellis/scripts/feature.sh create <name> # Create feature
+./.trellis/scripts/feature.sh archive <name># Archive feature
+./.trellis/scripts/add-session.sh           # Record session
 ```
 
 ### Development
@@ -261,7 +261,7 @@ git diff main...HEAD
 ### DO (Follow These)
 
 1. **Read BOTH guideline indexes** at session start (frontend AND backend)
-2. **Read workflow/flow.md** at session start
+2. **Read .trellis/workflow.md** at session start
 3. **Read specific docs** before coding (based on task)
 4. **Update tracking files** after work
 5. **Test thoroughly** before committing
@@ -283,9 +283,9 @@ git diff main...HEAD
 
 ### Before You Start Coding
 
-- [ ] Run `./workflow/scripts/get-context.sh` - Understand context
-- [ ] Read `workflow/flow.md` - Understand the workflow
-- [ ] Read `workflow/structure/[frontend|backend]/index.md` - Find relevant guidelines
+- [ ] Run `./.trellis/scripts/get-context.sh` - Understand context
+- [ ] Read `.trellis/workflow.md` - Understand the workflow
+- [ ] Read `.trellis/structure/[frontend|backend]/index.md` - Find relevant guidelines
 - [ ] Read specific guideline docs based on your task
 - [ ] Create or select a feature with `feature.sh`
 - [ ] Start coding following the guidelines

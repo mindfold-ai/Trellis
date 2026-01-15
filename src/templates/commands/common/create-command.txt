@@ -131,10 +131,10 @@ git diff main...HEAD --name-only
 ### 2. Categorized Review
 
 **Frontend files** (`apps/web/`):
-- Reference `workflow/structure/frontend/index.md`
+- Reference `.trellis/structure/frontend/index.md`
 
 **Backend files** (`packages/api/`):
-- Reference `workflow/structure/backend/index.md`
+- Reference `.trellis/structure/backend/index.md`
 
 ### 3. Output Review Report
 

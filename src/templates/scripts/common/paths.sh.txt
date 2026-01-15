@@ -16,7 +16,7 @@
 # =============================================================================
 
 # Directory names
-DIR_WORKFLOW="workflow"
+DIR_WORKFLOW=".trellis"
 DIR_PROGRESS="agent-traces"
 DIR_FEATURES="features"
 DIR_ARCHIVE="archive"
@@ -33,7 +33,7 @@ FILE_FEATURE_JSON="feature.json"
 # =============================================================================
 
 get_repo_root() {
-  # Find the nearest directory containing workflow/ folder
+  # Find the nearest directory containing .trellis/ folder
   # This handles nested git repos correctly (e.g., test project inside another repo)
   local current="$PWD"
 
@@ -45,7 +45,7 @@ get_repo_root() {
     current=$(dirname "$current")
   done
 
-  # Fallback to current directory if no workflow/ found
+  # Fallback to current directory if no .trellis/ found
   echo "$PWD"
 }
 

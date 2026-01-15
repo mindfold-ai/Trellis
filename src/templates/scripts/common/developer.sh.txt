@@ -111,7 +111,7 @@ ensure_developer() {
 
   if ! check_developer "$repo_root"; then
     echo "Error: Developer not initialized." >&2
-    echo "Run: ./workflow/scripts/init-developer.sh <your-name>" >&2
+    echo "Run: ./.trellis/scripts/init-developer.sh <your-name>" >&2
     exit 1
   fi
 }

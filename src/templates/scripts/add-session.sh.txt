@@ -2,8 +2,8 @@
 # Add a new session to progress file and update index.md
 #
 # Usage:
-#   ./workflow/scripts/add-session.sh --title "Title" --commit "hash" --summary "Summary"
-#   echo "content" | ./workflow/scripts/add-session.sh --title "Title" --commit "hash"
+#   ./.trellis/scripts/add-session.sh --title "Title" --commit "hash" --summary "Summary"
+#   echo "content" | ./.trellis/scripts/add-session.sh --title "Title" --commit "hash"
 
 set -e
 

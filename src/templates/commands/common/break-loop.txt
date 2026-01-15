@@ -55,8 +55,8 @@ What broader problems does this bug reveal?
 
 Solidify insights into the system:
 
-- [ ] Update `workflow/structure/flows/` thinking guides
-- [ ] Update `workflow/structure/backend/` or `frontend/` docs
+- [ ] Update `.trellis/structure/guides/` thinking guides
+- [ ] Update `.trellis/structure/backend/` or `frontend/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
 - [ ] Update check commands if needed

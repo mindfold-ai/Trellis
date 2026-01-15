@@ -9,9 +9,9 @@ AI 能力像常春藤一样生长——充满活力但四处蔓延。Trellis 提
 ## 安装
 
 ```bash
-pnpm install -g @mind-fold/trellis
+pnpm install -g @mind-fold/trellis@latest
 # 或
-npm install -g @mind-fold/trellis
+npm install -g @mind-fold/trellis@latest
 ```
 
 ## 快速开始
@@ -37,9 +37,9 @@ Trellis 在你的项目中创建结构化的 workflow 系统：
 
 ```
 your-project/
-├── workflow/
+├── .trellis/
 │   ├── .developer                 # 开发者身份（gitignored）
-│   ├── flow.md                    # 工作流指南
+│   ├── workflow.md                    # 工作流指南
 │   ├── agent-traces/            # Session 追踪
 │   │   └── {developer}/           # 按开发者隔离
 │   │       ├── index.md           # 进度索引
@@ -51,7 +51,7 @@ your-project/
 │   ├── structure/                 # 开发规范
 │   │   ├── frontend/              # 前端规范
 │   │   ├── backend/               # 后端规范
-│   │   └── flows/                 # 思维指南
+│   │   └── guides/                # 思维指南
 │   └── scripts/                   # 工具脚本
 │       ├── common/                # 共享工具
 │       │   ├── paths.sh           # 路径工具
@@ -75,7 +75,7 @@ your-project/
 每个开发者（人类或 AI）都有独立的进度追踪：
 
 ```bash
-./workflow/scripts/init-developer.sh <name>
+./.trellis/scripts/init-developer.sh <name>
 ```
 
 ### 2. Slash 命令
@@ -108,9 +108,9 @@ your-project/
 基于目录结构的 feature 追踪：
 
 ```bash
-./workflow/scripts/feature.sh create my-feature  # 创建 feature
-./workflow/scripts/feature.sh list               # 列出活跃的 features
-./workflow/scripts/feature.sh archive my-feature # 归档已完成的
+./.trellis/scripts/feature.sh create my-feature  # 创建 feature
+./.trellis/scripts/feature.sh list               # 列出活跃的 features
+./.trellis/scripts/feature.sh archive my-feature # 归档已完成的
 ```
 
 ## CLI 命令
@@ -126,8 +126,8 @@ trellis init -s           # 跳过已有文件
 ## 工作原理
 
 1. **AI 读取 `init-agent.md`** 作为 session 入口
-2. **遵循规范** 来自 `workflow/structure/`
-3. **更新进度** 到 `workflow/agent-traces/`
+2. **遵循规范** 来自 `.trellis/structure/`
+3. **更新进度** 到 `.trellis/agent-traces/`
 4. **使用 slash 命令** 完成常见任务
 
 这创建了一个结构化、可追踪的工作流：

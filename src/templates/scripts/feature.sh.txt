@@ -2,16 +2,16 @@
 # Feature Management Script for Multi-Agent Pipeline
 #
 # Usage:
-#   ./workflow/scripts/feature.sh create <feature-name>       # Create new feature
-#   ./workflow/scripts/feature.sh init-context <dir> <type>   # Initialize jsonl files
-#   ./workflow/scripts/feature.sh add-context <dir> <file> <path> [reason] # Add jsonl entry
-#   ./workflow/scripts/feature.sh validate <dir>              # Validate jsonl files
-#   ./workflow/scripts/feature.sh list-context <dir>          # List jsonl entries
-#   ./workflow/scripts/feature.sh start <dir>                 # Set as current feature
-#   ./workflow/scripts/feature.sh finish                      # Clear current feature
-#   ./workflow/scripts/feature.sh archive <feature-name>      # Archive completed feature
-#   ./workflow/scripts/feature.sh list                        # List active features
-#   ./workflow/scripts/feature.sh list-archive [month]        # List archived features
+#   ./.trellis/scripts/feature.sh create <feature-name>       # Create new feature
+#   ./.trellis/scripts/feature.sh init-context <dir> <type>   # Initialize jsonl files
+#   ./.trellis/scripts/feature.sh add-context <dir> <file> <path> [reason] # Add jsonl entry
+#   ./.trellis/scripts/feature.sh validate <dir>              # Validate jsonl files
+#   ./.trellis/scripts/feature.sh list-context <dir>          # List jsonl entries
+#   ./.trellis/scripts/feature.sh start <dir>                 # Set as current feature
+#   ./.trellis/scripts/feature.sh finish                      # Clear current feature
+#   ./.trellis/scripts/feature.sh archive <feature-name>      # Archive completed feature
+#   ./.trellis/scripts/feature.sh list                        # List active features
+#   ./.trellis/scripts/feature.sh list-archive [month]        # List archived features
 #
 # Feature Directory Structure:
 #   features/
@@ -19,9 +19,9 @@
 #     │   ├── feature.json      # Metadata
 #     │   ├── prd.md            # Requirements
 #     │   ├── info.md           # Technical design (optional)
-#     │   ├── coder.jsonl       # Coder agent context
-#     │   ├── checker.jsonl     # Checker agent context
-#     │   └── fixer.jsonl       # Fixer agent context
+#     │   ├── implement.jsonl   # Implement agent context
+#     │   ├── check.jsonl       # Check agent context
+#     │   └── debug.jsonl       # Debug agent context
 #     └── archive/
 #         └── 2026-01/
 #             └── 13-old-feature/
@@ -46,14 +46,14 @@ REPO_ROOT=$(get_repo_root)
 # jsonl Default Content Generators
 # =============================================================================
 
-get_coder_base() {
+get_implement_base() {
   cat << EOF
-{"file": "$DIR_WORKFLOW/flow.md", "reason": "Project workflow and conventions"}
+{"file": "$DIR_WORKFLOW/workflow.md", "reason": "Project workflow and conventions"}
 {"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/shared/index.md", "reason": "Shared coding standards"}
 EOF
 }
 
-get_coder_backend() {
+get_implement_backend() {
   cat << EOF
 {"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/backend/index.md", "reason": "Backend development guide"}
 {"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/backend/api-module.md", "reason": "API module conventions"}
@@ -61,14 +61,14 @@ get_coder_backend() {
 EOF
 }
 
-get_coder_frontend() {
+get_implement_frontend() {
   cat << EOF
 {"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/frontend/index.md", "reason": "Frontend development guide"}
 {"file": "$DIR_WORKFLOW/$DIR_STRUCTURE/frontend/components.md", "reason": "Component conventions"}
 EOF
 }
 
-get_checker_context() {
+get_check_context() {
   local dev_type="$1"
 
   cat << EOF
@@ -84,7 +84,7 @@ EOF
   fi
 }
 
-get_fixer_context() {
+get_debug_context() {
   local dev_type="$1"
 
   echo "{\"file\": \"$DIR_WORKFLOW/$DIR_STRUCTURE/shared/index.md\", \"reason\": \"Shared coding standards\"}"
@@ -208,33 +208,33 @@ cmd_init_context() {
   echo -e "Dev type: $dev_type"
   echo ""
 
-  # coder.jsonl
-  echo -e "${CYAN}Creating coder.jsonl...${NC}"
-  local coder_file="$target_dir/coder.jsonl"
+  # implement.jsonl
+  echo -e "${CYAN}Creating implement.jsonl...${NC}"
+  local implement_file="$target_dir/implement.jsonl"
   {
-    get_coder_base
+    get_implement_base
     case "$dev_type" in
-      backend|test) get_coder_backend ;;
-      frontend) get_coder_frontend ;;
+      backend|test) get_implement_backend ;;
+      frontend) get_implement_frontend ;;
       fullstack)
-        get_coder_backend
-        get_coder_frontend
+        get_implement_backend
+        get_implement_frontend
         ;;
     esac
-  } > "$coder_file"
-  echo -e "  ${GREEN}✓${NC} $(wc -l < "$coder_file" | tr -d ' ') entries"
+  } > "$implement_file"
+  echo -e "  ${GREEN}✓${NC} $(wc -l < "$implement_file" | tr -d ' ') entries"
 
-  # checker.jsonl
-  echo -e "${CYAN}Creating checker.jsonl...${NC}"
-  local checker_file="$target_dir/checker.jsonl"
-  get_checker_context "$dev_type" > "$checker_file"
-  echo -e "  ${GREEN}✓${NC} $(wc -l < "$checker_file" | tr -d ' ') entries"
+  # check.jsonl
+  echo -e "${CYAN}Creating check.jsonl...${NC}"
+  local check_file="$target_dir/check.jsonl"
+  get_check_context "$dev_type" > "$check_file"
+  echo -e "  ${GREEN}✓${NC} $(wc -l < "$check_file" | tr -d ' ') entries"
 
-  # fixer.jsonl
-  echo -e "${CYAN}Creating fixer.jsonl...${NC}"
-  local fixer_file="$target_dir/fixer.jsonl"
-  get_fixer_context "$dev_type" > "$fixer_file"
-  echo -e "  ${GREEN}✓${NC} $(wc -l < "$fixer_file" | tr -d ' ') entries"
+  # debug.jsonl
+  echo -e "${CYAN}Creating debug.jsonl...${NC}"
+  local debug_file="$target_dir/debug.jsonl"
+  get_debug_context "$dev_type" > "$debug_file"
+  echo -e "  ${GREEN}✓${NC} $(wc -l < "$debug_file" | tr -d ' ') entries"
 
   echo ""
   echo -e "${GREEN}✓ All context files created${NC}"
@@ -257,7 +257,7 @@ cmd_add_context() {
   if [[ -z "$target_dir" ]] || [[ -z "$jsonl_name" ]] || [[ -z "$path" ]]; then
     echo -e "${RED}Error: Missing arguments${NC}"
     echo "Usage: $0 add-context <feature-dir> <jsonl-file> <path> [reason]"
-    echo "  jsonl-file: coder | checker | fixer (or full filename)"
+    echo "  jsonl-file: implement | check | debug (or full filename)"
     exit 1
   fi
 
@@ -373,7 +373,7 @@ cmd_validate() {
   echo ""
 
   local total_errors=0
-  for jsonl_file in "$target_dir"/{coder,checker,fixer}.jsonl; do
+  for jsonl_file in "$target_dir"/{implement,check,debug}.jsonl; do
     validate_jsonl "$jsonl_file"
     total_errors=$((total_errors + $?))
   done
@@ -406,7 +406,7 @@ cmd_list_context() {
   echo -e "${BLUE}=== Context Files ===${NC}"
   echo ""
 
-  for jsonl_file in "$target_dir"/{coder,checker,fixer}.jsonl; do
+  for jsonl_file in "$target_dir"/{implement,check,debug}.jsonl; do
     local file_name=$(basename "$jsonl_file")
     [[ ! -f "$jsonl_file" ]] && continue
 
@@ -647,9 +647,9 @@ Arguments:
 
 Examples:
   $0 create add-login-feature
-  $0 init-context workflow/agent-traces/john/features/13-add-login-feature backend
-  $0 add-context <dir> coder workflow/structure/backend/auth.md "Auth guidelines"
-  $0 start workflow/agent-traces/john/features/13-add-login-feature
+  $0 init-context .trellis/agent-traces/john/features/13-add-login-feature backend
+  $0 add-context <dir> implement .trellis/structure/backend/auth.md "Auth guidelines"
+  $0 start .trellis/agent-traces/john/features/13-add-login-feature
   $0 finish
   $0 archive add-login-feature
 EOF

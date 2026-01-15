@@ -10,8 +10,8 @@ export const agentProgressIndexContent: string = readMarkdown(
   "agent-traces-index.md.txt",
 );
 
-// Flow documentation
-export const flowMdContent: string = readMarkdown("flow.md.txt");
+// Workflow documentation
+export const workflowMdContent: string = readMarkdown("workflow.md.txt");
 export const workflowGitignoreContent: string = readMarkdown("gitignore.txt");
 
 // Root files
@@ -61,13 +61,13 @@ export const frontendStateManagementContent: string = readMarkdown(
   "structure/frontend/state-management.md.txt",
 );
 
-// Flows structure
-export const flowsIndexContent: string = readMarkdown(
-  "structure/flows/index.md.txt",
+// Guides structure
+export const guidesIndexContent: string = readMarkdown(
+  "structure/guides/index.md.txt",
 );
-export const flowsCrossLayerThinkingGuideContent: string = readMarkdown(
-  "structure/flows/cross-layer-thinking-guide.md.txt",
+export const guidesCrossLayerThinkingGuideContent: string = readMarkdown(
+  "structure/guides/cross-layer-thinking-guide.md.txt",
 );
-export const flowsCodeReuseThinkingGuideContent: string = readMarkdown(
-  "structure/flows/code-reuse-thinking-guide.md.txt",
+export const guidesCodeReuseThinkingGuideContent: string = readMarkdown(
+  "structure/guides/code-reuse-thinking-guide.md.txt",
 );

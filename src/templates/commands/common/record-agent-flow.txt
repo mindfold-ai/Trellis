@@ -9,20 +9,20 @@
 ### Step 1: Get Context
 
 ```bash
-./workflow/scripts/get-context.sh
+./.trellis/scripts/get-context.sh
 ```
 
 ### Step 2: One-Click Add Session
 
 ```bash
 # Method 1: Simple parameters
-./workflow/scripts/add-session.sh \
+./.trellis/scripts/add-session.sh \
   --title "Session Title" \
   --commit "hash1,hash2" \
   --summary "Brief summary of what was done"
 
 # Method 2: Pass detailed content via stdin
-cat << 'EOF' | ./workflow/scripts/add-session.sh --title "Title" --commit "hash"
+cat << 'EOF' | ./.trellis/scripts/add-session.sh --title "Title" --commit "hash"
 | Feature | Description |
 |---------|-------------|
 | New API | Added user authentication endpoint |
@@ -46,7 +46,7 @@ EOF
 If a feature was completed this session:
 
 ```bash
-./workflow/scripts/feature.sh archive <feature-name>
+./.trellis/scripts/feature.sh archive <feature-name>
 ```
 
 ---

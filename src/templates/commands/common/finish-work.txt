@@ -27,11 +27,11 @@ pnpm test
 ### 2. Documentation Sync
 
 **Structure Docs**:
-- [ ] Does `workflow/structure/backend/` need updates?
+- [ ] Does `.trellis/structure/backend/` need updates?
   - New patterns, new modules, new conventions
-- [ ] Does `workflow/structure/frontend/` need updates?
+- [ ] Does `.trellis/structure/frontend/` need updates?
   - New components, new hooks, new patterns
-- [ ] Does `workflow/structure/flows/` need updates?
+- [ ] Does `.trellis/structure/guides/` need updates?
   - New cross-layer flows, lessons from bugs
 
 **Key Question**: 
@@ -94,7 +94,7 @@ git diff --name-only
 
 | Oversight | Consequence | Check |
 |-----------|-------------|-------|
-| Structure docs not updated | Others don't know the change | Check workflow/structure/ |
+| Structure docs not updated | Others don't know the change | Check .trellis/structure/ |
 | Migration not created | Schema out of sync | Check db/migrations/ |
 | Types not synced | Runtime errors | Check shared types |
 | Tests not updated | False confidence | Run full test suite |

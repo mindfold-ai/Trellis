@@ -2,11 +2,11 @@
  * Agent templates for Multi-Agent Pipeline
  *
  * These agents work together in a pipeline:
- * - Router: Pure dispatcher, orchestrates other agents
- * - Coder: Code writing expert
- * - Checker: Code self-check expert
- * - Fixer: Issue fixing expert
- * - Searcher: Code and tech search expert
+ * - dispatch: Pure dispatcher, orchestrates other agents
+ * - implement: Code implementation expert
+ * - check: Code and cross-layer check expert
+ * - debug: Issue fixing expert
+ * - research: Code and tech search expert
  */
 
 import { readFileSync } from "fs";
@@ -25,11 +25,11 @@ function readAgent(filename: string): string {
 }
 
 // Agent templates
-export const coderAgentTemplate: string = readAgent("coder.txt");
-export const checkerAgentTemplate: string = readAgent("checker.txt");
-export const fixerAgentTemplate: string = readAgent("fixer.txt");
-export const searcherAgentTemplate: string = readAgent("searcher.txt");
-export const routerAgentTemplate: string = readAgent("router.txt");
+export const implementAgentTemplate: string = readAgent("implement.txt");
+export const checkAgentTemplate: string = readAgent("check.txt");
+export const debugAgentTemplate: string = readAgent("debug.txt");
+export const researchAgentTemplate: string = readAgent("research.txt");
+export const dispatchAgentTemplate: string = readAgent("dispatch.txt");
 
 /**
  * Agent template definition
@@ -48,28 +48,30 @@ export interface AgentTemplate {
  */
 const ALL_AGENTS: AgentTemplate[] = [
   {
-    name: "coder",
-    content: coderAgentTemplate,
-    description: "Code writing expert - implements features following specs",
+    name: "implement",
+    content: implementAgentTemplate,
+    description:
+      "Code implementation expert - implements features following specs",
   },
   {
-    name: "checker",
-    content: checkerAgentTemplate,
-    description: "Code self-check expert - validates and fixes code quality",
+    name: "check",
+    content: checkAgentTemplate,
+    description:
+      "Check expert - validates code quality and cross-layer consistency",
   },
   {
-    name: "fixer",
-    content: fixerAgentTemplate,
-    description: "Issue fixing expert - fixes code review issues",
+    name: "debug",
+    content: debugAgentTemplate,
+    description: "Debug expert - fixes code review issues",
   },
   {
-    name: "searcher",
-    content: searcherAgentTemplate,
-    description: "Search expert - finds code patterns and tech solutions",
+    name: "research",
+    content: researchAgentTemplate,
+    description: "Research expert - finds code patterns and tech solutions",
   },
   {
-    name: "router",
-    content: routerAgentTemplate,
+    name: "dispatch",
+    content: dispatchAgentTemplate,
     description: "Pipeline dispatcher - orchestrates other agents",
   },
 ];

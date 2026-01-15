@@ -37,9 +37,9 @@ Trellis creates a structured workflow system in your project:
 
 ```
 your-project/
-├── workflow/
+├── .trellis/
 │   ├── .developer                 # Developer identity (gitignored)
-│   ├── flow.md                    # Workflow guide
+│   ├── workflow.md                    # Workflow guide
 │   ├── agent-traces/            # Session tracking
 │   │   └── {developer}/           # Per-developer progress
 │   │       ├── index.md           # Progress index
@@ -51,7 +51,7 @@ your-project/
 │   ├── structure/                 # Development guidelines
 │   │   ├── frontend/              # Frontend standards
 │   │   ├── backend/               # Backend standards
-│   │   └── flows/                 # Thinking guides
+│   │   └── guides/                # Thinking guides
 │   └── scripts/                   # Utility scripts
 │       ├── common/                # Shared utilities
 │       │   ├── paths.sh           # Path utilities
@@ -75,7 +75,7 @@ your-project/
 Each developer (human or AI) gets their own progress tracking:
 
 ```bash
-./workflow/scripts/init-developer.sh <name>
+./.trellis/scripts/init-developer.sh <name>
 ```
 
 ### 2. Slash Commands
@@ -108,9 +108,9 @@ Structured guides to prevent common mistakes:
 Track features with directory-based structure:
 
 ```bash
-./workflow/scripts/feature.sh create my-feature  # Create feature
-./workflow/scripts/feature.sh list               # List active features
-./workflow/scripts/feature.sh archive my-feature # Archive completed
+./.trellis/scripts/feature.sh create my-feature  # Create feature
+./.trellis/scripts/feature.sh list               # List active features
+./.trellis/scripts/feature.sh archive my-feature # Archive completed
 ```
 
 ## CLI Commands
@@ -126,8 +126,8 @@ trellis init -s           # Skip existing files
 ## How It Works
 
 1. **AI reads `init-agent.md`** at session start
-2. **Follows guidelines** in `workflow/structure/`
-3. **Updates progress** in `workflow/agent-traces/`
+2. **Follows guidelines** in `.trellis/structure/`
+3. **Updates progress** in `.trellis/agent-traces/`
 4. **Uses slash commands** for common tasks
 
 This creates a structured, documented workflow where:

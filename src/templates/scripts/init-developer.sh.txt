@@ -2,11 +2,11 @@
 # Initialize developer for workflow
 #
 # Usage:
-#   ./workflow/scripts/init-developer.sh <developer-name>
+#   ./.trellis/scripts/init-developer.sh <developer-name>
 #
 # This creates:
-#   - workflow/.developer file with developer info
-#   - workflow/agent-traces/<name>/ directory structure
+#   - .trellis/.developer file with developer info
+#   - .trellis/agent-traces/<name>/ directory structure
 
 set -e
 
