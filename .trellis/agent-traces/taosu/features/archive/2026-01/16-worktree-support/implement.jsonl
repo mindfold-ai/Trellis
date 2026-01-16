@@ -1,0 +1,7 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/structure/shared/index.md", "reason": "Shared coding standards"}
+{"file": ".trellis/structure/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/structure/backend/api-module.md", "reason": "API module conventions"}
+{"file": ".trellis/structure/backend/quality.md", "reason": "Code quality requirements"}
+{"file": ".trellis/structure/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".trellis/structure/frontend/components.md", "reason": "Component conventions"}

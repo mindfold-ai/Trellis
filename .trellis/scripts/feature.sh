@@ -9,6 +9,9 @@
 #   ./.trellis/scripts/feature.sh list-context <dir>          # List jsonl entries
 #   ./.trellis/scripts/feature.sh start <dir>                 # Set as current feature
 #   ./.trellis/scripts/feature.sh finish                      # Clear current feature
+#   ./.trellis/scripts/feature.sh set-branch <dir> <branch>   # Set git branch
+#   ./.trellis/scripts/feature.sh set-scope <dir> <scope>     # Set scope for PR title
+#   ./.trellis/scripts/feature.sh create-pr [dir] [--dry-run] # Create PR from feature
 #   ./.trellis/scripts/feature.sh archive <feature-name>      # Archive completed feature
 #   ./.trellis/scripts/feature.sh list                        # List active features
 #   ./.trellis/scripts/feature.sh list-archive [month]        # List archived features
@@ -155,11 +158,23 @@ cmd_create() {
   "description": "",
   "status": "planning",
   "dev_type": null,
+  "scope": null,
   "priority": "medium",
   "developer": "$developer",
   "createdAt": "$today",
   "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ],
   "commit": null,
+  "pr_url": null,
   "subtasks": [],
   "relatedFiles": [],
   "notes": ""
@@ -172,6 +187,8 @@ EOF
   echo -e "  1. Create prd.md with requirements" >&2
   echo -e "  2. Run: $0 init-context <dir> <dev_type>" >&2
   echo -e "  3. Run: $0 start <dir>" >&2
+  echo -e "  4. (Optional) Set branch for multi-agent:" >&2
+  echo -e "     jq '.branch = \"feature/$feature_name\"' <dir>/feature.json > tmp && mv tmp <dir>/feature.json" >&2
   echo "" >&2
 
   # Output relative path for script chaining
@@ -623,6 +640,265 @@ cmd_list_archive() {
 }
 
 # =============================================================================
+# Command: set-branch
+# =============================================================================
+
+cmd_set_branch() {
+  local target_dir="$1"
+  local branch="$2"
+
+  if [[ -z "$target_dir" ]] || [[ -z "$branch" ]]; then
+    echo -e "${RED}Error: Missing arguments${NC}"
+    echo "Usage: $0 set-branch <feature-dir> <branch-name>"
+    echo "Example: $0 set-branch <dir> feature/my-feature"
+    exit 1
+  fi
+
+  # Support relative paths
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  local feature_json="$target_dir/feature.json"
+  if [[ ! -f "$feature_json" ]]; then
+    echo -e "${RED}Error: feature.json not found at $target_dir${NC}"
+    exit 1
+  fi
+
+  # Update branch field
+  jq --arg branch "$branch" '.branch = $branch' "$feature_json" > "${feature_json}.tmp"
+  mv "${feature_json}.tmp" "$feature_json"
+
+  echo -e "${GREEN}✓ Branch set to: $branch${NC}"
+  echo ""
+  echo -e "${BLUE}Now you can start the multi-agent pipeline:${NC}"
+  echo "  ./.trellis/scripts/multi-agent/start.sh $1"
+}
+
+# =============================================================================
+# Command: set-scope
+# =============================================================================
+
+cmd_set_scope() {
+  local target_dir="$1"
+  local scope="$2"
+
+  if [[ -z "$target_dir" ]] || [[ -z "$scope" ]]; then
+    echo -e "${RED}Error: Missing arguments${NC}"
+    echo "Usage: $0 set-scope <feature-dir> <scope>"
+    echo "Example: $0 set-scope <dir> api"
+    exit 1
+  fi
+
+  # Support relative paths
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  local feature_json="$target_dir/feature.json"
+  if [[ ! -f "$feature_json" ]]; then
+    echo -e "${RED}Error: feature.json not found at $target_dir${NC}"
+    exit 1
+  fi
+
+  # Update scope field
+  jq --arg scope "$scope" '.scope = $scope' "$feature_json" > "${feature_json}.tmp"
+  mv "${feature_json}.tmp" "$feature_json"
+
+  echo -e "${GREEN}✓ Scope set to: $scope${NC}"
+}
+
+# =============================================================================
+# Command: create-pr
+# =============================================================================
+
+cmd_create_pr() {
+  local target_dir=""
+  local dry_run=false
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run)
+        dry_run=true
+        shift
+        ;;
+      *)
+        if [[ -z "$target_dir" ]]; then
+          target_dir="$1"
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  # Get feature directory
+  if [[ -z "$target_dir" ]]; then
+    target_dir=$(get_current_feature)
+    if [[ -z "$target_dir" ]]; then
+      echo -e "${RED}Error: No feature directory specified and no current feature set${NC}"
+      echo "Usage: $0 create-pr [feature-dir] [--dry-run]"
+      exit 1
+    fi
+  fi
+
+  # Support relative paths
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  local feature_json="$target_dir/feature.json"
+  if [[ ! -f "$feature_json" ]]; then
+    echo -e "${RED}Error: feature.json not found at $target_dir${NC}"
+    exit 1
+  fi
+
+  echo -e "${BLUE}=== Create PR ===${NC}"
+  if [[ "$dry_run" == "true" ]]; then
+    echo -e "${YELLOW}[DRY-RUN MODE] No actual changes will be made${NC}"
+  fi
+  echo ""
+
+  # Read feature config
+  local feature_name=$(jq -r '.name' "$feature_json")
+  local base_branch=$(jq -r '.base_branch // "main"' "$feature_json")
+  local scope=$(jq -r '.scope // "core"' "$feature_json")
+  local dev_type=$(jq -r '.dev_type // "feature"' "$feature_json")
+
+  # Map dev_type to commit prefix
+  local commit_prefix
+  case "$dev_type" in
+    feature|frontend|backend|fullstack) commit_prefix="feat" ;;
+    bugfix|fix) commit_prefix="fix" ;;
+    refactor) commit_prefix="refactor" ;;
+    docs) commit_prefix="docs" ;;
+    test) commit_prefix="test" ;;
+    *) commit_prefix="feat" ;;
+  esac
+
+  echo -e "Feature: ${feature_name}"
+  echo -e "Base branch: ${base_branch}"
+  echo -e "Scope: ${scope}"
+  echo -e "Commit prefix: ${commit_prefix}"
+  echo ""
+
+  # Get current branch
+  local current_branch=$(git branch --show-current)
+  echo -e "Current branch: ${current_branch}"
+
+  # Check for changes
+  echo -e "${YELLOW}Checking for changes...${NC}"
+
+  # Stage changes (even in dry-run to detect what would be committed)
+  git add -A
+  # Exclude agent traces and temp files
+  git reset "$DIR_WORKFLOW/$DIR_PROGRESS/" 2>/dev/null || true
+  git reset .agent-log .agent-prompt .agent-runner.sh 2>/dev/null || true
+
+  # Check if there are staged changes
+  if git diff --cached --quiet 2>/dev/null; then
+    echo -e "${YELLOW}No staged changes to commit${NC}"
+
+    # Check for unpushed commits
+    local unpushed=$(git log "origin/${current_branch}..HEAD" --oneline 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+    if [[ "$unpushed" -eq 0 ]] 2>/dev/null; then
+      # In dry-run, also reset the staging
+      if [[ "$dry_run" == "true" ]]; then
+        git reset HEAD >/dev/null 2>&1 || true
+      fi
+      echo -e "${RED}No changes to create PR${NC}"
+      exit 1
+    fi
+    echo -e "Found ${unpushed} unpushed commit(s)"
+  else
+    # Commit changes
+    echo -e "${YELLOW}Committing changes...${NC}"
+    local commit_msg="${commit_prefix}(${scope}): ${feature_name}"
+
+    if [[ "$dry_run" == "true" ]]; then
+      echo -e "[DRY-RUN] Would commit with message: ${commit_msg}"
+      echo -e "[DRY-RUN] Staged files:"
+      git diff --cached --name-only | sed 's/^/  - /'
+    else
+      git commit -m "$commit_msg"
+      echo -e "${GREEN}Committed: ${commit_msg}${NC}"
+    fi
+  fi
+
+  # Push to remote
+  echo -e "${YELLOW}Pushing to remote...${NC}"
+  if [[ "$dry_run" == "true" ]]; then
+    echo -e "[DRY-RUN] Would push to: origin/${current_branch}"
+  else
+    git push -u origin "$current_branch"
+    echo -e "${GREEN}Pushed to origin/${current_branch}${NC}"
+  fi
+
+  # Create PR
+  echo -e "${YELLOW}Creating PR...${NC}"
+  local pr_title="${commit_prefix}(${scope}): ${feature_name}"
+  local pr_url=""
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo -e "[DRY-RUN] Would create PR:"
+    echo -e "  Title: ${pr_title}"
+    echo -e "  Base:  ${base_branch}"
+    echo -e "  Head:  ${current_branch}"
+    if [[ -f "$target_dir/prd.md" ]]; then
+      echo -e "  Body:  (from prd.md)"
+    fi
+    pr_url="https://github.com/example/repo/pull/DRY-RUN"
+  else
+    # Check if PR already exists
+    local existing_pr=$(gh pr list --head "$current_branch" --base "$base_branch" --json url --jq '.[0].url' 2>/dev/null || echo "")
+
+    if [[ -n "$existing_pr" ]]; then
+      echo -e "${YELLOW}PR already exists: ${existing_pr}${NC}"
+      pr_url="$existing_pr"
+    else
+      # Read PRD as PR body
+      local pr_body=""
+      if [[ -f "$target_dir/prd.md" ]]; then
+        pr_body=$(cat "$target_dir/prd.md")
+      fi
+
+      # Create PR
+      pr_url=$(gh pr create \
+        --draft \
+        --base "$base_branch" \
+        --title "$pr_title" \
+        --body "$pr_body" \
+        2>&1)
+
+      echo -e "${GREEN}PR created: ${pr_url}${NC}"
+    fi
+  fi
+
+  # Update feature.json
+  echo -e "${YELLOW}Updating feature status...${NC}"
+  if [[ "$dry_run" == "true" ]]; then
+    echo -e "[DRY-RUN] Would update feature.json:"
+    echo -e "  status: review"
+    echo -e "  pr_url: ${pr_url}"
+  else
+    jq --arg url "$pr_url" '.status = "review" | .pr_url = $url' "$feature_json" > "${feature_json}.tmp"
+    mv "${feature_json}.tmp" "$feature_json"
+    echo -e "${GREEN}Feature status updated to 'review'${NC}"
+  fi
+
+  # In dry-run, reset the staging area
+  if [[ "$dry_run" == "true" ]]; then
+    git reset HEAD >/dev/null 2>&1 || true
+  fi
+
+  echo ""
+  echo -e "${GREEN}=== PR Created Successfully ===${NC}"
+  echo -e "PR URL: ${pr_url}"
+  echo -e "Target: ${base_branch}"
+  echo -e "Source: ${current_branch}"
+}
+
+# =============================================================================
 # Help
 # =============================================================================
 
@@ -638,6 +914,9 @@ Usage:
   $0 list-context <dir>                 List jsonl entries
   $0 start <dir>                        Set as current feature
   $0 finish                             Clear current feature
+  $0 set-branch <dir> <branch>          Set git branch for multi-agent
+  $0 set-scope <dir> <scope>            Set scope for PR title
+  $0 create-pr [dir] [--dry-run]        Create PR from feature
   $0 archive <feature-name>             Archive completed feature
   $0 list                               List active features
   $0 list-archive [YYYY-MM]             List archived features
@@ -649,7 +928,10 @@ Examples:
   $0 create add-login-feature
   $0 init-context .trellis/agent-traces/john/features/13-add-login-feature backend
   $0 add-context <dir> implement .trellis/structure/backend/auth.md "Auth guidelines"
+  $0 set-branch <dir> feature/add-login-feature
   $0 start .trellis/agent-traces/john/features/13-add-login-feature
+  $0 create-pr                          # Uses current feature
+  $0 create-pr <dir> --dry-run          # Preview without changes
   $0 finish
   $0 archive add-login-feature
 EOF
@@ -680,6 +962,16 @@ case "${1:-}" in
     ;;
   finish)
     cmd_finish
+    ;;
+  set-branch)
+    cmd_set_branch "$2" "$3"
+    ;;
+  set-scope)
+    cmd_set_scope "$2" "$3"
+    ;;
+  create-pr)
+    shift
+    cmd_create_pr "$@"
     ;;
   archive)
     cmd_archive "$2"

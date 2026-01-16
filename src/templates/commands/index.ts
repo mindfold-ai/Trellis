@@ -31,6 +31,10 @@ export const claudeStartTemplate: string = readCommand(
   "claude",
   "start.md.txt",
 );
+export const claudeParallelTemplate: string = readCommand(
+  "claude",
+  "parallel.md.txt",
+);
 
 // Cursor-specific commands
 export const cursorStartTemplate: string = readCommand(
@@ -129,6 +133,12 @@ const ALL_TEMPLATES: CommandTemplate[] = [
     name: "start",
     content: claudeStartTemplate,
     description: "Initialize AI agent with project context",
+    category: "claude",
+  },
+  {
+    name: "parallel",
+    content: claudeParallelTemplate,
+    description: "Multi-agent pipeline in isolated worktrees",
     category: "claude",
   },
   // Cursor-specific
