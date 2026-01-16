@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `traces-1.md`
-- **Total Sessions**: 3
-- **Last Active**: 2026-01-16
+- **Total Sessions**: 4
+- **Last Active**: 2026-01-17
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `traces-1.md` | ~100 | Active |
+| `traces-1.md` | ~165 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 4 | 2026-01-17 | README 优化深度调研 | `e297338` |
 | 3 | 2026-01-16 | Add Roadmap with 4 Planned Features | `7b65025` |
 | 2 | 2026-01-16 | OpenCode Support Implementation (Phase 1-3) | `fbabea8`, `459a4e8`, `d1df7b4` |
 | 1 | 2026-01-15 | Dogfood Trellis & Create OpenCode Support Feature | - |
