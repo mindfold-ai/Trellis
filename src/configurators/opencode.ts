@@ -5,22 +5,19 @@ import { getAllAgents } from "../templates/agents/index.js";
 
 /**
  * OpenCode configuration file content
+ *
+ * Note: Custom agents are auto-discovered from .opencode/agent/ directory,
+ * so we don't need to define them in the config file.
  */
 function getOpenCodeConfig(): string {
   return JSON.stringify(
     {
-      $schema: "https://opencode.ai/schemas/opencode.json",
+      $schema: "https://opencode.ai/config.json",
       instructions: [
         "AGENTS.md",
         ".trellis/workflow.md",
         ".trellis/structure/guides/index.md",
       ],
-      agents: {
-        implement: ".opencode/agents/implement.md",
-        check: ".opencode/agents/check.md",
-        research: ".opencode/agents/research.md",
-        debug: ".opencode/agents/debug.md",
-      },
     },
     null,
     2,
@@ -61,17 +58,17 @@ export async function configureOpenCode(cwd: string): Promise<void> {
  * OpenCode agents use YAML frontmatter with tools as boolean object.
  */
 export async function configureOpenCodeAgents(cwd: string): Promise<void> {
-  const agentsDir = path.join(cwd, ".opencode", "agents");
+  const agentDir = path.join(cwd, ".opencode", "agent");
 
   // Create directory
-  ensureDir(agentsDir);
+  ensureDir(agentDir);
 
   // Get all agent templates in OpenCode format (excludes dispatch)
   const agents = getAllAgents("opencode");
 
   // Write each agent file
   for (const agent of agents) {
-    const filePath = path.join(agentsDir, `${agent.name}.md`);
+    const filePath = path.join(agentDir, `${agent.name}.md`);
     await writeFile(filePath, agent.content);
   }
 }

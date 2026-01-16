@@ -86,11 +86,17 @@ function generateClaudeFrontmatter(meta: AgentMetadata): string {
 
 /**
  * Generate OpenCode frontmatter
+ *
+ * OpenCode agents use:
+ * - description: Brief description of agent purpose
+ * - mode: subagent (invoked via @mention) | primary (cycled with Tab) | all
+ * - tools: Object with boolean values for each tool
  */
 function generateOpenCodeFrontmatter(meta: AgentMetadata): string {
   const lines = [
     "---",
     `description: ${meta.description}`,
+    "mode: subagent",
     "tools:",
     formatOpenCodeTools(meta.tools),
     "---",
