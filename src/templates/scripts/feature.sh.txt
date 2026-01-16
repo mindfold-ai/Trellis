@@ -159,6 +159,15 @@ cmd_create() {
   "developer": "$developer",
   "createdAt": "$today",
   "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"}
+  ],
   "commit": null,
   "subtasks": [],
   "relatedFiles": [],
@@ -172,6 +181,8 @@ EOF
   echo -e "  1. Create prd.md with requirements" >&2
   echo -e "  2. Run: $0 init-context <dir> <dev_type>" >&2
   echo -e "  3. Run: $0 start <dir>" >&2
+  echo -e "  4. (Optional) Set branch for multi-agent:" >&2
+  echo -e "     jq '.branch = \"feature/$feature_name\"' <dir>/feature.json > tmp && mv tmp <dir>/feature.json" >&2
   echo "" >&2
 
   # Output relative path for script chaining
@@ -623,6 +634,42 @@ cmd_list_archive() {
 }
 
 # =============================================================================
+# Command: set-branch
+# =============================================================================
+
+cmd_set_branch() {
+  local target_dir="$1"
+  local branch="$2"
+
+  if [[ -z "$target_dir" ]] || [[ -z "$branch" ]]; then
+    echo -e "${RED}Error: Missing arguments${NC}"
+    echo "Usage: $0 set-branch <feature-dir> <branch-name>"
+    echo "Example: $0 set-branch <dir> feature/my-feature"
+    exit 1
+  fi
+
+  # Support relative paths
+  if [[ ! "$target_dir" = /* ]]; then
+    target_dir="$REPO_ROOT/$target_dir"
+  fi
+
+  local feature_json="$target_dir/feature.json"
+  if [[ ! -f "$feature_json" ]]; then
+    echo -e "${RED}Error: feature.json not found at $target_dir${NC}"
+    exit 1
+  fi
+
+  # Update branch field
+  jq --arg branch "$branch" '.branch = $branch' "$feature_json" > "${feature_json}.tmp"
+  mv "${feature_json}.tmp" "$feature_json"
+
+  echo -e "${GREEN}✓ Branch set to: $branch${NC}"
+  echo ""
+  echo -e "${BLUE}Now you can start the multi-agent pipeline:${NC}"
+  echo "  ./.trellis/scripts/multi-agent/start.sh $1"
+}
+
+# =============================================================================
 # Help
 # =============================================================================
 
@@ -638,6 +685,7 @@ Usage:
   $0 list-context <dir>                 List jsonl entries
   $0 start <dir>                        Set as current feature
   $0 finish                             Clear current feature
+  $0 set-branch <dir> <branch>          Set git branch for multi-agent
   $0 archive <feature-name>             Archive completed feature
   $0 list                               List active features
   $0 list-archive [YYYY-MM]             List archived features
@@ -649,6 +697,7 @@ Examples:
   $0 create add-login-feature
   $0 init-context .trellis/agent-traces/john/features/13-add-login-feature backend
   $0 add-context <dir> implement .trellis/structure/backend/auth.md "Auth guidelines"
+  $0 set-branch <dir> feature/add-login-feature
   $0 start .trellis/agent-traces/john/features/13-add-login-feature
   $0 finish
   $0 archive add-login-feature
@@ -680,6 +729,9 @@ case "${1:-}" in
     ;;
   finish)
     cmd_finish
+    ;;
+  set-branch)
+    cmd_set_branch "$2" "$3"
     ;;
   archive)
     cmd_archive "$2"
