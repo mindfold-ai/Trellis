@@ -88,7 +88,7 @@ output_json() {
     "active": $features_json,
     "directory": "$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES"
   },
-  "progress": {
+  "traces": {
     "file": "$progress_relative",
     "lines": $progress_lines,
     "nearLimit": $([ "$progress_lines" -gt 1800 ] && echo "true" || echo "false")
@@ -190,23 +190,23 @@ output_text() {
   echo "Total: $feature_count active feature(s)"
   echo ""
 
-  echo "## PROGRESS FILE"
-  local progress_file=$(get_active_progress_file "$repo_root")
-  if [[ -n "$progress_file" ]]; then
-    local lines=$(count_lines "$progress_file")
-    local relative="$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$(basename "$progress_file")"
+  echo "## TRACES FILE"
+  local traces_file=$(get_active_progress_file "$repo_root")
+  if [[ -n "$traces_file" ]]; then
+    local lines=$(count_lines "$traces_file")
+    local relative="$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$(basename "$traces_file")"
     echo "Active file: $relative"
     echo "Line count: $lines / 2000"
     if [[ "$lines" -gt 1800 ]]; then
       echo "[!] WARNING: Approaching 2000 line limit!"
     fi
   else
-    echo "No progress file found"
+    echo "No traces file found"
   fi
   echo ""
 
   echo "## PATHS"
-  echo "Progress dir: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/"
+  echo "Traces dir: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/"
   echo "Features dir: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES/"
   echo "Index file: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/index.md"
   echo ""

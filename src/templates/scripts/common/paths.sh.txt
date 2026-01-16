@@ -8,8 +8,8 @@
 #   get_repo_root          - Get repository root directory
 #   get_developer          - Get developer name
 #   get_features_dir       - Get features directory
-#   get_progress_dir       - Get progress directory
-#   get_active_progress_file - Get current progress file
+#   get_progress_dir       - Get traces directory
+#   get_active_progress_file - Get current traces file
 
 # =============================================================================
 # Path Constants (change here to rename directories)
