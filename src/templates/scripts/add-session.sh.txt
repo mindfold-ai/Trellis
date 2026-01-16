@@ -30,9 +30,9 @@ get_latest_progress_info() {
   local latest_file=""
   local latest_num=0
 
-  for f in "$DEV_DIR"/progress-*.md; do
+  for f in "$DEV_DIR"/traces-*.md; do
     if [[ -f "$f" ]]; then
-      local num=$(basename "$f" | sed 's/progress-\([0-9]*\)\.md/\1/')
+      local num=$(basename "$f" | sed 's/traces-\([0-9]*\)\.md/\1/')
       if [[ "$num" -gt "$latest_num" ]]; then
         latest_num=$num
         latest_file="$f"
@@ -57,9 +57,9 @@ count_progress_files() {
   local result=""
   local progress_info=$(get_latest_progress_info)
   local active_num=$(echo "$progress_info" | cut -d: -f2)
-  local active_file="progress-$active_num.md"
+  local active_file="traces-$active_num.md"
 
-  for f in $(ls -v "$DEV_DIR"/progress-*.md 2>/dev/null | sort -t- -k2 -n -r); do
+  for f in $(ls -v "$DEV_DIR"/traces-*.md 2>/dev/null | sort -t- -k2 -n -r); do
     if [[ -f "$f" ]]; then
       local filename=$(basename "$f")
       local lines=$(wc -l < "$f" | tr -d ' ')
@@ -79,12 +79,12 @@ count_progress_files() {
 create_new_progress_file() {
   local num=$1
   local prev_num=$((num - 1))
-  local new_file="$DEV_DIR/progress-$num.md"
+  local new_file="$DEV_DIR/traces-$num.md"
 
   cat > "$new_file" << EOF
 # Agent Progress - $DEVELOPER (Part $num)
 
-> Continuation from \`progress-$prev_num.md\` (archived at ~$MAX_LINES lines)
+> Continuation from \`traces-$prev_num.md\` (archived at ~$MAX_LINES lines)
 > Started: $TODAY
 
 ---
@@ -317,7 +317,7 @@ add_session() {
   echo "Title: $title" >&2
   echo "Commit: $commit" >&2
   echo "" >&2
-  echo "Current progress file: progress-$current_num.md" >&2
+  echo "Current progress file: traces-$current_num.md" >&2
   echo "Current lines: $current_lines" >&2
   echo "New content lines: $content_lines" >&2
   echo "Total after append: $((current_lines + content_lines))" >&2
@@ -328,7 +328,7 @@ add_session() {
 
   if [[ $((current_lines + content_lines)) -gt $MAX_LINES ]]; then
     target_num=$((current_num + 1))
-    echo "[!] Exceeds $MAX_LINES lines, creating progress-$target_num.md" >&2
+    echo "[!] Exceeds $MAX_LINES lines, creating traces-$target_num.md" >&2
     target_file=$(create_new_progress_file "$target_num")
     echo "Created: $target_file" >&2
   fi
@@ -339,7 +339,7 @@ add_session() {
   echo "" >&2
 
   # Update index.md directly
-  local active_file="progress-$target_num.md"
+  local active_file="traces-$target_num.md"
   update_index "$title" "$commit" "$new_session" "$active_file"
 
   echo "" >&2

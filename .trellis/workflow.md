@@ -47,7 +47,7 @@
 |       |-- features/    # Feature directories
 |       |   \-- {day}-{name}/
 |       |       \-- feature.json
-|       \-- progress-N.md  # Progress files (sequential numbering)
+|       \-- traces-N.md  # Progress files (sequential numbering)
 |-- structure/           # [!] MUST READ before coding
 |   |-- frontend/        # Frontend guidelines (if applicable)
 |   |   |-- index.md               # Start here - guidelines index
@@ -199,7 +199,7 @@ agent-traces/
     |-- features/         # Feature directories
     |   \-- {day}-{name}/ # Each feature is a directory
     |       \-- feature.json
-    \-- progress-N.md     # Progress files (sequential: 1, 2, 3...)
+    \-- traces-N.md     # Progress files (sequential: 1, 2, 3...)
 ```
 
 **When to update**:

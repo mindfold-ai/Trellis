@@ -35,7 +35,7 @@ EOF
 ```
 
 **Auto-completes**:
-- [OK] Appends session to progress-N.md
+- [OK] Appends session to traces-N.md
 - [OK] Auto-detects line count, creates new file if >2000 lines
 - [OK] Updates index.md (Total Sessions +1, Last Active, line stats, history)
 

@@ -47,7 +47,7 @@ your-project/
 │   │       │   ├── {day}-{name}/  # Feature directory
 │   │       │   │   └── feature.json
 │   │       │   └── archive/       # Completed features
-│   │       └── progress-N.md      # Session records
+│   │       └── traces-N.md      # Session records
 │   ├── structure/                 # Development guidelines
 │   │   ├── frontend/              # Frontend standards
 │   │   ├── backend/               # Backend standards

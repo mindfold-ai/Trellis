@@ -121,7 +121,7 @@ your-project/
 │   │       ├── features/    # Feature directories
 │   │       │   └── {day}-{name}/
 │   │       │       └── feature.json
-│   │       └── progress-N.md
+│   │       └── traces-N.md
 │   ├── structure/           # [!] Development guidelines (MUST READ)
 │   │   ├── frontend/
 │   │   │   ├── index.md     # Frontend guidelines index
@@ -148,7 +148,7 @@ This project uses a structured workflow system based on [Anthropic's best practi
 |------|---------|----------------|
 | `.trellis/workflow.md` | Complete workflow guide | Read at session start |
 | `.trellis/agent-traces/{developer}/features/` | Feature tracking | When creating/completing features |
-| `.trellis/agent-traces/{developer}/progress-N.md` | Session work records | After each session |
+| `.trellis/agent-traces/{developer}/traces-N.md` | Session work records | After each session |
 
 ### Key Rules (CRITICAL - Must Follow)
 
@@ -158,9 +158,9 @@ This project uses a structured workflow system based on [Anthropic's best practi
    - This is **mandatory**, not optional
 
 **2. Document Limits** **CRITICAL RULE**
-   - `agent-traces/{developer}/progress-N.md` max 2000 lines
+   - `agent-traces/{developer}/traces-N.md` max 2000 lines
    - **IMPORTANT: Only create new file when current file EXCEEDS 2000 lines**
-   - File naming: Use sequential numbers (`progress-1.md`, `progress-2.md`...)
+   - File naming: Use sequential numbers (`traces-1.md`, `traces-2.md`...)
 
 **3. Update Tracking Files**
    - After completing work: Update `agent-traces` (include commit hashes)

@@ -18,7 +18,7 @@ agent-traces/
     |-- features/         # Feature files
     |   |-- *.json        # Active features
     |   \-- archive/      # Archived features by month
-    \-- progress-N.md     # Progress files (sequential: 1, 2, 3...)
+    \-- traces-N.md     # Progress files (sequential: 1, 2, 3...)
 ```
 
 ---
@@ -66,7 +66,7 @@ This will:
 ### Progress File Rules
 
 - **Max 2000 lines** per progress file
-- When limit is reached, create `progress-{N+1}.md`
+- When limit is reached, create `traces-{N+1}.md`
 - Update your personal `index.md` when creating new files
 
 ### Session Record Format
@@ -121,4 +121,3 @@ Use this template when recording sessions:
 ---
 
 **Language**: All documentation must be written in **English**.
-

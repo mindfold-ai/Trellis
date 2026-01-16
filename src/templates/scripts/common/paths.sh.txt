@@ -108,9 +108,9 @@ get_active_progress_file() {
 
   local latest=""
   local highest=0
-  for f in "$progress_dir"/progress-*.md; do
+  for f in "$progress_dir"/traces-*.md; do
     if [[ -f "$f" ]]; then
-      local num=$(basename "$f" | sed 's/progress-//' | sed 's/\.md//')
+      local num=$(basename "$f" | sed 's/traces-//' | sed 's/\.md//')
       if [[ "$num" =~ ^[0-9]+$ ]] && [[ "$num" -gt "$highest" ]]; then
         highest=$num
         latest="$f"

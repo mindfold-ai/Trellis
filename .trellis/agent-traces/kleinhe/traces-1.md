@@ -34,3 +34,36 @@
 ### Next Steps
 
 - None - feature complete
+
+## Session 2: OpenCode Support Implementation (Phase 1-3)
+
+**Date**: 2026-01-16
+**Feature**: OpenCode Support Implementation (Phase 1-3)
+
+### Summary
+
+完成 OpenCode 适配的 Phase 1-3：创建 .opencode/ 目录结构，迁移命令，重构 agent 模板实现 Claude/OpenCode 共享。添加 metadata.ts 集中管理配置，创建 3 个 feature PRD。Phase 4 (dispatch agent) 待实现。
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fbabea8` | (see git log) |
+| `459a4e8` | (see git log) |
+| `d1df7b4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete

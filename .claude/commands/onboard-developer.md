@@ -72,7 +72,7 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 |   \-- {developer}/        # Per-developer directory
 |       |-- index.md        # Personal progress index
 |       |-- features/       # Active feature tracking
-|       \-- progress-N.md   # Session records (max 2000 lines)
+|       \-- traces-N.md   # Session records (max 2000 lines)
 |-- structure/              # "AI Training Data" - project knowledge
 |   |-- frontend/           # Frontend conventions
 |   |-- backend/            # Backend conventions
@@ -196,7 +196,7 @@ The `/check-*` commands focus on code quality within a single layer. But real ch
 All the context AI built during this session will be lost when session ends. The next session's `/start` needs this information.
 
 **WHAT IT ACTUALLY DOES**:
-1. Records session summary to `agent-traces/{developer}/progress-N.md`
+1. Records session summary to `agent-traces/{developer}/traces-N.md`
 2. Captures what was done, learned, and what's remaining
 3. Updates index files for quick lookup
 

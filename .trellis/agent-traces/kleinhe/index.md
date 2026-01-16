@@ -7,9 +7,9 @@
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `progress-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-01-15
+- **Active File**: `traces-1.md`
+- **Total Sessions**: 2
+- **Last Active**: 2026-01-16
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `progress-1.md` | ~36 | Active |
+| `traces-1.md` | ~69 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 2 | 2026-01-16 | OpenCode Support Implementation (Phase 1-3) | `fbabea8`, `459a4e8`, `d1df7b4` |
 | 1 | 2026-01-15 | Dogfood Trellis & Create OpenCode Support Feature | - |
 <!-- @@@/auto:session-history -->
 

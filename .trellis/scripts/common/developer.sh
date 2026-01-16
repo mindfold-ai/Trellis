@@ -41,7 +41,7 @@ EOF
   mkdir -p "$progress_dir/$DIR_FEATURES/$DIR_ARCHIVE"
 
   # Create initial progress file
-  local progress_file="$progress_dir/progress-1.md"
+  local progress_file="$progress_dir/traces-1.md"
   if [[ ! -f "$progress_file" ]]; then
     cat > "$progress_file" << PROGRESS_EOF
 # Agent Progress - $name (Part 1)
@@ -67,7 +67,7 @@ PROGRESS_EOF
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: \`progress-1.md\`
+- **Active File**: \`traces-1.md\`
 - **Total Sessions**: 0
 - **Last Active**: -
 <!-- @@@/auto:current-status -->
@@ -79,7 +79,7 @@ PROGRESS_EOF
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| \`progress-1.md\` | ~0 | Active |
+| \`traces-1.md\` | ~0 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---

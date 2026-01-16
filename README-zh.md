@@ -45,7 +45,7 @@ your-project/
 │   │       │   ├── {day}-{name}/  # Feature 目录
 │   │       │   │   └── feature.json
 │   │       │   └── archive/       # 已完成的 features
-│   │       └── progress-N.md      # Session 记录
+│   │       └── traces-N.md      # Session 记录
 │   ├── structure/                 # 开发规范
 │   │   ├── frontend/              # 前端规范
 │   │   ├── backend/               # 后端规范
