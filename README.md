@@ -2,6 +2,8 @@
 
 English | [中文](./README-zh.md)
 
+![Trellis](./trellis.png)
+
 AI capabilities grow like ivy — full of vitality but climbing in all directions. Trellis provides the structure to guide them along a disciplined path.
 
 Based on Anthropic's [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), with engineering practices and improvements for real-world usage.
@@ -45,21 +47,24 @@ your-project/
 │   │       │   ├── {day}-{name}/  # Feature directory
 │   │       │   │   └── feature.json
 │   │       │   └── archive/       # Completed features
-│   │       └── progress-N.md      # Session records
+│   │       └── traces-N.md      # Session records
 │   ├── structure/                 # Development guidelines
 │   │   ├── frontend/              # Frontend standards
 │   │   ├── backend/               # Backend standards
 │   │   └── guides/                # Thinking guides
-│   └── scripts/                   # Utility scripts
-│       ├── common/                # Shared utilities
-│       │   ├── paths.sh           # Path utilities
-│       │   ├── developer.sh       # Developer management
-│       │   └── git-context.sh     # Git context
-│       ├── feature.sh             # Feature management
-│       ├── add-session.sh         # Record sessions
-│       ├── get-context.sh         # Get session context
-│       ├── get-developer.sh       # Get developer name
-│       └── init-developer.sh      # Initialize developer
+│   ├── scripts/                   # Utility scripts
+│   │   ├── common/                # Shared utilities
+│   │   │   ├── paths.sh           # Path utilities
+│   │   │   ├── developer.sh       # Developer management
+│   │   │   ├── git-context.sh     # Git context
+│   │   │   └── worktree.sh        # Worktree utilities
+│   │   ├── multi-agent/           # Multi-agent pipeline
+│   │   │   ├── start.sh           # Start worktree agent
+│   │   │   ├── cleanup.sh         # Cleanup worktree
+│   │   │   └── status.sh          # Monitor agents
+│   │   ├── feature.sh             # Feature management
+│   │   └── ...
+│   └── worktree.yaml              # Worktree configuration
 ├── .cursor/commands/              # Cursor slash commands
 ├── .claude/commands/              # Claude Code slash commands
 ├── init-agent.md                  # AI onboarding guide
@@ -111,6 +116,37 @@ Track features with directory-based structure:
 ./.trellis/scripts/feature.sh archive my-feature # Archive completed
 ```
 
+### 5. Multi-Agent Pipeline (Worktree Support)
+
+Run multiple AI agents in parallel using git worktrees for isolation:
+
+```bash
+# 1. Create feature and set branch
+./.trellis/scripts/feature.sh create my-feature
+./.trellis/scripts/feature.sh set-branch <feature-dir> feature/my-feature
+
+# 2. Start agent in isolated worktree
+./.trellis/scripts/multi-agent/start.sh <feature-dir>
+
+# 3. Monitor agents
+./.trellis/scripts/multi-agent/status.sh --list    # List all agents
+./.trellis/scripts/multi-agent/status.sh --watch <feature>  # Watch logs
+
+# 4. Cleanup when done
+./.trellis/scripts/multi-agent/cleanup.sh <branch-name>
+```
+
+Configure worktree behavior in `.trellis/worktree.yaml`:
+
+```yaml
+worktree_dir: ../worktrees     # Where to create worktrees
+copy:                          # Files to copy to each worktree
+  - .env
+  - .trellis/.developer
+post_create:                   # Commands after worktree creation
+  - pnpm install
+```
+
 ## CLI Commands
 
 ```bash
@@ -133,6 +169,17 @@ This creates a structured, documented workflow where:
 - Work is tracked and auditable
 - Code quality standards are enforced
 - Multiple agents can collaborate
+
+## Roadmap
+
+Planned features for future releases:
+
+| Feature | Description |
+|---------|-------------|
+| **Monorepo Support** | Adapt Trellis for monorepo project structures |
+| **Worktree Isolation** | Each new session uses an isolated git worktree |
+| **Parallel Sessions** | Concurrent execution when multiple tasks are in the queue |
+| **Conversation Persistence** | Persist engineer-AI conversation records |
 
 ## Acknowledgments
 

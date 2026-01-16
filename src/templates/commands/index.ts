@@ -31,10 +31,20 @@ export const claudeStartTemplate: string = readCommand(
   "claude",
   "start.md.txt",
 );
+export const claudeParallelTemplate: string = readCommand(
+  "claude",
+  "parallel.md.txt",
+);
 
 // Cursor-specific commands
 export const cursorStartTemplate: string = readCommand(
   "cursor",
+  "start.md.txt",
+);
+
+// OpenCode-specific commands
+export const opencodeStartTemplate: string = readCommand(
+  "opencode",
   "start.md.txt",
 );
 
@@ -125,12 +135,25 @@ const ALL_TEMPLATES: CommandTemplate[] = [
     description: "Initialize AI agent with project context",
     category: "claude",
   },
+  {
+    name: "parallel",
+    content: claudeParallelTemplate,
+    description: "Multi-agent pipeline in isolated worktrees",
+    category: "claude",
+  },
   // Cursor-specific
   {
     name: "start",
     content: cursorStartTemplate,
     description: "Initialize AI agent with project context",
     category: "cursor",
+  },
+  // OpenCode-specific
+  {
+    name: "start",
+    content: opencodeStartTemplate,
+    description: "Initialize AI agent with project context",
+    category: "opencode",
   },
   // Common
   {

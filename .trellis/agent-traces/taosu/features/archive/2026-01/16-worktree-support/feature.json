@@ -1,0 +1,16 @@
+{
+  "id": "worktree-support",
+  "name": "worktree-support",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "priority": "medium",
+  "developer": "taosu",
+  "createdAt": "2026-01-16",
+  "completedAt": "2026-01-16",
+  "commit": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": "",
+  "branch": "feature/worktree-support"
+}

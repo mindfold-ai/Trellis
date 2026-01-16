@@ -1,0 +1,15 @@
+{
+  "id": "devops-enhancements",
+  "name": "devops-enhancements",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "priority": "medium",
+  "developer": "kleinhe",
+  "createdAt": "2026-01-15",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

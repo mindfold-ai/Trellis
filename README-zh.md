@@ -45,21 +45,24 @@ your-project/
 │   │       │   ├── {day}-{name}/  # Feature 目录
 │   │       │   │   └── feature.json
 │   │       │   └── archive/       # 已完成的 features
-│   │       └── progress-N.md      # Session 记录
+│   │       └── traces-N.md      # Session 记录
 │   ├── structure/                 # 开发规范
 │   │   ├── frontend/              # 前端规范
 │   │   ├── backend/               # 后端规范
 │   │   └── guides/                # 思维指南
-│   └── scripts/                   # 工具脚本
-│       ├── common/                # 共享工具
-│       │   ├── paths.sh           # 路径工具
-│       │   ├── developer.sh       # 开发者管理
-│       │   └── git-context.sh     # Git 上下文
-│       ├── feature.sh             # Feature 管理
-│       ├── add-session.sh         # 记录 session
-│       ├── get-context.sh         # 获取 session 上下文
-│       ├── get-developer.sh       # 获取开发者名称
-│       └── init-developer.sh      # 初始化开发者
+│   ├── scripts/                   # 工具脚本
+│   │   ├── common/                # 共享工具
+│   │   │   ├── paths.sh           # 路径工具
+│   │   │   ├── developer.sh       # 开发者管理
+│   │   │   ├── git-context.sh     # Git 上下文
+│   │   │   └── worktree.sh        # Worktree 工具
+│   │   ├── multi-agent/           # 多 Agent 流水线
+│   │   │   ├── start.sh           # 启动 worktree agent
+│   │   │   ├── cleanup.sh         # 清理 worktree
+│   │   │   └── status.sh          # 监控 agent 状态
+│   │   ├── feature.sh             # Feature 管理
+│   │   └── ...
+│   └── worktree.yaml              # Worktree 配置
 ├── .cursor/commands/              # Cursor slash 命令
 ├── .claude/commands/              # Claude Code slash 命令
 ├── init-agent.md                  # AI 入职指南
@@ -111,6 +114,37 @@ your-project/
 ./.trellis/scripts/feature.sh archive my-feature # 归档已完成的
 ```
 
+### 5. 多 Agent 流水线（Worktree 支持）
+
+使用 git worktree 实现多个 AI agent 并行运行，相互隔离：
+
+```bash
+# 1. 创建 feature 并设置分支
+./.trellis/scripts/feature.sh create my-feature
+./.trellis/scripts/feature.sh set-branch <feature-dir> feature/my-feature
+
+# 2. 在隔离的 worktree 中启动 agent
+./.trellis/scripts/multi-agent/start.sh <feature-dir>
+
+# 3. 监控 agent 状态
+./.trellis/scripts/multi-agent/status.sh --list    # 列出所有 agent
+./.trellis/scripts/multi-agent/status.sh --watch <feature>  # 实时查看日志
+
+# 4. 完成后清理
+./.trellis/scripts/multi-agent/cleanup.sh <branch-name>
+```
+
+在 `.trellis/worktree.yaml` 中配置 worktree 行为：
+
+```yaml
+worktree_dir: ../worktrees     # Worktree 存放目录
+copy:                          # 需要复制到每个 worktree 的文件
+  - .env
+  - .trellis/.developer
+post_create:                   # Worktree 创建后执行的命令
+  - pnpm install
+```
+
 ## CLI 命令
 
 ```bash
@@ -133,6 +167,17 @@ trellis init -s           # 跳过已有文件
 - 工作可追踪、可审计
 - 代码质量标准得到执行
 - 多个 agent 可以协作
+
+## 路线图
+
+计划中的功能：
+
+| 功能 | 描述 |
+|------|------|
+| **Monorepo 支持** | 适配 monorepo 项目结构 |
+| **Worktree 隔离** | 每个新 session 使用独立的 git worktree |
+| **并发 Session** | 需求池有多个任务时并发执行 |
+| **对话持久化** | 工程师与 AI 的对话记录持久化存储 |
 
 ## 致谢
 

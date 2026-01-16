@@ -1,0 +1,153 @@
+# Cross-Layer Check
+
+Check if your changes considered all dimensions. Most bugs come from "didn't think of it", not lack of technical skill.
+
+> **Note**: This is a **post-implementation** safety net. Ideally, read the [Pre-Implementation Checklist](.trellis/structure/guides/pre-implementation-checklist.md) **before** writing code.
+
+---
+
+## Related Documents
+
+| Document | Purpose | Timing |
+|----------|---------|--------|
+| [Pre-Implementation Checklist](.trellis/structure/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
+| [Code Reuse Thinking Guide](.trellis/structure/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
+| **`/check-cross-layer`** (this) | Verification check | **After** implementation |
+
+---
+
+## Execution Steps
+
+### 1. Identify Change Scope
+
+```bash
+git status
+git diff --name-only
+```
+
+### 2. Select Applicable Check Dimensions
+
+Based on your change type, execute relevant checks below:
+
+---
+
+## Dimension A: Cross-Layer Data Flow (Required when 3+ layers)
+
+**Trigger**: Changes involve 3 or more layers
+
+| Layer | Identifier |
+|-------|------------|
+| API Route | `routes/`, `api/` |
+| Service | `services/`, `lib/` |
+| Database | `db/`, `schema` |
+| Hook | `hooks/`, `use*.ts` |
+| Component | `components/`, `*.tsx` |
+| Utility | `utils/`, `lib/` |
+
+**Checklist**:
+- [ ] Read flow: Database -> Service -> API -> Hook -> Component
+- [ ] Write flow: Component -> Hook -> API -> Service -> Database
+- [ ] Types correctly passed between layers?
+- [ ] Errors properly propagated to UI?
+- [ ] Loading states handled at each layer?
+
+**Detailed Guide**: `.trellis/structure/guides/cross-layer-thinking-guide.md`
+
+---
+
+## Dimension B: Code Reuse (Required when modifying constants/config)
+
+**Trigger**: 
+- Modifying UI constants (label, icon, color)
+- Modifying any hardcoded value
+- Seeing similar code in multiple places
+- Creating a new utility/helper function
+- Just finished batch modifications across files
+
+**Checklist**:
+- [ ] Search first: How many places define this value?
+  ```bash
+  grep -r "value-to-change" --include="*.ts" --include="*.tsx"
+  ```
+- [ ] If 2+ places define same value -> Should extract to shared constant
+- [ ] After modification, all usage sites updated?
+- [ ] If creating utility: Does similar utility already exist?
+
+**Detailed Guide**: `.trellis/structure/guides/code-reuse-thinking-guide.md`
+
+---
+
+## Dimension B2: New Utility Functions
+
+**Trigger**: About to create a new utility/helper function
+
+**Checklist**:
+- [ ] Search for existing similar utilities first
+  ```bash
+  grep -r "functionNamePattern" --include="*.ts"
+  ```
+- [ ] If similar exists, can you extend it instead?
+- [ ] If creating new, is it in the right location (shared vs domain-specific)?
+
+---
+
+## Dimension B3: After Batch Modifications
+
+**Trigger**: Just modified similar patterns in multiple files
+
+**Checklist**:
+- [ ] Did you check ALL files with similar patterns?
+  ```bash
+  grep -r "patternYouChanged" --include="*.ts" --include="*.tsx"
+  ```
+- [ ] Any files missed that should also be updated?
+- [ ] Should this pattern be abstracted to prevent future duplication?
+
+---
+
+## Dimension C: Import Paths (Required when creating new files)
+
+**Trigger**: Creating new .ts/.tsx files
+
+**Checklist**:
+- [ ] Using correct path aliases?
+- [ ] No circular imports?
+- [ ] Relative vs absolute paths consistent with project convention?
+
+---
+
+## Dimension D: Same-Layer Consistency
+
+**Trigger**: 
+- Modifying display logic in a component
+- Same domain concept used in multiple components
+
+**Checklist**:
+- [ ] Search for other components using same concept
+  ```bash
+  grep -r "ConceptName" --include="*.tsx"
+  ```
+- [ ] Are these components' displays consistent?
+- [ ] Should they share configuration?
+
+---
+
+## Common Issues Quick Reference
+
+| Issue | Root Cause | Prevention |
+|-------|------------|------------|
+| Changed one place, missed others | Didn't search impact scope | `grep` before changing |
+| Data lost at some layer | Didn't check data flow | Trace data source to destination |
+| Type mismatch | Cross-layer types inconsistent | Use shared types |
+| UI inconsistent | Same concept in multiple places | Extract shared constants |
+| Similar utility exists | Didn't search first | Search before creating |
+| Batch fix incomplete | Didn't verify all occurrences | grep after fixing |
+
+---
+
+## Output
+
+Report:
+1. Which dimensions your changes involve
+2. Check results for each dimension
+3. Issues found and fix suggestions

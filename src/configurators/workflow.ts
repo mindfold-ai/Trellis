@@ -8,6 +8,13 @@ import {
   commonPathsScript,
   commonDeveloperScript,
   commonGitContextScript,
+  commonWorktreeScript,
+  // Multi-agent scripts
+  multiAgentStartScript,
+  multiAgentCleanupScript,
+  multiAgentStatusScript,
+  // Configuration templates
+  worktreeYamlTemplate,
   // Main scripts
   initDeveloperScript,
   getDeveloperScript,
@@ -62,6 +69,8 @@ interface DocDefinition {
 export interface WorkflowOptions {
   /** Detected or specified project type */
   projectType: ProjectType;
+  /** Enable multi-agent pipeline with worktree support */
+  multiAgent?: boolean;
 }
 
 /**
@@ -75,6 +84,7 @@ export async function createWorkflowStructure(
   options?: WorkflowOptions,
 ): Promise<void> {
   const projectType = options?.projectType ?? "fullstack";
+  const multiAgent = options?.multiAgent ?? false;
 
   // Create base directories (always created)
   const baseDirs = [
@@ -99,12 +109,22 @@ export async function createWorkflowStructure(
     baseDirs.push(`${PATHS.STRUCTURE}/backend`);
   }
 
+  // Add multi-agent directory if enabled
+  if (multiAgent) {
+    baseDirs.push(`${PATHS.SCRIPTS}/multi-agent`);
+  }
+
   for (const dir of baseDirs) {
     ensureDir(path.join(cwd, dir));
   }
 
   // Create scripts
   await createScripts(cwd);
+
+  // Create multi-agent scripts if enabled
+  if (multiAgent) {
+    await createMultiAgentScripts(cwd);
+  }
 
   // Create agent-traces index
   await createAgentProgressIndex(cwd);
@@ -146,6 +166,33 @@ async function createScripts(cwd: string): Promise<void> {
     const scriptPath = path.join(cwd, PATHS.SCRIPTS, script.name);
     await writeFile(scriptPath, script.content, { executable: true });
   }
+}
+
+async function createMultiAgentScripts(cwd: string): Promise<void> {
+  // Worktree utility (to be sourced by multi-agent scripts)
+  await writeFile(
+    path.join(cwd, PATHS.SCRIPTS, "common/worktree.sh"),
+    commonWorktreeScript,
+    { executable: true },
+  );
+
+  // Multi-agent scripts
+  const multiAgentScripts: ScriptDefinition[] = [
+    { name: "multi-agent/start.sh", content: multiAgentStartScript },
+    { name: "multi-agent/cleanup.sh", content: multiAgentCleanupScript },
+    { name: "multi-agent/status.sh", content: multiAgentStatusScript },
+  ];
+
+  for (const script of multiAgentScripts) {
+    const scriptPath = path.join(cwd, PATHS.SCRIPTS, script.name);
+    await writeFile(scriptPath, script.content, { executable: true });
+  }
+
+  // Worktree configuration (in workflow root, not scripts)
+  await writeFile(
+    path.join(cwd, DIR_NAMES.WORKFLOW, "worktree.yaml"),
+    worktreeYamlTemplate,
+  );
 }
 
 async function createAgentProgressIndex(cwd: string): Promise<void> {

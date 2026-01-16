@@ -7,12 +7,12 @@
 /**
  * Supported AI coding tools
  */
-export type AITool = "claude-code" | "cursor";
+export type AITool = "claude-code" | "cursor" | "opencode";
 
 /**
  * Template directory categories
  */
-export type TemplateDir = "common" | "claude" | "cursor";
+export type TemplateDir = "common" | "claude" | "cursor" | "opencode";
 
 /**
  * Configuration for an AI tool
@@ -35,6 +35,10 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
   cursor: {
     name: "Cursor",
     templateDirs: ["common", "cursor"],
+  },
+  opencode: {
+    name: "OpenCode",
+    templateDirs: ["common", "opencode"],
   },
 };
 

@@ -1,0 +1,38 @@
+# Worktree Configuration for Multi-Agent Pipeline
+# Used for worktree initialization in multi-agent workflows
+#
+# All paths are relative to project root
+
+#-------------------------------------------------------------------------------
+# Paths
+#-------------------------------------------------------------------------------
+
+# Worktree storage directory (relative to project root)
+worktree_dir: ../worktrees
+
+#-------------------------------------------------------------------------------
+# Files to Copy
+#-------------------------------------------------------------------------------
+
+# Files to copy to each worktree (each worktree needs independent copy)
+# These files contain sensitive info or need worktree-independent config
+copy:
+  - .trellis/.developer
+
+#-------------------------------------------------------------------------------
+# Post-Create Hooks
+#-------------------------------------------------------------------------------
+
+# Commands to run after creating worktree
+# Executed in worktree directory, in order, abort on failure
+post_create:
+  - pnpm install --frozen-lockfile
+
+#-------------------------------------------------------------------------------
+# Pre-Merge Checks
+#-------------------------------------------------------------------------------
+
+# Pre-merge validation (used by create-pr.sh)
+pre_merge:
+  - pnpm typecheck
+  - pnpm lint

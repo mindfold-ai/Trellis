@@ -11,6 +11,11 @@ import {
   configureClaudeHooks,
 } from "../configurators/claude.js";
 import { configureCursor } from "../configurators/cursor.js";
+// TODO: Re-enable when OpenCode support is stable
+// import {
+//   configureOpenCode,
+//   configureOpenCodeAgents,
+// } from "../configurators/opencode.js";
 import { createWorkflowStructure } from "../configurators/workflow.js";
 import { PATHS } from "../constants/paths.js";
 import {
@@ -31,6 +36,7 @@ import {
 interface InitOptions {
   cursor?: boolean;
   claude?: boolean;
+  // opencode?: boolean;  // TODO: Re-enable when OpenCode support is stable
   yes?: boolean;
   user?: string;
   force?: boolean;
@@ -122,6 +128,10 @@ export async function init(options: InitOptions): Promise<void> {
     if (options.claude) {
       tools.push("claude");
     }
+    // TODO: Re-enable when OpenCode support is stable
+    // if (options.opencode) {
+    //   tools.push("opencode");
+    // }
     // Treat unknown as fullstack
     if (detectedType === "unknown") {
       projectType = "fullstack";
@@ -143,6 +153,8 @@ export async function init(options: InitOptions): Promise<void> {
         choices: [
           { name: "Cursor", value: "cursor", checked: true },
           { name: "Claude Code", value: "claude", checked: true },
+          // TODO: Re-enable when OpenCode support is stable
+          // { name: "OpenCode", value: "opencode", checked: false },
         ],
       },
     ];
@@ -157,7 +169,9 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   // Auto-enable agents when Claude is selected
-  const enableAgents = tools.includes("claude");
+  const enableClaudeAgents = tools.includes("claude");
+  // TODO: Re-enable when OpenCode support is stable
+  // const enableOpenCodeAgents = tools.includes("opencode");
 
   if (tools.length === 0) {
     console.log(
@@ -172,8 +186,9 @@ export async function init(options: InitOptions): Promise<void> {
   );
 
   // Create workflow structure with project type
+  // Multi-agent is enabled by default
   console.log(chalk.blue("📁 Creating workflow structure..."));
-  await createWorkflowStructure(cwd, { projectType });
+  await createWorkflowStructure(cwd, { projectType, multiAgent: true });
 
   // Configure selected tools
   if (tools.includes("cursor")) {
@@ -186,7 +201,7 @@ export async function init(options: InitOptions): Promise<void> {
     await configureClaude(cwd);
 
     // Configure Multi-Agent Pipeline if enabled
-    if (enableAgents) {
+    if (enableClaudeAgents) {
       console.log(chalk.blue("🤖 Configuring Multi-Agent Pipeline..."));
       console.log(chalk.gray("   - Creating agent configurations..."));
       await configureClaudeAgents(cwd);
@@ -194,6 +209,18 @@ export async function init(options: InitOptions): Promise<void> {
       await configureClaudeHooks(cwd);
     }
   }
+
+  // TODO: Re-enable when OpenCode support is stable
+  // if (tools.includes("opencode")) {
+  //   console.log(chalk.blue("📝 Configuring OpenCode commands..."));
+  //   await configureOpenCode(cwd);
+  //
+  //   // Configure OpenCode agents
+  //   if (enableOpenCodeAgents) {
+  //     console.log(chalk.blue("🤖 Configuring OpenCode agents..."));
+  //     await configureOpenCodeAgents(cwd);
+  //   }
+  // }
 
   // Create root files (skip if exists)
   await createRootFiles(cwd);
