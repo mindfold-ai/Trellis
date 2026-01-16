@@ -1,6 +1,6 @@
-# Agent Progress - taosu (Part 1)
+# Agent Traces - taosu (Part 1)
 
-> AI development session progress tracking
+> AI development session traces
 > Started: 2026-01-16
 
 ---

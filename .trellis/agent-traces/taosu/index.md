@@ -1,13 +1,13 @@
-# Agent Progress Index - taosu
+# Agent Traces Index - taosu
 
-> Progress tracking for AI development sessions.
+> Traces tracking for AI development sessions.
 
 ---
 
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `progress-1.md`
+- **Active File**: `traces-1.md`
 - **Total Sessions**: 2
 - **Last Active**: 2026-01-16
 <!-- @@@/auto:current-status -->
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `progress-1.md` | ~143 | Active |
+| `traces-1.md` | ~143 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -37,6 +37,6 @@
 
 ## Notes
 
-- Sessions are appended to progress files
-- New progress file created when current exceeds 2000 lines
+- Sessions are appended to traces files
+- New traces file created when current exceeds 2000 lines
 - Use `add-session.sh` to record sessions

@@ -1,6 +1,6 @@
-# Agent Progress Index - kleinhe
+# Agent Traces Index - kleinhe
 
-> Progress tracking for AI development sessions.
+> Traces tracking for AI development sessions.
 
 ---
 
@@ -38,6 +38,6 @@
 
 ## Notes
 
-- Sessions are appended to progress files
-- New progress file created when current exceeds 2000 lines
+- Sessions are appended to traces files
+- New traces file created when current exceeds 2000 lines
 - Use `add-session.sh` to record sessions
