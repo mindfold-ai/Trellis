@@ -141,3 +141,57 @@ Enhanced the multi-agent pipeline system with new commands and improved document
 ### Next Steps
 
 - None - feature complete
+
+## Session 3: Rename Progress to Traces
+
+**Date**: 2026-01-16
+**Feature**: Rename Progress to Traces
+
+### Summary
+
+Unified naming from progress-N.md to traces-N.md across the codebase
+
+### Main Changes
+
+## Summary
+
+Renamed all progress-related files and references to traces for consistency with the agent-traces directory naming.
+
+## Changes
+
+| Category | Files | Description |
+|----------|-------|-------------|
+| Shell Scripts | add-session.sh, developer.sh, git-context.sh, paths.sh | Renamed functions, updated comments and output |
+| Script Templates | src/templates/scripts/*.txt | Matching changes to templates |
+| Markdown Templates | src/templates/markdown/*.txt | Updated titles and descriptions |
+| Project Docs | .trellis/workflow.md, agent-traces/index.md | Updated references |
+| Developer Data | taosu/, kleinhe/ traces files | Renamed progress-1.md to traces-1.md |
+
+## Key Changes
+
+- `create_new_progress_file()` → `create_new_traces_file()`
+- JSON key `"progress"` → `"traces"` in git-context output
+- Section header `## PROGRESS FILE` → `## TRACES FILE`
+- File naming `progress-N.md` → `traces-N.md` (starting from 1)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b33fdce` | (see git log) |
+| `caa3f3c` | (see git log) |
+| `7c7c7dd` | (see git log) |
+| `bb139cd` | (see git log) |
+| `139e7ce` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
