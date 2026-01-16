@@ -18,7 +18,7 @@ agent-traces/
     |-- features/         # Feature files
     |   |-- *.json        # Active features
     |   \-- archive/      # Archived features by month
-    \-- traces-N.md     # Traces files (sequential: 1, 2, 3...)
+    \-- traces-N.md     # Progress files (sequential: 1, 2, 3...)
 ```
 
 ---
@@ -43,7 +43,7 @@ Run the initialization script:
 
 This will:
 1. Create your identity file (gitignored)
-2. Create your traces directory
+2. Create your progress directory
 3. Create your personal index
 4. Create initial traces file
 
@@ -121,4 +121,3 @@ Use this template when recording sessions:
 ---
 
 **Language**: All documentation must be written in **English**.
-
