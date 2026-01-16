@@ -136,6 +136,17 @@ This creates a structured, documented workflow where:
 - Code quality standards are enforced
 - Multiple agents can collaborate
 
+## Roadmap
+
+Planned features for future releases:
+
+| Feature | Description |
+|---------|-------------|
+| **Monorepo Support** | Adapt Trellis for monorepo project structures |
+| **Worktree Isolation** | Each new session uses an isolated git worktree |
+| **Parallel Sessions** | Concurrent execution when multiple tasks are in the queue |
+| **Conversation Persistence** | Persist engineer-AI conversation records |
+
 ## Acknowledgments
 
 Trellis is built upon ideas and inspirations from:
