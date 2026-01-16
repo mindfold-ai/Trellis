@@ -182,8 +182,9 @@ export async function init(options: InitOptions): Promise<void> {
   );
 
   // Create workflow structure with project type
+  // Multi-agent is enabled by default
   console.log(chalk.blue("📁 Creating workflow structure..."));
-  await createWorkflowStructure(cwd, { projectType });
+  await createWorkflowStructure(cwd, { projectType, multiAgent: true });
 
   // Configure selected tools
   if (tools.includes("cursor")) {
