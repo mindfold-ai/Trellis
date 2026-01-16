@@ -77,3 +77,67 @@ Tested full pipeline in `/tmp/test`:
 ### Next Steps
 
 - None - feature complete
+
+## Session 2: Multi-Agent Pipeline Enhancement
+
+**Date**: 2026-01-16
+**Feature**: Multi-Agent Pipeline Enhancement
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Enhanced the multi-agent pipeline system with new commands and improved documentation.
+
+## Changes
+
+| Category | Description |
+|----------|-------------|
+| feature.sh | Added `scope`, `set-scope`, `set-branch`, `create-pr` commands |
+| dispatch agent | Added `create-pr` as phase 4 action |
+| /parallel | New slash command for worktree-based parallel development |
+| /start | Converted to English, added workflow docs and research agent delegation |
+| multi-agent scripts | Added worktree.sh and worktree.yaml configuration |
+| agent traces | Updated session tracking and feature archiving |
+
+## Key Files
+
+- `src/templates/scripts/feature.sh.txt` - Core feature management
+- `src/templates/commands/claude/parallel.md.txt` - /parallel command
+- `src/templates/commands/claude/start.md.txt` - /start command
+- `src/templates/agents/bodies/dispatch.md` - Dispatch agent
+- `.trellis/worktree.yaml` - Worktree configuration
+- `.trellis/scripts/multi-agent/` - Multi-agent scripts
+
+## Notes
+
+- All sub agent calls now use opus model
+- Clear [AI] vs [USER] operation markers in documentation
+- Separated /start (single process) from /parallel (multi-process worktree)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6414bf4` | (see git log) |
+| `0411d10` | (see git log) |
+| `9ea5840` | (see git log) |
+| `3c3cdb7` | (see git log) |
+| `019613e` | (see git log) |
+| `cee639d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
