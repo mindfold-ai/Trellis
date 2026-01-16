@@ -11,7 +11,7 @@ Use the `/start` command when starting a new session to:
 Use `@/.trellis/` to learn:
 - Development workflow (`workflow.md`)
 - Project structure guidelines (`structure/`)
-- Progress tracking (`agent-traces/`)
+- Session traces (`agent-traces/`)
 
 Keep this managed block so 'trellis update' can refresh the instructions.
 
