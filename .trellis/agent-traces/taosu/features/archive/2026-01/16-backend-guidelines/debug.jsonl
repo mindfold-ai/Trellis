@@ -1,0 +1,4 @@
+{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}
+{"file": "src/cli/index.ts", "reason": "CLI入口和顶层错误处理"}
+{"file": "src/commands/init.ts", "reason": "主要业务逻辑"}
+{"file": "src/utils/project-detector.ts", "reason": "项目检测逻辑"}

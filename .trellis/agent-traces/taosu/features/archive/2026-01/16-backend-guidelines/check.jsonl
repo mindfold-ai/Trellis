@@ -1,0 +1,6 @@
+{"file": ".claude/commands/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}
+{"file": "eslint.config.js", "reason": "ESLint规则检查"}
+{"file": "tsconfig.json", "reason": "TypeScript配置"}
+{"file": "src/cli/index.ts", "reason": "错误处理模式"}
+{"file": "src/commands/init.ts", "reason": "日志输出模式"}

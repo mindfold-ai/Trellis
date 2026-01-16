@@ -195,3 +195,71 @@ Renamed all progress-related files and references to traces for consistency with
 ### Next Steps
 
 - None - feature complete
+
+## Session 4: Multi-Agent Pipeline: Backend Guidelines + Script Improvements
+
+**Date**: 2026-01-16
+**Feature**: Multi-Agent Pipeline: Backend Guidelines + Script Improvements
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Session Summary
+
+本次会话通过 Multi-Agent Pipeline 完成了两项主要工作：
+
+### 1. Backend Guidelines 文档 (PR #3)
+
+使用 worktree agent 自动填充了后端开发规范：
+
+| 文件 | 内容 |
+|------|------|
+| `directory-structure.md` | 目录结构和命名规范 |
+| `error-handling.md` | 错误处理模式 |
+| `logging-guidelines.md` | chalk 颜色约定和输出规范 |
+| `quality-guidelines.md` | TypeScript/ESLint 规则 |
+
+### 2. Multi-Agent 脚本改进 (PR #4)
+
+发现并修复了脚本问题：
+
+**status.sh 增强**:
+- 默认输出增加 phase 信息、运行时长、修改文件数
+- 从 worktree 读取 feature.json 获取实时状态
+
+**cleanup.sh 修复**:
+- 添加非交互模式检测 `[ -t 0 ]`
+- 非交互模式下给出明确错误提示
+
+### Workflow Insight
+
+- 使用脚本时发现不足，立即改进并同步到模板
+- 模板文件 (`src/templates/`) 是分发给用户的，需要与运行时脚本保持同步
+
+**Updated Files**:
+- `.trellis/structure/backend/*.md` (5 files)
+- `.trellis/scripts/multi-agent/status.sh`
+- `.trellis/scripts/multi-agent/cleanup.sh`
+- `src/templates/scripts/multi-agent/*.txt` (2 files)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cf371da` | (see git log) |
+| `3f14689` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete

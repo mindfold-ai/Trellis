@@ -1,0 +1,39 @@
+{
+  "id": "backend-guidelines",
+  "name": "backend-guidelines",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": "docs",
+  "priority": "medium",
+  "developer": "taosu",
+  "createdAt": "2026-01-16",
+  "completedAt": "2026-01-16",
+  "branch": "feature/backend-guidelines",
+  "base_branch": "feat/structure",
+  "worktree_path": "/Users/taosu/workspace/company/mindfold/product/runtime/third/trellis-worktrees/feature/backend-guidelines",
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

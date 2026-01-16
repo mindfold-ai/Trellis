@@ -8,7 +8,7 @@
 #-------------------------------------------------------------------------------
 
 # Worktree storage directory (relative to project root)
-worktree_dir: ../worktrees
+worktree_dir: ../trellis-worktrees
 
 #-------------------------------------------------------------------------------
 # Files to Copy
