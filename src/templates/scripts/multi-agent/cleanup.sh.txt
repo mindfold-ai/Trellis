@@ -181,11 +181,17 @@ cleanup_worktree() {
 
   # Confirmation
   if [ "$SKIP_CONFIRM" != "true" ]; then
-    read -p "Remove this worktree? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      log_info "Aborted"
-      exit 0
+    # Check if running interactively
+    if [ -t 0 ]; then
+      read -p "Remove this worktree? [y/N] " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Aborted"
+        exit 0
+      fi
+    else
+      log_error "Non-interactive mode detected. Use -y to skip confirmation."
+      exit 1
     fi
   fi
 
@@ -243,11 +249,16 @@ cmd_merged() {
   echo ""
 
   if [ "$SKIP_CONFIRM" != "true" ]; then
-    read -p "Remove these merged worktrees? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      log_info "Aborted"
-      exit 0
+    if [ -t 0 ]; then
+      read -p "Remove these merged worktrees? [y/N] " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Aborted"
+        exit 0
+      fi
+    else
+      log_error "Non-interactive mode detected. Use -y to skip confirmation."
+      exit 1
     fi
   fi
 
@@ -279,12 +290,17 @@ cmd_all() {
   echo ""
 
   if [ "$SKIP_CONFIRM" != "true" ]; then
-    echo -e "${RED}WARNING: This will remove ALL worktrees!${NC}"
-    read -p "Are you sure? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      log_info "Aborted"
-      exit 0
+    if [ -t 0 ]; then
+      echo -e "${RED}WARNING: This will remove ALL worktrees!${NC}"
+      read -p "Are you sure? [y/N] " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Aborted"
+        exit 0
+      fi
+    else
+      log_error "Non-interactive mode detected. Use -y to skip confirmation."
+      exit 1
     fi
   fi
 

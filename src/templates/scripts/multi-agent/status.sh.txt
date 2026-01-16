@@ -174,6 +174,69 @@ cmd_list() {
   done
 }
 
+# Calculate elapsed time from ISO timestamp
+calc_elapsed() {
+  local started="$1"
+  if [ -z "$started" ] || [ "$started" = "null" ]; then
+    echo "N/A"
+    return
+  fi
+
+  # Parse started time (handle both formats: with and without timezone)
+  local start_epoch
+  if command -v gdate &>/dev/null; then
+    start_epoch=$(gdate -d "$started" +%s 2>/dev/null)
+  else
+    # Try to parse ISO format
+    start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${started%%+*}" +%s 2>/dev/null || date -d "$started" +%s 2>/dev/null)
+  fi
+
+  if [ -z "$start_epoch" ]; then
+    echo "N/A"
+    return
+  fi
+
+  local now_epoch=$(date +%s)
+  local elapsed=$((now_epoch - start_epoch))
+
+  if [ $elapsed -lt 60 ]; then
+    echo "${elapsed}s"
+  elif [ $elapsed -lt 3600 ]; then
+    echo "$((elapsed / 60))m $((elapsed % 60))s"
+  else
+    echo "$((elapsed / 3600))h $((elapsed % 3600 / 60))m"
+  fi
+}
+
+# Get phase info from feature.json
+get_phase_info() {
+  local feature_json="$1"
+  if [ ! -f "$feature_json" ]; then
+    echo "N/A"
+    return
+  fi
+
+  local current_phase=$(jq -r '.current_phase // 0' "$feature_json")
+  local total_phases=$(jq -r '.next_action | length // 0' "$feature_json")
+  local action_name=$(jq -r --argjson phase "$current_phase" '.next_action[$phase - 1].action // "pending"' "$feature_json" 2>/dev/null)
+
+  if [ "$current_phase" = "0" ] || [ "$current_phase" = "null" ]; then
+    echo "0/${total_phases} (pending)"
+  else
+    echo "${current_phase}/${total_phases} (${action_name})"
+  fi
+}
+
+# Count modified files in worktree
+count_modified_files() {
+  local worktree="$1"
+  if [ -d "$worktree" ]; then
+    cd "$worktree" && git status --short 2>/dev/null | wc -l | tr -d ' '
+  else
+    echo "0"
+  fi
+}
+
 cmd_summary() {
   ensure_developer
 
@@ -183,11 +246,25 @@ cmd_summary() {
     exit 0
   fi
 
-  echo -e "${BLUE}=== Feature Summary ===${NC}"
-  echo ""
-
   AGENTS_DIR=$(get_agents_dir)
   REGISTRY_FILE="${AGENTS_DIR}/registry.json"
+
+  # Count running agents
+  local running_count=0
+  local total_agents=0
+  if [ -f "$REGISTRY_FILE" ]; then
+    total_agents=$(jq -r '.agents | length' "$REGISTRY_FILE" 2>/dev/null || echo "0")
+    while read -r pid; do
+      is_running "$pid" && ((running_count++))
+    done < <(jq -r '.agents[].pid' "$REGISTRY_FILE" 2>/dev/null)
+  fi
+
+  echo -e "${BLUE}=== Multi-Agent Status ===${NC}"
+  echo -e "  Agents: ${GREEN}${running_count}${NC} running / ${total_agents} registered"
+  echo ""
+
+  # Check if any agents are running and show detailed view
+  local has_running_agent=false
 
   for d in "$features_dir"/*/; do
     [ ! -d "$d" ] && continue
@@ -196,29 +273,69 @@ cmd_summary() {
     local name=$(basename "$d")
     local feature_json="$d/feature.json"
     local status="unknown"
-    local agent_status=""
 
     if [ -f "$feature_json" ]; then
       status=$(jq -r '.status // "unknown"' "$feature_json")
     fi
 
     # Check agent status
+    local agent_info=""
+    local pid=""
+    local worktree=""
+    local started=""
+    local is_agent_running=false
+
     if [ -f "$REGISTRY_FILE" ]; then
-      local agent_info=$(jq -r --arg name "$name" '.agents[] | select(.feature_dir | contains($name))' "$REGISTRY_FILE" 2>/dev/null)
+      agent_info=$(jq -r --arg name "$name" '.agents[] | select(.feature_dir | contains($name))' "$REGISTRY_FILE" 2>/dev/null)
       if [ -n "$agent_info" ] && [ "$agent_info" != "null" ]; then
-        local pid=$(echo "$agent_info" | jq -r '.pid')
+        pid=$(echo "$agent_info" | jq -r '.pid')
+        worktree=$(echo "$agent_info" | jq -r '.worktree_path')
+        started=$(echo "$agent_info" | jq -r '.started_at')
         if is_running "$pid"; then
-          agent_status=" ${GREEN}[agent running]${NC}"
-        else
-          agent_status=" ${RED}[agent stopped]${NC}"
+          is_agent_running=true
+          has_running_agent=true
         fi
       fi
     fi
 
     local color=$(status_color "$status")
-    echo -e "  ${color}●${NC} $name ($status)$agent_status"
+
+    if [ "$is_agent_running" = true ]; then
+      # Detailed view for running agents
+      # Read feature.json from worktree (has live phase info)
+      local feature_dir_rel=$(echo "$agent_info" | jq -r '.feature_dir')
+      local worktree_feature_json="$worktree/$feature_dir_rel/feature.json"
+      local phase_source="$feature_json"
+      [ -f "$worktree_feature_json" ] && phase_source="$worktree_feature_json"
+
+      local phase_info=$(get_phase_info "$phase_source")
+      local elapsed=$(calc_elapsed "$started")
+      local modified=$(count_modified_files "$worktree")
+      local branch=$(jq -r '.branch // "N/A"' "$phase_source" 2>/dev/null)
+
+      echo -e "${GREEN}▶${NC} ${CYAN}${name}${NC} ${GREEN}[running]${NC}"
+      echo -e "  Phase:    ${phase_info}"
+      echo -e "  Elapsed:  ${elapsed}"
+      echo -e "  Branch:   ${DIM}${branch}${NC}"
+      echo -e "  Modified: ${modified} file(s)"
+      echo -e "  PID:      ${DIM}${pid}${NC}"
+      echo ""
+    elif [ -n "$agent_info" ] && [ "$agent_info" != "null" ]; then
+      # Stopped agent
+      echo -e "${RED}○${NC} ${name} ${RED}[stopped]${NC}"
+      echo -e "  ${DIM}PID ${pid} is no longer running${NC}"
+      echo ""
+    else
+      # No agent, just show status
+      echo -e "  ${color}●${NC} ${name} (${status})"
+    fi
   done
 
+  if [ "$has_running_agent" = true ]; then
+    echo -e "${DIM}─────────────────────────────────────${NC}"
+    echo -e "${DIM}Use --detail <name> for more info${NC}"
+    echo -e "${DIM}Use --log <name> to see recent activity${NC}"
+  fi
   echo ""
 }
 
