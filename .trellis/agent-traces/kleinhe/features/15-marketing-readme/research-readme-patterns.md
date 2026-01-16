@@ -309,22 +309,261 @@ npx @mindfoldhq/trellis init
 
 ---
 
-## 附录：README 结构模板
+---
+
+## Feature 9: GitHub vs 官网差异（新增）
+
+### 调研发现
+
+| 项目 | GitHub 重点 | 官网重点 |
+|------|-------------|----------|
+| Aider | 技术细节、安装命令 | 用户数据（4.1M 安装）、40+ 推荐、88% 自迭代 |
+| Cline | 功能截图、企业版入口 | 使用场景（Understand/Refactor/Automate）、企业客户 logo |
+| Continue | 模型支持列表 | 工作流概念（Mission Control/CLI/IDE）、集成场景 |
+| OpenCode | 键盘快捷键、详细表格 | 隐私、70K stars、650K 月活 |
+
+### 关键洞察
+
+1. **官网讲"为什么"，GitHub 讲"怎么做"**
+2. **官网用数据说话**：stars、安装量、用户数
+3. **官网有使用场景**：而非功能罗列
+4. **官网有社会证明**：知名公司 logo、用户引言
+
+---
+
+## Feature 10: 新兴项目模式（新增）
+
+### Superpowers
+
+**Slogan**: "An agentic skills framework & software development methodology that works"
+
+**亮点**：
+- 强调"自动触发"："because the skills trigger automatically, you don't need to do anything special"
+- 七阶段工作流明确定义
+- 多平台支持（Claude Code、Codex、OpenCode）
+
+**启发**：强调"无感接入"，用户不需要改变习惯
+
+### Dev Browser
+
+**定位**：Claude Code 的浏览器自动化插件
+
+**亮点**：
+- 使用**基准测试对比表**展示优势
+- 三大功能特点简洁明了
+- 强调"AI 友好"的设计
+
+**启发**：用数据对比而非文字描述来展示优势
+
+### Conductor
+
+**Slogan**: "Run a team of coding agents on your Mac"
+
+**亮点**：
+- 并行 + 隔离 + 可视化
+- 知名公司用户（Linear、Vercel、Notion、Stripe）
+- "new productivity unlock" 用户引言
+
+**启发**：强调"团队协作"视角
+
+### Planning with Files
+
+**Slogan**: "Work like Manus" — 借用 $2B 收购的知名度
+
+**亮点**：
+- 三文件模式清晰简洁（task_plan.md、findings.md、progress.md）
+- 类比："Context Window = RAM，Filesystem = Disk"
+- 解决 AI 的"注意力"和"错误持久化"问题
+
+**启发**：借用知名方法论/公司背书、用简单类比解释复杂概念
+
+---
+
+---
+
+## Feature 11: GitHub Trending Slogan 分析（新增）
+
+### 数据来源
+
+2026-01-16 GitHub Trending 项目（日榜 + 月榜 Top 20）
+
+### Slogan 分析表
+
+| 项目 | Slogan | 词数 | 评分 | 分析 |
+|------|--------|------|------|------|
+| OpenCode | "The open source coding agent." | 5 | ⭐⭐⭐⭐⭐ | 完美的定冠词定位："THE"，简洁明确 |
+| Puck | "The visual editor for React" | 5 | ⭐⭐⭐⭐⭐ | 同样用 "THE"，极简，精准定位 |
+| Beads | "A memory upgrade for your coding agent" | 7 | ⭐⭐⭐⭐ | 比喻（memory upgrade），有创意 |
+| Exo | "Run your own AI cluster at home with everyday devices" | 10 | ⭐⭐⭐⭐ | 场景化，动词开头，画面感 |
+| Vibe-Kanban | "Get 10X more out of Claude Code, Codex or any coding agent" | 12 | ⭐⭐⭐⭐ | 量化价值（10X），但稍长 |
+| Memos | "An open-source, self-hosted note-taking service" | 6 | ⭐⭐⭐⭐ | 三属性堆叠，清晰但无亮点 |
+| Superpowers | "An agentic skills framework & software development methodology that works." | 10 | ⭐⭐⭐ | 太长，"that works" 是亮点但前面太啰嗦 |
+| Claude Code | "An agentic terminal tool for faster coding through natural language" | 10 | ⭐⭐⭐ | 清晰但普通，没有记忆点 |
+| Personal_AI_Infrastructure | "Personal AI Infrastructure for upgrading humans." | 5 | ⭐⭐⭐ | "upgrading humans" 有点奇怪 |
+| Handy | "A free, open source, and extensible speech-to-text application that works completely offline." | 13 | ⭐⭐ | 太长，堆砌太多形容词 |
+| agents.md | "AGENTS.md — a simple, open format for guiding coding agents" | 9 | ⭐⭐⭐⭐ | 自解释，"simple, open format" 好 |
+
+### 模式总结
+
+#### 高分 Slogan 共同特点
+
+1. **"THE" 定冠词策略**
+   - "THE open source coding agent" → 暗示唯一性/权威性
+   - "THE visual editor for React" → 暗示这是最好/唯一的选择
+   - 适用于：有明确定位且自信的项目
+
+2. **比喻/类比**
+   - "A memory upgrade for your coding agent" → 把抽象概念比作具体事物
+   - 效果：让复杂功能秒懂
+
+3. **量化价值**
+   - "Get 10X more out of..." → 具体数字比"更好"更有说服力
+   - 适用于：有可量化效果的工具
+
+4. **场景化描述**
+   - "Run your own AI cluster at home..." → 画面感，用户能想象自己使用
+   - 动词开头 + 具体场景
+
+5. **自解释性**
+   - "a simple, open format for guiding coding agents" → 不需要额外解释
+   - 关键词组合说明 what + for whom
+
+#### 低分 Slogan 共同问题
+
+1. **堆砌形容词**：free, open source, extensible... → 失去重点
+2. **过长**：超过 8 词开始难记
+3. **模糊**："for upgrading humans" → 意义不明
+4. **无亮点**："an agentic terminal tool" → 能记住但不想点进去
+
+### Trellis Slogan 新候选
+
+基于上述分析：
+
+| 候选 | 词数 | 策略 | 评价 |
+|------|------|------|------|
+| **"The workflow layer for AI coding"** | 6 | THE 定冠词 | 推荐，简洁+权威 |
+| "A structure for your AI agents" | 6 | 直接 | 清晰但普通 |
+| "Give your AI agents memory" | 5 | 比喻 | 形象，但可能误解 |
+| "10X your AI coding workflow" | 5 | 量化 | 大胆但难证明 |
+| "AI development, finally structured" | 4 | 对比 | "finally" 暗示解决痛点 |
+
+### Slogan 正反辩论（2026-01-16 Session）
+
+---
+
+#### 正方：支持 "Workflow Layer" 方向
+
+**核心论点**：
+
+| 论点 | 理由 |
+|------|------|
+| THE 定冠词策略有效 | 暗示权威/唯一，GitHub Trending 高星项目常用（OpenCode、Puck） |
+| "workflow layer" 精准 | 直接说明 Trellis 是什么：在 AI 工具之上的工作流层 |
+| 简洁易记 | 6 词，符合最佳实践（3-8 词） |
+| 功能导向 | 开发者能立即理解用途 |
+
+**正方推荐 Slogan**：
+
+| 排序 | Slogan | 理由 |
+|------|--------|------|
+| 1 | **The workflow layer for AI coding** | 最简洁，THE + 精准定位 |
+| 2 | **The workflow layer your AI agents are missing** | 痛点驱动，但稍长（8词） |
+| 3 | **Structure for the unstructured** | 哲学感，对比强烈 |
+
+---
+
+#### 反方：反对 "Workflow Layer" 方向
+
+**核心论点**：
+
+| 论点 | 理由 |
+|------|------|
+| 听起来"静态" | Trellis 是动态演化的，会随着使用积累知识，"workflow" 暗示固定流程 |
+| 像"中间件" | "layer" 听起来是可选的附加层，但 Trellis 实际是核心组件 |
+| 没有体现"学习" | Trellis 的独特价值是 AI 从错误中学习、积累最佳实践，"workflow" 没有体现 |
+| 没有呼应 Trellis 隐喻 | Trellis = 攀援支架，帮助植物"成长"，应该强调成长而非框架 |
+| 弱化自迭代特性 | Trellis 随使用变得更好，"workflow layer" 没有体现这种演化性 |
+
+**Trellis 的真正独特价值**（反方强调）：
+
+1. **知识沉淀** - 错误变成防范模式，进度变成上下文
+2. **项目级演化** - 随着使用，`.trellis/` 目录越来越有价值
+3. **AI 学习你的模式** - 不是 AI 遵循固定规则，而是学习项目文化
+4. **跨会话记忆** - AI 不再"失忆"
+
+**反方推荐 Slogan**：
+
+| 排序 | Slogan | 理由 |
+|------|--------|------|
+| 1 | **The knowledge layer that grows with you** | THE 策略 + 成长 + 知识沉淀 |
+| 2 | **The learning layer for AI coding** | THE 策略 + 学习 |
+| 3 | **Where AI learns your patterns** | 强调学习，简洁 |
+| 4 | **Your project's memory for AI** | 记忆比喻，直击痛点 |
+
+---
+
+#### 辩论结论
+
+**共识**：
+- THE 定冠词策略确实有效，应该保留
+- 需要在"功能清晰"和"体现演化性"之间找到平衡
+
+**待解决**：
+- 是否能找到一个既精准描述功能、又体现演化/学习特性的 Slogan？
+- 候选方向：The [knowledge/learning/memory] layer for AI coding
+
+**下一步**：
+- 结合正反方优点，探索新的 Slogan 候选
+- 可能的折中：The memory layer for AI coding（记忆 = 持久化 + 学习 + 演化）
+
+---
+
+## 更新后的 Trellis README 策略
+
+### 定位差异化
+
+Trellis 与其他项目的区别：
+- **不是编码工具**，是**工作流框架**
+- **不是单一工具**，是**多工具支持**
+- **不是会话级**，是**项目级持久化**
+
+### 推荐 Slogan 候选（更新）
+
+1. ~~"AI development workflow framework"~~ → 太泛
+2. **"The workflow layer your AI agents are missing"** ← 推荐
+3. "Structure your AI coding sessions"
+4. "Make AI development predictable and repeatable"
+5. "Guided AI development, from chaos to clarity"
+
+### 核心价值主张（三选一）
+
+| 选项 | 价值主张 | 目标用户 |
+|------|----------|----------|
+| A | 解决 AI 开发的"无序"问题 | 个人开发者 |
+| B | 多工具统一工作流 | 多工具用户 |
+| C | 跨会话上下文保持 | 长期项目维护者 |
+
+---
+
+## 附录：README 结构模板（更新版）
 
 ```markdown
 # Trellis
 
-> [Slogan 一句话定位]
+> The workflow layer your AI agents are missing
 
-![GIF 演示]
+![Demo GIF](./assets/demo.gif)
 
-[![npm](badge)](#) [![license](badge)](#) [![discord](badge)](#)
+[![npm](badge)](#) [![license](badge)](#) [![stars](badge)](#)
 
-## Features
+## Why Trellis?
 
-- 📋 Feature 1 - 说明
-- 🤖 Feature 2 - 说明
-- ...
+AI coding tools are powerful, but sessions are isolated. Trellis provides:
+
+- 📁 **Persistent Context** - Progress survives across sessions
+- 🤖 **Multi-Tool Support** - Same workflow for Claude Code, Cursor, OpenCode
+- 📋 **Structured Commands** - /start, /finish-work, /check-backend...
+- 🔄 **Feature Tracking** - Directory-based task management
 
 ## Quick Start
 
@@ -333,16 +572,36 @@ npm install -g @mindfoldhq/trellis
 trellis init
 \`\`\`
 
-## Documentation
+## How It Works
 
-- [Getting Started](link)
-- [Commands Reference](link)
-- [Configuration](link)
+[简单流程图或 GIF]
 
-## Community
+1. AI reads context at session start
+2. Follows project-specific guidelines
+3. Updates progress for next session
 
-- [Discord](link)
-- [GitHub Issues](link)
+## Commands Reference
+
+| Command | Purpose |
+|---------|---------|
+| /start | Begin development session |
+| /finish-work | Pre-commit checklist |
+| ... | ... |
+
+## Supported Tools
+
+| Tool | Status |
+|------|--------|
+| Claude Code | ✅ Full support |
+| Cursor | ✅ Full support |
+| OpenCode | 🚧 Coming soon |
+
+## Philosophy
+
+> "Context Window = RAM, Filesystem = Disk"
+> — Planning with Files
+
+Trellis treats your filesystem as persistent memory for AI agents.
 
 ## License
 
