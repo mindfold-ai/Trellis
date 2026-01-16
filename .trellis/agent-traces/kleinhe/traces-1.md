@@ -67,3 +67,34 @@
 ### Next Steps
 
 - None - feature complete
+
+## Session 3: Add Roadmap with 4 Planned Features
+
+**Date**: 2026-01-16
+**Feature**: Add Roadmap with 4 Planned Features
+
+### Summary
+
+Added Roadmap section to README (EN+ZH) and created PRDs for 4 new features: Monorepo Support, Worktree Isolation, Parallel Sessions, Conversation Persistence
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7b65025` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
