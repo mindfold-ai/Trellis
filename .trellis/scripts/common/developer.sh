@@ -40,27 +40,27 @@ EOF
   mkdir -p "$progress_dir/$DIR_FEATURES"
   mkdir -p "$progress_dir/$DIR_FEATURES/$DIR_ARCHIVE"
 
-  # Create initial progress file
-  local progress_file="$progress_dir/traces-1.md"
-  if [[ ! -f "$progress_file" ]]; then
-    cat > "$progress_file" << PROGRESS_EOF
-# Agent Progress - $name (Part 1)
+  # Create initial traces file
+  local traces_file="$progress_dir/traces-1.md"
+  if [[ ! -f "$traces_file" ]]; then
+    cat > "$traces_file" << TRACES_EOF
+# Agent Traces - $name (Part 1)
 
-> AI development session progress tracking
+> AI development session traces
 > Started: $(date +%Y-%m-%d)
 
 ---
 
-PROGRESS_EOF
+TRACES_EOF
   fi
 
   # Create index.md with markers for auto-update
   local index_file="$progress_dir/index.md"
   if [[ ! -f "$index_file" ]]; then
     cat > "$index_file" << INDEX_EOF
-# Agent Progress Index - $name
+# Agent Traces Index - $name
 
-> Progress tracking for AI development sessions.
+> Traces tracking for AI development sessions.
 
 ---
 
@@ -95,8 +95,8 @@ PROGRESS_EOF
 
 ## Notes
 
-- Sessions are appended to progress files
-- New progress file created when current exceeds 2000 lines
+- Sessions are appended to traces files
+- New traces file created when current exceeds 2000 lines
 - Use \`add-session.sh\` to record sessions
 INDEX_EOF
   fi
