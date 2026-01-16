@@ -40,14 +40,14 @@
 |   |-- feature.sh           # Manage features
 |   |-- get-context.sh       # Get session context
 |   \-- add-session.sh       # One-click session recording
-|-- agent-traces/       # AI Agent work progress records
-|   |-- index.md         # Progress index + Session template
+|-- agent-traces/       # AI Agent work traces records
+|   |-- index.md         # Traces index + Session template
 |   \-- {developer}/     # Per-developer directories
 |       |-- index.md     # Personal index (with @@@auto markers)
 |       |-- features/    # Feature directories
 |       |   \-- {day}-{name}/
 |       |       \-- feature.json
-|       \-- traces-N.md  # Progress files (sequential numbering)
+|       \-- traces-N.md  # Traces files (sequential numbering)
 |-- structure/           # [!] MUST READ before coding
 |   |-- frontend/        # Frontend guidelines (if applicable)
 |   |   |-- index.md               # Start here - guidelines index
@@ -168,7 +168,7 @@ After code is committed, use:
 ```
 
 This automatically:
-1. Detects current progress file
+1. Detects current traces file
 2. Creates new file if 2000-line limit exceeded
 3. Appends session content
 4. Updates index.md (sessions count, history table)
@@ -186,7 +186,7 @@ Use `/finish-work` command to run through:
 
 ## File Descriptions
 
-### 1. agent-traces/ - Agent Work Progress
+### 1. agent-traces/ - Agent Work Traces
 
 **Purpose**: Record each AI Agent session's work content
 
@@ -199,7 +199,7 @@ agent-traces/
     |-- features/         # Feature directories
     |   \-- {day}-{name}/ # Each feature is a directory
     |       \-- feature.json
-    \-- traces-N.md     # Progress files (sequential: 1, 2, 3...)
+    \-- traces-N.md     # Traces files (sequential: 1, 2, 3...)
 ```
 
 **When to update**:
