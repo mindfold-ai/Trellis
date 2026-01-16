@@ -340,7 +340,43 @@ cmd_log() {
 
   echo -e "${BLUE}=== Recent Log: $TARGET ===${NC}"
   echo ""
-  tail -100 "$log_file"
+
+  # Parse and format JSON log entries
+  tail -50 "$log_file" | while IFS= read -r line; do
+    local type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null)
+    [ -z "$type" ] && continue
+
+    case "$type" in
+      system)
+        local subtype=$(echo "$line" | jq -r '.subtype // ""' 2>/dev/null)
+        echo -e "${CYAN}[SYSTEM]${NC} $subtype"
+        ;;
+      user)
+        local content=$(echo "$line" | jq -r '.message.content // empty' 2>/dev/null)
+        if [ -n "$content" ] && [ "$content" != "null" ]; then
+          echo -e "${GREEN}[USER]${NC} ${content:0:200}"
+        fi
+        ;;
+      assistant)
+        # Extract text or tool use
+        local text=$(echo "$line" | jq -r '.message.content[0].text // empty' 2>/dev/null)
+        local tool=$(echo "$line" | jq -r '.message.content[0].name // empty' 2>/dev/null)
+
+        if [ -n "$text" ] && [ "$text" != "null" ]; then
+          # Truncate long text
+          local display="${text:0:300}"
+          [ ${#text} -gt 300 ] && display="$display..."
+          echo -e "${BLUE}[ASSISTANT]${NC} $display"
+        elif [ -n "$tool" ] && [ "$tool" != "null" ]; then
+          echo -e "${YELLOW}[TOOL]${NC} $tool"
+        fi
+        ;;
+      result)
+        local tool_name=$(echo "$line" | jq -r '.tool // "unknown"' 2>/dev/null)
+        echo -e "${DIM}[RESULT]${NC} $tool_name completed"
+        ;;
+    esac
+  done
 }
 
 cmd_registry() {

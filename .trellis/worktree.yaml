@@ -17,6 +17,10 @@ worktree_dir: ../worktrees
 # Files to copy to each worktree (each worktree needs independent copy)
 # These files contain sensitive info or need worktree-independent config
 copy:
+  # Environment variables (uncomment and customize as needed)
+  # - .env
+  # - .env.local
+  # Workflow config
   - .trellis/.developer
 
 #-------------------------------------------------------------------------------
@@ -26,7 +30,10 @@ copy:
 # Commands to run after creating worktree
 # Executed in worktree directory, in order, abort on failure
 post_create:
-  - pnpm install --frozen-lockfile
+  # Install dependencies (uncomment based on your package manager)
+  # - npm install
+  # - pnpm install --frozen-lockfile
+  # - yarn install --frozen-lockfile
 
 #-------------------------------------------------------------------------------
 # Pre-Merge Checks
@@ -34,5 +41,9 @@ post_create:
 
 # Pre-merge validation (used by create-pr.sh)
 pre_merge:
-  - pnpm typecheck
-  - pnpm lint
+  # Type checking (uncomment based on your setup)
+  # - npm run typecheck
+  # - pnpm typecheck
+  # Linting
+  # - npm run lint
+  # - pnpm lint

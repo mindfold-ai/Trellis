@@ -164,7 +164,8 @@ cleanup_worktree() {
   cd "$PROJECT_ROOT"
 
   # Find worktree path for branch
-  local worktree_info=$(git worktree list --porcelain | grep -A2 "branch refs/heads/$branch" | head -3)
+  # porcelain format: worktree line comes BEFORE branch line, so use -B2
+  local worktree_info=$(git worktree list --porcelain | grep -B2 "branch refs/heads/$branch" | head -3)
   local worktree_path=$(echo "$worktree_info" | grep "^worktree " | cut -d' ' -f2-)
 
   if [ -z "$worktree_path" ]; then

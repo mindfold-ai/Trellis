@@ -4,43 +4,43 @@ Initialize your AI development session and begin working on tasks.
 
 ---
 
-## 操作类型说明
+## Operation Types
 
-本文档中的操作分为两类：
+Operations in this document are categorized as:
 
-| 标记 | 含义 | 执行者 |
-|------|------|--------|
-| `[AI]` | AI 执行的 bash 脚本或 Task 调用 | 你（AI） |
-| `[USER]` | 用户执行的 slash command | 用户 |
+| Marker | Meaning | Executor |
+|--------|---------|----------|
+| `[AI]` | Bash scripts or Task calls executed by AI | You (AI) |
+| `[USER]` | Slash commands executed by user | User |
 
 ---
 
 ## Initialization
 
-### Step 1: 了解 Trellis 工作流 `[AI]`
+### Step 1: Understand Trellis Workflow `[AI]`
 
-首先阅读以下文件了解工作流体系：
+First, read the following files to understand the workflow system:
 
 ```bash
-cat init-agent.md         # 项目整体介绍和初始化指南
-cat .trellis/workflow.md  # 开发流程和规范
+cat init-agent.md         # Project overview and initialization guide
+cat .trellis/workflow.md  # Development process and conventions
 ```
 
-### Step 2: 获取当前状态 `[AI]`
+### Step 2: Get Current Status `[AI]`
 
 ```bash
 ./.trellis/scripts/get-context.sh
 ```
 
-### Step 3: 阅读项目指南 `[AI]`
+### Step 3: Read Project Guidelines `[AI]`
 
 ```bash
-cat .trellis/structure/frontend/index.md  # 前端规范索引
-cat .trellis/structure/backend/index.md   # 后端规范索引
-cat .trellis/structure/guides/index.md    # 思维指南
+cat .trellis/structure/frontend/index.md  # Frontend guidelines index
+cat .trellis/structure/backend/index.md   # Backend guidelines index
+cat .trellis/structure/guides/index.md    # Thinking guides
 ```
 
-### Step 4: 报告就绪状态，询问任务
+### Step 4: Report Ready Status and Ask for Tasks
 
 ---
 
@@ -56,38 +56,48 @@ cat .trellis/structure/guides/index.md    # 思维指南
 
 Use feature tracking and delegate to specialized agents.
 
-#### Step 1: 创建 Feature 目录 `[AI]`
+#### Step 1: Create Feature Directory `[AI]`
 
 ```bash
 FEATURE_DIR=$(./.trellis/scripts/feature.sh create <name>)
 ```
 
-#### Step 2: 初始化上下文 `[AI]`
+#### Step 2: Initialize Context `[AI]`
 
 ```bash
 ./.trellis/scripts/feature.sh init-context "$FEATURE_DIR" <type>
 # type: backend | frontend | fullstack
 ```
 
-#### Step 3: 调用 Research Agent 分析任务 `[AI]`
+#### Step 3: Call Research Agent to Analyze Task `[AI]`
 
 ```
 Task(
   subagent_type: "research",
-  prompt: "分析以下任务需要哪些开发规范：
+  prompt: "Analyze what development specs are needed for this task:
 
-  任务描述：<用户需求>
-  开发类型：<dev_type>
+  Task description: <user requirements>
+  Development type: <dev_type>
 
-  请：
-  1. 查找 .trellis/structure/ 下相关的规范文件
-  2. 查找项目中相关的代码模块和模式
-  3. 列出应该添加到 implement.jsonl、check.jsonl、debug.jsonl 的具体文件",
+  Please:
+  1. Find relevant spec files under .trellis/structure/
+  2. Find related code modules and patterns in the project
+  3. List specific files to add to implement.jsonl, check.jsonl, debug.jsonl
+
+  Output format:
+  ## implement.jsonl
+  - path: <file path>, reason: <reason>
+
+  ## check.jsonl
+  - path: <file path>, reason: <reason>
+
+  ## debug.jsonl
+  - path: <file path>, reason: <reason>",
   model: "opus"
 )
 ```
 
-#### Step 4: 追加规范 `[AI]`
+#### Step 4: Add Specs to jsonl `[AI]`
 
 ```bash
 ./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement "<path>" "<reason>"
@@ -95,34 +105,34 @@ Task(
 ./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" debug "<path>" "<reason>"
 ```
 
-验证：
+Validate:
 ```bash
 ./.trellis/scripts/feature.sh list-context "$FEATURE_DIR"
 ```
 
-#### Step 5: 创建需求文档 `[AI]`
+#### Step 5: Create Requirements Document `[AI]`
 
 Create `prd.md` in the feature directory.
 
-#### Step 6: 启动 Feature `[AI]`
+#### Step 6: Start Feature `[AI]`
 
 ```bash
 ./.trellis/scripts/feature.sh start "$FEATURE_DIR"
 ```
 
-#### Step 7: 委托工作 `[AI]`
+#### Step 7: Delegate Work `[AI]`
 
 ```
 Task(subagent_type: "implement", prompt: "Implement the feature described in prd.md", model: "opus")
 ```
 
-检查质量：
+Check quality:
 
 ```
 Task(subagent_type: "check", prompt: "Check code changes and fix any issues", model: "opus")
 ```
 
-#### Step 8: 完成
+#### Step 8: Complete
 
 1. Verify typecheck and lint pass `[AI]`
 2. Remind user to test
@@ -135,18 +145,18 @@ Task(subagent_type: "check", prompt: "Check code changes and fix any issues", mo
 
 ---
 
-## 用户可用的命令 `[USER]`
+## User Available Commands `[USER]`
 
-以下是用户（不是 AI）可以运行的 slash command：
+The following slash commands are for users (not AI):
 
-| 命令 | 说明 |
-|------|------|
-| `/start` | 启动开发 session（即本命令） |
-| `/parallel` | 启动 Multi-Agent Pipeline（worktree 模式） |
-| `/finish-work` | 完成工作前的检查清单 |
-| `/record-agent-flow` | 记录 session 进度 |
-| `/check-frontend` | 检查前端代码 |
-| `/check-backend` | 检查后端代码 |
+| Command | Description |
+|---------|-------------|
+| `/start` | Start development session (this command) |
+| `/parallel` | Start Multi-Agent Pipeline (worktree mode) |
+| `/finish-work` | Pre-completion checklist |
+| `/record-agent-flow` | Record session progress |
+| `/check-frontend` | Check frontend code |
+| `/check-backend` | Check backend code |
 
 ---
 
@@ -158,25 +168,25 @@ Task(subagent_type: "check", prompt: "Check code changes and fix any issues", mo
 
 ---
 
-## AI 执行的脚本 `[AI]`
+## AI Executed Scripts `[AI]`
 
-| 脚本 | 用途 |
-|------|------|
-| `feature.sh create <name>` | 创建 feature 目录 |
-| `feature.sh init-context <dir> <type>` | 初始化 jsonl 文件 |
-| `feature.sh add-context <dir> <jsonl> <path>` | 追加规范 |
-| `feature.sh start <dir>` | 设置当前 feature |
-| `feature.sh finish` | 清除当前 feature |
-| `feature.sh archive <name>` | 归档 feature |
-| `get-context.sh` | 获取 session 上下文 |
+| Script | Purpose |
+|--------|---------|
+| `feature.sh create <name>` | Create feature directory |
+| `feature.sh init-context <dir> <type>` | Initialize jsonl files |
+| `feature.sh add-context <dir> <jsonl> <path>` | Add specs |
+| `feature.sh start <dir>` | Set current feature |
+| `feature.sh finish` | Clear current feature |
+| `feature.sh archive <name>` | Archive feature |
+| `get-context.sh` | Get session context |
 
-## Sub Agent 调用 `[AI]`
+## Sub Agent Calls `[AI]`
 
-所有 sub agent 调用都使用 opus 模型：
+All sub agent calls use the opus model:
 
-| Agent | 用途 |
-|-------|------|
-| research | 查找规范、分析代码 |
-| implement | 实现功能 |
-| check | 检查代码 |
-| debug | 修复问题 |
+| Agent | Purpose |
+|-------|---------|
+| research | Find specs, analyze code |
+| implement | Implement features |
+| check | Check code |
+| debug | Fix issues |

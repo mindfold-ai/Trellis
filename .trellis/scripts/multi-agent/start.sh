@@ -259,12 +259,12 @@ AGENT_PID=$!
 log_success "Agent started with PID: ${AGENT_PID}"
 
 # =============================================================================
-# Step 4: Register to Registry
+# Step 4: Register to Registry (in main repo, not worktree)
 # =============================================================================
 log_info "Step 4: Registering agent to registry..."
 
-DEVELOPER=$(get_developer)
-AGENTS_DIR=$(get_agents_dir)
+DEVELOPER=$(get_developer "$PROJECT_ROOT")
+AGENTS_DIR=$(get_agents_dir "$PROJECT_ROOT")
 mkdir -p "$AGENTS_DIR"
 
 REGISTRY_FILE="${AGENTS_DIR}/registry.json"
