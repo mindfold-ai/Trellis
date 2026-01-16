@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "name": "Trellis",
+  "description": "Multi-agent pipeline workflow framework",
+  "releaseDate": "2026-01-17",
+  "features": [
+    "feature-management",
+    "agent-context-injection",
+    "progress-tracking",
+    "team-collaboration"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "team-collaboration",
+  "name": "team-collaboration",
+  "description": "Progressive team collaboration - basic visibility and version upgrade support",
+  "status": "in-progress",
+  "dev_type": "fullstack",
+  "priority": "medium",
+  "developer": "kleinhe",
+  "createdAt": "2026-01-17",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [
+    {"name": "Milestone 1: list-all command", "status": "completed"},
+    {"name": "Milestone 2: version.json + upgrade.sh", "status": "completed"},
+    {"name": "Milestone 3: Feature status sync", "status": "planned"},
+    {"name": "Milestone 4: Team-level isolation", "status": "planned"}
+  ],
+  "relatedFiles": [
+    ".trellis/scripts/feature.sh",
+    ".trellis/scripts/upgrade.sh",
+    ".trellis/version.json"
+  ],
+  "notes": "Milestones 1 and 2 implemented. Milestones 3 and 4 are future work."
+}
