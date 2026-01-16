@@ -98,6 +98,65 @@ Task(subagent_type: "check", prompt: "Check code changes and fix any issues", mo
    ./.trellis/scripts/feature.sh archive <feature-name>
    ```
 
+### For Parallel Work (Multi-Agent Pipeline)
+
+When the user wants to run multiple features in parallel using isolated worktrees:
+
+#### Setup Feature with Branch
+
+```bash
+# Create feature
+./.trellis/scripts/feature.sh create <name>
+
+# Set branch for worktree
+./.trellis/scripts/feature.sh set-branch "$FEATURE_DIR" feature/<name>
+```
+
+#### Start in Worktree
+
+The user can start the agent in an isolated worktree:
+
+```bash
+./.trellis/scripts/multi-agent/start.sh "$FEATURE_DIR"
+```
+
+This creates a git worktree and starts a background agent.
+
+#### Monitor Agent Status
+
+```bash
+# Summary of all features
+./.trellis/scripts/multi-agent/status.sh
+
+# List all worktrees and registered agents
+./.trellis/scripts/multi-agent/status.sh --list
+
+# Detailed status for a specific agent
+./.trellis/scripts/multi-agent/status.sh --detail <feature-name>
+
+# View formatted recent log entries
+./.trellis/scripts/multi-agent/status.sh --log <feature-name>
+
+# Watch agent log in real-time
+./.trellis/scripts/multi-agent/status.sh --watch <feature-name>
+
+# Show agent registry
+./.trellis/scripts/multi-agent/status.sh --registry
+```
+
+#### Cleanup When Done
+
+```bash
+# Remove specific worktree
+./.trellis/scripts/multi-agent/cleanup.sh <branch-name>
+
+# List worktrees available for cleanup
+./.trellis/scripts/multi-agent/cleanup.sh --list
+
+# Remove merged worktrees
+./.trellis/scripts/multi-agent/cleanup.sh --merged
+```
+
 ---
 
 ## Session End Reminder
@@ -120,8 +179,17 @@ Task(subagent_type: "check", prompt: "Check code changes and fix any issues", mo
 | Command | Purpose |
 |---------|---------|
 | `feature.sh create <name>` | Create feature directory |
+| `feature.sh set-branch <dir> <branch>` | Set branch for multi-agent |
 | `feature.sh start <dir>` | Set as current feature |
 | `feature.sh finish` | Clear current feature |
 | `feature.sh archive <name>` | Archive completed feature |
 | `feature.sh list` | List all features |
+| `multi-agent/start.sh <dir>` | Start agent in worktree |
+| `multi-agent/status.sh` | Summary of all features |
+| `multi-agent/status.sh --list` | List worktrees and agents |
+| `multi-agent/status.sh --detail <name>` | Detailed agent status |
+| `multi-agent/status.sh --log <name>` | View formatted agent log |
+| `multi-agent/status.sh --watch <name>` | Watch log in real-time |
+| `multi-agent/cleanup.sh <branch>` | Cleanup worktree |
+| `multi-agent/cleanup.sh --list` | List worktrees for cleanup |
 | `/record-agent-flow` | **Record session progress (run at session end)** |
