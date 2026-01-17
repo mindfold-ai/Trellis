@@ -34,8 +34,9 @@ export const agentProgressIndexContent: string = readTrellisFile(
 // Workflow documentation (from .trellis/workflow.md)
 export const workflowMdContent: string = readTrellisFile("workflow.md");
 
-// Gitignore (from .trellis/.gitignore)
-export const workflowGitignoreContent: string = readTrellisFile(".gitignore");
+// Gitignore (template file - .gitignore is ignored by npm)
+export const workflowGitignoreContent: string =
+  readLocalTemplate("gitignore.txt");
 
 // =============================================================================
 // Standalone templates (not dogfooded)
