@@ -156,6 +156,76 @@ remove_from_registry() {
 }
 
 # =============================================================================
+# Cleanup from Registry Only (no worktree)
+# =============================================================================
+cleanup_registry_only() {
+  local search="$1"
+
+  AGENTS_DIR=$(get_agents_dir)
+  REGISTRY_FILE="${AGENTS_DIR}/registry.json"
+
+  if [ ! -f "$REGISTRY_FILE" ]; then
+    log_error "No registry found"
+    exit 1
+  fi
+
+  # Find agent by id or feature_dir containing search term
+  local agent_info=$(jq -r --arg search "$search" '.agents[] | select(.id == $search or (.feature_dir | contains($search)))' "$REGISTRY_FILE" 2>/dev/null | head -1)
+
+  if [ -z "$agent_info" ] || [ "$agent_info" = "null" ]; then
+    log_error "No agent found in registry matching: $search"
+    exit 1
+  fi
+
+  local agent_id=$(echo "$agent_info" | jq -r '.id')
+  local feature_dir=$(echo "$agent_info" | jq -r '.feature_dir')
+  local worktree_path=$(echo "$agent_info" | jq -r '.worktree_path')
+
+  echo ""
+  echo -e "${BLUE}=== Cleanup Agent (no worktree) ===${NC}"
+  echo "  Agent ID:    $agent_id"
+  echo "  Feature Dir: $feature_dir"
+  echo ""
+
+  # Confirmation
+  if [ "$SKIP_CONFIRM" != "true" ]; then
+    if [ -t 0 ]; then
+      read -p "Archive feature and remove from registry? [y/N] " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Aborted"
+        exit 0
+      fi
+    else
+      log_error "Non-interactive mode detected. Use -y to skip confirmation."
+      exit 1
+    fi
+  fi
+
+  # 1. Archive feature directory if exists
+  FEATURE_DIR_ABS="${PROJECT_ROOT}/${feature_dir}"
+  if [ -d "$FEATURE_DIR_ABS" ]; then
+    local features_dir=$(get_features_dir)
+    local archive_dir="$features_dir/archive"
+    local year_month=$(date +%Y-%m)
+    local month_dir="$archive_dir/$year_month"
+
+    mkdir -p "$month_dir"
+
+    local feature_name=$(basename "$feature_dir")
+    mv "$FEATURE_DIR_ABS" "$month_dir/"
+    log_success "Archived feature: $feature_name -> archive/$year_month/"
+  fi
+
+  # 2. Remove from registry
+  local updated=$(jq --arg id "$agent_id" '.agents = [.agents[] | select(.id != $id)]' "$REGISTRY_FILE")
+  echo "$updated" | jq '.' > "$REGISTRY_FILE"
+  log_success "Removed from registry: $agent_id"
+
+  log_success "Cleanup complete"
+}
+
+# =============================================================================
 # Cleanup Single Worktree
 # =============================================================================
 cleanup_worktree() {
@@ -169,8 +239,11 @@ cleanup_worktree() {
   local worktree_path=$(echo "$worktree_info" | grep "^worktree " | cut -d' ' -f2-)
 
   if [ -z "$worktree_path" ]; then
-    log_error "No worktree found for branch: $branch"
-    exit 1
+    # No worktree found, try to cleanup from registry only
+    log_warn "No worktree found for: $branch"
+    log_info "Trying to cleanup from registry..."
+    cleanup_registry_only "$branch"
+    return
   fi
 
   echo ""

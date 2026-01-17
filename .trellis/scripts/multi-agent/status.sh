@@ -125,7 +125,12 @@ get_last_tool() {
     echo ""
     return
   fi
-  tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' 2>/dev/null | head -1
+  # Use tail -r on macOS, tac on Linux
+  if command -v tac &>/dev/null; then
+    tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' 2>/dev/null | head -1
+  else
+    tail -r "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' 2>/dev/null | head -1
+  fi
 }
 
 # Get the last assistant text from agent log
@@ -136,7 +141,13 @@ get_last_message() {
     echo ""
     return
   fi
-  local text=$(tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null | head -1)
+  local text
+  # Use tail -r on macOS, tac on Linux
+  if command -v tac &>/dev/null; then
+    text=$(tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null | head -1)
+  else
+    text=$(tail -r "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null | head -1)
+  fi
   if [ -n "$text" ] && [ "$text" != "null" ]; then
     echo "${text:0:$max_len}"
   fi
