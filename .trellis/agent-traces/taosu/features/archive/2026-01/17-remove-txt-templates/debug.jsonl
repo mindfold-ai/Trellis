@@ -1,0 +1,5 @@
+{"file": ".trellis/structure/backend/error-handling.md", "reason": "Error handling guidelines"}
+{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}
+{"file": "src/utils/file-writer.ts", "reason": "File writing utilities"}
+{"file": "src/templates/agents/index.ts", "reason": "Reference - already reads .md files directly"}
+{"file": "src/templates/hooks/index.ts", "reason": "Reference for reading native format files"}

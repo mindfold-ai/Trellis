@@ -1,0 +1,6 @@
+{"file": ".claude/commands/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}
+{"file": ".trellis/structure/backend/quality-guidelines.md", "reason": "TypeScript/ESLint quality standards"}
+{"file": "src/commands/init.ts", "reason": "Verify init command still works"}
+{"file": "src/configurators/claude.ts", "reason": "Verify Claude configuration works"}
+{"file": "src/configurators/cursor.ts", "reason": "Verify Cursor configuration works"}

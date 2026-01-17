@@ -1,0 +1,39 @@
+{
+  "id": "remove-txt-templates",
+  "name": "remove-txt-templates",
+  "description": "",
+  "status": "completed",
+  "dev_type": "backend",
+  "scope": "templates",
+  "priority": "medium",
+  "developer": "taosu",
+  "createdAt": "2026-01-17",
+  "completedAt": "2026-01-17",
+  "branch": "feature/remove-txt-templates",
+  "base_branch": "main",
+  "worktree_path": "/Users/taosu/workspace/company/mindfold/product/share-public/trellis-worktrees/feature/remove-txt-templates",
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

@@ -1,0 +1,9 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/structure/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/structure/backend/quality-guidelines.md", "reason": "Code quality requirements"}
+{"file": "src/templates/extract.ts", "reason": "Core template extraction logic - needs to read from .trellis/"}
+{"file": "src/templates/markdown/index.ts", "reason": "Exports markdown templates - needs to read from .trellis/structure/"}
+{"file": "src/templates/scripts/index.ts", "reason": "Exports script templates - needs to read from .trellis/scripts/"}
+{"file": "src/templates/commands/index.ts", "reason": "Exports command templates - may need refactoring"}
+{"file": "src/configurators/workflow.ts", "reason": "Uses template exports to write files"}
+{"file": "src/constants/paths.ts", "reason": "Path constants - may need new constants"}
