@@ -154,13 +154,24 @@ get_last_message() {
 }
 
 # Get recent task notifications from agent log
+# Looks for async_launched tasks and infers completion from current_phase
 get_recent_tasks() {
   local log_file="$1"
   local count="${2:-5}"
+  local current_phase="${3:-0}"
   if [ ! -f "$log_file" ]; then
     return
   fi
-  tail -200 "$log_file" 2>/dev/null | jq -r 'select(.type=="system" and .subtype=="task_notification") | "\(.status)|\(.summary)"' 2>/dev/null | tail -"$count"
+  # Get async_launched tasks with phase number extracted from description
+  tail -500 "$log_file" 2>/dev/null | jq -r --argjson current_phase "$current_phase" '
+    select(.type=="user" and .tool_use_result.status == "async_launched" and .tool_use_result.description != null) |
+    .tool_use_result.description as $desc |
+    # Extract phase number from "Phase N:" pattern
+    ($desc | capture("Phase (?<num>[0-9]+)") | .num | tonumber) as $phase_num |
+    # If current_phase > this phase, it is completed
+    (if $phase_num < $current_phase then "completed" else "async_launched" end) as $status |
+    "\($status)|\($desc)"
+  ' 2>/dev/null | tail -"$count"
 }
 
 # =============================================================================
@@ -411,7 +422,10 @@ cmd_progress() {
   fi
 
   local id=$(echo "$agent" | jq -r '.id')
+  local pid=$(echo "$agent" | jq -r '.pid')
   local worktree=$(echo "$agent" | jq -r '.worktree_path')
+  local feature_dir=$(echo "$agent" | jq -r '.feature_dir')
+  local started=$(echo "$agent" | jq -r '.started_at')
   local log_file="$worktree/.agent-log"
 
   if [ ! -f "$log_file" ]; then
@@ -419,8 +433,36 @@ cmd_progress() {
     exit 1
   fi
 
+  # Get phase info from worktree's feature.json
+  local worktree_feature_json="$worktree/$feature_dir/feature.json"
+  local phase_info="N/A"
+  local current_phase=0
+  if [ -f "$worktree_feature_json" ]; then
+    phase_info=$(get_phase_info "$worktree_feature_json")
+    current_phase=$(jq -r '.current_phase // 0' "$worktree_feature_json")
+  fi
+
+  local elapsed=$(calc_elapsed "$started")
+  local modified=$(count_modified_files "$worktree")
+
+  # Check if running
+  local status_str
+  if is_running "$pid"; then
+    status_str="${GREEN}running${NC}"
+  else
+    status_str="${RED}stopped${NC}"
+  fi
+
   echo ""
   echo -e "${BLUE}=== Progress: ${id} ===${NC}"
+  echo ""
+
+  # Basic info (like summary)
+  echo -e "${CYAN}Status:${NC}"
+  echo -e "  State:    ${status_str}"
+  echo -e "  Phase:    ${phase_info}"
+  echo -e "  Elapsed:  ${elapsed}"
+  echo -e "  Modified: ${modified} file(s)"
   echo ""
 
   # Recent task notifications
@@ -433,10 +475,11 @@ cmd_progress() {
     case "$status" in
       completed) icon="${GREEN}✓${NC}" ;;
       failed) icon="${RED}✗${NC}" ;;
+      async_launched) icon="${BLUE}▶${NC}" ;;
       *) icon="${YELLOW}○${NC}" ;;
     esac
     echo -e "  ${icon} ${summary}"
-  done < <(get_recent_tasks "$log_file" 5)
+  done < <(get_recent_tasks "$log_file" 5 "$current_phase")
 
   if [ "$has_tasks" = false ]; then
     echo -e "  ${DIM}(no task notifications yet)${NC}"

@@ -880,10 +880,14 @@ cmd_create_pr() {
     echo -e "[DRY-RUN] Would update feature.json:"
     echo -e "  status: review"
     echo -e "  pr_url: ${pr_url}"
+    echo -e "  current_phase: (set to create-pr phase)"
   else
-    jq --arg url "$pr_url" '.status = "review" | .pr_url = $url' "$feature_json" > "${feature_json}.tmp"
+    # Find the phase number for create-pr action
+    local create_pr_phase=$(jq -r '.next_action[] | select(.action == "create-pr") | .phase // 4' "$feature_json")
+    jq --arg url "$pr_url" --argjson phase "$create_pr_phase" \
+      '.status = "review" | .pr_url = $url | .current_phase = $phase' "$feature_json" > "${feature_json}.tmp"
     mv "${feature_json}.tmp" "$feature_json"
-    echo -e "${GREEN}Feature status updated to 'review'${NC}"
+    echo -e "${GREEN}Feature status updated to 'review', phase ${create_pr_phase}${NC}"
   fi
 
   # In dry-run, reset the staging area
