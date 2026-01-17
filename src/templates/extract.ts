@@ -167,3 +167,46 @@ export function readClaudeFile(relativePath: string): string {
   const filePath = path.join(claudePath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
+
+/**
+ * Copy a directory from .trellis/ to target, making scripts executable
+ * @param srcRelativePath - Source path relative to .trellis/ (e.g., 'scripts')
+ * @param destPath - Absolute destination path
+ * @param options - Copy options
+ */
+export function copyTrellisDir(
+  srcRelativePath: string,
+  destPath: string,
+  options?: { executable?: boolean },
+): void {
+  const trellisPath = getTrellisSourcePath();
+  const srcPath = path.join(trellisPath, srcRelativePath);
+  copyDirRecursive(srcPath, destPath, options);
+}
+
+/**
+ * Recursively copy directory with options
+ */
+function copyDirRecursive(
+  src: string,
+  dest: string,
+  options?: { executable?: boolean },
+): void {
+  fs.mkdirSync(dest, { recursive: true });
+
+  for (const entry of fs.readdirSync(src)) {
+    const srcPath = path.join(src, entry);
+    const destPath = path.join(dest, entry);
+    const stat = fs.statSync(srcPath);
+
+    if (stat.isDirectory()) {
+      copyDirRecursive(srcPath, destPath, options);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+      // Make shell scripts executable
+      if (options?.executable && entry.endsWith(".sh")) {
+        fs.chmodSync(destPath, 0o755);
+      }
+    }
+  }
+}

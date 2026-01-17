@@ -4,33 +4,32 @@
  * Cross-platform script to copy template files to dist/
  *
  * This script copies:
- * 1. src/templates/ to dist/templates/ (excluding .ts files)
- * 2. .trellis/ to dist/.trellis/ (for dogfooding - scripts)
- * 3. .cursor/ to dist/.cursor/ (for dogfooding - cursor commands)
- * 4. .claude/ to dist/.claude/ (for dogfooding - claude commands, agents, hooks)
+ * 1. src/templates/ to dist/templates/ (excluding .ts files, only for structure templates)
+ * 2. .trellis/ to dist/.trellis/ (scripts, workflow.md, .gitignore, worktree.yaml)
+ * 3. .cursor/ to dist/.cursor/ (entire directory - dogfooding)
+ * 4. .claude/ to dist/.claude/ (entire directory - dogfooding)
  *
- * The config directories are copied because the template system reads actual
- * configuration files as templates (dogfooding principle).
+ * The .cursor/ and .claude/ directories are copied entirely because they contain
+ * the actual configuration files used as templates (dogfooding principle).
  */
 
-import {
-  cpSync,
-  readdirSync,
-  statSync,
-  mkdirSync,
-  existsSync,
-} from "node:fs";
+import { cpSync, readdirSync, statSync, mkdirSync, existsSync } from "node:fs";
 import { join, extname } from "node:path";
 
 /**
- * Directories/files to exclude when copying .trellis
+ * Files/directories to exclude when copying .trellis
  * These are runtime/local files that shouldn't be in the package
  */
 const TRELLIS_EXCLUDE = [
-  ".developer", // Local developer identity
-  ".current-feature", // Local feature pointer
-  "agent-traces", // Local agent traces
+  ".developer", // Local developer identity (runtime generated)
+  ".current-feature", // Local feature pointer (runtime generated)
 ];
+
+/**
+ * Subdirectories inside agent-traces to exclude (developer-specific traces)
+ * Only index.md should be copied
+ */
+const AGENT_TRACES_EXCLUDE_SUBDIRS = true; // Exclude all subdirs except index.md
 
 /**
  * Files/directories to exclude when copying .claude
@@ -64,8 +63,13 @@ function matchesExclude(entry, excludePatterns) {
 
 /**
  * Recursively copy directory, excluding .ts files
+ * @param {string} src - Source directory
+ * @param {string} dest - Destination directory
+ * @param {string[]} excludePatterns - Patterns to exclude
+ * @param {object} options - Additional options
+ * @param {boolean} options.isAgentTraces - If true, only copy index.md from agent-traces
  */
-function copyDir(src, dest, excludePatterns = []) {
+function copyDir(src, dest, excludePatterns = [], options = {}) {
   mkdirSync(dest, { recursive: true });
 
   for (const entry of readdirSync(src)) {
@@ -79,9 +83,31 @@ function copyDir(src, dest, excludePatterns = []) {
     const stat = statSync(srcPath);
 
     if (stat.isDirectory()) {
-      copyDir(srcPath, destPath, excludePatterns);
+      // Special handling for agent-traces: only copy index.md, skip developer subdirs
+      if (entry === "agent-traces") {
+        copyAgentTraces(srcPath, destPath);
+      } else {
+        copyDir(srcPath, destPath, excludePatterns, options);
+      }
     } else if (extname(entry) !== ".ts") {
       cpSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Copy agent-traces directory - only index.md, skip developer subdirectories
+ */
+function copyAgentTraces(src, dest) {
+  mkdirSync(dest, { recursive: true });
+
+  for (const entry of readdirSync(src)) {
+    const srcPath = join(src, entry);
+    const stat = statSync(srcPath);
+
+    // Only copy files (like index.md), skip all subdirectories (developer traces)
+    if (!stat.isDirectory()) {
+      cpSync(srcPath, join(dest, entry));
     }
   }
 }
