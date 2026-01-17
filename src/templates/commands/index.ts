@@ -1,8 +1,11 @@
 /**
  * Command templates for Trellis workflow
  *
- * All templates are in common/ and work with all supported AI tools.
- * The claude/ directory is reserved for future Claude-specific commands.
+ * Tool-specific templates (Claude, Cursor) are dogfooded from the actual
+ * .claude/ and .cursor/ directories. Common templates remain as .txt files.
+ *
+ * This implements the "eat your own dog food" principle - Trellis uses its
+ * own actual command files as the source of truth for templating.
  */
 
 import { readFileSync } from "fs";
@@ -10,12 +13,13 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import type { AITool, TemplateDir } from "../../types/ai-tools.js";
 import { getTemplateDirs } from "../../types/ai-tools.js";
+import { readClaudeFile, readCursorFile } from "../extract.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Read a command template from the specified subdirectory
+ * Read a command template from the specified subdirectory (for common templates)
  */
 function readCommand(subdir: string, filename: string): string {
   const filePath = join(__dirname, subdir, filename);
@@ -23,26 +27,19 @@ function readCommand(subdir: string, filename: string): string {
 }
 
 // =============================================================================
-// Tool-specific Templates
+// Tool-specific Templates (dogfooded from actual config directories)
 // =============================================================================
 
-// Claude-specific commands
-export const claudeStartTemplate: string = readCommand(
-  "claude",
-  "start.md.txt",
-);
-export const claudeParallelTemplate: string = readCommand(
-  "claude",
-  "parallel.md.txt",
+// Claude-specific commands (read from .claude/commands/)
+export const claudeStartTemplate: string = readClaudeFile("commands/start.md");
+export const claudeParallelTemplate: string = readClaudeFile(
+  "commands/parallel.md",
 );
 
-// Cursor-specific commands
-export const cursorStartTemplate: string = readCommand(
-  "cursor",
-  "start.md.txt",
-);
+// Cursor-specific commands (read from .cursor/commands/)
+export const cursorStartTemplate: string = readCursorFile("commands/start.md");
 
-// OpenCode-specific commands
+// OpenCode-specific commands (still use .txt template as no dogfood source)
 export const opencodeStartTemplate: string = readCommand(
   "opencode",
   "start.md.txt",
