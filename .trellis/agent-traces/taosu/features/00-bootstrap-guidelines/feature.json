@@ -1,0 +1,22 @@
+{
+  "id": "00-bootstrap-guidelines",
+  "name": "Bootstrap Guidelines",
+  "description": "Fill in project development guidelines for AI agents",
+  "status": "in_progress",
+  "dev_type": "docs",
+  "priority": "high",
+  "developer": "taosu",
+  "createdAt": "2026-01-16",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [
+    {"name": "Fill backend guidelines", "status": "pending"},
+    {"name": "Fill frontend guidelines", "status": "pending"},
+    {"name": "Add code examples", "status": "pending"}
+  ],
+  "relatedFiles": [
+    ".trellis/structure/backend/",
+    ".trellis/structure/frontend/"
+  ],
+  "notes": "First-time setup task created by trellis init (fullstack project)"
+}

@@ -1,12 +1,12 @@
-# Agent Progress Index
+# Agent Traces Index
 
-> Records of all AI Agent work sessions across all developers
+> Records of all AI Agent work traces across all developers
 
 ---
 
 ## Overview
 
-This directory tracks progress for all developers working with AI Agents on this project.
+This directory tracks traces for all developers working with AI Agents on this project.
 
 ### File Structure
 
@@ -45,7 +45,7 @@ This will:
 1. Create your identity file (gitignored)
 2. Create your progress directory
 3. Create your personal index
-4. Create initial progress file
+4. Create initial traces file
 
 ### For Returning Developers
 
@@ -63,9 +63,9 @@ This will:
 
 ## Guidelines
 
-### Progress File Rules
+### Traces File Rules
 
-- **Max 2000 lines** per progress file
+- **Max 2000 lines** per traces file
 - When limit is reached, create `traces-{N+1}.md`
 - Update your personal `index.md` when creating new files
 
@@ -121,4 +121,3 @@ Use this template when recording sessions:
 ---
 
 **Language**: All documentation must be written in **English**.
-

@@ -1,0 +1,8 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/structure/backend/index.md", "reason": "Backend development guide"}
+{"file": "src/constants/paths.ts", "reason": "路径常量定义模式"}
+{"file": "src/types/ai-tools.ts", "reason": "类型定义模式参考"}
+{"file": "src/utils/file-writer.ts", "reason": "文件操作工具模式"}
+{"file": "src/templates/extract.ts", "reason": "模板加载机制"}
+{"file": "src/templates/commands/index.ts", "reason": "模板注册模式"}
+{"file": "src/configurators/workflow.ts", "reason": "配置器实现模式"}

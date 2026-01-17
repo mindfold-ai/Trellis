@@ -2,16 +2,45 @@
 
 Initialize your AI development session and begin working on tasks.
 
+---
+
+## Operation Types
+
+Operations in this document are categorized as:
+
+| Marker | Meaning | Executor |
+|--------|---------|----------|
+| `[AI]` | Bash scripts or Task calls executed by AI | You (AI) |
+| `[USER]` | Slash commands executed by user | User |
+
+---
+
 ## Initialization
 
-1. Get session context:
-   ```bash
-   ./.trellis/scripts/get-context.sh
-   ```
+### Step 1: Understand Trellis Workflow `[AI]`
 
-2. Read `.trellis/structure/guides/index.md` for thinking guidelines
+First, read the following files to understand the workflow system:
 
-3. Report ready status and ask for task
+```bash
+cat init-agent.md         # Project overview and initialization guide
+cat .trellis/workflow.md  # Development process and conventions
+```
+
+### Step 2: Get Current Status `[AI]`
+
+```bash
+./.trellis/scripts/get-context.sh
+```
+
+### Step 3: Read Project Guidelines `[AI]`
+
+```bash
+cat .trellis/structure/frontend/index.md  # Frontend guidelines index
+cat .trellis/structure/backend/index.md   # Backend guidelines index
+cat .trellis/structure/guides/index.md    # Thinking guides
+```
+
+### Step 4: Report Ready Status and Ask for Tasks
 
 ---
 
@@ -19,109 +48,145 @@ Initialize your AI development session and begin working on tasks.
 
 ### For Simple Tasks
 
-1. Read relevant guidelines based on task type:
-   - Frontend: `.trellis/structure/frontend/`
-   - Backend: `.trellis/structure/backend/`
-
-2. Implement the task directly
-
-3. Before committing, remind user to run `/finish-work`
+1. Read relevant guidelines based on task type `[AI]`
+2. Implement the task directly `[AI]`
+3. Remind user to run `/finish-work` before committing `[USER]`
 
 ### For Complex Tasks (Multi-Step Features)
 
-Use feature tracking and delegate to specialized agents for better quality.
+Use feature tracking and delegate to specialized agents.
 
-#### Step 1: Create Feature
+#### Step 1: Create Feature Directory `[AI]`
 
 ```bash
-./.trellis/scripts/feature.sh create <name>
-# Example: ./.trellis/scripts/feature.sh create user-auth
+FEATURE_DIR=$(./.trellis/scripts/feature.sh create <name>)
 ```
 
-#### Step 2: Initialize Context
+#### Step 2: Initialize Context `[AI]`
 
 ```bash
-FEATURE_DIR=".trellis/agent-traces/{developer}/features/{feature-name}"
 ./.trellis/scripts/feature.sh init-context "$FEATURE_DIR" <type>
 # type: backend | frontend | fullstack
 ```
 
-#### Step 3: Add Task-Specific Guidelines
+#### Step 3: Call Research Agent to Analyze Task `[AI]`
 
-Based on what the task involves, add relevant spec files:
+```
+Task(
+  subagent_type: "research",
+  prompt: "Analyze what development specs are needed for this task:
 
-```bash
-# Example: adding database and API guidelines for a backend task
-./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement ".trellis/structure/backend/database-guidelines.md"
-./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement ".trellis/structure/backend/api-module.md"
+  Task description: <user requirements>
+  Development type: <dev_type>
+
+  Please:
+  1. Find relevant spec files under .trellis/structure/
+  2. Find related code modules and patterns in the project
+  3. List specific files to add to implement.jsonl, check.jsonl, debug.jsonl
+
+  Output format:
+  ## implement.jsonl
+  - path: <file path>, reason: <reason>
+
+  ## check.jsonl
+  - path: <file path>, reason: <reason>
+
+  ## debug.jsonl
+  - path: <file path>, reason: <reason>",
+  model: "opus"
+)
 ```
 
-Verify with:
+#### Step 4: Add Specs to jsonl `[AI]`
+
+```bash
+./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement "<path>" "<reason>"
+./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" check "<path>" "<reason>"
+./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" debug "<path>" "<reason>"
+```
+
+Validate:
 ```bash
 ./.trellis/scripts/feature.sh list-context "$FEATURE_DIR"
 ```
 
-#### Step 4: Document Requirements
+#### Step 5: Create Requirements Document `[AI]`
 
-Create `prd.md` in the feature directory describing what needs to be done.
+Create `prd.md` in the feature directory.
 
-For complex tasks, also create `info.md` with technical approach.
-
-#### Step 5: Start Feature
+#### Step 6: Start Feature `[AI]`
 
 ```bash
 ./.trellis/scripts/feature.sh start "$FEATURE_DIR"
 ```
 
-#### Step 6: Delegate Work
-
-Use specialized agents for implementation:
+#### Step 7: Delegate Work `[AI]`
 
 ```
-Task(subagent_type: "implement", prompt: "Implement the feature described in prd.md", model: "sonnet")
+Task(subagent_type: "implement", prompt: "Implement the feature described in prd.md", model: "opus")
 ```
 
-After implementation, verify quality:
+Check quality:
 
 ```
-Task(subagent_type: "check", prompt: "Check code changes and fix any issues", model: "sonnet")
+Task(subagent_type: "check", prompt: "Check code changes and fix any issues", model: "opus")
 ```
 
-#### Step 7: Complete
+#### Step 8: Complete
 
-1. Verify typecheck and lint pass
+1. Verify typecheck and lint pass `[AI]`
 2. Remind user to test
 3. Remind user to commit
-4. **Record session progress**: Ask user to run `/record-agent-flow`
-5. Archive feature (if fully completed):
+4. Remind user to run `/record-agent-flow` `[USER]`
+5. Archive feature `[AI]`:
    ```bash
    ./.trellis/scripts/feature.sh archive <feature-name>
    ```
 
 ---
 
-## Session End Reminder
+## User Available Commands `[USER]`
 
-**IMPORTANT**: When a task or session is completed, always remind the user:
+The following slash commands are for users (not AI):
 
-> Before ending this session, please run `/record-agent-flow` to record what we accomplished.
-> This helps maintain continuity across sessions.
+| Command | Description |
+|---------|-------------|
+| `/start` | Start development session (this command) |
+| `/parallel` | Start Multi-Agent Pipeline (worktree mode) |
+| `/finish-work` | Pre-completion checklist |
+| `/record-agent-flow` | Record session progress |
+| `/check-frontend` | Check frontend code |
+| `/check-backend` | Check backend code |
 
 ---
 
-## Quick Reference
+## Session End Reminder
 
-| Task Size | Approach |
-|-----------|----------|
-| Small fix / simple change | Implement directly |
-| New feature / multi-file change | Use feature tracking + delegation |
-| Research / exploration | Use research agent |
+**IMPORTANT**: When a task or session is completed, remind the user:
 
-| Command | Purpose |
-|---------|---------|
+> Before ending this session, please run `/record-agent-flow` to record what we accomplished.
+
+---
+
+## AI Executed Scripts `[AI]`
+
+| Script | Purpose |
+|--------|---------|
 | `feature.sh create <name>` | Create feature directory |
-| `feature.sh start <dir>` | Set as current feature |
+| `feature.sh init-context <dir> <type>` | Initialize jsonl files |
+| `feature.sh add-context <dir> <jsonl> <path>` | Add specs |
+| `feature.sh start <dir>` | Set current feature |
 | `feature.sh finish` | Clear current feature |
-| `feature.sh archive <name>` | Archive completed feature |
-| `feature.sh list` | List all features |
-| `/record-agent-flow` | **Record session progress (run at session end)** |
+| `feature.sh archive <name>` | Archive feature |
+| `get-context.sh` | Get session context |
+
+## Sub Agent Calls `[AI]`
+
+All sub agent calls use the opus model:
+
+| Agent | Purpose |
+|-------|---------|
+| research | Find specs, analyze code |
+| implement | Implement features |
+| check | Check code |
+| debug | Fix issues |

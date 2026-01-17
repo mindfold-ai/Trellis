@@ -31,7 +31,7 @@ program
   .description("Initialize trellis in the current project")
   .option("--cursor", "Include Cursor commands")
   .option("--claude", "Include Claude Code commands")
-  .option("--opencode", "Include OpenCode commands")
+  // .option("--opencode", "Include OpenCode commands")  // TODO: Re-enable when OpenCode support is stable
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",

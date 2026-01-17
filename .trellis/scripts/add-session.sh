@@ -1,5 +1,5 @@
 #!/bin/bash
-# Add a new session to progress file and update index.md
+# Add a new session to traces file and update index.md
 #
 # Usage:
 #   ./.trellis/scripts/add-session.sh --title "Title" --commit "hash" --summary "Summary"
@@ -76,13 +76,13 @@ count_progress_files() {
   echo "$result" | sed '/^$/d'
 }
 
-create_new_progress_file() {
+create_new_traces_file() {
   local num=$1
   local prev_num=$((num - 1))
   local new_file="$DEV_DIR/traces-$num.md"
 
   cat > "$new_file" << EOF
-# Agent Progress - $DEVELOPER (Part $num)
+# Agent Traces - $DEVELOPER (Part $num)
 
 > Continuation from \`traces-$prev_num.md\` (archived at ~$MAX_LINES lines)
 > Started: $TODAY
@@ -317,7 +317,7 @@ add_session() {
   echo "Title: $title" >&2
   echo "Commit: $commit" >&2
   echo "" >&2
-  echo "Current progress file: traces-$current_num.md" >&2
+  echo "Current traces file: traces-$current_num.md" >&2
   echo "Current lines: $current_lines" >&2
   echo "New content lines: $content_lines" >&2
   echo "Total after append: $((current_lines + content_lines))" >&2
@@ -329,7 +329,7 @@ add_session() {
   if [[ $((current_lines + content_lines)) -gt $MAX_LINES ]]; then
     target_num=$((current_num + 1))
     echo "[!] Exceeds $MAX_LINES lines, creating traces-$target_num.md" >&2
-    target_file=$(create_new_progress_file "$target_num")
+    target_file=$(create_new_traces_file "$target_num")
     echo "Created: $target_file" >&2
   fi
 
@@ -355,7 +355,7 @@ add_session() {
 show_help() {
   echo "Usage: $0 --title \"Title\" [options]"
   echo ""
-  echo "Add a new session to progress file and update index.md automatically."
+  echo "Add a new session to traces file and update index.md automatically."
   echo ""
   echo "Options:"
   echo "  --title TEXT       Session title (required)"

@@ -21,7 +21,7 @@
 
 This creates:
 - `.trellis/.developer` - Your identity file (gitignored, not committed)
-- `.trellis/agent-traces/<your-name>/` - Your personal progress directory
+- `.trellis/agent-traces/<your-name>/` - Your personal traces directory
 
 **Naming suggestions**:
 - Human developers: Use your name, e.g., `john-doe`
@@ -116,7 +116,7 @@ your-project/
 │   │   ├── feature.sh       # Feature management
 │   │   ├── get-context.sh   # Get session context
 │   │   └── add-session.sh   # Record session
-│   ├── agent-traces/      # Work progress records
+│   ├── agent-traces/      # Work traces records
 │   │   └── {developer}/     # Per-developer directories
 │   │       ├── features/    # Feature directories
 │   │       │   └── {day}-{name}/
@@ -214,7 +214,7 @@ This project uses a structured workflow system based on [Anthropic's best practi
 ```
 
 This automatically:
-- Appends session to current progress file
+- Appends session to current traces file
 - Creates new file if 2000-line limit exceeded
 - Updates index.md
 
@@ -294,7 +294,7 @@ git diff main...HEAD
 
 - [ ] Run lint and type-check - Must pass
 - [ ] Commit with proper message format
-- [ ] Run `add-session.sh` to record progress
+- [ ] Run `add-session.sh` to record session
 - [ ] Archive feature if completed with `feature.sh archive`
 
 ---

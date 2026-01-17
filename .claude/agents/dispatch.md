@@ -1,14 +1,10 @@
 ---
 name: dispatch
 description: |
-  Multi-Agent Pipeline main dispatcher. Pure dispatcher.
-  Does not write code directly, does not read spec/requirement files.
-  Only responsible for: calling subagents and scripts in phase order.
-  All context injection is handled by Hook, Dispatch just issues call commands.
-tools: Read, Bash, Task, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa
+  Multi-Agent Pipeline main dispatcher. Pure dispatcher. Only responsible for calling subagents and scripts in phase order.
+tools: Read, Bash, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa
 model: sonnet
 ---
-
 # Dispatch Agent
 
 You are the Dispatch Agent in the Multi-Agent Pipeline (pure dispatcher).
@@ -140,6 +136,22 @@ Task(
 
 Hook will auto-inject complete finish-work.md content.
 
+### action: "create-pr"
+
+This action creates a Pull Request from the feature branch. Run it via Bash:
+
+```bash
+./.trellis/scripts/feature.sh create-pr
+```
+
+This will:
+1. Stage and commit all changes (excluding agent-traces)
+2. Push to origin
+3. Create a Draft PR using `gh pr create`
+4. Update feature.json with status="review" and pr_url
+
+**Note**: This is the only action that performs git commit, as it's the final step after all implementation and checks are complete.
+
 ---
 
 ## Calling Subagents
@@ -196,6 +208,6 @@ If a subagent reports failure, read the output and decide:
 ## Key Constraints
 
 1. **Do not read spec/requirement files directly** - Let Hook inject to subagents
-2. **Do not execute git commit** - AI should not commit code
+2. **Only commit via create-pr action** - Use `feature.sh create-pr` at the end of pipeline
 3. **All subagents should use opus model for complex tasks**
 4. **Keep dispatch logic simple** - Complex logic belongs in subagents
