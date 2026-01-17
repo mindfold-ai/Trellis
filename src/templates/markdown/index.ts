@@ -1,16 +1,15 @@
 /**
  * Markdown templates for Trellis workflow
  *
- * Templates are sourced from src/templates/markdown/ as .txt files.
- * These are generic templates that will be used for new projects.
- *
- * Note: Structure files are NOT dogfooded because they contain
- * project-specific content (Trellis CLI guidelines), not generic templates.
+ * Some templates are dogfooded from .trellis/ (workflow.md, .gitignore, agent-traces/index.md)
+ * Others are standalone templates in src/templates/markdown/ (init-agent.md, agents.md)
+ * Structure templates use .md.txt extension as they are generic templates for new projects.
  */
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readTrellisFile } from "../extract.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,24 +23,31 @@ function readLocalTemplate(filename: string): string {
 }
 
 // =============================================================================
-// Template-only files (standalone templates, not structure)
+// Dogfooded files (from .trellis/)
 // =============================================================================
 
-// Agent progress index template (for new projects)
-export const agentProgressIndexContent: string = readLocalTemplate(
-  "agent-traces-index.md",
+// Agent progress index (from .trellis/agent-traces/index.md)
+export const agentProgressIndexContent: string = readTrellisFile(
+  "agent-traces/index.md",
 );
 
-// Root files (for new projects)
+// Workflow documentation (from .trellis/workflow.md)
+export const workflowMdContent: string = readTrellisFile("workflow.md");
+
+// Gitignore (from .trellis/.gitignore)
+export const workflowGitignoreContent: string = readTrellisFile(".gitignore");
+
+// =============================================================================
+// Standalone templates (not dogfooded)
+// =============================================================================
+
+// Root files for new projects
 export const initAgentContent: string = readLocalTemplate("init-agent.md");
 export const agentsMdContent: string = readLocalTemplate("agents.md");
 
-// Gitignore template
-export const workflowGitignoreContent: string =
-  readLocalTemplate("gitignore.txt");
-
-// Workflow documentation
-export const workflowMdContent: string = readLocalTemplate("workflow.md.txt");
+// Worktree config template (generic, not dogfooded from Trellis project)
+export const worktreeYamlContent: string =
+  readLocalTemplate("worktree.yaml.txt");
 
 // =============================================================================
 // Structure templates (generic templates from .txt files)

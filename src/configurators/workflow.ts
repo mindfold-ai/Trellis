@@ -1,34 +1,14 @@
 import path from "node:path";
 
 import { DIR_NAMES, PATHS } from "../constants/paths.js";
-
-// Import script templates
-import {
-  // Common utilities
-  commonPathsScript,
-  commonDeveloperScript,
-  commonGitContextScript,
-  commonWorktreeScript,
-  // Multi-agent scripts
-  multiAgentStartScript,
-  multiAgentCleanupScript,
-  multiAgentStatusScript,
-  // Configuration templates
-  worktreeYamlTemplate,
-  // Main scripts
-  initDeveloperScript,
-  getDeveloperScript,
-  featureScript,
-  getContextScript,
-  addSessionScript,
-  createBootstrapScript,
-} from "../templates/scripts/index.js";
+import { copyTrellisDir } from "../templates/extract.js";
 
 // Import markdown templates
 import {
   agentProgressIndexContent,
   workflowMdContent,
   workflowGitignoreContent,
+  worktreeYamlContent,
   // Backend structure (multi-doc)
   backendIndexContent,
   backendDirectoryStructureContent,
@@ -53,11 +33,6 @@ import {
 import { writeFile, ensureDir } from "../utils/file-writer.js";
 import type { ProjectType } from "../utils/project-detector.js";
 
-interface ScriptDefinition {
-  name: string;
-  content: string;
-}
-
 interface DocDefinition {
   name: string;
   content: string;
@@ -76,6 +51,13 @@ export interface WorkflowOptions {
 /**
  * Create workflow structure based on project type
  *
+ * This function creates the .trellis/ directory structure by:
+ * 1. Copying scripts/ directory directly (dogfooding)
+ * 2. Copying workflow.md and .gitignore (dogfooding)
+ * 3. Creating agent-traces/ with index.md
+ * 4. Creating structure/ with templates (not dogfooded - generic templates)
+ * 5. Copying worktree.yaml if multi-agent is enabled
+ *
  * @param cwd - Current working directory
  * @param options - Workflow options including project type
  */
@@ -86,127 +68,52 @@ export async function createWorkflowStructure(
   const projectType = options?.projectType ?? "fullstack";
   const multiAgent = options?.multiAgent ?? false;
 
-  // Create base directories (always created)
-  const baseDirs = [
-    DIR_NAMES.WORKFLOW,
-    PATHS.SCRIPTS,
-    `${PATHS.SCRIPTS}/common`,
-    PATHS.PROGRESS,
-    PATHS.STRUCTURE,
-    `${PATHS.STRUCTURE}/guides`, // Always created
-  ];
+  // Create base .trellis directory
+  ensureDir(path.join(cwd, DIR_NAMES.WORKFLOW));
 
-  // Add type-specific directories
-  if (projectType === "frontend" || projectType === "fullstack") {
-    baseDirs.push(`${PATHS.STRUCTURE}/frontend`);
-  }
-  if (projectType === "backend" || projectType === "fullstack") {
-    baseDirs.push(`${PATHS.STRUCTURE}/backend`);
-  }
-  // For unknown, create both but let user decide
-  if (projectType === "unknown") {
-    baseDirs.push(`${PATHS.STRUCTURE}/frontend`);
-    baseDirs.push(`${PATHS.STRUCTURE}/backend`);
-  }
+  // Copy scripts/ directory (dogfooding - direct copy)
+  copyTrellisDir("scripts", path.join(cwd, PATHS.SCRIPTS), {
+    executable: true,
+  });
 
-  // Add multi-agent directory if enabled
-  if (multiAgent) {
-    baseDirs.push(`${PATHS.SCRIPTS}/multi-agent`);
-  }
+  // Copy workflow.md (dogfooding)
+  await writeFile(path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE), workflowMdContent);
 
-  for (const dir of baseDirs) {
-    ensureDir(path.join(cwd, dir));
-  }
-
-  // Create scripts
-  await createScripts(cwd);
-
-  // Create multi-agent scripts if enabled
-  if (multiAgent) {
-    await createMultiAgentScripts(cwd);
-  }
-
-  // Create agent-traces index
-  await createAgentProgressIndex(cwd);
-
-  // Create structure templates based on project type
-  await createStructureTemplates(cwd, projectType);
-
-  // Create workflow.md
-  await createWorkflowMd(cwd);
-
-  // Create .gitignore for workflow
-  await createWorkflowGitignore(cwd);
-}
-
-async function createScripts(cwd: string): Promise<void> {
-  // Common utilities (to be sourced by other scripts)
-  const commonScripts: ScriptDefinition[] = [
-    { name: "common/paths.sh", content: commonPathsScript },
-    { name: "common/developer.sh", content: commonDeveloperScript },
-    { name: "common/git-context.sh", content: commonGitContextScript },
-  ];
-
-  for (const script of commonScripts) {
-    const scriptPath = path.join(cwd, PATHS.SCRIPTS, script.name);
-    await writeFile(scriptPath, script.content, { executable: true });
-  }
-
-  // Main scripts
-  const mainScripts: ScriptDefinition[] = [
-    { name: "init-developer.sh", content: initDeveloperScript },
-    { name: "get-developer.sh", content: getDeveloperScript },
-    { name: "feature.sh", content: featureScript },
-    { name: "get-context.sh", content: getContextScript },
-    { name: "add-session.sh", content: addSessionScript },
-    { name: "create-bootstrap.sh", content: createBootstrapScript },
-  ];
-
-  for (const script of mainScripts) {
-    const scriptPath = path.join(cwd, PATHS.SCRIPTS, script.name);
-    await writeFile(scriptPath, script.content, { executable: true });
-  }
-}
-
-async function createMultiAgentScripts(cwd: string): Promise<void> {
-  // Worktree utility (to be sourced by multi-agent scripts)
+  // Copy .gitignore (dogfooding)
   await writeFile(
-    path.join(cwd, PATHS.SCRIPTS, "common/worktree.sh"),
-    commonWorktreeScript,
-    { executable: true },
+    path.join(cwd, DIR_NAMES.WORKFLOW, ".gitignore"),
+    workflowGitignoreContent,
   );
 
-  // Multi-agent scripts
-  const multiAgentScripts: ScriptDefinition[] = [
-    { name: "multi-agent/start.sh", content: multiAgentStartScript },
-    { name: "multi-agent/cleanup.sh", content: multiAgentCleanupScript },
-    { name: "multi-agent/status.sh", content: multiAgentStatusScript },
-  ];
-
-  for (const script of multiAgentScripts) {
-    const scriptPath = path.join(cwd, PATHS.SCRIPTS, script.name);
-    await writeFile(scriptPath, script.content, { executable: true });
-  }
-
-  // Worktree configuration (in workflow root, not scripts)
-  await writeFile(
-    path.join(cwd, DIR_NAMES.WORKFLOW, "worktree.yaml"),
-    worktreeYamlTemplate,
-  );
-}
-
-async function createAgentProgressIndex(cwd: string): Promise<void> {
+  // Create agent-traces/ with index.md (dogfooding)
+  ensureDir(path.join(cwd, PATHS.PROGRESS));
   await writeFile(
     path.join(cwd, PATHS.PROGRESS, "index.md"),
     agentProgressIndexContent,
   );
+
+  // Copy worktree.yaml if multi-agent enabled (generic template, not dogfooded)
+  if (multiAgent) {
+    await writeFile(
+      path.join(cwd, DIR_NAMES.WORKFLOW, "worktree.yaml"),
+      worktreeYamlContent,
+    );
+  }
+
+  // Create structure templates based on project type
+  // These are NOT dogfooded - they are generic templates for new projects
+  await createStructureTemplates(cwd, projectType);
 }
 
 async function createStructureTemplates(
   cwd: string,
   projectType: ProjectType,
 ): Promise<void> {
+  // Ensure structure directory exists
+  ensureDir(path.join(cwd, PATHS.STRUCTURE));
+
   // Guides structure - always created
+  ensureDir(path.join(cwd, `${PATHS.STRUCTURE}/guides`));
   const guidesDocs: DocDefinition[] = [
     { name: "index.md", content: guidesIndexContent },
     {
@@ -232,6 +139,7 @@ async function createStructureTemplates(
     projectType === "fullstack" ||
     projectType === "unknown"
   ) {
+    ensureDir(path.join(cwd, `${PATHS.STRUCTURE}/backend`));
     const backendDocs: DocDefinition[] = [
       { name: "index.md", content: backendIndexContent },
       {
@@ -267,6 +175,7 @@ async function createStructureTemplates(
     projectType === "fullstack" ||
     projectType === "unknown"
   ) {
+    ensureDir(path.join(cwd, `${PATHS.STRUCTURE}/frontend`));
     const frontendDocs: DocDefinition[] = [
       { name: "index.md", content: frontendIndexContent },
       {
@@ -296,15 +205,4 @@ async function createStructureTemplates(
       );
     }
   }
-}
-
-async function createWorkflowMd(cwd: string): Promise<void> {
-  await writeFile(path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE), workflowMdContent);
-}
-
-async function createWorkflowGitignore(cwd: string): Promise<void> {
-  await writeFile(
-    path.join(cwd, DIR_NAMES.WORKFLOW, ".gitignore"),
-    workflowGitignoreContent,
-  );
 }
