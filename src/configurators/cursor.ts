@@ -1,25 +1,20 @@
+import { cpSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import { getCommandTemplates } from "./templates.js";
-import { writeFile, ensureDir } from "../utils/file-writer.js";
+import { getCursorSourcePath } from "../templates/extract.js";
 
 /**
- * Configure Cursor with slash commands
+ * Configure Cursor by copying the entire .cursor directory
  *
- * Cursor gets only the common commands that don't require
- * Claude-specific features like openskills.
+ * This implements the dogfooding principle - we use our own .cursor/
+ * configuration as the template for user projects.
  */
 export async function configureCursor(cwd: string): Promise<void> {
-  const commandsDir = path.join(cwd, ".cursor", "commands");
+  const sourcePath = getCursorSourcePath();
+  const destPath = path.join(cwd, ".cursor");
 
-  // Create directory
-  ensureDir(commandsDir);
+  // Ensure destination directory exists
+  mkdirSync(destPath, { recursive: true });
 
-  // Get command templates for Cursor (common features only)
-  const templates = getCommandTemplates("cursor");
-
-  // Write each command file
-  for (const [name, content] of Object.entries(templates)) {
-    const filePath = path.join(commandsDir, `${name}.md`);
-    await writeFile(filePath, content);
-  }
+  // Copy entire .cursor directory
+  cpSync(sourcePath, destPath, { recursive: true });
 }
