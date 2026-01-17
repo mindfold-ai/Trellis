@@ -1,3 +1,0 @@
-# Developer identity (local only)
-.developer
-
