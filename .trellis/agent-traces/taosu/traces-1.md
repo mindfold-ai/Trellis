@@ -263,3 +263,109 @@ Renamed all progress-related files and references to traces for consistency with
 ### Next Steps
 
 - None - feature complete
+
+## Session 5: Multi-Agent Pipeline: Plan Agent & Status Improvements
+
+**Date**: 2026-01-17
+**Feature**: Multi-Agent Pipeline: Plan Agent & Status Improvements
+
+### Summary
+
+Added Plan agent, improved status.sh with JSONL parsing, centralized phase management
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `67f26b2` | (see git log) |
+| `3f14689` | (see git log) |
+| `90764ad` | (see git log) |
+| `035ce35` | (see git log) |
+| `eb228d9` | (see git log) |
+| `ccc212a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
+
+## Session 6: Template Dogfooding: PR #6 & #7
+
+**Date**: 2026-01-17
+**Feature**: Template Dogfooding: PR #6 & #7
+
+### Summary
+
+Merged remove-txt-templates PR and fix-template-dogfood PR, established dogfooding pattern for .cursor/ and .claude/
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `95786c6` | (see git log) |
+| `8c1a31c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
+
+## Session 7: Architecture Simplification: Full Dogfooding
+
+**Date**: 2026-01-17
+**Feature**: Architecture Simplification: Full Dogfooding
+
+### Summary
+
+Major architecture refactor: direct copy .cursor/.claude/.trellis/scripts instead of template assembly. Removed 28 obsolete template files. Updated docs for new dogfooding pattern.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e1423b2` | (see git log) |
+| `2ddccbe` | (see git log) |
+| `dbb85a8` | (see git log) |
+| `446e6bf` | (see git log) |
+| `28c724c` | (see git log) |
+| `71c1368` | (see git log) |
+| `4cfbad3` | (see git log) |
+| `43b8923` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
