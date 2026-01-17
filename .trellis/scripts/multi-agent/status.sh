@@ -17,6 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/paths.sh"
 source "$SCRIPT_DIR/../common/worktree.sh"
 source "$SCRIPT_DIR/../common/developer.sh"
+source "$SCRIPT_DIR/../common/phase.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -271,24 +272,7 @@ calc_elapsed() {
   fi
 }
 
-# Get phase info from feature.json
-get_phase_info() {
-  local feature_json="$1"
-  if [ ! -f "$feature_json" ]; then
-    echo "N/A"
-    return
-  fi
-
-  local current_phase=$(jq -r '.current_phase // 0' "$feature_json")
-  local total_phases=$(jq -r '.next_action | length // 0' "$feature_json")
-  local action_name=$(jq -r --argjson phase "$current_phase" '.next_action[$phase - 1].action // "pending"' "$feature_json" 2>/dev/null)
-
-  if [ "$current_phase" = "0" ] || [ "$current_phase" = "null" ]; then
-    echo "0/${total_phases} (pending)"
-  else
-    echo "${current_phase}/${total_phases} (${action_name})"
-  fi
-}
+# Note: get_phase_info is now in common/phase.sh
 
 # Count modified files in worktree
 count_modified_files() {

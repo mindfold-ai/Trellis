@@ -137,14 +137,14 @@ Hook will auto-inject complete finish-work.md content.
 This action creates a Pull Request from the feature branch. Run it via Bash:
 
 ```bash
-./.trellis/scripts/feature.sh create-pr
+./.trellis/scripts/multi-agent/create-pr.sh
 ```
 
 This will:
 1. Stage and commit all changes (excluding agent-traces)
 2. Push to origin
 3. Create a Draft PR using `gh pr create`
-4. Update feature.json with status="review" and pr_url
+4. Update feature.json with status="review", pr_url, and current_phase
 
 **Note**: This is the only action that performs git commit, as it's the final step after all implementation and checks are complete.
 
@@ -204,6 +204,6 @@ If a subagent reports failure, read the output and decide:
 ## Key Constraints
 
 1. **Do not read spec/requirement files directly** - Let Hook inject to subagents
-2. **Only commit via create-pr action** - Use `feature.sh create-pr` at the end of pipeline
+2. **Only commit via create-pr action** - Use `multi-agent/create-pr.sh` at the end of pipeline
 3. **All subagents should use opus model for complex tasks**
 4. **Keep dispatch logic simple** - Complex logic belongs in subagents

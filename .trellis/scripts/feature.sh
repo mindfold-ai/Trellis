@@ -974,8 +974,9 @@ case "${1:-}" in
     cmd_set_scope "$2" "$3"
     ;;
   create-pr)
+    # Delegate to multi-agent/create-pr.sh
     shift
-    cmd_create_pr "$@"
+    "$SCRIPT_DIR/multi-agent/create-pr.sh" "$@"
     ;;
   archive)
     cmd_archive "$2"
