@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `traces-1.md`
-- **Total Sessions**: 7
+- **Total Sessions**: 8
 - **Last Active**: 2026-01-17
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `traces-1.md` | ~371 | Active |
+| `traces-1.md` | ~402 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 8 | 2026-01-17 | Fix: npm publish missing .gitignore | `7db6898` |
 | 7 | 2026-01-17 | Architecture Simplification: Full Dogfooding | `e1423b2`, `2ddccbe`, `dbb85a8`, `446e6bf`, `28c724c`, `71c1368`, `4cfbad3`, `43b8923` |
 | 6 | 2026-01-17 | Template Dogfooding: PR #6 & #7 | `95786c6`, `8c1a31c` |
 | 5 | 2026-01-17 | Multi-Agent Pipeline: Plan Agent & Status Improvements | `67f26b2`, `3f14689`, `90764ad`, `035ce35`, `eb228d9`, `ccc212a` |

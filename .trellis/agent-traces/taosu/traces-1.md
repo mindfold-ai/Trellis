@@ -369,3 +369,34 @@ Major architecture refactor: direct copy .cursor/.claude/.trellis/scripts instea
 ### Next Steps
 
 - None - feature complete
+
+## Session 8: Fix: npm publish missing .gitignore
+
+**Date**: 2026-01-17
+**Feature**: Fix: npm publish missing .gitignore
+
+### Summary
+
+Fixed ENOENT error in published package. npm ignores .gitignore files by default, so changed to use gitignore.txt template instead.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7db6898` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
