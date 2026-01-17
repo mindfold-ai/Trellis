@@ -1,13 +1,17 @@
+/**
+ * OpenCode configurator (TODO: Re-enable when OpenCode support is stable)
+ *
+ * This file is a placeholder. OpenCode support requires:
+ * 1. A stable OpenCode configuration format
+ * 2. An .opencode/ directory to dogfood from (like .cursor/ and .claude/)
+ * 3. Updates to the init command to enable the opencode option
+ */
+
 import path from "node:path";
-import { getCommandTemplates } from "./templates.js";
 import { writeFile, ensureDir } from "../utils/file-writer.js";
-import { getAllAgents } from "../templates/agents/index.js";
 
 /**
  * OpenCode configuration file content
- *
- * Note: Custom agents are auto-discovered from .opencode/agent/ directory,
- * so we don't need to define them in the config file.
  */
 function getOpenCodeConfig(): string {
   return JSON.stringify(
@@ -27,8 +31,7 @@ function getOpenCodeConfig(): string {
 /**
  * Configure OpenCode with slash commands
  *
- * OpenCode uses .opencode/commands/ for slash commands,
- * similar to Claude Code's .claude/commands/
+ * TODO: Implement dogfooding pattern like Cursor and Claude
  */
 export async function configureOpenCode(cwd: string): Promise<void> {
   const opencodeDir = path.join(cwd, ".opencode");
@@ -37,16 +40,8 @@ export async function configureOpenCode(cwd: string): Promise<void> {
   // Create directory
   ensureDir(commandsDir);
 
-  // Get command templates for OpenCode
-  const templates = getCommandTemplates("opencode");
-
-  // Write each command file
-  for (const [name, content] of Object.entries(templates)) {
-    const filePath = path.join(commandsDir, `${name}.md`);
-    await writeFile(filePath, content);
-  }
-
-  // Write .opencode.json configuration
+  // TODO: Copy from .opencode/ directory when available
+  // For now, just create the config file
   const configPath = path.join(cwd, ".opencode.json");
   await writeFile(configPath, getOpenCodeConfig());
 }
@@ -54,32 +49,14 @@ export async function configureOpenCode(cwd: string): Promise<void> {
 /**
  * Configure OpenCode agents
  *
- * Uses the shared agent templates with OpenCode-specific frontmatter format.
- * OpenCode agents use YAML frontmatter with tools as boolean object.
+ * TODO: Implement when OpenCode agent format is stable
  */
-export async function configureOpenCodeAgents(cwd: string): Promise<void> {
-  const agentDir = path.join(cwd, ".opencode", "agent");
-
-  // Create directory
-  ensureDir(agentDir);
-
-  // Get all agent templates in OpenCode format (excludes dispatch)
-  const agents = getAllAgents("opencode");
-
-  // Write each agent file
-  for (const agent of agents) {
-    const filePath = path.join(agentDir, `${agent.name}.md`);
-    await writeFile(filePath, agent.content);
-  }
+export async function configureOpenCodeAgents(_cwd: string): Promise<void> {
+  // TODO: Implement when OpenCode agent format is stable
 }
 
 /**
  * Configure OpenCode with full support
- *
- * This includes:
- * - Slash commands
- * - Agent configurations
- * - .opencode.json configuration
  */
 export async function configureOpenCodeFull(cwd: string): Promise<void> {
   await configureOpenCode(cwd);

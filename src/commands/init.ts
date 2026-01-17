@@ -5,11 +5,7 @@ import readline from "node:readline";
 import chalk from "chalk";
 import figlet from "figlet";
 import inquirer from "inquirer";
-import {
-  configureClaude,
-  configureClaudeAgents,
-  configureClaudeHooks,
-} from "../configurators/claude.js";
+import { configureClaude } from "../configurators/claude.js";
 import { configureCursor } from "../configurators/cursor.js";
 // TODO: Re-enable when OpenCode support is stable
 // import {
@@ -168,8 +164,6 @@ export async function init(options: InitOptions): Promise<void> {
     }
   }
 
-  // Auto-enable agents when Claude is selected
-  const enableClaudeAgents = tools.includes("claude");
   // TODO: Re-enable when OpenCode support is stable
   // const enableOpenCodeAgents = tools.includes("opencode");
 
@@ -190,32 +184,24 @@ export async function init(options: InitOptions): Promise<void> {
   console.log(chalk.blue("📁 Creating workflow structure..."));
   await createWorkflowStructure(cwd, { projectType, multiAgent: true });
 
-  // Configure selected tools
+  // Configure selected tools by copying entire directories (dogfooding)
   if (tools.includes("cursor")) {
-    console.log(chalk.blue("📝 Configuring Cursor commands..."));
+    console.log(chalk.blue("📝 Configuring Cursor..."));
     await configureCursor(cwd);
   }
 
   if (tools.includes("claude")) {
-    console.log(chalk.blue("📝 Configuring Claude Code commands..."));
+    console.log(
+      chalk.blue("📝 Configuring Claude Code (commands, agents, hooks)..."),
+    );
     await configureClaude(cwd);
-
-    // Configure Multi-Agent Pipeline if enabled
-    if (enableClaudeAgents) {
-      console.log(chalk.blue("🤖 Configuring Multi-Agent Pipeline..."));
-      console.log(chalk.gray("   - Creating agent configurations..."));
-      await configureClaudeAgents(cwd);
-      console.log(chalk.gray("   - Creating hook configurations..."));
-      await configureClaudeHooks(cwd);
-    }
   }
 
   // TODO: Re-enable when OpenCode support is stable
   // if (tools.includes("opencode")) {
-  //   console.log(chalk.blue("📝 Configuring OpenCode commands..."));
+  //   console.log(chalk.blue("📝 Configuring OpenCode..."));
   //   await configureOpenCode(cwd);
   //
-  //   // Configure OpenCode agents
   //   if (enableOpenCodeAgents) {
   //     console.log(chalk.blue("🤖 Configuring OpenCode agents..."));
   //     await configureOpenCodeAgents(cwd);
