@@ -1,25 +1,22 @@
 /**
  * Markdown templates for Trellis workflow
  *
- * Templates are sourced from two locations:
- * 1. `.trellis/` directory - Dogfooding: actual trellis structure files
- * 2. `src/templates/markdown/` - Template-only files (no .trellis counterpart)
+ * Templates are sourced from src/templates/markdown/ as .txt files.
+ * These are generic templates that will be used for new projects.
  *
- * This implements the "eat your own dog food" principle - Trellis uses its
- * own actual configuration files as the source of truth for templating.
+ * Note: Structure files are NOT dogfooded because they contain
+ * project-specific content (Trellis CLI guidelines), not generic templates.
  */
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readMarkdown } from "../extract.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Read a template-only markdown file from src/templates/markdown/
- * These are templates that have no .trellis counterpart
+ * Read a template file from src/templates/markdown/
  */
 function readLocalTemplate(filename: string): string {
   const filePath = join(__dirname, filename);
@@ -27,8 +24,7 @@ function readLocalTemplate(filename: string): string {
 }
 
 // =============================================================================
-// Template-only files (no .trellis counterpart)
-// These remain in src/templates/markdown/
+// Template-only files (standalone templates, not structure)
 // =============================================================================
 
 // Agent progress index template (for new projects)
@@ -44,63 +40,64 @@ export const agentsMdContent: string = readLocalTemplate("agents.md");
 export const workflowGitignoreContent: string =
   readLocalTemplate("gitignore.txt");
 
-// =============================================================================
-// Dogfooded files (read from .trellis/ - Trellis's own config)
-// =============================================================================
-
 // Workflow documentation
-export const workflowMdContent: string = readMarkdown("workflow.md");
+export const workflowMdContent: string = readLocalTemplate("workflow.md.txt");
+
+// =============================================================================
+// Structure templates (generic templates from .txt files)
+// These are NOT dogfooded - they are generic templates for new projects
+// =============================================================================
 
 // Backend structure (multi-doc format)
-export const backendIndexContent: string = readMarkdown(
-  "structure/backend/index.md",
+export const backendIndexContent: string = readLocalTemplate(
+  "structure/backend/index.md.txt",
 );
-export const backendDirectoryStructureContent: string = readMarkdown(
-  "structure/backend/directory-structure.md",
+export const backendDirectoryStructureContent: string = readLocalTemplate(
+  "structure/backend/directory-structure.md.txt",
 );
-export const backendDatabaseGuidelinesContent: string = readMarkdown(
-  "structure/backend/database-guidelines.md",
+export const backendDatabaseGuidelinesContent: string = readLocalTemplate(
+  "structure/backend/database-guidelines.md.txt",
 );
-export const backendLoggingGuidelinesContent: string = readMarkdown(
-  "structure/backend/logging-guidelines.md",
+export const backendLoggingGuidelinesContent: string = readLocalTemplate(
+  "structure/backend/logging-guidelines.md.txt",
 );
-export const backendQualityGuidelinesContent: string = readMarkdown(
-  "structure/backend/quality-guidelines.md",
+export const backendQualityGuidelinesContent: string = readLocalTemplate(
+  "structure/backend/quality-guidelines.md.txt",
 );
-export const backendErrorHandlingContent: string = readMarkdown(
-  "structure/backend/error-handling.md",
+export const backendErrorHandlingContent: string = readLocalTemplate(
+  "structure/backend/error-handling.md.txt",
 );
 
 // Frontend structure (multi-doc format)
-export const frontendIndexContent: string = readMarkdown(
-  "structure/frontend/index.md",
+export const frontendIndexContent: string = readLocalTemplate(
+  "structure/frontend/index.md.txt",
 );
-export const frontendDirectoryStructureContent: string = readMarkdown(
-  "structure/frontend/directory-structure.md",
+export const frontendDirectoryStructureContent: string = readLocalTemplate(
+  "structure/frontend/directory-structure.md.txt",
 );
-export const frontendTypeSafetyContent: string = readMarkdown(
-  "structure/frontend/type-safety.md",
+export const frontendTypeSafetyContent: string = readLocalTemplate(
+  "structure/frontend/type-safety.md.txt",
 );
-export const frontendHookGuidelinesContent: string = readMarkdown(
-  "structure/frontend/hook-guidelines.md",
+export const frontendHookGuidelinesContent: string = readLocalTemplate(
+  "structure/frontend/hook-guidelines.md.txt",
 );
-export const frontendComponentGuidelinesContent: string = readMarkdown(
-  "structure/frontend/component-guidelines.md",
+export const frontendComponentGuidelinesContent: string = readLocalTemplate(
+  "structure/frontend/component-guidelines.md.txt",
 );
-export const frontendQualityGuidelinesContent: string = readMarkdown(
-  "structure/frontend/quality-guidelines.md",
+export const frontendQualityGuidelinesContent: string = readLocalTemplate(
+  "structure/frontend/quality-guidelines.md.txt",
 );
-export const frontendStateManagementContent: string = readMarkdown(
-  "structure/frontend/state-management.md",
+export const frontendStateManagementContent: string = readLocalTemplate(
+  "structure/frontend/state-management.md.txt",
 );
 
 // Guides structure
-export const guidesIndexContent: string = readMarkdown(
-  "structure/guides/index.md",
+export const guidesIndexContent: string = readLocalTemplate(
+  "structure/guides/index.md.txt",
 );
-export const guidesCrossLayerThinkingGuideContent: string = readMarkdown(
-  "structure/guides/cross-layer-thinking-guide.md",
+export const guidesCrossLayerThinkingGuideContent: string = readLocalTemplate(
+  "structure/guides/cross-layer-thinking-guide.md.txt",
 );
-export const guidesCodeReuseThinkingGuideContent: string = readMarkdown(
-  "structure/guides/code-reuse-thinking-guide.md",
+export const guidesCodeReuseThinkingGuideContent: string = readLocalTemplate(
+  "structure/guides/code-reuse-thinking-guide.md.txt",
 );

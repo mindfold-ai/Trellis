@@ -41,6 +41,64 @@ export function getTrellisSourcePath(): string {
 }
 
 /**
+ * Get the path to the .cursor directory.
+ *
+ * This works in both:
+ * - Development: reads from project root .cursor/
+ * - Installed package: reads from dist/.cursor/
+ *
+ * The directory structure is:
+ * - Development: src/templates/extract.ts -> ../../.cursor
+ * - Built: dist/templates/extract.js -> ../.cursor
+ */
+export function getCursorSourcePath(): string {
+  // First, try the production path (dist/templates -> dist/.cursor)
+  const prodPath = path.join(__dirname, "..", ".cursor");
+  if (fs.existsSync(prodPath)) {
+    return prodPath;
+  }
+
+  // Fall back to development path (src/templates -> ../../.cursor)
+  const devPath = path.join(__dirname, "..", "..", ".cursor");
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+
+  throw new Error(
+    "Could not find .cursor directory. Expected at dist/.cursor or project root.",
+  );
+}
+
+/**
+ * Get the path to the .claude directory.
+ *
+ * This works in both:
+ * - Development: reads from project root .claude/
+ * - Installed package: reads from dist/.claude/
+ *
+ * The directory structure is:
+ * - Development: src/templates/extract.ts -> ../../.claude
+ * - Built: dist/templates/extract.js -> ../.claude
+ */
+export function getClaudeSourcePath(): string {
+  // First, try the production path (dist/templates -> dist/.claude)
+  const prodPath = path.join(__dirname, "..", ".claude");
+  if (fs.existsSync(prodPath)) {
+    return prodPath;
+  }
+
+  // Fall back to development path (src/templates -> ../../.claude)
+  const devPath = path.join(__dirname, "..", "..", ".claude");
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+
+  throw new Error(
+    "Could not find .claude directory. Expected at dist/.claude or project root.",
+  );
+}
+
+/**
  * Read a file from the .trellis directory
  * @param relativePath - Path relative to .trellis/ (e.g., 'scripts/feature.sh')
  * @returns File content as string
@@ -86,4 +144,26 @@ export function readMarkdown(relativePath: string): string {
  */
 export function readCommand(filename: string): string {
   return readTemplate("commands", filename);
+}
+
+/**
+ * Read a file from the .cursor directory (dogfooding)
+ * @param relativePath - Path relative to .cursor/ (e.g., 'commands/start.md')
+ * @returns File content as string
+ */
+export function readCursorFile(relativePath: string): string {
+  const cursorPath = getCursorSourcePath();
+  const filePath = path.join(cursorPath, relativePath);
+  return fs.readFileSync(filePath, "utf-8");
+}
+
+/**
+ * Read a file from the .claude directory (dogfooding)
+ * @param relativePath - Path relative to .claude/ (e.g., 'commands/start.md')
+ * @returns File content as string
+ */
+export function readClaudeFile(relativePath: string): string {
+  const claudePath = getClaudeSourcePath();
+  const filePath = path.join(claudePath, relativePath);
+  return fs.readFileSync(filePath, "utf-8");
 }
