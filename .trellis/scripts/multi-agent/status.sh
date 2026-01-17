@@ -56,6 +56,11 @@ while [[ $# -gt 0 ]]; do
       TARGET="$2"
       shift 2
       ;;
+    --progress)
+      ACTION="progress"
+      TARGET="$2"
+      shift 2
+      ;;
     --registry)
       ACTION="registry"
       shift
@@ -113,6 +118,40 @@ find_agent() {
   echo "$agent"
 }
 
+# Get the last tool call from agent log
+get_last_tool() {
+  local log_file="$1"
+  if [ ! -f "$log_file" ]; then
+    echo ""
+    return
+  fi
+  tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' 2>/dev/null | head -1
+}
+
+# Get the last assistant text from agent log
+get_last_message() {
+  local log_file="$1"
+  local max_len="${2:-100}"
+  if [ ! -f "$log_file" ]; then
+    echo ""
+    return
+  fi
+  local text=$(tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null | head -1)
+  if [ -n "$text" ] && [ "$text" != "null" ]; then
+    echo "${text:0:$max_len}"
+  fi
+}
+
+# Get recent task notifications from agent log
+get_recent_tasks() {
+  local log_file="$1"
+  local count="${2:-5}"
+  if [ ! -f "$log_file" ]; then
+    return
+  fi
+  tail -200 "$log_file" 2>/dev/null | jq -r 'select(.type=="system" and .subtype=="task_notification") | "\(.status)|\(.summary)"' 2>/dev/null | tail -"$count"
+}
+
 # =============================================================================
 # Commands
 # =============================================================================
@@ -125,12 +164,14 @@ Usage:
   $0                         Show summary of all features
   $0 --list                  List all worktrees and agents
   $0 --detail <feature>      Detailed feature status
+  $0 --progress <feature>    Quick progress view with recent activity
   $0 --watch <feature>       Watch agent log in real-time
   $0 --log <feature>         Show recent log entries
   $0 --registry              Show agent registry
 
 Examples:
   $0 --detail my-feature
+  $0 --progress my-feature
   $0 --watch 16-worktree-support
   $0 --log worktree-support
 EOF
@@ -313,11 +354,18 @@ cmd_summary() {
       local modified=$(count_modified_files "$worktree")
       local branch=$(jq -r '.branch // "N/A"' "$phase_source" 2>/dev/null)
 
+      # Get recent activity from log
+      local log_file="$worktree/.agent-log"
+      local last_tool=$(get_last_tool "$log_file")
+
       echo -e "${GREEN}▶${NC} ${CYAN}${name}${NC} ${GREEN}[running]${NC}"
       echo -e "  Phase:    ${phase_info}"
       echo -e "  Elapsed:  ${elapsed}"
       echo -e "  Branch:   ${DIM}${branch}${NC}"
       echo -e "  Modified: ${modified} file(s)"
+      if [ -n "$last_tool" ]; then
+        echo -e "  Activity: ${YELLOW}${last_tool}${NC}"
+      fi
       echo -e "  PID:      ${DIM}${pid}${NC}"
       echo ""
     elif [ -n "$agent_info" ] && [ "$agent_info" != "null" ]; then
@@ -333,8 +381,74 @@ cmd_summary() {
 
   if [ "$has_running_agent" = true ]; then
     echo -e "${DIM}─────────────────────────────────────${NC}"
+    echo -e "${DIM}Use --progress <name> for quick activity view${NC}"
     echo -e "${DIM}Use --detail <name> for more info${NC}"
-    echo -e "${DIM}Use --log <name> to see recent activity${NC}"
+  fi
+  echo ""
+}
+
+cmd_progress() {
+  if [ -z "$TARGET" ]; then
+    echo "Usage: $0 --progress <feature>"
+    exit 1
+  fi
+
+  local agent=$(find_agent "$TARGET")
+  if [ -z "$agent" ] || [ "$agent" = "null" ]; then
+    echo "Agent not found: $TARGET"
+    exit 1
+  fi
+
+  local id=$(echo "$agent" | jq -r '.id')
+  local worktree=$(echo "$agent" | jq -r '.worktree_path')
+  local log_file="$worktree/.agent-log"
+
+  if [ ! -f "$log_file" ]; then
+    echo "Log file not found: $log_file"
+    exit 1
+  fi
+
+  echo ""
+  echo -e "${BLUE}=== Progress: ${id} ===${NC}"
+  echo ""
+
+  # Recent task notifications
+  echo -e "${CYAN}Recent Tasks:${NC}"
+  local has_tasks=false
+  while IFS='|' read -r status summary; do
+    [ -z "$status" ] && continue
+    has_tasks=true
+    local icon
+    case "$status" in
+      completed) icon="${GREEN}✓${NC}" ;;
+      failed) icon="${RED}✗${NC}" ;;
+      *) icon="${YELLOW}○${NC}" ;;
+    esac
+    echo -e "  ${icon} ${summary}"
+  done < <(get_recent_tasks "$log_file" 5)
+
+  if [ "$has_tasks" = false ]; then
+    echo -e "  ${DIM}(no task notifications yet)${NC}"
+  fi
+  echo ""
+
+  # Current activity
+  echo -e "${CYAN}Current Activity:${NC}"
+  local last_tool=$(get_last_tool "$log_file")
+  if [ -n "$last_tool" ]; then
+    echo -e "  Tool: ${YELLOW}${last_tool}${NC}"
+  else
+    echo -e "  ${DIM}(no recent tool calls)${NC}"
+  fi
+  echo ""
+
+  # Last message
+  echo -e "${CYAN}Last Message:${NC}"
+  local last_msg=$(get_last_message "$log_file" 200)
+  if [ -n "$last_msg" ]; then
+    echo -e "  \"${last_msg}...\""
+  else
+    echo -e "  ${DIM}(no recent messages)${NC}"
   fi
   echo ""
 }
@@ -524,6 +638,9 @@ case "$ACTION" in
     ;;
   summary)
     cmd_summary
+    ;;
+  progress)
+    cmd_progress
     ;;
   detail)
     cmd_detail

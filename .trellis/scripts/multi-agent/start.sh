@@ -95,7 +95,28 @@ log_info "Feature: ${FEATURE_DIR_ABS}"
 
 BRANCH=$(jq -r '.branch' "$FEATURE_JSON")
 FEATURE_NAME=$(jq -r '.name' "$FEATURE_JSON")
+FEATURE_STATUS=$(jq -r '.status' "$FEATURE_JSON")
 WORKTREE_PATH=$(jq -r '.worktree_path // empty' "$FEATURE_JSON")
+
+# Check if feature was rejected
+if [ "$FEATURE_STATUS" = "rejected" ]; then
+  log_error "Feature was rejected by Plan Agent"
+  if [ -f "${FEATURE_DIR_ABS}/REJECTED.md" ]; then
+    echo ""
+    echo -e "${YELLOW}Rejection reason:${NC}"
+    cat "${FEATURE_DIR_ABS}/REJECTED.md"
+  fi
+  echo ""
+  log_info "To retry, delete this directory and run plan.sh again with revised requirements"
+  exit 1
+fi
+
+# Check if prd.md exists (plan completed successfully)
+if [ ! -f "${FEATURE_DIR_ABS}/prd.md" ]; then
+  log_error "prd.md not found - Plan Agent may not have completed"
+  log_info "Check plan log: ${FEATURE_DIR_ABS}/.plan-log"
+  exit 1
+fi
 
 if [ -z "$BRANCH" ] || [ "$BRANCH" = "null" ]; then
   log_error "branch field not set in feature.json"

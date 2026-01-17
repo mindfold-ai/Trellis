@@ -56,11 +56,7 @@ Get the `next_action` array, which defines the list of phases to execute.
 
 Execute each step in `phase` order.
 
-**Update `current_phase` field when starting a new phase**:
-
-```bash
-jq '.current_phase = {N}' ${FEATURE_DIR}/feature.json > ${FEATURE_DIR}/feature.json.tmp && mv ${FEATURE_DIR}/feature.json.tmp ${FEATURE_DIR}/feature.json
-```
+> **Note**: You do NOT need to manually update `current_phase`. The Hook automatically updates it when you call Task with a subagent.
 
 ---
 
