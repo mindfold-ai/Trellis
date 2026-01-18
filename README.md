@@ -4,193 +4,753 @@ English | [中文](./README-zh.md)
 
 ![Trellis](./trellis.png)
 
-AI capabilities grow like ivy — full of vitality but climbing in all directions. Trellis provides the structure to guide them along a disciplined path.
+> AI capabilities grow like vines — full of vitality but spreading in all directions. Trellis provides structure, guiding them along a disciplined path.
 
-Based on Anthropic's [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), with engineering practices and improvements for real-world usage.
+## What Problems Does It Solve
 
-## Installation
+### 1. AI Lacks Project Context
 
-```bash
-npm install -g @mindfoldhq/trellis    # or pnpm/yarn
-```
+AI doesn't know what this project is, doesn't know the project's specialized coding standards, architectural constraints, or previous development decisions. Every session starts with repeating "what this project is, what tech stack it uses, what we're doing next..." — and mistakes made in one session will be repeated in the next.
+
+**Trellis Solution**:
+- Development guidelines are persistently stored in `.trellis/structure/`. Developers within the project can share and maintain them together. Once one developer writes high-quality guidelines, the entire team's code quality improves
+- Session records are stored in `.trellis/agent-traces/`. New sessions can quickly review what you worked on previously, what code was changed, providing better project awareness without repeatedly explaining "what this project is"
+
+### 2. Guidelines Written but Not Followed
+
+`.cursorrules`, `CLAUDE.md`, `AGENTS.md` have limited space, and AI tends to forget mid-conversation. Guidelines and code are separated, making synchronization difficult. An all-in-one file forces AI to read potentially irrelevant context each time, wasting context window space, and a multi-thousand-line file is inconvenient to update and maintain.
+
+**Trellis Solution**: Guidelines can be loaded on-demand, injected into the corresponding Agent's context window, allowing each specialized agent to receive only the project-specific domain knowledge and guidelines it needs.
+
+### 3. Workflow Requires Human Supervision
+
+Requires humans to guide AI step by step: first read guidelines, then implement, then check, then commit.
+
+**Trellis Solution**: Slash Commands encapsulate complete workflows. Users only need to type `/start` or `/parallel`. Task distribution, script invocation, Hook interception, and other mechanisms are invisible to users — AI automatically executes according to predefined processes.
+
+### 4. High Barrier for Multi-Agent Parallelism
+
+Some tools support multi-Agent parallel development, but learning costs are high, configuration is complex, and multiple Agents working simultaneously can easily conflict.
+
+**Trellis Solution**: One-click launch with `/parallel`. Uses Git Worktree for physical isolation underneath, with each Agent working in an independent directory without interference.
+
+---
 
 ## Quick Start
 
+### 1. Installation
+
 ```bash
-# Initialize in your project
-trellis init
-# or use short alias
-tl init
-
-# Initialize with developer name
-trellis init -u your-name
-
-# Initialize for specific tools only
-trellis init --cursor          # Cursor only
-trellis init --claude          # Claude Code only
-trellis init --cursor --claude # Both (default)
+npm install -g @mindfoldhq/trellis@latest
 ```
 
-## What It Does
+### 2. Initialize Project
 
-Trellis creates a structured workflow system in your project:
+```bash
+cd your-project
+trellis init -u your-name
+```
+
+### 3. Configure worktree.yaml (if using `/parallel`)
+
+Edit `.trellis/worktree.yaml` according to your project:
+- `worktree_dir`: Worktree storage directory (relative to project root, e.g., `../trellis-worktrees`)
+- `copy`: Environment variable files to copy to Worktree (e.g., `.env`, `.trellis/.developer`)
+- `post_create`: Initialization commands to run after Worktree creation (e.g., `pnpm install --frozen-lockfile`)
+- `verify`: Verification commands that must pass before Check Agent finishes (e.g., `pnpm lint`, `pnpm typecheck`)
+
+### 4. Start Using
+
+#### Claude Code Workflow
+
+**Simple tasks**:
+```
+/start → describe requirement → /record-agent-flow
+```
+
+**Complex features** (Multi-Agent Pipeline):
+```
+/parallel → describe requirement → /record-agent-flow
+```
+
+#### Cursor Workflow
+
+```
+/start → describe requirement → /before-frontend-dev or /before-backend-dev → implement → /check-frontend or /check-backend → /finish-work → /record-agent-flow
+```
+
+---
+
+### 5. Behind-the-Scenes Process Details (Claude Code)
+
+**`/start` Simple Tasks**:
+1. AI executes `get-context.sh` to get current developer, branch, recent commits, and other status
+2. AI reads `.trellis/workflow.md` and project guidelines under `.trellis/structure/`
+3. AI implements features directly on the current branch
+
+**`/start` Complex Tasks**:
+1. AI creates feature directory, calls **Research Agent** to analyze codebase and find relevant guideline files for the requirement
+2. AI records guideline file paths into the feature directory and creates `prd.md` requirement document
+3. AI calls **Implement Agent** to implement according to guidelines (guideline file contents recorded in previous step are automatically injected into Implement Agent's context by Hook)
+4. AI calls **Check Agent** to review code and auto-fix issues
+
+**`/parallel` Multi-Agent Pipeline** (Two Modes):
+
+**Mode A: Plan Agent Auto-Planning** (Recommended for complex features with unclear requirements)
+1. `plan.sh` script launches **Plan Agent** in background
+2. Plan Agent evaluates requirement validity (rejects with reasons if requirement is unclear), calls **Research Agent** to analyze codebase and find relevant guideline files
+3. Plan Agent records guideline file paths into feature directory and creates `prd.md` requirement document
+
+**Mode B: Manual Configuration** (For simple features with clear requirements)
+1. AI creates feature directory, calls **Research Agent** to analyze codebase and find relevant guideline files
+2. AI records guideline file paths into feature directory and creates `prd.md` requirement document
+
+**Subsequent Flow for Both Modes**:
+1. `start.sh` creates independent Git Worktree, copies environment files per `worktree.yaml` `copy` field, runs initialization commands per `post_create` field, and launches **Dispatch Agent** in Worktree
+2. Dispatch Agent reads `.trellis/.current-feature` to locate feature directory, reads `feature.json` `next_action` array, calls sub-Agents in phase order
+3. **Implement Agent**: Hook (`inject-subagent-context.py`) automatically injects guideline files from `implement.jsonl` plus `prd.md` and `info.md` before Task call, then AI implements according to guidelines
+4. **Check Agent**: Hook injects guideline file contents from `check.jsonl`, AI reviews code changes and auto-fixes; **Ralph Loop** (`ralph-loop.py`) intercepts Agent stop requests, runs verification commands per `worktree.yaml` `verify` field (e.g., lint, typecheck), only allows ending when all pass
+5. `create-pr.sh` commits code (excluding agent-traces), pushes branch, creates Draft PR with `gh pr create`, updates `feature.json` status to `review`
+
+---
+
+## System Architecture
+
+After Trellis initialization, the following directory structure is created in your project:
 
 ```
 your-project/
-├── .trellis/
-│   ├── .developer                 # Developer identity (gitignored)
-│   ├── workflow.md                    # Workflow guide
-│   ├── agent-traces/            # Session tracking
-│   │   └── {developer}/           # Per-developer progress
-│   │       ├── index.md           # Progress index
-│   │       ├── features/          # Feature tracking
-│   │       │   ├── {day}-{name}/  # Feature directory
-│   │       │   │   └── feature.json
-│   │       │   └── archive/       # Completed features
-│   │       └── traces-N.md      # Session records
-│   ├── structure/                 # Development guidelines
-│   │   ├── frontend/              # Frontend standards
-│   │   ├── backend/               # Backend standards
-│   │   └── guides/                # Thinking guides
-│   ├── scripts/                   # Utility scripts
-│   │   ├── common/                # Shared utilities
-│   │   │   ├── paths.sh           # Path utilities
-│   │   │   ├── developer.sh       # Developer management
-│   │   │   ├── git-context.sh     # Git context
-│   │   │   └── worktree.sh        # Worktree utilities
-│   │   ├── multi-agent/           # Multi-agent pipeline
-│   │   │   ├── start.sh           # Start worktree agent
-│   │   │   ├── cleanup.sh         # Cleanup worktree
-│   │   │   └── status.sh          # Monitor agents
-│   │   ├── feature.sh             # Feature management
-│   │   └── ...
-│   └── worktree.yaml              # Worktree configuration
-├── .cursor/commands/              # Cursor slash commands
-├── .claude/commands/              # Claude Code slash commands
-├── init-agent.md                  # AI onboarding guide
-└── AGENTS.md                      # Agent instructions
+├── AGENTS.md                    # Lightweight AI instructions (agents.md protocol compatible)
+├── .trellis/                    # Workflow and guidelines center
+│   ├── workflow.md              # Development process guide (core document, read first in new sessions)
+│   ├── worktree.yaml            # Multi-Agent pipeline configuration
+│   ├── .developer               # Developer identity (git-ignored)
+│   ├── .gitignore               # .trellis directory gitignore rules
+│   ├── structure/               # Development guidelines (core knowledge base)
+│   ├── agent-traces/            # Session records and Feature tracking
+│   └── scripts/                 # Automation scripts
+├── .claude/                     # Claude Code specific configuration
+│   ├── commands/                # Slash Commands (13)
+│   ├── agents/                  # Agent definitions (6)
+│   ├── hooks/                   # Hook scripts (2)
+│   └── settings.json            # Hook trigger configuration
+└── .cursor/                     # Cursor specific configuration
+    └── commands/                # Slash Commands (12)
 ```
 
-## Key Features
+### Entry Files
 
-### 1. Multi-Developer Support
+**`AGENTS.md`** (~18 lines):
+- Lightweight instruction file following agents.md protocol
+- Uses `<!-- TRELLIS:START -->` and `<!-- TRELLIS:END -->` markers to protect content (`trellis update` won't overwrite)
+- Quick pointer to `/start` command and `.trellis/workflow.md`
 
-Each developer (human or AI) gets their own progress tracking:
+**`.trellis/workflow.md`** (Core Document):
+- **First-read document** for new AI Agent sessions
+- Contains: Quick Start (developer identity initialization, context acquisition), development process, session recording, best practices
+- Based on [Anthropic's Best Practices for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+
+**Reading Order for New Agents**:
+1. `.trellis/workflow.md` → Understand overall workflow and getting started steps
+2. `.trellis/structure/{frontend|backend}/index.md` → Corresponding domain's guideline entry
+3. Specific guideline files → Read on-demand based on task type
+
+---
+
+## I. Development Guidelines System (`.trellis/structure/`)
+
+Stores project development guidelines — the team's knowledge assets. AI references these guidelines when implementing and reviewing code.
+
+```
+structure/
+├── backend/                     # Backend development guidelines
+│   ├── index.md                 # Backend guidelines entry
+│   ├── directory-structure.md   # Directory structure conventions
+│   ├── database-guidelines.md   # Database and ORM guidelines
+│   ├── error-handling.md        # Error handling strategies
+│   ├── quality-guidelines.md    # Code quality standards
+│   └── logging-guidelines.md    # Logging guidelines
+├── frontend/                    # Frontend development guidelines
+│   ├── index.md                 # Frontend guidelines entry
+│   ├── directory-structure.md   # Directory structure conventions
+│   ├── component-guidelines.md  # Component design guidelines
+│   ├── hook-guidelines.md       # Hook usage guidelines
+│   ├── state-management.md      # State management guidelines
+│   ├── quality-guidelines.md    # Code quality standards
+│   └── type-safety.md           # Type safety guidelines
+└── guides/                      # Problem thinking guides
+    ├── index.md                 # Guides entry (with trigger conditions)
+    ├── cross-layer-thinking-guide.md   # Cross-layer development thinking checklist
+    └── code-reuse-thinking-guide.md    # Code reuse thinking checklist
+```
+
+**Core Philosophy**:
+- Clearer guidelines = better AI execution results
+- Update guidelines whenever issues are found (bugs, omissions, inconsistencies), forming a continuous improvement loop
+- Thinking Guides help discover "didn't think of that" problems — most bugs come from incomplete thinking, not lack of skill
+
+**Trigger Timing** (When to use which guide):
+- **cross-layer-thinking-guide.md**: When feature involves 3+ layers (API, Service, Component, Database), data format changes between layers, multiple consumers need same data
+- **code-reuse-thinking-guide.md**: When similar code already exists, same pattern repeats 3+ times, need to add fields in multiple places, before creating new utility functions (search first!)
+
+---
+
+## II. Session Tracking System (`.trellis/agent-traces/`)
+
+Records all AI Agent work history, supporting multi-developer collaboration.
+
+```
+agent-traces/
+├── index.md                     # Active developers list
+└── {developer}/                 # Each developer's directory
+    ├── index.md                 # Personal session index
+    ├── traces-N.md              # Session records (max 2000 lines per file)
+    ├── .agents/
+    │   └── registry.json        # Running Agent registry
+    └── features/                # Feature directories
+        ├── {day}-{name}/        # Active Feature
+        │   ├── feature.json     # Feature metadata
+        │   ├── prd.md           # Requirement document
+        │   ├── info.md          # Technical design (optional)
+        │   ├── implement.jsonl  # Implement Agent context configuration
+        │   ├── check.jsonl      # Check Agent context configuration
+        │   └── debug.jsonl      # Debug Agent context configuration
+        └── archive/             # Archived Features
+            └── {YYYY-MM}/
+```
+
+### Feature Directory Details
+
+Each Feature is an independent work unit containing complete context configuration:
+
+**`feature.json`** - Feature Metadata:
+```json
+{
+  "name": "user-auth",
+  "status": "planning|in_progress|review|completed|rejected",
+  "dev_type": "backend|frontend|fullstack",
+  "branch": "feature/user-auth",
+  "base_branch": "main",
+  "worktree_path": "../trellis-worktrees/feature/user-auth",
+  "current_phase": 1,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ]
+}
+```
+
+**`implement.jsonl` / `check.jsonl` / `debug.jsonl`** - Context Configuration:
+```jsonl
+{"file": ".trellis/structure/backend/index.md", "reason": "Backend development guidelines"}
+{"file": "src/api/auth.ts", "reason": "Existing auth pattern reference"}
+{"file": "src/middleware/", "type": "directory", "reason": "Middleware pattern reference"}
+```
+
+These jsonl files define which guideline and code files each Agent needs to read. Hooks automatically inject these file contents when calling Agents.
+
+### Traceability
+
+**Traceability Value of jsonl Files**:
+
+Each Feature's jsonl files record which guideline files were used, which existing code was referenced, and why each file was included. When issues arise, you can trace: whether necessary guideline references were missing, whether guidelines themselves were unclear, whether it's a guideline problem or execution deviation.
+
+**Traceability Value of traces Files**:
+
+`traces-N.md` records each session's date, Feature, work summary, main changes, Git commits, test status, and next steps. Forms complete development history; new sessions can quickly review previous work.
+
+---
+
+## III. Script System (`.trellis/scripts/`)
+
+Automation scripts that power the entire workflow.
+
+```
+scripts/
+├── get-context.sh               # Get session context (developer, branch, recent commits)
+├── feature.sh                   # Feature management (create, archive, configure)
+├── add-session.sh               # Record session
+├── init-developer.sh            # Initialize developer identity
+├── common/                      # Common utilities
+│   ├── paths.sh                 # Path utilities
+│   ├── developer.sh             # Developer utilities
+│   ├── git-context.sh           # Git context
+│   ├── phase.sh                 # Phase management
+│   └── worktree.sh              # Worktree utilities
+└── multi-agent/                 # Multi-Agent pipeline scripts
+    ├── plan.sh                  # Launch Plan Agent
+    ├── start.sh                 # Create Worktree and launch Dispatch Agent
+    ├── status.sh                # View pipeline status
+    ├── create-pr.sh             # Create PR
+    └── cleanup.sh               # Clean up Worktree
+```
+
+### Script System Design Philosophy
+
+**Why Encapsulate Operations in Scripts?**
+
+AI may "improvise" each time it executes tasks — using different commands, different parameters, different orders. This leads to:
+- Inconsistent workflows, difficult to track and debug
+- Easy to miss critical steps (like copying environment files, registering Agents)
+- Reinventing the wheel, having to think "how to do it" every time
+
+**Script Purpose**: Encapsulate complex operations into **deterministic, repeatable** commands. AI only needs to call scripts, doesn't need to know internal implementation details, and won't miss steps.
+
+### Key Script Descriptions
+
+**`feature.sh`** - Feature Lifecycle Management:
+```bash
+feature.sh create <name>                    # Create Feature directory
+feature.sh init-context <dir> <type>        # Initialize jsonl files
+feature.sh add-context <dir> <file> <path> <reason>  # Add context entry
+feature.sh set-branch <dir> <branch>        # Set branch
+feature.sh start <dir>                      # Set as current Feature
+feature.sh archive <name>                   # Archive completed Feature
+feature.sh list                             # List active Features
+```
+
+**`multi-agent/plan.sh`** - Launch Plan Agent:
 
 ```bash
-./.trellis/scripts/init-developer.sh <name>
+./plan.sh --name <feature-name> --type <dev-type> --requirement "<requirement>"
 ```
 
-### 2. Slash Commands
+**How It Works**:
+1. Create Feature directory (calls `feature.sh create`)
+2. Read `.claude/agents/plan.md`, extract Agent prompt (skip frontmatter)
+3. Pass parameters to Agent via **environment variables**:
+   ```bash
+   export PLAN_FEATURE_NAME="user-auth"
+   export PLAN_DEV_TYPE="backend"
+   export PLAN_FEATURE_DIR=".trellis/agent-traces/taosu/features/19-user-auth"
+   export PLAN_REQUIREMENT="Add JWT-based authentication"
+   ```
+4. Launch Claude Code in background: `nohup claude -p --dangerously-skip-permissions < prompt &`
+5. Logs written to `<feature-dir>/.plan-log`
 
-Pre-built commands for AI assistants:
+**Why Use Environment Variables for Parameters?**
+- Agent prompt is a static template, environment variables make it dynamic
+- Agent can directly read `$PLAN_FEATURE_DIR` and other variables, knowing which directory to operate on
+- Avoids hardcoding paths in prompts, keeps templates generic
+
+**`multi-agent/start.sh`** - Launch Dispatch Agent:
+
+```bash
+./start.sh <feature-dir>
+```
+
+**How It Works**:
+1. **Validate Prerequisites**: feature.json and prd.md must exist (ensures Plan phase completed)
+2. **Check Feature Status**: If `status: "rejected"`, refuse to start and show reason
+3. **Create Git Worktree**:
+   ```bash
+   git worktree add -b feature/user-auth ../trellis-worktrees/feature/user-auth
+   ```
+4. **Copy Environment Files**: Read `worktree.yaml` `copy` field, copy each file
+5. **Copy Feature Directory**: Feature directory may not be committed yet, needs manual copy to Worktree
+6. **Run Initialization Commands**: Read `worktree.yaml` `post_create` field, execute in order
+7. **Set Current Feature**: Write to `.trellis/.current-feature` file
+8. **Prepare Agent Prompt**: Extract content from `dispatch.md`, write to `.agent-prompt`
+9. **Launch Claude Code in Background**:
+   ```bash
+   nohup ./agent-runner.sh > .agent-log 2>&1 &
+   ```
+10. **Register to registry.json**: Record PID, Worktree path, start time for later management
+
+**Key Design**:
+- Scripts handle **environment preparation** (Worktree, dependencies, files), Agents only handle **task execution**
+- Agents know which Feature they're handling by reading `.current-feature` file
+- All state persisted to files (registry.json, feature.json), viewable and recoverable anytime
+
+**`multi-agent/create-pr.sh`** - Create PR:
+1. `git add -A` (exclude agent-traces)
+2. `git commit -m "type(scope): feature-name"`
+3. `git push origin <branch>`
+4. `gh pr create --draft --base <base_branch>`
+5. Update `feature.json`: `status: "review"`, `pr_url: <url>`
+
+---
+
+## IV. Slash Commands (`.claude/commands/` and `.cursor/commands/`)
+
+Users interact with Trellis through Slash Commands. Slash Commands are **the entry point for users and the system**, calling scripts and Agents behind the scenes to do actual work.
+
+### `/start` - Session Initialization
+
+**Purpose**: Initialize development session, read project context and guidelines.
+
+**Execution Steps**:
+1. Read `.trellis/workflow.md` to understand workflow
+2. Execute `get-context.sh` to get current status (developer, branch, uncommitted files, active Features)
+3. Read `.trellis/structure/{frontend|backend}/index.md` guideline entry
+4. Report ready status, ask user for task
+
+**Task Handling**:
+- **Simple tasks**: Implement directly → Remind user to run `/finish-work`
+- **Complex tasks** (Claude Code): Create Feature directory → Call Research Agent to analyze → Configure jsonl → Call Implement/Check Agent
+
+### `/parallel` - Multi-Agent Pipeline (Claude Code Only)
+
+**Purpose**: Launch parallel development pipeline using Git Worktree for isolated work environments.
+
+**Differences from `/start`**:
+
+| Dimension | `/start` | `/parallel` |
+|-----------|----------|-------------|
+| Execution Location | Main repo single process | Main repo + Worktree multi-process |
+| Git Management | Develop directly on current branch | Create independent Worktree and branch |
+| Use Case | Simple tasks, quick implementation | Complex features, multi-module, needs isolation |
+
+**Two Modes**:
+- **Plan Agent Mode** (Recommended): `plan.sh --name <name> --type <type> --requirement "<req>"` → Plan Agent auto-analyzes requirements, configures Feature → `start.sh` launches Dispatch Agent
+- **Manual Configuration Mode**: Manually create Feature directory, configure jsonl, write prd.md → `start.sh` launches Dispatch Agent
+
+### `/before-frontend-dev` and `/before-backend-dev` - Pre-Development Guidelines Reading
+
+**Purpose**: Force reading of corresponding domain's development guidelines before coding.
+
+**Execution Steps**:
+1. Read `.trellis/structure/{frontend|backend}/index.md` guideline entry
+2. Read specific guideline files based on task type:
+   - **Frontend**: `component-guidelines.md`, `hook-guidelines.md`, `state-management.md`, `type-safety.md`
+   - **Backend**: `database-guidelines.md`, `error-handling.md`, `logging-guidelines.md`, `type-safety.md`
+3. Begin development after understanding coding standards
+
+### `/check-frontend`, `/check-backend`, `/check-cross-layer` - Code Review
+
+**`/check-frontend` and `/check-backend`**:
+1. `git status` to see modified files
+2. Read corresponding guideline files
+3. Check code against guidelines
+4. Report violations and fix them
+
+**`/check-cross-layer`** (Cross-layer Check):
+
+Checks multiple dimensions to prevent "didn't think of that" bugs:
+
+| Dimension | Trigger Condition | Check Content |
+|-----------|-------------------|---------------|
+| **Cross-layer Data Flow** | Changes involve 3+ layers | Read/write flow, type propagation, error propagation, loading states |
+| **Code Reuse** | Modifying constants/configs | `grep` search all usage locations, whether to extract shared constants |
+| **New Utility Functions** | Creating utility | Search first if similar function exists |
+| **After Batch Modifications** | Similar changes across multiple files | Any omissions, should it be abstracted |
+
+### `/finish-work` - Pre-Commit Checklist
+
+**Purpose**: Ensure code completeness, execute before commit.
+
+**Checklist Items**:
+1. **Code Quality**: lint, type-check, test pass, no `console.log`, no `!`, no `any`
+2. **Documentation Sync**: Does `.trellis/structure/` guidelines need updating
+3. **API Changes**: Are schema, docs, client code in sync
+4. **Database Changes**: Are migration, schema, queries updated
+5. **Cross-layer Validation**: Data flow, error handling, type consistency
+6. **Manual Testing**: Functionality, edge cases, error states, after refresh
+
+### `/record-agent-flow` - Record Session Progress
+
+**Prerequisite**: User has tested and committed code (AI doesn't execute `git commit`)
+
+**Execution Steps**:
+1. Execute `get-context.sh` to get current context
+2. Execute `add-session.sh --title "..." --commit "hash"` to record session:
+   - Append to `traces-N.md` (auto-creates new file when exceeding 2000 lines)
+   - Update `index.md` (session count, last active time, history table)
+3. If Feature completed, execute `feature.sh archive <name>` to archive
+
+### Other Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/init-agent` | Initialize AI session with context |
-| `/before-frontend-dev` | Read frontend guidelines before coding |
-| `/before-backend-dev` | Read backend guidelines before coding |
-| `/check-frontend` | Validate frontend code against guidelines |
-| `/check-backend` | Validate backend code against guidelines |
-| `/check-cross-layer` | Verify cross-layer consistency |
-| `/finish-work` | Pre-commit checklist |
-| `/record-agent-flow` | Record session progress |
-| `/break-loop` | Deep bug analysis |
-| `/onboard-developer` | Full workflow onboarding |
+| `/break-loop` | Deep bug analysis, break out of fix loops |
+| `/create-command` | Create new Slash Command |
+| `/integrate-skill` | Extract Claude Code skill into project guidelines |
+| `/onboard-developer` | Landing guide for developers |
 
-### 3. Thinking Guides
+---
 
-Structured guides to prevent common mistakes:
+## V. Agent System (`.claude/agents/`)
 
-- Cross-layer thinking guide
-- Code reuse thinking guide
-- Pre-implementation checklist
+Defines 6 specialized Agents, each with specific responsibilities:
 
-### 4. Feature Tracking
+| Agent | Responsibility |
+|-------|----------------|
+| **Plan** | Evaluate requirement validity, configure Feature directory |
+| **Research** | Search code and docs, pure research without modifications |
+| **Dispatch** | Pure dispatcher, calls sub-Agents by phase |
+| **Implement** | Implement according to guidelines, git commit forbidden |
+| **Check** | Review code and self-fix, controlled by Ralph Loop |
+| **Debug** | Deep analysis and issue fixing |
 
-Track features with directory-based structure:
+### Agent Details
 
-```bash
-./.trellis/scripts/feature.sh create my-feature  # Create feature
-./.trellis/scripts/feature.sh list               # List active features
-./.trellis/scripts/feature.sh archive my-feature # Archive completed
+**Plan Agent** (`.claude/agents/plan.md`):
+- Can **reject** unclear, incomplete, or out-of-scope requirements
+- Calls Research Agent to analyze codebase
+- Output: Fully configured Feature directory (feature.json, prd.md, *.jsonl)
+
+**Research Agent** (`.claude/agents/research.md`):
+- Uses Haiku model (lightweight, fast)
+- **Strict boundaries**: Can only describe "what it is, where it is, how it works", forbidden from suggestions, criticism, modifications
+
+**Dispatch Agent** (`.claude/agents/dispatch.md`):
+- **Pure dispatcher**: Only calls sub-Agents, doesn't read guidelines (Hook auto-injects)
+- Reads `.trellis/.current-feature` to locate Feature directory
+- Reads `feature.json` `next_action` array, executes phases in order
+
+**Implement Agent** (`.claude/agents/implement.md`):
+- Reads Hook-injected guidelines and requirements
+- Implements features and runs lint/typecheck
+- **Forbidden**: `git commit`, `git push`, `git merge`
+
+**Check Agent** (`.claude/agents/check.md`):
+- `git diff` to get code changes
+- Check code against guidelines
+- **Self-fix** issues, not just report
+- Controlled by Ralph Loop: must output completion markers to end
+
+**Debug Agent** (`.claude/agents/debug.md`):
+- Not part of default flow, only called when Check Agent can't fix
+- Categorize issues by priority: `[P1]` must fix, `[P2]` should fix, `[P3]` optional fix
+
+---
+
+## VI. Automation Mechanisms
+
+Trellis implements workflow automation through Hooks and configuration files, making AI execute according to predefined processes, reducing arbitrariness.
+
+### Staged Context Injection
+
+**Why Staged Injection?**
+
+Too much context causes AI distraction (irrelevant information interference), confusion (contradictory guidelines), and conflicts (different phase instructions overriding) — this is called **Context Rot**.
+
+**Staged Injection Strategy**:
+```
+Plan/Research Agent analyzes requirements in advance
+         ↓
+Write relevant file paths to implement.jsonl, check.jsonl
+         ↓
+Hook injects only files needed for that phase when calling each Agent
+         ↓
+Each Agent receives precise context, focuses on current task
 ```
 
-### 5. Multi-Agent Pipeline (Worktree Support)
+| Phase | Injected Content | Excluded Content |
+|-------|------------------|------------------|
+| Implement | Requirements + implementation-related guidelines and code | Check guidelines |
+| Check | Check guidelines + code quality standards | Implementation details |
+| Finish | Commit checklist + requirements (verify satisfaction) | Full check guidelines |
 
-Run multiple AI agents in parallel using git worktrees for isolation:
+### Hook Implementation (`.claude/hooks/`)
 
-```bash
-# 1. Create feature and set branch
-./.trellis/scripts/feature.sh create my-feature
-./.trellis/scripts/feature.sh set-branch <feature-dir> feature/my-feature
+Two Python scripts implement the above automation:
 
-# 2. Start agent in isolated worktree
-./.trellis/scripts/multi-agent/start.sh <feature-dir>
+**1. `inject-subagent-context.py` (Context Injection)**
 
-# 3. Monitor agents
-./.trellis/scripts/multi-agent/status.sh --list    # List all agents
-./.trellis/scripts/multi-agent/status.sh --watch <feature>  # Watch logs
+**Trigger Timing**: PreToolUse - Before Task tool call
 
-# 4. Cleanup when done
-./.trellis/scripts/multi-agent/cleanup.sh <branch-name>
+**How It Works**:
+```
+Dispatch calls Task(subagent_type="implement", ...)
+                    ↓
+            Hook triggers (PreToolUse)
+                    ↓
+     Read .trellis/.current-feature to locate Feature directory
+                    ↓
+     Read corresponding jsonl file based on subagent_type
+                    ↓
+     Inject all file contents listed in jsonl into Agent's prompt
+                    ↓
+            Implement Agent starts with complete context
 ```
 
-Configure worktree behavior in `.trellis/worktree.yaml`:
+**Content Injected Per Phase**:
 
-```yaml
-worktree_dir: ../worktrees     # Where to create worktrees
-copy:                          # Files to copy to each worktree
-  - .env
-  - .trellis/.developer
-post_create:                   # Commands after worktree creation
-  - pnpm install
+| Agent | Injected Content | Purpose |
+|-------|------------------|---------|
+| Implement | Guidelines from `implement.jsonl` + `prd.md` + `info.md` | Understand requirements, implement according to guidelines |
+| Check | Guidelines from `check.jsonl` + `finish-work.md` | Check if code meets guidelines |
+| Check ([finish] marker) | `finish-work.md` + `prd.md` (lightweight) | Final verification before commit |
+| Debug | Guidelines from `debug.jsonl` + error information | Deep analysis and fixing |
+
+**Design Philosophy**:
+- Dispatch becomes pure dispatcher, only sends simple commands
+- Hook handles all context injection, sub-Agents work autonomously
+- No manual context passing needed, behavior controlled by code not prompts
+
+### 2. `ralph-loop.py` (Quality Control Loop)
+
+**Trigger Timing**: SubagentStop - When Check Agent attempts to stop
+
+**How It Works**:
+```
+Check Agent attempts to stop
+        ↓
+  Ralph Loop triggers (SubagentStop)
+        ↓
+   Has verify config?
+   ├─ Yes → Execute verification commands from worktree.yaml
+   │       ├─ All pass → Allow stop
+   │       └─ Any fail → Block stop, report failure reason, continue fixing
+   └─ No → Check completion markers in Agent output
+           ├─ All markers present → Allow stop
+           └─ Missing markers → Block stop, report which markers missing
+
+Maximum 5 loops (prevent infinite loops and cost overruns)
 ```
 
-## CLI Commands
+**Two Verification Methods**:
 
-```bash
-trellis init              # Initialize workflow
-trellis init -u <name>    # Initialize with developer name
-trellis init -y           # Skip prompts, use defaults
-trellis init -f           # Force overwrite existing files
-trellis init -s           # Skip existing files
+1. **Programmatic Verification (Recommended)**:
+   - Configure `verify` commands in `worktree.yaml` (e.g., `pnpm lint`, `pnpm typecheck`)
+   - Ralph Loop executes these commands to verify code
+   - Doesn't rely on AI output, program-enforced verification, more reliable
+
+2. **Completion Marker Verification (Fallback)**:
+   - Generate completion markers from `check.jsonl` `reason` fields
+   - Format: `{REASON}_FINISH` (e.g., `TYPECHECK_FINISH`, `LINT_FINISH`)
+   - Check Agent must actually execute checks and output corresponding markers
+   - Ralph Loop checks if all markers are in Agent output
+
+**State Management**:
+- State file: `.trellis/.ralph-state.json`
+- Tracks current iteration count and Feature
+- 30-minute timeout auto-reset
+
+### Continuous Guidelines Refinement
+
+**Refinement Loop**:
+```
+AI executes according to guidelines → Issues discovered → Update .trellis/structure/ → Better execution next time → Guidelines get better with use
 ```
 
-## How It Works
+**Thinking Guides** (`.trellis/structure/guides/`) capture team's tacit knowledge:
+- **cross-layer-thinking-guide.md**: Thinking checklist before cross-layer development
+- **code-reuse-thinking-guide.md**: Search checklist before creating new code
 
-1. **AI reads `init-agent.md`** at session start
-2. **Follows guidelines** in `.trellis/structure/`
-3. **Updates progress** in `.trellis/agent-traces/`
-4. **Uses slash commands** for common tasks
+Core philosophy: **30 minutes of thinking can save 3 hours of debugging**
 
-This creates a structured, documented workflow where:
-- AI agents maintain context across sessions
-- Work is tracked and auditable
-- Code quality standards are enforced
-- Multiple agents can collaborate
+---
 
-## Roadmap
+## VII. Complete Workflow Examples
 
-Planned features for future releases:
+### Claude Code `/parallel` Complete Flow
 
-| Feature | Description |
-|---------|-------------|
-| **Monorepo Support** | Adapt Trellis for monorepo project structures |
-| **Worktree Isolation** | Each new session uses an isolated git worktree |
-| **Parallel Sessions** | Concurrent execution when multiple tasks are in the queue |
-| **Conversation Persistence** | Persist engineer-AI conversation records |
+```
+User: /parallel
+User: Implement user registration with email verification
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ Plan Phase (Main Repo)                              │
+├─────────────────────────────────────────────────────┤
+│ 1. plan.sh launches Plan Agent                      │
+│ 2. Plan Agent evaluates requirements (may reject    │
+│    unclear requirements)                            │
+│ 3. Plan Agent calls Research Agent to analyze       │
+│    codebase                                         │
+│ 4. Plan Agent creates Feature directory:            │
+│    - feature.json (metadata)                        │
+│    - prd.md (requirement document)                  │
+│    - implement.jsonl (implement phase context)      │
+│    - check.jsonl (check phase context)              │
+└─────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ Worktree Creation (Main Repo → Worktree)            │
+├─────────────────────────────────────────────────────┤
+│ 1. start.sh creates Git Worktree                    │
+│ 2. Copy environment files (worktree.yaml copy)      │
+│ 3. Run init commands (worktree.yaml post_create)    │
+│ 4. Write .trellis/.current-feature marker           │
+│ 5. Launch Dispatch Agent in background              │
+│ 6. Register to registry.json                        │
+└─────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ Implement Phase (In Worktree)                       │
+├─────────────────────────────────────────────────────┤
+│ 1. Dispatch calls Task(subagent_type="implement")   │
+│ 2. Hook triggers, injects implement.jsonl +         │
+│    prd.md + info.md                                 │
+│ 3. Implement Agent implements according to          │
+│    guidelines                                       │
+│ 4. Run lint/typecheck                               │
+│ 5. Report completion                                │
+└─────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ Check Phase (In Worktree)                           │
+├─────────────────────────────────────────────────────┤
+│ 1. Dispatch calls Task(subagent_type="check")       │
+│ 2. Hook triggers, injects guidelines from           │
+│    check.jsonl                                      │
+│ 3. Check Agent reviews code, self-fixes issues      │
+│ 4. Check Agent attempts to stop                     │
+│ 5. Ralph Loop triggers:                             │
+│    - Execute verify commands (pnpm lint,            │
+│      pnpm typecheck)                                │
+│    - All pass → Allow stop                          │
+│    - Any fail → Block stop, continue fixing         │
+│      (max 5 times)                                  │
+└─────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ Finish Phase (In Worktree)                          │
+├─────────────────────────────────────────────────────┤
+│ 1. Dispatch calls Task(prompt="[finish] ...")       │
+│ 2. Hook triggers, injects finish-work.md +          │
+│    prd.md (lightweight)                             │
+│ 3. Check Agent executes Pre-Commit Checklist        │
+│ 4. Skip Ralph Loop (already verified in check)      │
+└─────────────────────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────────────────────┐
+│ Create-PR Phase (In Worktree)                       │
+├─────────────────────────────────────────────────────┤
+│ 1. create-pr.sh executes                            │
+│ 2. git add -A (exclude agent-traces)                │
+│ 3. git commit -m "feat(scope): feature-name"        │
+│ 4. git push origin <branch>                         │
+│ 5. gh pr create --draft --base <base_branch>        │
+│ 6. Update feature.json (status: "review", pr_url)   │
+└─────────────────────────────────────────────────────┘
+         ↓
+User: /record-agent-flow (record session)
+```
 
-## Acknowledgments
+### Cursor Complete Flow
 
-Trellis is built upon ideas and inspirations from:
+```
+User: /start
+         ↓
+AI: Read project status, report ready
+         ↓
+User: Describe requirement
+         ↓
+User: /before-backend-dev (if backend task)
+         ↓
+AI: Read .trellis/structure/backend/ guidelines
+         ↓
+AI: Implement feature
+         ↓
+User: /check-backend
+         ↓
+AI: Review code, self-fix issues
+         ↓
+User: /finish-work
+         ↓
+AI: Execute Pre-Commit Checklist
+         ↓
+User: git commit (manual commit)
+         ↓
+User: /record-agent-flow (record session)
+```
 
-- [Anthropic](https://www.anthropic.com/) - For the foundational research on [Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
-- [OpenSkills](https://github.com/numman-ali/openskills) - For pioneering the skills system that extends Claude's capabilities
-- [Exa](https://exa.ai/) - For the powerful web search and code context capabilities that significantly enhance AI agent performance
+---
 
-## License
+## Extended Reading
 
-FSL-1.1-MIT (Functional Source License, MIT future license)
-
-Copyright © Mindfold LLC
+- [Understanding Trellis Through Kubernetes Concepts](docs/use-k8s-to-know-trellis.md) - If you're familiar with Kubernetes, this article explains Trellis design using K8s concept analogies
