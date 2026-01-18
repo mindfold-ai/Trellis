@@ -12,7 +12,8 @@ import {
 } from "../configurators/claude.js";
 import { configureCursor } from "../configurators/cursor.js";
 import { createWorkflowStructure } from "../configurators/workflow.js";
-import { PATHS } from "../constants/paths.js";
+import { DIR_NAMES, PATHS } from "../constants/paths.js";
+import { VERSION } from "../cli/index.js";
 import {
   agentsMdContent,
   initAgentContent,
@@ -174,6 +175,10 @@ export async function init(options: InitOptions): Promise<void> {
   // Create workflow structure with project type
   console.log(chalk.blue("📁 Creating workflow structure..."));
   await createWorkflowStructure(cwd, { projectType });
+
+  // Write version file for update tracking
+  const versionPath = path.join(cwd, DIR_NAMES.WORKFLOW, ".version");
+  fs.writeFileSync(versionPath, VERSION);
 
   // Configure selected tools
   if (tools.includes("cursor")) {
