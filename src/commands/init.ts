@@ -15,10 +15,7 @@ import { configureCursor } from "../configurators/cursor.js";
 import { createWorkflowStructure } from "../configurators/workflow.js";
 import { DIR_NAMES, PATHS } from "../constants/paths.js";
 import { VERSION } from "../cli/index.js";
-import {
-  agentsMdContent,
-  initAgentContent,
-} from "../templates/markdown/index.js";
+import { agentsMdContent } from "../templates/markdown/index.js";
 import {
   setWriteMode,
   writeFile,
@@ -335,14 +332,7 @@ function askInput(prompt: string): Promise<string> {
 }
 
 async function createRootFiles(cwd: string): Promise<void> {
-  const initAgentPath = path.join(cwd, "init-agent.md");
   const agentsPath = path.join(cwd, "AGENTS.md");
-
-  // Write init-agent.md from template
-  const initAgentWritten = await writeFile(initAgentPath, initAgentContent);
-  if (initAgentWritten) {
-    console.log(chalk.blue("📄 Created init-agent.md"));
-  }
 
   // Write AGENTS.md from template
   const agentsWritten = await writeFile(agentsPath, agentsMdContent);

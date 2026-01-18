@@ -6,12 +6,87 @@
 
 ## Table of Contents
 
-1. [Workflow Overview](#workflow-overview)
-2. [Session Start Process](#session-start-process)
-3. [Development Process](#development-process)
-4. [Session End](#session-end)
-5. [File Descriptions](#file-descriptions)
-6. [Best Practices](#best-practices)
+1. [Quick Start (Do This First)](#quick-start-do-this-first)
+2. [Workflow Overview](#workflow-overview)
+3. [Session Start Process](#session-start-process)
+4. [Development Process](#development-process)
+5. [Session End](#session-end)
+6. [File Descriptions](#file-descriptions)
+7. [Best Practices](#best-practices)
+
+---
+
+## Quick Start (Do This First)
+
+### Step 0: Initialize Developer Identity (First Time Only)
+
+> **Multi-developer support**: Each developer/Agent needs to initialize their identity first
+
+```bash
+# Check if already initialized
+./.trellis/scripts/get-developer.sh
+
+# If not initialized, run:
+./.trellis/scripts/init-developer.sh <your-name>
+# Example: ./.trellis/scripts/init-developer.sh cursor-agent
+```
+
+This creates:
+- `.trellis/.developer` - Your identity file (gitignored, not committed)
+- `.trellis/agent-traces/<your-name>/` - Your personal traces directory
+
+**Naming suggestions**:
+- Human developers: Use your name, e.g., `john-doe`
+- Cursor AI: `cursor-agent` or `cursor-<feature>`
+- Claude Code: `claude-agent` or `claude-<feature>`
+
+### Step 1: Understand Current Context
+
+```bash
+# Get full context in one command
+./.trellis/scripts/get-context.sh
+
+# Or check manually:
+./.trellis/scripts/get-developer.sh      # Your identity
+./.trellis/scripts/feature.sh list       # Active features
+git status && git log --oneline -10      # Git state
+```
+
+### Step 2: Read Project Guidelines [MANDATORY]
+
+**CRITICAL**: Read guidelines before writing any code:
+
+```bash
+# Read frontend guidelines index (if applicable)
+cat .trellis/structure/frontend/index.md
+
+# Read backend guidelines index (if applicable)
+cat .trellis/structure/backend/index.md
+```
+
+**Why read both?**
+- Understand the full project architecture
+- Know coding standards for the entire codebase
+- See how frontend and backend interact
+- Learn the overall code quality requirements
+
+### Step 3: Before Coding - Read Specific Guidelines (Required)
+
+Based on your task, read the **detailed** guidelines:
+
+**Frontend Task**:
+```bash
+cat .trellis/structure/frontend/hook-guidelines.md      # For hooks
+cat .trellis/structure/frontend/component-guidelines.md # For components
+cat .trellis/structure/frontend/type-safety.md          # For types
+```
+
+**Backend Task**:
+```bash
+cat .trellis/structure/backend/database-guidelines.md   # For DB operations
+cat .trellis/structure/backend/type-safety.md           # For types
+cat .trellis/structure/backend/logging-guidelines.md    # For logging
+```
 
 ---
 

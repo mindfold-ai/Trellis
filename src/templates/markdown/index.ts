@@ -24,7 +24,6 @@ function readLocalTemplate(filename: string): string {
 // Root files for new projects
 // =============================================================================
 
-export const initAgentContent: string = readLocalTemplate("init-agent.md");
 export const agentsMdContent: string = readLocalTemplate("agents.md");
 
 // Agent progress index template

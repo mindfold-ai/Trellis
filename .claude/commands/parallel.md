@@ -26,11 +26,10 @@ Operations in this document are categorized as:
 
 ### Step 1: Understand Trellis Workflow `[AI]`
 
-First, read the following files to understand the workflow system:
+First, read the workflow guide to understand the development process:
 
 ```bash
-cat init-agent.md         # Project overview and initialization guide
-cat .trellis/workflow.md  # Development process and conventions
+cat .trellis/workflow.md  # Development process, conventions, and quick start guide
 ```
 
 ### Step 2: Get Current Status `[AI]`
