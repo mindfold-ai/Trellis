@@ -57,78 +57,69 @@ Ask the user:
 
 ---
 
-## Core Workflow
+## Planning: Choose Your Approach
 
-### Step 1: Create Feature Directory `[AI]`
+Based on requirement complexity, choose one of these approaches:
+
+### Option A: Plan Agent (Recommended for complex features) `[AI]`
+
+Use when:
+- Requirements need analysis and validation
+- Multiple modules or cross-layer changes
+- Unclear scope that needs research
+
+```bash
+./.trellis/scripts/multi-agent/plan.sh \
+  --name "<feature-name>" \
+  --type "<backend|frontend|fullstack>" \
+  --requirement "<user requirement description>"
+```
+
+Plan Agent will:
+1. Evaluate requirement validity (may reject if unclear/too large)
+2. Call research agent to analyze codebase
+3. Create and configure feature directory
+4. Write prd.md with acceptance criteria
+5. Output ready-to-use feature directory
+
+After plan.sh completes, start the worktree agent:
+
+```bash
+./.trellis/scripts/multi-agent/start.sh "$FEATURE_DIR"
+```
+
+### Option B: Manual Configuration (For simple/clear features) `[AI]`
+
+Use when:
+- Requirements are already clear and specific
+- You know exactly which files are involved
+- Simple, well-scoped changes
+
+#### Step 1: Create Feature Directory
 
 ```bash
 FEATURE_DIR=$(./.trellis/scripts/feature.sh create <feature-name>)
-# Returns: .trellis/agent-traces/{developer}/features/{day}-{name}
 ```
 
-### Step 2: Configure Feature `[AI]`
+#### Step 2: Configure Feature
 
 ```bash
 # Initialize jsonl context files
 ./.trellis/scripts/feature.sh init-context "$FEATURE_DIR" <dev_type>
 
-# Set branch (for creating worktree)
+# Set branch and scope
 ./.trellis/scripts/feature.sh set-branch "$FEATURE_DIR" feature/<name>
-
-# Set scope (for PR title)
 ./.trellis/scripts/feature.sh set-scope "$FEATURE_DIR" <scope>
 ```
 
-### Step 3: Call Research Agent to Analyze Task `[AI]`
-
-Let research agent find relevant specs and code structure:
-
-```
-Task(
-  subagent_type: "research",
-  prompt: "Analyze what development specs are needed for this task:
-
-  Task description: <user requirements>
-  Development type: <dev_type>
-
-  Please:
-  1. Find relevant spec files under .trellis/structure/
-  2. Find related code modules and patterns in the project
-  3. List specific files to add to implement.jsonl, check.jsonl, debug.jsonl
-
-  Output format:
-  ## implement.jsonl
-  - path: <file path>, reason: <reason>
-
-  ## check.jsonl
-  - path: <file path>, reason: <reason>
-
-  ## debug.jsonl
-  - path: <file path>, reason: <reason>",
-  model: "opus"
-)
-```
-
-### Step 4: Add Specs to jsonl `[AI]`
-
-Based on research agent output:
+#### Step 3: Add Context (optional: use research agent)
 
 ```bash
 ./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" implement "<path>" "<reason>"
 ./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" check "<path>" "<reason>"
-./.trellis/scripts/feature.sh add-context "$FEATURE_DIR" debug "<path>" "<reason>"
 ```
 
-### Step 5: Validate Configuration `[AI]`
-
-```bash
-./.trellis/scripts/feature.sh validate "$FEATURE_DIR"
-./.trellis/scripts/feature.sh list-context "$FEATURE_DIR"
-```
-
-### Step 6: Create Requirements Document `[AI]`
-
-Create `prd.md` in the feature directory:
+#### Step 4: Create prd.md
 
 ```bash
 cat > "$FEATURE_DIR/prd.md" << 'EOF'
@@ -142,13 +133,16 @@ cat > "$FEATURE_DIR/prd.md" << 'EOF'
 EOF
 ```
 
-### Step 7: Start Worktree Agent `[AI]`
+#### Step 5: Validate and Start
 
 ```bash
+./.trellis/scripts/feature.sh validate "$FEATURE_DIR"
 ./.trellis/scripts/multi-agent/start.sh "$FEATURE_DIR"
 ```
 
-### Step 8: Report Status
+---
+
+## After Starting: Report Status
 
 Tell the user the agent has started and provide monitoring commands.
 

@@ -17,6 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/paths.sh"
 source "$SCRIPT_DIR/../common/worktree.sh"
 source "$SCRIPT_DIR/../common/developer.sh"
+source "$SCRIPT_DIR/../common/phase.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -53,6 +54,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --log)
       ACTION="log"
+      TARGET="$2"
+      shift 2
+      ;;
+    --progress)
+      ACTION="progress"
       TARGET="$2"
       shift 2
       ;;
@@ -113,6 +119,62 @@ find_agent() {
   echo "$agent"
 }
 
+# Get the last tool call from agent log
+get_last_tool() {
+  local log_file="$1"
+  if [ ! -f "$log_file" ]; then
+    echo ""
+    return
+  fi
+  # Use tail -r on macOS, tac on Linux
+  if command -v tac &>/dev/null; then
+    tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' 2>/dev/null | head -1
+  else
+    tail -r "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' 2>/dev/null | head -1
+  fi
+}
+
+# Get the last assistant text from agent log
+get_last_message() {
+  local log_file="$1"
+  local max_len="${2:-100}"
+  if [ ! -f "$log_file" ]; then
+    echo ""
+    return
+  fi
+  local text
+  # Use tail -r on macOS, tac on Linux
+  if command -v tac &>/dev/null; then
+    text=$(tac "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null | head -1)
+  else
+    text=$(tail -r "$log_file" 2>/dev/null | head -100 | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' 2>/dev/null | head -1)
+  fi
+  if [ -n "$text" ] && [ "$text" != "null" ]; then
+    echo "${text:0:$max_len}"
+  fi
+}
+
+# Get recent task notifications from agent log
+# Looks for async_launched tasks and infers completion from current_phase
+get_recent_tasks() {
+  local log_file="$1"
+  local count="${2:-5}"
+  local current_phase="${3:-0}"
+  if [ ! -f "$log_file" ]; then
+    return
+  fi
+  # Get async_launched tasks with phase number extracted from description
+  tail -500 "$log_file" 2>/dev/null | jq -r --argjson current_phase "$current_phase" '
+    select(.type=="user" and .tool_use_result.status == "async_launched" and .tool_use_result.description != null) |
+    .tool_use_result.description as $desc |
+    # Extract phase number from "Phase N:" pattern
+    ($desc | capture("Phase (?<num>[0-9]+)") | .num | tonumber) as $phase_num |
+    # If current_phase > this phase, it is completed
+    (if $phase_num < $current_phase then "completed" else "async_launched" end) as $status |
+    "\($status)|\($desc)"
+  ' 2>/dev/null | tail -"$count"
+}
+
 # =============================================================================
 # Commands
 # =============================================================================
@@ -125,12 +187,14 @@ Usage:
   $0                         Show summary of all features
   $0 --list                  List all worktrees and agents
   $0 --detail <feature>      Detailed feature status
+  $0 --progress <feature>    Quick progress view with recent activity
   $0 --watch <feature>       Watch agent log in real-time
   $0 --log <feature>         Show recent log entries
   $0 --registry              Show agent registry
 
 Examples:
   $0 --detail my-feature
+  $0 --progress my-feature
   $0 --watch 16-worktree-support
   $0 --log worktree-support
 EOF
@@ -208,24 +272,7 @@ calc_elapsed() {
   fi
 }
 
-# Get phase info from feature.json
-get_phase_info() {
-  local feature_json="$1"
-  if [ ! -f "$feature_json" ]; then
-    echo "N/A"
-    return
-  fi
-
-  local current_phase=$(jq -r '.current_phase // 0' "$feature_json")
-  local total_phases=$(jq -r '.next_action | length // 0' "$feature_json")
-  local action_name=$(jq -r --argjson phase "$current_phase" '.next_action[$phase - 1].action // "pending"' "$feature_json" 2>/dev/null)
-
-  if [ "$current_phase" = "0" ] || [ "$current_phase" = "null" ]; then
-    echo "0/${total_phases} (pending)"
-  else
-    echo "${current_phase}/${total_phases} (${action_name})"
-  fi
-}
+# Note: get_phase_info is now in common/phase.sh
 
 # Count modified files in worktree
 count_modified_files() {
@@ -313,11 +360,18 @@ cmd_summary() {
       local modified=$(count_modified_files "$worktree")
       local branch=$(jq -r '.branch // "N/A"' "$phase_source" 2>/dev/null)
 
+      # Get recent activity from log
+      local log_file="$worktree/.agent-log"
+      local last_tool=$(get_last_tool "$log_file")
+
       echo -e "${GREEN}▶${NC} ${CYAN}${name}${NC} ${GREEN}[running]${NC}"
       echo -e "  Phase:    ${phase_info}"
       echo -e "  Elapsed:  ${elapsed}"
       echo -e "  Branch:   ${DIM}${branch}${NC}"
       echo -e "  Modified: ${modified} file(s)"
+      if [ -n "$last_tool" ]; then
+        echo -e "  Activity: ${YELLOW}${last_tool}${NC}"
+      fi
       echo -e "  PID:      ${DIM}${pid}${NC}"
       echo ""
     elif [ -n "$agent_info" ] && [ "$agent_info" != "null" ]; then
@@ -333,8 +387,106 @@ cmd_summary() {
 
   if [ "$has_running_agent" = true ]; then
     echo -e "${DIM}─────────────────────────────────────${NC}"
+    echo -e "${DIM}Use --progress <name> for quick activity view${NC}"
     echo -e "${DIM}Use --detail <name> for more info${NC}"
-    echo -e "${DIM}Use --log <name> to see recent activity${NC}"
+  fi
+  echo ""
+}
+
+cmd_progress() {
+  if [ -z "$TARGET" ]; then
+    echo "Usage: $0 --progress <feature>"
+    exit 1
+  fi
+
+  local agent=$(find_agent "$TARGET")
+  if [ -z "$agent" ] || [ "$agent" = "null" ]; then
+    echo "Agent not found: $TARGET"
+    exit 1
+  fi
+
+  local id=$(echo "$agent" | jq -r '.id')
+  local pid=$(echo "$agent" | jq -r '.pid')
+  local worktree=$(echo "$agent" | jq -r '.worktree_path')
+  local feature_dir=$(echo "$agent" | jq -r '.feature_dir')
+  local started=$(echo "$agent" | jq -r '.started_at')
+  local log_file="$worktree/.agent-log"
+
+  if [ ! -f "$log_file" ]; then
+    echo "Log file not found: $log_file"
+    exit 1
+  fi
+
+  # Get phase info from worktree's feature.json
+  local worktree_feature_json="$worktree/$feature_dir/feature.json"
+  local phase_info="N/A"
+  local current_phase=0
+  if [ -f "$worktree_feature_json" ]; then
+    phase_info=$(get_phase_info "$worktree_feature_json")
+    current_phase=$(jq -r '.current_phase // 0' "$worktree_feature_json")
+  fi
+
+  local elapsed=$(calc_elapsed "$started")
+  local modified=$(count_modified_files "$worktree")
+
+  # Check if running
+  local status_str
+  if is_running "$pid"; then
+    status_str="${GREEN}running${NC}"
+  else
+    status_str="${RED}stopped${NC}"
+  fi
+
+  echo ""
+  echo -e "${BLUE}=== Progress: ${id} ===${NC}"
+  echo ""
+
+  # Basic info (like summary)
+  echo -e "${CYAN}Status:${NC}"
+  echo -e "  State:    ${status_str}"
+  echo -e "  Phase:    ${phase_info}"
+  echo -e "  Elapsed:  ${elapsed}"
+  echo -e "  Modified: ${modified} file(s)"
+  echo ""
+
+  # Recent task notifications
+  echo -e "${CYAN}Recent Tasks:${NC}"
+  local has_tasks=false
+  while IFS='|' read -r status summary; do
+    [ -z "$status" ] && continue
+    has_tasks=true
+    local icon
+    case "$status" in
+      completed) icon="${GREEN}✓${NC}" ;;
+      failed) icon="${RED}✗${NC}" ;;
+      async_launched) icon="${BLUE}▶${NC}" ;;
+      *) icon="${YELLOW}○${NC}" ;;
+    esac
+    echo -e "  ${icon} ${summary}"
+  done < <(get_recent_tasks "$log_file" 5 "$current_phase")
+
+  if [ "$has_tasks" = false ]; then
+    echo -e "  ${DIM}(no task notifications yet)${NC}"
+  fi
+  echo ""
+
+  # Current activity
+  echo -e "${CYAN}Current Activity:${NC}"
+  local last_tool=$(get_last_tool "$log_file")
+  if [ -n "$last_tool" ]; then
+    echo -e "  Tool: ${YELLOW}${last_tool}${NC}"
+  else
+    echo -e "  ${DIM}(no recent tool calls)${NC}"
+  fi
+  echo ""
+
+  # Last message
+  echo -e "${CYAN}Last Message:${NC}"
+  local last_msg=$(get_last_message "$log_file" 200)
+  if [ -n "$last_msg" ]; then
+    echo -e "  \"${last_msg}...\""
+  else
+    echo -e "  ${DIM}(no recent messages)${NC}"
   fi
   echo ""
 }
@@ -524,6 +676,9 @@ case "$ACTION" in
     ;;
   summary)
     cmd_summary
+    ;;
+  progress)
+    cmd_progress
     ;;
   detail)
     cmd_detail

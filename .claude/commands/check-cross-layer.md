@@ -35,21 +35,20 @@ Based on your change type, execute relevant checks below:
 
 **Trigger**: Changes involve 3 or more layers
 
-| Layer | Identifier |
-|-------|------------|
-| API Route | `routes/`, `api/` |
-| Service | `services/`, `lib/` |
-| Database | `db/`, `schema` |
-| Hook | `hooks/`, `use*.ts` |
-| Component | `components/`, `*.tsx` |
-| Utility | `utils/`, `lib/` |
+| Layer | Common Locations |
+|-------|------------------|
+| API/Routes | `routes/`, `api/`, `handlers/`, `controllers/` |
+| Service/Business Logic | `services/`, `lib/`, `core/`, `domain/` |
+| Database/Storage | `db/`, `models/`, `repositories/`, `schema/` |
+| UI/Presentation | `components/`, `views/`, `templates/`, `pages/` |
+| Utility | `utils/`, `helpers/`, `common/` |
 
 **Checklist**:
-- [ ] Read flow: Database -> Service -> API -> Hook -> Component
-- [ ] Write flow: Component -> Hook -> API -> Service -> Database
-- [ ] Types correctly passed between layers?
-- [ ] Errors properly propagated to UI?
-- [ ] Loading states handled at each layer?
+- [ ] Read flow: Database -> Service -> API -> UI
+- [ ] Write flow: UI -> API -> Service -> Database
+- [ ] Types/schemas correctly passed between layers?
+- [ ] Errors properly propagated to caller?
+- [ ] Loading/pending states handled at each layer?
 
 **Detailed Guide**: `.trellis/structure/guides/cross-layer-thinking-guide.md`
 
@@ -67,7 +66,8 @@ Based on your change type, execute relevant checks below:
 **Checklist**:
 - [ ] Search first: How many places define this value?
   ```bash
-  grep -r "value-to-change" --include="*.ts" --include="*.tsx"
+  # Search in source files (adjust extensions for your project)
+  grep -r "value-to-change" src/
   ```
 - [ ] If 2+ places define same value -> Should extract to shared constant
 - [ ] After modification, all usage sites updated?
@@ -84,7 +84,7 @@ Based on your change type, execute relevant checks below:
 **Checklist**:
 - [ ] Search for existing similar utilities first
   ```bash
-  grep -r "functionNamePattern" --include="*.ts"
+  grep -r "functionNamePattern" src/
   ```
 - [ ] If similar exists, can you extend it instead?
 - [ ] If creating new, is it in the right location (shared vs domain-specific)?
@@ -98,37 +98,37 @@ Based on your change type, execute relevant checks below:
 **Checklist**:
 - [ ] Did you check ALL files with similar patterns?
   ```bash
-  grep -r "patternYouChanged" --include="*.ts" --include="*.tsx"
+  grep -r "patternYouChanged" src/
   ```
 - [ ] Any files missed that should also be updated?
 - [ ] Should this pattern be abstracted to prevent future duplication?
 
 ---
 
-## Dimension C: Import Paths (Required when creating new files)
+## Dimension C: Import/Dependency Paths (Required when creating new files)
 
-**Trigger**: Creating new .ts/.tsx files
+**Trigger**: Creating new source files
 
 **Checklist**:
-- [ ] Using correct path aliases?
-- [ ] No circular imports?
-- [ ] Relative vs absolute paths consistent with project convention?
+- [ ] Using correct import paths (relative vs absolute)?
+- [ ] No circular dependencies?
+- [ ] Consistent with project's module organization?
 
 ---
 
 ## Dimension D: Same-Layer Consistency
 
 **Trigger**: 
-- Modifying display logic in a component
-- Same domain concept used in multiple components
+- Modifying display logic or formatting
+- Same domain concept used in multiple places
 
 **Checklist**:
-- [ ] Search for other components using same concept
+- [ ] Search for other places using same concept
   ```bash
-  grep -r "ConceptName" --include="*.tsx"
+  grep -r "ConceptName" src/
   ```
-- [ ] Are these components' displays consistent?
-- [ ] Should they share configuration?
+- [ ] Are these usages consistent?
+- [ ] Should they share configuration/constants?
 
 ---
 
@@ -138,8 +138,8 @@ Based on your change type, execute relevant checks below:
 |-------|------------|------------|
 | Changed one place, missed others | Didn't search impact scope | `grep` before changing |
 | Data lost at some layer | Didn't check data flow | Trace data source to destination |
-| Type mismatch | Cross-layer types inconsistent | Use shared types |
-| UI inconsistent | Same concept in multiple places | Extract shared constants |
+| Type/schema mismatch | Cross-layer types inconsistent | Use shared type definitions |
+| UI/output inconsistent | Same concept in multiple places | Extract shared constants |
 | Similar utility exists | Didn't search first | Search before creating |
 | Batch fix incomplete | Didn't verify all occurrences | grep after fixing |
 

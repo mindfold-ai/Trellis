@@ -8,10 +8,10 @@
 
 **Most bugs and tech debt come from "didn't think of that"**, not from lack of skill:
 
-- Didn't think about what happens at layer boundaries → cross-layer bugs
-- Didn't think about code patterns repeating → duplicated code everywhere
-- Didn't think about edge cases → runtime errors
-- Didn't think about future maintainers → unreadable code
+- Didn't think about what happens at layer boundaries -> cross-layer bugs
+- Didn't think about code patterns repeating -> duplicated code everywhere
+- Didn't think about edge cases -> runtime errors
+- Didn't think about future maintainers -> unreadable code
 
 These guides help you **ask the right questions before coding**.
 
@@ -35,7 +35,7 @@ These guides help you **ask the right questions before coding**.
 - [ ] Multiple consumers need the same data
 - [ ] You're not sure where to put some logic
 
-→ Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
+-> Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
 
 ### When to Think About Code Reuse
 
@@ -43,9 +43,9 @@ These guides help you **ask the right questions before coding**.
 - [ ] You see the same pattern repeated 3+ times
 - [ ] You're adding a new field to multiple places
 - [ ] **You're modifying any constant or config**
-- [ ] **You're creating a new utility/helper function** ← Search first!
+- [ ] **You're creating a new utility/helper function** <- Search first!
 
-→ Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+-> Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
 
 ---
 

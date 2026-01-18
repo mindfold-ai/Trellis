@@ -22,7 +22,7 @@ Common cross-layer bugs:
 Draw out how data moves:
 
 ```
-Source → Transform → Store → Retrieve → Transform → Display
+Source -> Transform -> Store -> Retrieve -> Transform -> Display
 ```
 
 For each arrow, ask:
@@ -34,10 +34,10 @@ For each arrow, ask:
 
 | Boundary | Common Issues |
 |----------|---------------|
-| API ↔ Service | Type mismatches, missing fields |
-| Service ↔ Database | Format conversions, null handling |
-| Backend ↔ Frontend | Serialization, date formats |
-| Component ↔ Component | Props shape changes |
+| API <-> Service | Type mismatches, missing fields |
+| Service <-> Database | Format conversions, null handling |
+| Backend <-> Frontend | Serialization, date formats |
+| Component <-> Component | Props shape changes |
 
 ### Step 3: Define Contracts
 
