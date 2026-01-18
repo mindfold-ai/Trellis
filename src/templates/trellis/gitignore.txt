@@ -1,3 +1,5 @@
 # Developer identity (local only)
 .developer
 
+# Ralph Loop state file
+.ralph-state.json
