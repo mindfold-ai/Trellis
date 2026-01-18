@@ -349,6 +349,41 @@ def get_check_context(repo_root: str, feature_dir: str) -> str:
     return "\n\n".join(context_parts)
 
 
+def get_finish_context(repo_root: str, feature_dir: str) -> str:
+    """
+    Complete context for Finish phase (final check before PR)
+
+    Read order:
+    1. All files in finish.jsonl (if exists)
+    2. Fallback to finish-work.md only (lightweight final check)
+    3. prd.md (for verifying requirements are met)
+    """
+    context_parts = []
+
+    # 1. Try finish.jsonl first
+    finish_entries = read_jsonl_entries(repo_root, f"{feature_dir}/finish.jsonl")
+
+    if finish_entries:
+        for file_path, content in finish_entries:
+            context_parts.append(f"=== {file_path} ===\n{content}")
+    else:
+        # Fallback: only finish-work.md (lightweight)
+        finish_work = read_file_content(repo_root, ".claude/commands/finish-work.md")
+        if finish_work:
+            context_parts.append(
+                f"=== .claude/commands/finish-work.md (Finish checklist) ===\n{finish_work}"
+            )
+
+    # 2. Requirements document (for verifying requirements are met)
+    prd_content = read_file_content(repo_root, f"{feature_dir}/prd.md")
+    if prd_content:
+        context_parts.append(
+            f"=== {feature_dir}/prd.md (Requirements - verify all met) ===\n{prd_content}"
+        )
+
+    return "\n\n".join(context_parts)
+
+
 def get_debug_context(repo_root: str, feature_dir: str) -> str:
     """
     Complete context for Debug Agent
@@ -452,13 +487,47 @@ All check specs and dev specs you need:
 1. **Get changes** - Run `git diff --name-only` and `git diff` to get code changes
 2. **Check against specs** - Check item by item against specs above
 3. **Self-fix** - Fix issues directly, don't just report
-4. **Run verification** - Reference .husky/pre-commit for typecheck and lint
+4. **Run verification** - Run project's lint and typecheck commands
 
 ## Important Constraints
 
 - Fix issues yourself, don't just report
-- Must execute complete checklist in finish-work.md
+- Must execute complete checklist in check specs
 - Pay special attention to impact radius analysis (L1-L5)"""
+
+
+def build_finish_prompt(original_prompt: str, context: str) -> str:
+    """Build complete prompt for Finish (final check before PR)"""
+    return f"""# Finish Agent Task
+
+You are performing the final check before creating a PR.
+
+## Your Context
+
+Finish checklist and requirements:
+
+{context}
+
+---
+
+## Your Task
+
+{original_prompt}
+
+---
+
+## Workflow
+
+1. **Review changes** - Run `git diff --name-only` to see all changed files
+2. **Verify requirements** - Check each requirement in prd.md is implemented
+3. **Run final checks** - Execute finish-work.md checklist
+4. **Confirm ready** - Ensure code is ready for PR
+
+## Important Constraints
+
+- This is a final verification, not a fix phase
+- If critical issues found, report them clearly
+- Verify all acceptance criteria in prd.md are met"""
 
 
 def build_debug_prompt(original_prompt: str, context: str) -> str:
@@ -643,6 +712,9 @@ def main():
         # Update current_phase in feature.json (system-level enforcement)
         update_current_phase(repo_root, feature_dir, subagent_type)
 
+    # Check for [finish] marker in prompt (check agent with finish context)
+    is_finish_phase = "[finish]" in original_prompt.lower()
+
     # Get context and build prompt based on subagent type
     if subagent_type == AGENT_IMPLEMENT:
         assert feature_dir is not None  # validated above
@@ -650,8 +722,14 @@ def main():
         new_prompt = build_implement_prompt(original_prompt, context)
     elif subagent_type == AGENT_CHECK:
         assert feature_dir is not None  # validated above
-        context = get_check_context(repo_root, feature_dir)
-        new_prompt = build_check_prompt(original_prompt, context)
+        if is_finish_phase:
+            # Finish phase: use finish context (lighter, focused on final verification)
+            context = get_finish_context(repo_root, feature_dir)
+            new_prompt = build_finish_prompt(original_prompt, context)
+        else:
+            # Regular check phase: use check context (full specs for self-fix loop)
+            context = get_check_context(repo_root, feature_dir)
+            new_prompt = build_check_prompt(original_prompt, context)
     elif subagent_type == AGENT_DEBUG:
         assert feature_dir is not None  # validated above
         context = get_debug_context(repo_root, feature_dir)
