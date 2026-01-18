@@ -3,12 +3,16 @@ import path from "node:path";
 import { DIR_NAMES, PATHS } from "../constants/paths.js";
 import { copyTrellisDir } from "../templates/extract.js";
 
+// Import trellis templates (generic, not project-specific)
+import {
+  workflowMdTemplate,
+  worktreeYamlTemplate,
+  gitignoreTemplate,
+} from "../templates/trellis/index.js";
+
 // Import markdown templates
 import {
   agentProgressIndexContent,
-  workflowMdContent,
-  workflowGitignoreContent,
-  worktreeYamlContent,
   // Backend structure (multi-doc)
   backendIndexContent,
   backendDirectoryStructureContent,
@@ -71,18 +75,21 @@ export async function createWorkflowStructure(
   // Create base .trellis directory
   ensureDir(path.join(cwd, DIR_NAMES.WORKFLOW));
 
-  // Copy scripts/ directory (dogfooding - direct copy)
+  // Copy scripts/ directory from templates
   copyTrellisDir("scripts", path.join(cwd, PATHS.SCRIPTS), {
     executable: true,
   });
 
-  // Copy workflow.md (dogfooding)
-  await writeFile(path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE), workflowMdContent);
+  // Copy workflow.md from templates
+  await writeFile(
+    path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE),
+    workflowMdTemplate,
+  );
 
-  // Copy .gitignore (dogfooding)
+  // Copy .gitignore from templates
   await writeFile(
     path.join(cwd, DIR_NAMES.WORKFLOW, ".gitignore"),
-    workflowGitignoreContent,
+    gitignoreTemplate,
   );
 
   // Create agent-traces/ with index.md (dogfooding)
@@ -92,11 +99,11 @@ export async function createWorkflowStructure(
     agentProgressIndexContent,
   );
 
-  // Copy worktree.yaml if multi-agent enabled (generic template, not dogfooded)
+  // Copy worktree.yaml if multi-agent enabled
   if (multiAgent) {
     await writeFile(
       path.join(cwd, DIR_NAMES.WORKFLOW, "worktree.yaml"),
-      worktreeYamlContent,
+      worktreeYamlTemplate,
     );
   }
 
