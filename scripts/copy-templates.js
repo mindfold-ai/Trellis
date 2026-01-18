@@ -26,12 +26,6 @@ const TRELLIS_EXCLUDE = [
 ];
 
 /**
- * Subdirectories inside agent-traces to exclude (developer-specific traces)
- * Only index.md should be copied
- */
-const AGENT_TRACES_EXCLUDE_SUBDIRS = true; // Exclude all subdirs except index.md
-
-/**
  * Files/directories to exclude when copying .claude
  * These are build artifacts or local files that shouldn't be in the package
  */

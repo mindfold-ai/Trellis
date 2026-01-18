@@ -6,7 +6,7 @@ export default [
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   {
-    ignores: ["dist/**", "node_modules/**", "*.js"],
+    ignores: ["dist/**", "node_modules/**", "*.js", "scripts/**"],
   },
   {
     files: ["src/**/*.ts"],
