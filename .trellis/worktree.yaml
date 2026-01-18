@@ -30,20 +30,15 @@ copy:
 # Commands to run after creating worktree
 # Executed in worktree directory, in order, abort on failure
 post_create:
-  # Install dependencies (uncomment based on your package manager)
-  # - npm install
-  # - pnpm install --frozen-lockfile
-  # - yarn install --frozen-lockfile
+  - pnpm install --frozen-lockfile
 
 #-------------------------------------------------------------------------------
-# Pre-Merge Checks
+# Check Agent Verification (Ralph Loop)
 #-------------------------------------------------------------------------------
 
-# Pre-merge validation (used by create-pr.sh)
-pre_merge:
-  # Type checking (uncomment based on your setup)
-  # - npm run typecheck
-  # - pnpm typecheck
-  # Linting
-  # - npm run lint
-  # - pnpm lint
+# Commands to verify code quality before allowing check agent to finish
+# If configured, Ralph Loop will run these commands - all must pass to allow completion
+# If not configured or empty, trusts agent's completion markers
+verify:
+  - pnpm lint
+  - pnpm typecheck

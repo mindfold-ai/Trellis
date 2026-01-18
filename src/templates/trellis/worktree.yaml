@@ -36,14 +36,12 @@ post_create:
   # - yarn install --frozen-lockfile
 
 #-------------------------------------------------------------------------------
-# Pre-Merge Checks
+# Check Agent Verification (Ralph Loop)
 #-------------------------------------------------------------------------------
 
-# Pre-merge validation (used by create-pr.sh)
-pre_merge:
-  # Type checking (uncomment based on your setup)
-  # - npm run typecheck
-  # - pnpm typecheck
-  # Linting
-  # - npm run lint
+# Commands to verify code quality before allowing check agent to finish
+# If configured, Ralph Loop will run these commands - all must pass to allow completion
+# If not configured or empty, trusts agent's completion markers
+verify:
   # - pnpm lint
+  # - pnpm typecheck
