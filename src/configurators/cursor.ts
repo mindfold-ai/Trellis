@@ -1,20 +1,55 @@
-import { cpSync, mkdirSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { getCursorSourcePath } from "../templates/extract.js";
+import { getCursorTemplatePath } from "../templates/extract.js";
 
 /**
- * Configure Cursor by copying the entire .cursor directory
- *
- * This implements the dogfooding principle - we use our own .cursor/
- * configuration as the template for user projects.
+ * Files to exclude when copying templates
+ * These are TypeScript compilation artifacts
+ */
+const EXCLUDE_PATTERNS = [".d.ts", ".d.ts.map", ".js", ".js.map"];
+
+/**
+ * Check if a file should be excluded
+ */
+function shouldExclude(filename: string): boolean {
+  for (const pattern of EXCLUDE_PATTERNS) {
+    if (filename.endsWith(pattern)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Recursively copy directory, excluding build artifacts
+ */
+function copyDirFiltered(src: string, dest: string): void {
+  mkdirSync(dest, { recursive: true });
+
+  for (const entry of readdirSync(src)) {
+    if (shouldExclude(entry)) {
+      continue;
+    }
+
+    const srcPath = path.join(src, entry);
+    const destPath = path.join(dest, entry);
+    const stat = statSync(srcPath);
+
+    if (stat.isDirectory()) {
+      copyDirFiltered(srcPath, destPath);
+    } else {
+      cpSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Configure Cursor by copying from templates
  */
 export async function configureCursor(cwd: string): Promise<void> {
-  const sourcePath = getCursorSourcePath();
+  const sourcePath = getCursorTemplatePath();
   const destPath = path.join(cwd, ".cursor");
 
-  // Ensure destination directory exists
-  mkdirSync(destPath, { recursive: true });
-
-  // Copy entire .cursor directory
-  cpSync(sourcePath, destPath, { recursive: true });
+  // Copy templates, excluding build artifacts
+  copyDirFiltered(sourcePath, destPath);
 }

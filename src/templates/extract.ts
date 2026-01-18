@@ -8,94 +8,77 @@ const __dirname = path.dirname(__filename);
 type TemplateCategory = "scripts" | "markdown" | "commands";
 
 /**
- * Get the path to the .trellis directory.
+ * Get the path to the trellis templates directory.
  *
- * This works in both:
- * - Development: reads from project root .trellis/
- * - Installed package: reads from dist/.trellis/
- *
- * The directory structure is:
- * - Development: src/templates/extract.ts -> ../../.trellis
- * - Built: dist/templates/extract.js -> ../.trellis
+ * This reads from src/templates/trellis/ (development) or dist/templates/trellis/ (production).
+ * These are GENERIC templates, not the Trellis project's own .trellis/ configuration.
+ */
+export function getTrellisTemplatePath(): string {
+  // Templates are in the same directory as this file
+  const templatePath = path.join(__dirname, "trellis");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find trellis templates directory. Expected at templates/trellis/",
+  );
+}
+
+/**
+ * @deprecated Use getTrellisTemplatePath() instead.
+ * This function is kept for backwards compatibility but now returns the template path.
  */
 export function getTrellisSourcePath(): string {
-  // In development: __dirname is src/templates
-  // In production: __dirname is dist/templates
-  // Either way, go up to find .trellis at the package root
+  return getTrellisTemplatePath();
+}
 
-  // First, try the production path (dist/templates -> dist/.trellis)
-  const prodPath = path.join(__dirname, "..", ".trellis");
-  if (fs.existsSync(prodPath)) {
-    return prodPath;
-  }
-
-  // Fall back to development path (src/templates -> ../../.trellis)
-  const devPath = path.join(__dirname, "..", "..", ".trellis");
-  if (fs.existsSync(devPath)) {
-    return devPath;
+/**
+ * Get the path to the cursor templates directory.
+ *
+ * This reads from src/templates/cursor/ (development) or dist/templates/cursor/ (production).
+ * These are GENERIC templates, not the Trellis project's own .cursor/ configuration.
+ */
+export function getCursorTemplatePath(): string {
+  const templatePath = path.join(__dirname, "cursor");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
   }
 
   throw new Error(
-    "Could not find .trellis directory. Expected at dist/.trellis or project root.",
+    "Could not find cursor templates directory. Expected at templates/cursor/",
   );
 }
 
 /**
- * Get the path to the .cursor directory.
- *
- * This works in both:
- * - Development: reads from project root .cursor/
- * - Installed package: reads from dist/.cursor/
- *
- * The directory structure is:
- * - Development: src/templates/extract.ts -> ../../.cursor
- * - Built: dist/templates/extract.js -> ../.cursor
+ * @deprecated Use getCursorTemplatePath() instead.
  */
 export function getCursorSourcePath(): string {
-  // First, try the production path (dist/templates -> dist/.cursor)
-  const prodPath = path.join(__dirname, "..", ".cursor");
-  if (fs.existsSync(prodPath)) {
-    return prodPath;
-  }
+  return getCursorTemplatePath();
+}
 
-  // Fall back to development path (src/templates -> ../../.cursor)
-  const devPath = path.join(__dirname, "..", "..", ".cursor");
-  if (fs.existsSync(devPath)) {
-    return devPath;
+/**
+ * Get the path to the claude templates directory.
+ *
+ * This reads from src/templates/claude/ (development) or dist/templates/claude/ (production).
+ * These are GENERIC templates, not the Trellis project's own .claude/ configuration.
+ */
+export function getClaudeTemplatePath(): string {
+  const templatePath = path.join(__dirname, "claude");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
   }
 
   throw new Error(
-    "Could not find .cursor directory. Expected at dist/.cursor or project root.",
+    "Could not find claude templates directory. Expected at templates/claude/",
   );
 }
 
 /**
- * Get the path to the .claude directory.
- *
- * This works in both:
- * - Development: reads from project root .claude/
- * - Installed package: reads from dist/.claude/
- *
- * The directory structure is:
- * - Development: src/templates/extract.ts -> ../../.claude
- * - Built: dist/templates/extract.js -> ../.claude
+ * @deprecated Use getClaudeTemplatePath() instead.
  */
 export function getClaudeSourcePath(): string {
-  // First, try the production path (dist/templates -> dist/.claude)
-  const prodPath = path.join(__dirname, "..", ".claude");
-  if (fs.existsSync(prodPath)) {
-    return prodPath;
-  }
-
-  // Fall back to development path (src/templates -> ../../.claude)
-  const devPath = path.join(__dirname, "..", "..", ".claude");
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-
-  throw new Error(
-    "Could not find .claude directory. Expected at dist/.claude or project root.",
-  );
+  return getClaudeTemplatePath();
 }
 
 /**

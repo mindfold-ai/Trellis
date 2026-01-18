@@ -1,28 +1,69 @@
-import { cpSync, mkdirSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { getClaudeSourcePath } from "../templates/extract.js";
+import { getClaudeTemplatePath } from "../templates/extract.js";
 
 /**
- * Configure Claude Code by copying the entire .claude directory
+ * Files to exclude when copying templates
+ * These are TypeScript compilation artifacts
+ */
+const EXCLUDE_PATTERNS = [
+  ".d.ts",
+  ".d.ts.map",
+  ".js",
+  ".js.map",
+  "__pycache__",
+];
+
+/**
+ * Check if a file should be excluded
+ */
+function shouldExclude(filename: string): boolean {
+  for (const pattern of EXCLUDE_PATTERNS) {
+    if (filename.endsWith(pattern) || filename === pattern) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Recursively copy directory, excluding build artifacts
+ */
+function copyDirFiltered(src: string, dest: string): void {
+  mkdirSync(dest, { recursive: true });
+
+  for (const entry of readdirSync(src)) {
+    if (shouldExclude(entry)) {
+      continue;
+    }
+
+    const srcPath = path.join(src, entry);
+    const destPath = path.join(dest, entry);
+    const stat = statSync(srcPath);
+
+    if (stat.isDirectory()) {
+      copyDirFiltered(srcPath, destPath);
+    } else {
+      cpSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Configure Claude Code by copying from templates
  *
- * This implements the dogfooding principle - we use our own .claude/
- * configuration as the template for user projects.
- *
- * The .claude directory includes:
+ * The claude templates include:
  * - commands/ - Slash commands
  * - agents/ - Multi-agent pipeline configurations
  * - hooks/ - Context injection hooks
  * - settings.json - Hook and tool configurations
  */
 export async function configureClaude(cwd: string): Promise<void> {
-  const sourcePath = getClaudeSourcePath();
+  const sourcePath = getClaudeTemplatePath();
   const destPath = path.join(cwd, ".claude");
 
-  // Ensure destination directory exists
-  mkdirSync(destPath, { recursive: true });
-
-  // Copy entire .claude directory
-  cpSync(sourcePath, destPath, { recursive: true });
+  // Copy templates, excluding build artifacts
+  copyDirFiltered(sourcePath, destPath);
 }
 
 /**
