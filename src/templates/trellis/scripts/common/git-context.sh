@@ -1,0 +1,237 @@
+#!/bin/bash
+# Git and Session Context utilities
+#
+# Usage:
+#   ./.trellis/scripts/common/git-context.sh           # Full context output
+#   ./.trellis/scripts/common/git-context.sh --json    # JSON format
+#
+# Or source in other scripts:
+#   source "$(dirname "$0")/common/git-context.sh"
+
+set -e
+
+COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$COMMON_DIR/paths.sh"
+source "$COMMON_DIR/developer.sh"
+
+# =============================================================================
+# JSON Output
+# =============================================================================
+
+output_json() {
+  local repo_root=$(get_repo_root)
+  local developer=$(get_developer "$repo_root")
+  local features_dir=$(get_features_dir "$repo_root")
+  local progress_file=$(get_active_progress_file "$repo_root")
+  local progress_lines=0
+  local progress_relative=""
+
+  if [[ -n "$progress_file" ]]; then
+    progress_lines=$(count_lines "$progress_file")
+    progress_relative="$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$(basename "$progress_file")"
+  fi
+
+  local branch=$(git branch --show-current 2>/dev/null || echo "unknown")
+  local git_status=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+  local is_clean="true"
+  [[ "$git_status" != "0" ]] && is_clean="false"
+
+  # Build commits JSON
+  local commits_json="["
+  local first=true
+  while IFS= read -r line; do
+    local hash=$(echo "$line" | cut -d' ' -f1)
+    local msg=$(echo "$line" | cut -d' ' -f2-)
+    msg=$(echo "$msg" | sed 's/"/\\"/g')
+    if [[ "$first" == "true" ]]; then
+      first=false
+    else
+      commits_json+=","
+    fi
+    commits_json+="{\"hash\":\"$hash\",\"message\":\"$msg\"}"
+  done < <(git log --oneline -5 2>/dev/null || echo "")
+  commits_json+="]"
+
+  # Build features JSON
+  local features_json="["
+  first=true
+  if [[ -d "$features_dir" ]]; then
+    for f in "$features_dir"/*.json; do
+      if [[ -f "$f" ]]; then
+        local filename=$(basename "$f")
+        local name=$(echo "$filename" | sed 's/^[0-9]*-//' | sed 's/\.json$//')
+        local status="unknown"
+        if command -v jq &> /dev/null; then
+          status=$(jq -r '.status // "unknown"' "$f")
+        fi
+        if [[ "$first" == "true" ]]; then
+          first=false
+        else
+          features_json+=","
+        fi
+        features_json+="{\"file\":\"$filename\",\"name\":\"$name\",\"status\":\"$status\"}"
+      fi
+    done
+  fi
+  features_json+="]"
+
+  cat << EOF
+{
+  "developer": "$developer",
+  "git": {
+    "branch": "$branch",
+    "isClean": $is_clean,
+    "uncommittedChanges": $git_status,
+    "recentCommits": $commits_json
+  },
+  "features": {
+    "active": $features_json,
+    "directory": "$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES"
+  },
+  "traces": {
+    "file": "$progress_relative",
+    "lines": $progress_lines,
+    "nearLimit": $([ "$progress_lines" -gt 1800 ] && echo "true" || echo "false")
+  }
+}
+EOF
+}
+
+# =============================================================================
+# Text Output
+# =============================================================================
+
+output_text() {
+  local repo_root=$(get_repo_root)
+  local developer=$(get_developer "$repo_root")
+
+  echo "========================================"
+  echo "SESSION CONTEXT"
+  echo "========================================"
+  echo ""
+
+  echo "## DEVELOPER"
+  if [[ -z "$developer" ]]; then
+    echo "ERROR: Not initialized. Run: ./$DIR_WORKFLOW/$DIR_SCRIPTS/init-developer.sh <name>"
+    exit 1
+  fi
+  echo "Name: $developer"
+  echo ""
+
+  echo "## GIT STATUS"
+  echo "Branch: $(git branch --show-current 2>/dev/null || echo 'unknown')"
+  local status_count=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$status_count" == "0" ]]; then
+    echo "Working directory: Clean"
+  else
+    echo "Working directory: $status_count uncommitted change(s)"
+    echo ""
+    echo "Changes:"
+    git status --short 2>/dev/null | head -10
+  fi
+  echo ""
+
+  echo "## RECENT COMMITS"
+  git log --oneline -5 2>/dev/null || echo "(no commits)"
+  echo ""
+
+  echo "## CURRENT FEATURE"
+  local current_feature=$(get_current_feature "$repo_root")
+  if [[ -n "$current_feature" ]]; then
+    local current_feature_dir="$repo_root/$current_feature"
+    local feature_json="$current_feature_dir/feature.json"
+    echo "Path: $current_feature"
+
+    if [[ -f "$feature_json" ]]; then
+      if command -v jq &> /dev/null; then
+        local f_name=$(jq -r '.name // .id // "unknown"' "$feature_json")
+        local f_status=$(jq -r '.status // "unknown"' "$feature_json")
+        local f_created=$(jq -r '.createdAt // "unknown"' "$feature_json")
+        local f_desc=$(jq -r '.description // ""' "$feature_json")
+        echo "Name: $f_name"
+        echo "Status: $f_status"
+        echo "Created: $f_created"
+        if [[ -n "$f_desc" ]]; then
+          echo "Description: $f_desc"
+        fi
+      fi
+    fi
+
+    # Check for prd.md
+    if [[ -f "$current_feature_dir/prd.md" ]]; then
+      echo ""
+      echo "[!] This feature has prd.md - read it for task details"
+    fi
+  else
+    echo "(none)"
+  fi
+  echo ""
+
+  echo "## ACTIVE FEATURES"
+  local features_dir=$(get_features_dir "$repo_root")
+  local feature_count=0
+  if [[ -d "$features_dir" ]]; then
+    for d in "$features_dir"/*/; do
+      if [[ -d "$d" ]] && [[ "$(basename "$d")" != "archive" ]]; then
+        local dir_name=$(basename "$d")
+        local f_json="$d/feature.json"
+        local status="unknown"
+        if [[ -f "$f_json" ]] && command -v jq &> /dev/null; then
+          status=$(jq -r '.status // "unknown"' "$f_json")
+        fi
+        echo "- $dir_name/ ($status)"
+        ((feature_count++))
+      fi
+    done
+  fi
+  if [[ $feature_count -eq 0 ]]; then
+    echo "(no active features)"
+  fi
+  echo "Total: $feature_count active feature(s)"
+  echo ""
+
+  echo "## TRACES FILE"
+  local traces_file=$(get_active_progress_file "$repo_root")
+  if [[ -n "$traces_file" ]]; then
+    local lines=$(count_lines "$traces_file")
+    local relative="$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$(basename "$traces_file")"
+    echo "Active file: $relative"
+    echo "Line count: $lines / 2000"
+    if [[ "$lines" -gt 1800 ]]; then
+      echo "[!] WARNING: Approaching 2000 line limit!"
+    fi
+  else
+    echo "No traces file found"
+  fi
+  echo ""
+
+  echo "## PATHS"
+  echo "Traces dir: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/"
+  echo "Features dir: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES/"
+  echo "Index file: $DIR_WORKFLOW/$DIR_PROGRESS/$developer/index.md"
+  echo ""
+
+  echo "========================================"
+}
+
+# =============================================================================
+# Main Entry
+# =============================================================================
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  case "${1:-}" in
+    --json|-j)
+      output_json
+      ;;
+    --help|-h)
+      echo "Get Session Context for AI Agent"
+      echo ""
+      echo "Usage:"
+      echo "  $0           Output context in text format"
+      echo "  $0 --json    Output context in JSON format"
+      ;;
+    *)
+      output_text
+      ;;
+  esac
+fi

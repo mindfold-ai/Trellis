@@ -1,0 +1,15 @@
+{
+  "id": "backward-compat",
+  "name": "backward-compat",
+  "description": "Implement backward compatibility and migration system for smooth upgrades",
+  "status": "planning",
+  "dev_type": null,
+  "priority": "medium",
+  "developer": "kleinhe",
+  "createdAt": "2026-01-17",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

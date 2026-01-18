@@ -13,7 +13,8 @@ import { configureCursor } from "../configurators/cursor.js";
 //   configureOpenCodeAgents,
 // } from "../configurators/opencode.js";
 import { createWorkflowStructure } from "../configurators/workflow.js";
-import { PATHS } from "../constants/paths.js";
+import { DIR_NAMES, PATHS } from "../constants/paths.js";
+import { VERSION } from "../cli/index.js";
 import {
   agentsMdContent,
   initAgentContent,
@@ -183,6 +184,10 @@ export async function init(options: InitOptions): Promise<void> {
   // Multi-agent is enabled by default
   console.log(chalk.blue("📁 Creating workflow structure..."));
   await createWorkflowStructure(cwd, { projectType, multiAgent: true });
+
+  // Write version file for update tracking
+  const versionPath = path.join(cwd, DIR_NAMES.WORKFLOW, ".version");
+  fs.writeFileSync(versionPath, VERSION);
 
   // Configure selected tools by copying entire directories (dogfooding)
   if (tools.includes("cursor")) {
