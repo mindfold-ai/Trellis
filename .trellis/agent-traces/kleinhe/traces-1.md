@@ -163,3 +163,118 @@ Added Roadmap section to README (EN+ZH) and created PRDs for 4 new features: Mon
 ### Next Steps
 
 - None - feature complete
+
+## Session 5: Team Collaboration Feature (Milestone 1 & 2)
+
+**Date**: 2026-01-18
+**Feature**: Team Collaboration Feature (Milestone 1 & 2)
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Implemented progressive team collaboration feature for Trellis, completing Milestone 1 and 2.
+
+### Milestone 1: Basic Visibility
+- Added `feature.sh list-all` command to list features across all developers
+- Output format: `[developer] feature-name (status) - date`
+
+### Milestone 2: Version and Upgrade
+- Created `.trellis/version.json` with version 1.0.0
+- Created `.trellis/scripts/upgrade.sh` for cross-project Trellis upgrades
+- Upgrade preserves developer data while updating framework files
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `.trellis/scripts/feature.sh` | Added `list-all` command |
+| `.trellis/scripts/upgrade.sh` | New - upgrade script |
+| `.trellis/version.json` | New - version 1.0.0 |
+| `.trellis/agent-traces/kleinhe/features/17-team-collaboration/prd.md` | New - PRD |
+| `.trellis/agent-traces/kleinhe/features/17-team-collaboration/feature.json` | Updated metadata |
+
+## Future Work (Planned)
+- Milestone 3: Feature status sync (auto-generate feature-board.md)
+- Milestone 4: Team-level isolation (for large teams)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc683f5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
+
+## Session 6: Implement trellis update command
+
+**Date**: 2026-01-18
+**Feature**: Implement trellis update command
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+Implemented the `trellis update` command for backward compatibility, allowing users to upgrade their Trellis installation to new versions.
+
+## Key Changes
+
+| Component | Description |
+|-----------|-------------|
+| `update.ts` | New update command with change detection, conflict resolution, backup |
+| `cli/index.ts` | Version check at startup, connect update command |
+| `init.ts` | Write `.version` file after initialization |
+
+## Features Implemented
+- **Change Detection**: Compares file content to detect new/unchanged/changed files
+- **Conflict Resolution**: Interactive prompts with options (overwrite/skip/create-new)
+- **Protected Paths**: Never touches agent-traces, .developer, structure/*
+- **Automatic Backup**: Creates timestamped backup before changes
+- **Version Check**: Shows update notification at CLI startup when version differs
+
+## Command Options
+- `--dry-run`: Preview changes without applying
+- `--force`: Overwrite all changed files
+- `--skip-all`: Skip all changed files
+- `--create-new`: Create .new copies for all changes
+
+## Files Created/Modified
+- `src/commands/update.ts` (new - 480 lines)
+- `src/cli/index.ts` (modified)
+- `src/commands/init.ts` (modified)
+- `.trellis/agent-traces/kleinhe/features/17-backward-compat/` (feature docs)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `93e2d9f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
