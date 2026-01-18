@@ -16,25 +16,28 @@ import {
   multiAgentCleanupScript,
   multiAgentStatusScript,
   worktreeYamlTemplate,
+  workflowMdTemplate,
+  gitignoreTemplate,
   initDeveloperScript,
   getDeveloperScript,
   featureScript,
   getContextScript,
   addSessionScript,
   createBootstrapScript,
-} from "../templates/scripts/index.js";
+} from "../templates/trellis/index.js";
 
 import {
-  workflowMdContent,
-  workflowGitignoreContent,
   guidesIndexContent,
   guidesCrossLayerThinkingGuideContent,
   guidesCodeReuseThinkingGuideContent,
 } from "../templates/markdown/index.js";
 
 import { getCommandTemplates } from "../configurators/templates.js";
-import { getAllAgents } from "../templates/agents/index.js";
-import { getAllHooks, getSettingsTemplate } from "../templates/hooks/index.js";
+import {
+  getAllAgents,
+  getAllHooks,
+  getSettingsTemplate,
+} from "../templates/claude/index.js";
 
 export interface UpdateOptions {
   dryRun?: boolean;
@@ -71,7 +74,7 @@ const PROTECTED_PATHS = [
 /**
  * Collect all template files that should be managed by update
  */
-function collectTemplateFiles(cwd: string): Map<string, string> {
+function collectTemplateFiles(_cwd: string): Map<string, string> {
   const files = new Map<string, string>();
 
   // Scripts - common
@@ -82,10 +85,7 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
 
   // Scripts - multi-agent
   files.set(`${PATHS.SCRIPTS}/multi-agent/start.sh`, multiAgentStartScript);
-  files.set(
-    `${PATHS.SCRIPTS}/multi-agent/cleanup.sh`,
-    multiAgentCleanupScript,
-  );
+  files.set(`${PATHS.SCRIPTS}/multi-agent/cleanup.sh`, multiAgentCleanupScript);
   files.set(`${PATHS.SCRIPTS}/multi-agent/status.sh`, multiAgentStatusScript);
 
   // Scripts - main
@@ -98,8 +98,8 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
 
   // Configuration
   files.set(`${DIR_NAMES.WORKFLOW}/worktree.yaml`, worktreeYamlTemplate);
-  files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, workflowGitignoreContent);
-  files.set(PATHS.WORKFLOW_GUIDE_FILE, workflowMdContent);
+  files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
+  files.set(PATHS.WORKFLOW_GUIDE_FILE, workflowMdTemplate);
 
   // Structure - guides only (frontend/backend are protected)
   files.set(`${PATHS.STRUCTURE}/guides/index.md`, guidesIndexContent);
@@ -257,7 +257,10 @@ async function promptConflictResolution(
       name: "action",
       message: `${file.relativePath} has changes.`,
       choices: [
-        { name: "[1] Overwrite - Replace with new version", value: "overwrite" },
+        {
+          name: "[1] Overwrite - Replace with new version",
+          value: "overwrite",
+        },
         { name: "[2] Skip - Keep your current version", value: "skip" },
         {
           name: "[3] Create copy - Save new version as .new",
@@ -342,9 +345,7 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Check if Trellis is initialized
   if (!fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
-    console.log(
-      chalk.red("Error: Trellis not initialized in this directory."),
-    );
+    console.log(chalk.red("Error: Trellis not initialized in this directory."));
     console.log(chalk.gray("Run 'trellis init' first."));
     return;
   }
@@ -436,9 +437,7 @@ export async function update(options: UpdateOptions): Promise<void> {
       } else if (action === "create-new") {
         const newPath = file.path + ".new";
         fs.writeFileSync(newPath, file.newContent);
-        console.log(
-          chalk.blue(`  ✓ Created: ${file.relativePath}.new`),
-        );
+        console.log(chalk.blue(`  ✓ Created: ${file.relativePath}.new`));
         createdNew++;
       } else {
         console.log(chalk.gray(`  ○ Skipped: ${file.relativePath}`));
@@ -474,7 +473,9 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   if (createdNew > 0) {
     console.log(
-      chalk.gray("\nTip: Review .new files and merge changes manually if needed."),
+      chalk.gray(
+        "\nTip: Review .new files and merge changes manually if needed.",
+      ),
     );
   }
 }
