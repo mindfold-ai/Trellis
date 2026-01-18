@@ -59,12 +59,35 @@ After finding issues:
 
 ### Step 4: Run Verification
 
-```bash
-pnpm lint
-pnpm typecheck
-```
+Run project's lint and typecheck commands to verify changes.
 
 If failed, fix issues and re-run.
+
+---
+
+## Completion Markers (Ralph Loop)
+
+**CRITICAL**: You are in a loop controlled by the Ralph Loop system.
+The loop will NOT stop until you output ALL required completion markers.
+
+Completion markers are generated from `check.jsonl` in the feature directory.
+Each entry's `reason` field becomes a marker: `{REASON}_FINISH`
+
+For example, if check.jsonl contains:
+```json
+{"file": "...", "reason": "TypeCheck"}
+{"file": "...", "reason": "Lint"}
+{"file": "...", "reason": "CodeReview"}
+```
+
+You MUST output these markers when each check passes:
+- `TYPECHECK_FINISH` - After typecheck passes
+- `LINT_FINISH` - After lint passes
+- `CODEREVIEW_FINISH` - After code review passes
+
+If check.jsonl doesn't exist or has no reasons, output: `ALL_CHECKS_FINISH`
+
+**The loop will block you from stopping until all markers are present in your output.**
 
 ---
 
@@ -80,8 +103,8 @@ If failed, fix issues and re-run.
 
 ### Issues Found and Fixed
 
-1. `src/components/Feature.tsx:25` - Missing return type, added
-2. `src/hooks/useFeature.ts:12` - Unused import, removed
+1. `<file>:<line>` - <what was fixed>
+2. `<file>:<line>` - <what was fixed>
 
 ### Issues Not Fixed
 
@@ -89,10 +112,11 @@ If failed, fix issues and re-run.
 
 ### Verification Results
 
-- TypeCheck: Passed
-- Lint: Passed
+- TypeCheck: Passed TYPECHECK_FINISH
+- Lint: Passed LINT_FINISH
 
 ### Summary
 
 Checked X files, found Y issues, all fixed.
+ALL_CHECKS_FINISH
 ```

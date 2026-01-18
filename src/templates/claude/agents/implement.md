@@ -61,12 +61,7 @@ Read the feature's prd.md and info.md:
 
 ### 4. Verify
 
-Run verification checks:
-
-```bash
-pnpm lint
-pnpm typecheck
-```
+Run project's lint and typecheck commands to verify changes.
 
 ---
 

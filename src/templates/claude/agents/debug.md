@@ -53,10 +53,7 @@ For each issue:
 
 ### Step 4: Verify
 
-```bash
-pnpm lint
-pnpm typecheck
-```
+Run project's lint and typecheck commands to verify fixes.
 
 If fix introduces new issues:
 
@@ -73,12 +70,12 @@ If fix introduces new issues:
 
 ### Issues Fixed
 
-1. `[P1]` `src/foo.ts:42` - Added error handling
-2. `[P2]` `src/bar.ts:15` - Added explicit return type
+1. `[P1]` `<file>:<line>` - <what was fixed>
+2. `[P2]` `<file>:<line>` - <what was fixed>
 
 ### Issues Not Fixed
 
-- `src/qux.ts:99` - Requires architectural change, suggest discussion
+- `<file>:<line>` - <reason why not fixed>
 
 ### Verification
 

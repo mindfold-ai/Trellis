@@ -124,13 +124,18 @@ Hook will auto-inject:
 ```
 Task(
   subagent_type: "check",
-  prompt: "Execute final completion check",
+  prompt: "[finish] Execute final completion check before PR",
   model: "opus",
   run_in_background: true
 )
 ```
 
-Hook will auto-inject complete finish-work.md content.
+**Important**: The `[finish]` marker in prompt triggers different context injection:
+- Lighter context focused on final verification
+- finish-work.md checklist
+- prd.md for verifying requirements are met
+
+This is different from regular "check" which has full specs for self-fix loop.
 
 ### action: "create-pr"
 
