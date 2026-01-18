@@ -400,3 +400,38 @@ Fixed ENOENT error in published package. npm ignores .gitignore files by default
 ### Next Steps
 
 - None - feature complete
+
+## Session 9: Restore Templates Architecture + Update Command
+
+**Date**: 2026-01-18
+**Feature**: Restore Templates Architecture + Update Command
+
+### Summary
+
+Reverted dogfooding to dedicated templates. Added trellis update command from PR #8.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f0a3dc1` | (see git log) |
+| `95ea522` | (see git log) |
+| `277fea3` | (see git log) |
+| `6a59b5a` | (see git log) |
+| `1bcebb5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
