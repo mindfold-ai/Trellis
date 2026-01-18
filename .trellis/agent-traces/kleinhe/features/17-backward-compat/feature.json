@@ -4,7 +4,7 @@
   "description": "Implement backward compatibility and migration system for smooth upgrades",
   "status": "planning",
   "dev_type": null,
-  "priority": "medium",
+  "priority": "low",
   "developer": "kleinhe",
   "createdAt": "2026-01-17",
   "completedAt": null,

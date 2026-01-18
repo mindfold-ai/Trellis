@@ -1,0 +1,39 @@
+{
+  "id": "trellis-cli-evaluation",
+  "name": "trellis-cli-evaluation",
+  "description": "评估是否需要专门做 Trellis CLI/IDE，决策框架：痛点评估 → 现有方案评估 → 竞争评估",
+  "status": "backlog",
+  "dev_type": null,
+  "scope": null,
+  "priority": "low",
+  "developer": "kleinhe",
+  "createdAt": "2026-01-18",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}
