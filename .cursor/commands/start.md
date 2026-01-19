@@ -99,7 +99,7 @@ Ready for your task. What would you like to work on?
 #### Step 1: Create Feature `[AI]`
 
 ```bash
-./.trellis/scripts/feature.sh create <name>
+./.trellis/scripts/feature.sh create "<title>" --slug <name>
 ```
 
 #### Step 2: Implement and Verify `[AI]`
@@ -142,7 +142,7 @@ The following slash commands are for users (not AI):
 
 | Script | Purpose |
 |--------|---------|
-| `feature.sh create <name>` | Create feature directory |
+| `feature.sh create "<title>" [--slug <name>]` | Create feature directory |
 | `feature.sh list` | List active features |
 | `feature.sh archive <name>` | Archive feature |
 | `get-context.sh` | Get session context |

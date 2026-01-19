@@ -190,6 +190,57 @@ output_text() {
   echo "Total: $feature_count active feature(s)"
   echo ""
 
+  echo "## BACKLOG (Assigned to me)"
+  local backlog_dir=$(get_backlog_dir "$repo_root")
+  local backlog_count=0
+  if [[ -d "$backlog_dir" ]]; then
+    for f in "$backlog_dir"/*.json; do
+      if [[ -f "$f" ]]; then
+        local assignee=$(jq -r '.assigned_to' "$f" 2>/dev/null)
+        local status=$(jq -r '.status // "in_progress"' "$f" 2>/dev/null)
+        # Only show items assigned to current developer and not done
+        if [[ "$assignee" == "$developer" ]] && [[ "$status" != "done" ]]; then
+          local id=$(jq -r '.id' "$f" 2>/dev/null)
+          local title=$(jq -r '.title' "$f" 2>/dev/null)
+          local priority=$(jq -r '.priority // "P2"' "$f" 2>/dev/null)
+          # Extract date from id (YYMMDD-slug)
+          local date_part=$(echo "$id" | grep -oE '^[0-9]{6}' | sed 's/\(..\)\(..\)\(..\)/20\1-\2-\3/')
+          echo "- [$priority] $title ($date_part)"
+          ((backlog_count++))
+        fi
+      fi
+    done
+  fi
+  if [[ $backlog_count -eq 0 ]]; then
+    echo "(no backlog items assigned to you)"
+  fi
+  echo ""
+
+  echo "## CREATED BY ME (Assigned to others)"
+  local created_count=0
+  if [[ -d "$backlog_dir" ]]; then
+    for f in "$backlog_dir"/*.json; do
+      if [[ -f "$f" ]]; then
+        local creator=$(jq -r '.created_by' "$f" 2>/dev/null)
+        local assignee=$(jq -r '.assigned_to' "$f" 2>/dev/null)
+        local status=$(jq -r '.status // "in_progress"' "$f" 2>/dev/null)
+        # Only show items created by me but assigned to others, and not done
+        if [[ "$creator" == "$developer" ]] && [[ "$assignee" != "$developer" ]] && [[ "$status" != "done" ]]; then
+          local id=$(jq -r '.id' "$f" 2>/dev/null)
+          local title=$(jq -r '.title' "$f" 2>/dev/null)
+          local priority=$(jq -r '.priority // "P2"' "$f" 2>/dev/null)
+          local date_part=$(echo "$id" | grep -oE '^[0-9]{6}' | sed 's/\(..\)\(..\)\(..\)/20\1-\2-\3/')
+          echo "- [$priority] $title @$assignee ($date_part)"
+          ((created_count++))
+        fi
+      fi
+    done
+  fi
+  if [[ $created_count -eq 0 ]]; then
+    echo "(none)"
+  fi
+  echo ""
+
   echo "## TRACES FILE"
   local traces_file=$(get_active_progress_file "$repo_root")
   if [[ -n "$traces_file" ]]; then

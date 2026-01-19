@@ -1,0 +1,10 @@
+{
+  "id": "250119-example-feature",
+  "title": "示例功能需求",
+  "description": "这是一个示例 issue，展示 backlog 的数据结构。\n\n## 背景\n说明为什么需要这个功能\n\n## 目标\n- 目标 1\n- 目标 2",
+  "priority": "P2",
+  "status": "open",
+  "assigned_to": "taosu",
+  "created_by": "taosu",
+  "created_at": "2025-01-19T10:00:00Z"
+}

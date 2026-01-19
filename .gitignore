@@ -141,6 +141,10 @@ vite.config.ts.timestamp-*
 # Ralph Loop state file
 .trellis/.ralph-state.json
 
+# Trellis local state (should not be committed)
+.trellis/.current-feature
+.trellis/.developer
+
 # Python cache
 __pycache__/
 *.pyc

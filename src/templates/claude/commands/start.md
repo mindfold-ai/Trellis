@@ -58,7 +58,7 @@ Use feature tracking and delegate to specialized agents.
 #### Step 1: Create Feature Directory `[AI]`
 
 ```bash
-FEATURE_DIR=$(./.trellis/scripts/feature.sh create <name>)
+FEATURE_DIR=$(./.trellis/scripts/feature.sh create "<title>" --slug <name>)
 ```
 
 #### Step 2: Initialize Context `[AI]`
@@ -171,7 +171,7 @@ The following slash commands are for users (not AI):
 
 | Script | Purpose |
 |--------|---------|
-| `feature.sh create <name>` | Create feature directory |
+| `feature.sh create "<title>" [--slug <name>]` | Create feature directory |
 | `feature.sh init-context <dir> <type>` | Initialize jsonl files |
 | `feature.sh add-context <dir> <jsonl> <path>` | Add specs |
 | `feature.sh start <dir>` | Set current feature |

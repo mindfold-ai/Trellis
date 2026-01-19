@@ -57,6 +57,6 @@ If a feature was completed this session:
 |---------|---------|
 | `get-context.sh` | Get all context info |
 | `add-session.sh --title "..." --commit "..."` | **One-click add session (recommended)** |
-| `feature.sh create <name>` | Create new feature directory |
+| `feature.sh create "<title>" [--slug <name>]` | Create new feature directory |
 | `feature.sh archive <name>` | Archive completed feature |
 | `feature.sh list` | List active features |

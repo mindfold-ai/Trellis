@@ -25,13 +25,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/paths.sh"
 source "$SCRIPT_DIR/../common/worktree.sh"
 source "$SCRIPT_DIR/../common/developer.sh"
+source "$SCRIPT_DIR/../common/backlog.sh"
+source "$SCRIPT_DIR/../common/feature-utils.sh"
+source "$SCRIPT_DIR/../common/registry.sh"
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 NC='\033[0m'
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -85,74 +87,52 @@ cmd_list() {
   echo ""
 
   # Show registry info
-  AGENTS_DIR=$(get_agents_dir)
-  REGISTRY_FILE="${AGENTS_DIR}/registry.json"
+  local registry_file=$(registry_get_file "$PROJECT_ROOT")
 
-  if [ -f "$REGISTRY_FILE" ]; then
+  if [ -f "$registry_file" ]; then
     echo -e "${BLUE}=== Registered Agents ===${NC}"
     echo ""
-    jq -r '.agents[] | "  \(.id): PID=\(.pid) [\(.worktree_path)]"' "$REGISTRY_FILE" 2>/dev/null || echo "  (none)"
+    jq -r '.agents[] | "  \(.id): PID=\(.pid) [\(.worktree_path)]"' "$registry_file" 2>/dev/null || echo "  (none)"
     echo ""
   fi
 }
 
 # =============================================================================
-# Archive Feature
+# Archive Feature (using common function)
 # =============================================================================
 archive_feature() {
   local worktree_path="$1"
 
   # Find feature directory from registry
-  AGENTS_DIR=$(get_agents_dir)
-  REGISTRY_FILE="${AGENTS_DIR}/registry.json"
+  local feature_dir=$(registry_get_feature_dir "$worktree_path" "$PROJECT_ROOT")
 
-  if [ ! -f "$REGISTRY_FILE" ]; then
+  # Validate feature path is safe
+  if ! is_safe_feature_path "$feature_dir" "$PROJECT_ROOT" 2>/dev/null; then
     return 0
   fi
 
-  FEATURE_DIR=$(jq -r --arg path "$worktree_path" '.agents[] | select(.worktree_path == $path) | .feature_dir' "$REGISTRY_FILE" 2>/dev/null)
-
-  if [ -z "$FEATURE_DIR" ] || [ "$FEATURE_DIR" = "null" ]; then
+  local feature_dir_abs="${PROJECT_ROOT}/${feature_dir}"
+  if [ ! -d "$feature_dir_abs" ]; then
     return 0
   fi
 
-  FEATURE_DIR_ABS="${PROJECT_ROOT}/${FEATURE_DIR}"
-  if [ ! -d "$FEATURE_DIR_ABS" ]; then
-    return 0
-  fi
+  # Use common archive function
+  local result=$(archive_feature_complete "$feature_dir_abs" "$PROJECT_ROOT")
 
-  # Archive to archive/{YYYY-MM}/
-  local features_dir=$(get_features_dir)
-  local archive_dir="$features_dir/archive"
-  local year_month=$(date +%Y-%m)
-  local month_dir="$archive_dir/$year_month"
-
-  mkdir -p "$month_dir"
-
-  local feature_name=$(basename "$FEATURE_DIR")
-  mv "$FEATURE_DIR_ABS" "$month_dir/"
-
-  log_success "Archived feature: $feature_name -> archive/$year_month/"
-}
-
-# =============================================================================
-# Remove from Registry
-# =============================================================================
-remove_from_registry() {
-  local worktree_path="$1"
-
-  AGENTS_DIR=$(get_agents_dir)
-  REGISTRY_FILE="${AGENTS_DIR}/registry.json"
-
-  if [ ! -f "$REGISTRY_FILE" ]; then
-    return 0
-  fi
-
-  # Remove by worktree path
-  local updated=$(jq --arg path "$worktree_path" '.agents = [.agents[] | select(.worktree_path != $path)]' "$REGISTRY_FILE")
-  echo "$updated" | jq '.' > "$REGISTRY_FILE"
-
-  log_info "Removed from registry"
+  # Parse result and log
+  echo "$result" | while IFS= read -r line; do
+    case "$line" in
+      backlog_completed:*)
+        log_info "Completed backlog issue: ${line#backlog_completed:}"
+        ;;
+      archived_to:*)
+        local dest="${line#archived_to:}"
+        local feature_name=$(basename "$dest")
+        local month_dir=$(dirname "$dest")
+        log_success "Archived feature: $feature_name -> $(basename "$month_dir")/"
+        ;;
+    esac
+  done
 }
 
 # =============================================================================
@@ -161,25 +141,16 @@ remove_from_registry() {
 cleanup_registry_only() {
   local search="$1"
 
-  AGENTS_DIR=$(get_agents_dir)
-  REGISTRY_FILE="${AGENTS_DIR}/registry.json"
+  # Find agent using registry function
+  local agent_info=$(registry_search_agent "$search" "$PROJECT_ROOT")
 
-  if [ ! -f "$REGISTRY_FILE" ]; then
-    log_error "No registry found"
-    exit 1
-  fi
-
-  # Find agent by id or feature_dir containing search term
-  local agent_info=$(jq -r --arg search "$search" '.agents[] | select(.id == $search or (.feature_dir | contains($search)))' "$REGISTRY_FILE" 2>/dev/null | head -1)
-
-  if [ -z "$agent_info" ] || [ "$agent_info" = "null" ]; then
+  if [ -z "$agent_info" ]; then
     log_error "No agent found in registry matching: $search"
     exit 1
   fi
 
   local agent_id=$(echo "$agent_info" | jq -r '.id')
   local feature_dir=$(echo "$agent_info" | jq -r '.feature_dir')
-  local worktree_path=$(echo "$agent_info" | jq -r '.worktree_path')
 
   echo ""
   echo -e "${BLUE}=== Cleanup Agent (no worktree) ===${NC}"
@@ -203,23 +174,31 @@ cleanup_registry_only() {
   fi
 
   # 1. Archive feature directory if exists
-  FEATURE_DIR_ABS="${PROJECT_ROOT}/${feature_dir}"
-  if [ -d "$FEATURE_DIR_ABS" ]; then
-    local features_dir=$(get_features_dir)
-    local archive_dir="$features_dir/archive"
-    local year_month=$(date +%Y-%m)
-    local month_dir="$archive_dir/$year_month"
+  # Validate feature path is safe
+  if ! is_safe_feature_path "$feature_dir" "$PROJECT_ROOT" 2>/dev/null; then
+    log_warn "Invalid feature_dir in registry, skipping archive"
+  else
+    local feature_dir_abs="${PROJECT_ROOT}/${feature_dir}"
+    if [ -d "$feature_dir_abs" ]; then
+    local result=$(archive_feature_complete "$feature_dir_abs" "$PROJECT_ROOT")
 
-    mkdir -p "$month_dir"
-
-    local feature_name=$(basename "$feature_dir")
-    mv "$FEATURE_DIR_ABS" "$month_dir/"
-    log_success "Archived feature: $feature_name -> archive/$year_month/"
+    echo "$result" | while IFS= read -r line; do
+      case "$line" in
+        backlog_completed:*)
+          log_info "Completed backlog issue: ${line#backlog_completed:}"
+          ;;
+        archived_to:*)
+          local dest="${line#archived_to:}"
+          local feature_name=$(basename "$dest")
+          log_success "Archived feature: $feature_name -> archive/$(basename "$(dirname "$dest")")/"
+          ;;
+      esac
+    done
+    fi
   fi
 
   # 2. Remove from registry
-  local updated=$(jq --arg id "$agent_id" '.agents = [.agents[] | select(.id != $id)]' "$REGISTRY_FILE")
-  echo "$updated" | jq '.' > "$REGISTRY_FILE"
+  registry_remove_by_id "$agent_id" "$PROJECT_ROOT"
   log_success "Removed from registry: $agent_id"
 
   log_success "Cleanup complete"
@@ -272,7 +251,8 @@ cleanup_worktree() {
   archive_feature "$worktree_path"
 
   # 2. Remove from registry
-  remove_from_registry "$worktree_path"
+  registry_remove_by_worktree "$worktree_path" "$PROJECT_ROOT"
+  log_info "Removed from registry"
 
   # 3. Remove worktree
   log_info "Removing worktree..."

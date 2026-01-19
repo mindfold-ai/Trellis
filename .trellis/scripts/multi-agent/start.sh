@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/paths.sh"
 source "$SCRIPT_DIR/../common/worktree.sh"
 source "$SCRIPT_DIR/../common/developer.sh"
+source "$SCRIPT_DIR/../common/registry.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -284,46 +285,14 @@ log_success "Agent started with PID: ${AGENT_PID}"
 # =============================================================================
 log_info "Step 4: Registering agent to registry..."
 
-DEVELOPER=$(get_developer "$PROJECT_ROOT")
-AGENTS_DIR=$(get_agents_dir "$PROJECT_ROOT")
-mkdir -p "$AGENTS_DIR"
-
-REGISTRY_FILE="${AGENTS_DIR}/registry.json"
-
 # Generate agent ID
 FEATURE_ID=$(jq -r '.id // empty' "$FEATURE_JSON")
 if [ -z "$FEATURE_ID" ]; then
   FEATURE_ID=$(echo "$BRANCH" | sed 's/\//-/g')
 fi
 
-# Read or create registry
-if [ -f "$REGISTRY_FILE" ]; then
-  REGISTRY=$(cat "$REGISTRY_FILE")
-else
-  REGISTRY='{"agents":[]}'
-fi
-
-# Remove old record with same ID
-REGISTRY=$(echo "$REGISTRY" | jq --arg id "$FEATURE_ID" '.agents = [.agents[] | select(.id != $id)]')
-
-# Add new agent record
-STARTED_AT=$(date -Iseconds)
-NEW_AGENT=$(jq -n \
-  --arg id "$FEATURE_ID" \
-  --arg worktree "$WORKTREE_PATH" \
-  --arg pid "$AGENT_PID" \
-  --arg started_at "$STARTED_AT" \
-  --arg feature_dir "$FEATURE_DIR_RELATIVE" \
-  '{
-    id: $id,
-    worktree_path: $worktree,
-    pid: ($pid | tonumber),
-    started_at: $started_at,
-    feature_dir: $feature_dir
-  }')
-
-REGISTRY=$(echo "$REGISTRY" | jq --argjson agent "$NEW_AGENT" '.agents += [$agent]')
-echo "$REGISTRY" | jq '.' > "$REGISTRY_FILE"
+# Use common registry function
+registry_add_agent "$FEATURE_ID" "$WORKTREE_PATH" "$AGENT_PID" "$FEATURE_DIR_RELATIVE" "$PROJECT_ROOT"
 
 log_success "Agent registered: ${FEATURE_ID}"
 
@@ -338,7 +307,7 @@ echo "  PID:       $AGENT_PID"
 echo "  Worktree:  $WORKTREE_PATH"
 echo "  Feature:   $FEATURE_DIR_RELATIVE"
 echo "  Log:       $LOG_FILE"
-echo "  Registry:  $REGISTRY_FILE"
+echo "  Registry:  $(registry_get_file "$PROJECT_ROOT")"
 echo ""
 echo -e "${YELLOW}To monitor:${NC} tail -f $LOG_FILE"
 echo -e "${YELLOW}To stop:${NC}    kill $AGENT_PID"

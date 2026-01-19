@@ -186,7 +186,7 @@ Use the feature management script:
 ./.trellis/scripts/feature.sh list
 
 # Create new feature (creates directory with feature.json)
-./.trellis/scripts/feature.sh create <feature-name>
+./.trellis/scripts/feature.sh create "<title>" --slug <feature-name>
 ```
 
 ---
@@ -197,7 +197,7 @@ Use the feature management script:
 
 ```
 1. Create or select feature
-   \-> ./.trellis/scripts/feature.sh create <name> or list
+   \-> ./.trellis/scripts/feature.sh create "<title>" --slug <name> or list
 
 2. Write code according to guidelines
    \-> Read .trellis/structure/ docs relevant to your task
@@ -321,7 +321,7 @@ features/
 
 **Commands**:
 ```bash
-./.trellis/scripts/feature.sh create <name>   # Create feature directory
+./.trellis/scripts/feature.sh create "<title>" [--slug <name>]   # Create feature directory
 ./.trellis/scripts/feature.sh archive <name>  # Archive to archive/{year-month}/
 ./.trellis/scripts/feature.sh list            # List active features
 ./.trellis/scripts/feature.sh list-archive    # List archived features
@@ -388,7 +388,7 @@ git commit -m "type(scope): description"
 
 # Feature management
 ./.trellis/scripts/feature.sh list   # List features
-./.trellis/scripts/feature.sh create # Create feature
+./.trellis/scripts/feature.sh create "<title>" # Create feature
 
 # Slash commands
 /finish-work          # Pre-commit checklist

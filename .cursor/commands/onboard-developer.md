@@ -207,7 +207,7 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 1: Bug Fix Session
 
 **[1/8] /start** - AI needs project context before touching code
-**[2/8] ./.trellis/scripts/feature.sh create fix-bug** - Track work for future reference
+**[2/8] ./.trellis/scripts/feature.sh create "Fix bug" --slug fix-bug** - Track work for future reference
 **[3/8] /before-frontend-dev** - Inject project-specific frontend knowledge
 **[4/8] Investigate and fix the bug** - Actual development work
 **[5/8] /check-frontend** - Re-verify code against guidelines
@@ -218,7 +218,7 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 2: Planning Session (No Code)
 
 **[1/4] /start** - Context needed even for non-coding work
-**[2/4] ./.trellis/scripts/feature.sh create planning-task** - Planning is valuable work
+**[2/4] ./.trellis/scripts/feature.sh create "Planning task" --slug planning-task** - Planning is valuable work
 **[3/4] Review docs, create subtask list** - Actual planning work
 **[4/4] /record-agent-flow (with --summary)** - Planning decisions must be recorded
 
@@ -313,7 +313,7 @@ I recommend reading through `.trellis/structure/` to familiarize yourself with t
 If the developer wants help filling guidelines, create a feature to track this:
 
 ```bash
-./.trellis/scripts/feature.sh create fill-structure-guidelines
+./.trellis/scripts/feature.sh create "Fill structure guidelines" --slug fill-structure-guidelines
 ```
 
 Then systematically analyze the codebase and fill each guideline file:

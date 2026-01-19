@@ -58,7 +58,7 @@ Use feature tracking and delegate to specialized agents.
 #### Step 1: Create Feature Directory `[AI]`
 
 ```bash
-FEATURE_DIR=$(./.trellis/scripts/feature.sh create <name>)
+FEATURE_DIR=$(./.trellis/scripts/feature.sh create "<title>" --slug <name>)
 ```
 
 #### Step 2: Initialize Context `[AI]`
@@ -171,12 +171,13 @@ The following slash commands are for users (not AI):
 
 | Script | Purpose |
 |--------|---------|
-| `feature.sh create <name>` | Create feature directory |
+| `feature.sh create <title> --assignee <dev> [--priority P0\|P1\|P2\|P3] [--slug <slug>]` | Create backlog + feature |
 | `feature.sh init-context <dir> <type>` | Initialize jsonl files |
 | `feature.sh add-context <dir> <jsonl> <path>` | Add specs |
 | `feature.sh start <dir>` | Set current feature |
 | `feature.sh finish` | Clear current feature |
-| `feature.sh archive <name>` | Archive feature |
+| `feature.sh archive <name>` | Archive feature (also deletes linked backlog) |
+| `feature.sh list` | List active features |
 | `get-context.sh` | Get session context |
 
 ## Sub Agent Calls `[AI]`
