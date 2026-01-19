@@ -14,6 +14,7 @@
 #   ./.trellis/scripts/feature.sh create-pr [dir] [--dry-run] # Create PR from feature
 #   ./.trellis/scripts/feature.sh archive <feature-name>      # Archive completed feature
 #   ./.trellis/scripts/feature.sh list                        # List active features
+#   ./.trellis/scripts/feature.sh list-all                    # List all features across developers
 #   ./.trellis/scripts/feature.sh list-archive [month]        # List archived features
 #
 # Feature Directory Structure:
@@ -601,6 +602,61 @@ cmd_list() {
 }
 
 # =============================================================================
+# Command: list-all
+# =============================================================================
+
+cmd_list_all() {
+  local traces_dir="$REPO_ROOT/$DIR_WORKFLOW/$DIR_PROGRESS"
+  local current_feature=$(get_current_feature)
+  local total_count=0
+
+  echo -e "${BLUE}All features across developers:${NC}"
+  echo ""
+
+  # Iterate through all developer directories
+  for dev_dir in "$traces_dir"/*/; do
+    [[ ! -d "$dev_dir" ]] && continue
+
+    local developer=$(basename "$dev_dir")
+    local features_dir="$dev_dir/$DIR_FEATURES"
+
+    [[ ! -d "$features_dir" ]] && continue
+
+    for feature_dir in "$features_dir"/*/; do
+      [[ ! -d "$feature_dir" ]] && continue
+
+      local dir_name=$(basename "$feature_dir")
+      [[ "$dir_name" == "archive" ]] && continue
+
+      local feature_json="$feature_dir/feature.json"
+      local status="unknown"
+      local created_at="-"
+
+      if [[ -f "$feature_json" ]] && command -v jq &> /dev/null; then
+        status=$(jq -r '.status // "unknown"' "$feature_json")
+        created_at=$(jq -r '.createdAt // "-"' "$feature_json")
+      fi
+
+      local relative_path="$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES/$dir_name"
+      local marker=""
+      if [[ "$relative_path" == "$current_feature" ]]; then
+        marker=" ${GREEN}<- current${NC}"
+      fi
+
+      echo -e "  [${CYAN}$developer${NC}] $dir_name (${YELLOW}$status${NC}) - $created_at$marker"
+      ((total_count++))
+    done
+  done
+
+  if [[ $total_count -eq 0 ]]; then
+    echo "  (no features found)"
+  fi
+
+  echo ""
+  echo "Total: $total_count active feature(s)"
+}
+
+# =============================================================================
 # Command: list-archive
 # =============================================================================
 
@@ -923,6 +979,7 @@ Usage:
   $0 create-pr [dir] [--dry-run]        Create PR from feature
   $0 archive <feature-name>             Archive completed feature
   $0 list                               List active features
+  $0 list-all                           List all features across developers
   $0 list-archive [YYYY-MM]             List archived features
 
 Arguments:
@@ -983,6 +1040,9 @@ case "${1:-}" in
     ;;
   list)
     cmd_list
+    ;;
+  list-all)
+    cmd_list_all
     ;;
   list-archive)
     cmd_list_archive "$2"
