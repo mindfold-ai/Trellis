@@ -97,7 +97,7 @@ Use when:
 #### Step 1: Create Feature Directory
 
 ```bash
-FEATURE_DIR=$(./.trellis/scripts/feature.sh create <feature-name>)
+FEATURE_DIR=$(./.trellis/scripts/feature.sh create "<title>" --slug <feature-name>)
 ```
 
 #### Step 2: Configure Feature

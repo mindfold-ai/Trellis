@@ -22,6 +22,7 @@ DIR_FEATURES="features"
 DIR_ARCHIVE="archive"
 DIR_STRUCTURE="structure"
 DIR_SCRIPTS="scripts"
+DIR_BACKLOG="backlog"
 
 # File names
 FILE_DEVELOPER=".developer"
@@ -198,4 +199,20 @@ clear_current_feature() {
 has_current_feature() {
   local current=$(get_current_feature "$1")
   [[ -n "$current" ]]
+}
+
+# =============================================================================
+# Backlog Directory
+# =============================================================================
+
+# Get backlog directory path
+get_backlog_dir() {
+  local repo_root="${1:-$(get_repo_root)}"
+  echo "$repo_root/$DIR_WORKFLOW/$DIR_BACKLOG"
+}
+
+# Generate backlog issue ID based on date
+# Returns: YYMMDD (e.g., "250119")
+generate_backlog_id() {
+  date +%y%m%d
 }
