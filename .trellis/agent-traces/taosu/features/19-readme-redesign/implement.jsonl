@@ -1,0 +1,4 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/structure/shared/index.md", "reason": "Shared coding standards"}
+{"file": ".trellis/structure/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".trellis/structure/frontend/components.md", "reason": "Component conventions"}

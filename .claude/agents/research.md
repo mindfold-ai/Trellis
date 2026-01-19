@@ -3,7 +3,7 @@ name: research
 description: |
   Code and tech search expert. Pure research, no code modifications. Finds files, patterns, and tech solutions.
 tools: Read, Glob, Grep, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa
-model: haiku
+model: opus
 ---
 # Research Agent
 
