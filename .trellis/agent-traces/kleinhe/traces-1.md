@@ -278,3 +278,78 @@ Implemented the `trellis update` command for backward compatibility, allowing us
 ### Next Steps
 
 - None - feature complete
+
+## Session 7: Research conversation persistence & backlog planning
+
+**Date**: 2026-01-18
+**Feature**: Research conversation persistence & backlog planning
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+深入研究了 conversation-persistence 功能的技术实现方案，发现 Claude Code 已在本地存储完整对话记录。调整了 feature 优先级，新建了 trellis-cli-evaluation backlog。
+
+## Key Findings
+
+### Claude Code 本地存储
+
+- 路径: `~/.claude/projects/{project-path}/`
+- 格式: `sessions-index.json` + `{session-id}.jsonl`
+- 内容: 完整对话记录 (user, assistant, progress, summary, system)
+- 稳定性: 跨版本稳定 (2.0.70 → 2.1.12)
+
+### 推荐方案: A+D 结合
+
+- D: 读取 Claude Code 原生存储 (已有完整数据)
+- A: Hook 自动关联 session → feature
+- 不复制数据，仅创建索引 + 元数据
+
+### 待决策问题
+
+- 个人回顾 vs 团队学习 (影响存储策略)
+- 如果要团队共享，需要保存到 .trellis/ (进 git)
+
+## Feature Priority Updates
+
+| Priority | Features |
+|----------|----------|
+| High | team-collaboration, marketing-readme, conversation-persistence |
+| Low | 其他 7 个 features |
+| Backlog | trellis-cli-evaluation (新建) |
+
+## New Backlog: trellis-cli-evaluation
+
+决策框架:
+1. 痛点评估 - 是否足够痛?
+2. 现有方案评估 - 能否到 70 分?
+3. 竞争评估 - 有差异化优势吗?
+
+## Files Changed
+
+- `.trellis/agent-traces/kleinhe/features/16-conversation-persistence/prd.md` - 完整研究报告
+- `.trellis/agent-traces/kleinhe/features/18-trellis-cli-evaluation/prd.md` - 新建
+- 7 个 feature.json - 优先级调整
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d3e7a52` | (see git log) |
+| `4365cbe` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - feature complete
