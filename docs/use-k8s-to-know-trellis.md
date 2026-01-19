@@ -1,41 +1,37 @@
-# Understanding Trellis Through K8s
+# Understanding Trellis Through Kubernetes
 
-> This document explains Trellis design concepts using Kubernetes analogies. If you're familiar with K8s, understanding Trellis will be more intuitive.
+> If you're familiar with Kubernetes, this document will help you quickly grasp Trellis's design philosophy.
 
 ---
 
 ## Table of Contents
-1. [The Essential Difference Between Two Paradigms](#1-the-essential-difference-between-two-paradigms)
-2. [K8s Core Mechanisms](#2-k8s-core-mechanisms)
-3. [Trellis and K8s Analogy](#3-trellis-and-k8s-analogy)
-4. [How Trellis Works in Practice](#4-how-trellis-works-in-practice)
+
+1. [K8s Core Concepts Overview](#1-k8s-core-concepts-overview)
+2. [Trellis and K8s Analogy](#2-trellis-and-k8s-analogy)
+3. [Reconciliation Mechanism Deep Dive](#3-reconciliation-mechanism-deep-dive)
+4. [Complete Workflow](#4-complete-workflow)
+5. [Why This Design](#5-why-this-design)
 
 ---
 
-## 1. The Essential Difference Between Two Paradigms
+## 1. K8s Core Concepts Overview
 
-### 1.1 Imperative: Describing "How to Do It"
+### 1.1 Imperative vs Declarative
 
+**Imperative**: Describe "how to do it"
 ```bash
-# Imperative: telling the system step by step how to operate
+# Step-by-step instructions for the system
 current_pods=$(kubectl get pods -l app=nginx --no-headers | wc -l)
 if [ $current_pods -lt 3 ]; then
-  for i in $(seq $current_pods 2); do
-    kubectl run nginx-$i --image=nginx:1.19
-  done
-elif [ $current_pods -gt 3 ]; then
-  kubectl delete pod $(kubectl get pods -l app=nginx -o name | tail -n +4)
+  kubectl run nginx --image=nginx:1.19
 fi
 ```
 
-### 1.2 Declarative: Describing "What You Want"
-
+**Declarative**: Describe "what you want"
 ```yaml
-# Declarative: only specify the desired final state
+# Just state the desired end state
 apiVersion: apps/v1
 kind: Deployment
-metadata:
-  name: nginx
 spec:
   replicas: 3
   template:
@@ -45,304 +41,307 @@ spec:
         image: nginx:1.19
 ```
 
-### 1.3 Core Differences Comparison
-
 | Dimension | Imperative | Declarative |
 |-----------|------------|-------------|
 | Focus | Process (How) | Result (What) |
 | Executor | User orchestrates each step | System auto-reconciles |
-| State Management | User responsible | System responsible |
-| Idempotency | Requires additional handling | Naturally idempotent |
-| Error Recovery | Requires user intervention | System self-heals |
+| Idempotency | Requires extra handling | Naturally idempotent |
+| Error Recovery | Requires user intervention | Self-healing |
 
----
+### 1.2 Control Loop
 
-## 2. K8s Core Mechanisms
-
-### 2.1 Control Loop
-
-The core of K8s is the "control loop", also called the "reconciliation loop":
+The core of K8s is the **Control Loop**:
 
 ```
-Desired State (user declares)    Actual State (system observes)
-        |                           |
-        +------> Controller <-------+
-                    |
-                 Observe  (observe actual state)
-                    ↓
-                  Diff    (compute difference)
-                    ↓
-                   Act    (execute actions)
-                    ↓
-                 Repeat   (infinite loop)
+Desired State          Actual State
+(User declares)        (System observes)
+      |                     |
+      +---> Controller <----+
+                |
+            Observe → Diff → Act → Repeat
 ```
 
-**The power of this pattern**:
-
+**Power in action**:
 ```
-Scenario: I declare I want 3 nginx Pods
+I declare: I want 3 nginx Pods
 
-Time T1: Cluster has 0 Pods
-  → Controller detects: 0 ≠ 3 → creates 3 Pods
+A Pod gets accidentally deleted → Controller detects 2 ≠ 3 → Auto-creates 1
+I modify declaration to 5      → Controller detects 3 ≠ 5 → Auto-creates 2
 
-Time T2: 1 Pod is accidentally deleted
-  → Controller detects: 2 ≠ 3 → creates 1 Pod
-
-Time T3: A node goes down
-  → Controller detects: 2 ≠ 3 → creates 1 Pod on another node
-
-Time T4: I modify the declaration to 5 Pods
-  → Controller detects: 3 ≠ 5 → creates 2 Pods
-
-The entire process requires no manual intervention - the system automatically detects problems, recovers, and adapts to changes.
-```
-
-### 2.2 Key Characteristics of Declarative
-
-**1. Idempotency**
-
-```bash
-# Same result no matter how many times executed
-kubectl apply -f deployment.yaml  # 1st time: creates
-kubectl apply -f deployment.yaml  # 2nd time: no change
-kubectl apply -f deployment.yaml  # 100th time: still no change
-```
-
-**2. Self-Healing**
-
-```
-Pod crashes → Controller detects actual ≠ desired → auto-rebuild
-Node goes down → Controller detects actual ≠ desired → auto-migrate
-```
-
-**3. Eventual Consistency**
-
-```
-Traditional thinking:
-  "Execute command → takes effect immediately → returns success"
-
-K8s thinking:
-  "Accept declaration → returns 'accepted' → async reconciliation → eventually reaches desired state"
+No manual intervention needed. System auto-detects, auto-recovers, auto-adapts.
 ```
 
 ---
 
-## 3. Trellis and K8s Analogy
+## 2. Trellis and K8s Analogy
 
-### 3.1 Architecture Correspondence
-
-**Kubernetes**:
+### 2.1 Architecture Mapping
 
 ```
-YAML (desired state) --> Controller (reconciliation loop) --> Actual State
+┌─────────────────────────────────────────────────────────────┐
+│  Kubernetes                                                 │
+│                                                             │
+│  YAML Manifest ──> Controller ──> Actual State              │
+│  (Desired State)   (Reconcile)    (Actual State)            │
+└─────────────────────────────────────────────────────────────┘
+                          ↕
+┌─────────────────────────────────────────────────────────────┐
+│  Trellis                                                    │
+│                                                             │
+│  Feature Dir   ──> Dispatch + Ralph Loop ──> Compliant Code │
+│  (Desired State)   (Reconcile)               (Actual State) │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Trellis**:
-
-```
-Feature Directory (desired state)
-├── prd.md (feature requirements)
-├── jsonl (code specification references)
-└── feature.json (metadata)
-        |
-        v
-    Dispatch calls Agents by phase
-        |
-        ├─> implement (write code)
-        |
-        ├─> check (code specification check) <──┐
-        |       |                               | Ralph Loop
-        |       └── verification failed ────────┘ (programmatic loop control)
-        |
-        ├─> finish (pre-commit completeness check)
-        |
-        └─> create-pr
-        |
-        v
-Specification-compliant code (Actual State)
-```
-
-Hook injects specifications as reference each time an Agent is called.
-
-**Reconciliation Process Details**:
-
-Phase 1 - implement:
-  - Dispatch calls Implement Agent
-  - Hook injects prd.md + specifications referenced by jsonl
-  - Agent writes code referencing specifications
-
-Phase 2 - check (code specification check):
-  - Dispatch calls Check Agent
-  - Hook injects specifications referenced by check.jsonl (check-backend/frontend/cross-layer)
-  - Checks if code follows development specifications, cross-layer data flow, code reuse, etc.
-  - Fixes issues itself when found
-  - Ralph Loop programmatic loop control:
-    - If verify command is configured → execute command to verify (programmatic, reliable)
-    - Otherwise → check Agent output completion markers
-  - Only proceeds when verification passes, otherwise Agent continues fixing
-  - Maximum 5 iterations (prevents infinite loops)
-
-Phase 3 - finish (pre-commit completeness check):
-  - Dispatch calls Check Agent (prompt has [finish] marker)
-  - Hook injects finish-work.md (Pre-Commit Checklist)
-  - Check contents:
-    - Code quality: are lint/typecheck/test passing
-    - Documentation sync: does .trellis/structure/ need updates
-    - API changes: are schema, docs, client in sync
-    - DB changes: are migration, schema, related queries updated
-  - Skips Ralph Loop (code specifications already verified in check phase)
-  - Ensures work is complete and deliverable (code + docs + tests + verification)
-
-Phase 4 - create-pr:
-  - Creates Pull Request
-
-Exception path - debug:
-  - If Check Agent reports an unfixable issue
-  - Dispatch can call Debug Agent for deep analysis
-  - This is not the default flow, but exception handling
-
-The "reconciliation" here is controlled programmatically by **Ralph Loop**: it intercepts Check Agent's stop requests, verifies if truly complete (runs lint/typecheck or checks completion markers), and blocks stopping to let Agent continue fixing if not passed. This is similar to K8s Controller's reconciliation concept, but uses programs rather than LLMs to control the loop.
-
-### 3.2 Core Component Comparison
+### 2.2 Core Component Mapping
 
 | Kubernetes | Trellis | Description |
 |------------|---------|-------------|
-| YAML Manifest | Feature Directory | Declares desired state (prd.md = feature requirements, jsonl-referenced specs = code requirements) |
-| Controller Reconciliation Loop | Ralph Loop | Programmatically intercepts Agent stop, continues loop if verification fails |
-| Actual State | Final Code | Code that passes checks and fixes, compliant with specifications |
-| Verification Mechanism | verify config | Verification commands configured in worktree.yaml (e.g., pnpm lint) |
+| YAML Manifest | Feature Directory | Declares desired state |
+| Controller | Dispatch | Orchestrates phase execution |
+| Reconciliation Loop | Ralph Loop | Loops until verification passes |
+| Pod/Container | Agent | Actual execution unit |
+| ConfigMap | jsonl + Hook | Injects config/context |
+| Actual State | Final Code | Product after reconciliation |
 
-**About Hook**: Hook is part of the reconciliation process — it injects specification documents each time an agent is called, giving the agent reference material to judge if code meets expectations.
+### 2.3 Key Insight
 
-### 3.3 Self-Healing Mechanism Comparison
+K8s solves: **Infrastructure complexity** — Uses declarative to abstract away details, Controller handles reconciliation.
 
-**Kubernetes Self-Healing**:
+Trellis solves: **AI development uncertainty** — Uses declarative to define expectations (prd.md + guidelines), Ralph Loop handles reconciliation.
 
-```
-Pod OOMKilled → Controller detects → auto-restart
-Container CrashLoopBackOff → Controller detects → retry with backoff strategy
-Node NotReady → Controller detects → migrate Pod to healthy node
-```
+Common ground:
+- Users only declare "what they want", don't worry about "how to do it"
+- System continuously reconciles until actual state matches desired
+- Auto-repairs when deviations occur
 
-K8s self-healing is **passive detection + automatic repair**: the system continuously monitors and automatically handles problems when found.
-
-**Trellis Self-Healing**:
-
-Trellis implements programmatic loop control through **Ralph Loop** (SubagentStop Hook):
-
-```
-Check Agent attempts to stop
-        |
-        v
-SubagentStop Hook triggers ralph-loop.py
-        |
-        v
-verify config exists?
-        |
-        ├── Yes --> Execute configured verification commands
-        |            |
-        |            ├── All pass --> allow (stop)
-        |            └── Fail --> block (continue fixing)
-        |
-        └── No --> Check Agent output completion markers
-                     |
-                     ├── Markers complete --> allow
-                     └── Missing markers --> block
-
-Maximum 5 iterations, force allow after exceeding
-```
-
-**Specific Mechanisms**:
-
-1. **Programmatic Verification (Recommended)**:
-   - Configure `verify` commands in `worktree.yaml`
-   - Ralph Loop executes these commands for verification
-   - Does not rely on AI output, program enforces verification
-
-2. **Completion Markers (Fallback)**:
-   - If verify is not configured, checks Agent output markers
-   - Markers are generated from `check.jsonl` reason fields
-   - Requires Agent to actually perform checks before outputting markers
-
-3. **Check Agent's Self-Repair Capability**:
-   - Check Agent definition clearly states "Fix issues yourself, not just report them"
-   - When issues are found, uses Edit tool to directly modify code
-   - Ralph Loop tells Agent where failures occurred if verification fails
-
-4. **finish Phase Skips Loop**:
-   - When prompt has `[finish]` marker, skips Ralph Loop
-   - Because check phase already verified
-
-**Limitations**:
-- Complex architectural issues or logic bugs may require human intervention
-- Maximum 5 iterations, force allow after exceeding (prevents cost overruns)
-- Depends on specification file quality; unclear specs lead to limited check effectiveness
+> Next, Chapter 3 details the reconciliation mechanism (Hook + Ralph Loop), and Chapter 4 expands on the complete workflow (Phase 1-4).
 
 ---
 
-## 4. How Trellis Works in Practice
+## 3. Reconciliation Mechanism Deep Dive
 
-### 4.1 What Trellis Does
+Trellis reconciliation is achieved through two mechanisms working together: **Hook Injection** and **Ralph Loop**.
 
-**Core Mechanism**:
+### 3.1 Hook Injection
+
+**Timing**: Automatically triggered each time a Subagent is called
+
+**Function**: Injects file contents referenced in jsonl into the Agent's context
 
 ```
-Plan Agent or Research Agent finds needed files in advance
-              │
-              ▼
-     Writes to implement.jsonl / check.jsonl
-              │
-              ▼
-     Hook injects all these files when calling Subagent
-              │
-              ▼
-     Subagent receives complete context and starts working
+Plan/Research Agent finds needed files in advance
+            │
+            ▼
+    Writes to implement.jsonl / check.jsonl
+            │
+            ▼
+    Dispatch calls Subagent
+            │
+            ▼
+    Hook intercepts, reads jsonl, injects file contents
+            │
+            ▼
+    Subagent receives complete context, starts working
 ```
 
-**jsonl File Example**:
-
+**jsonl file example**:
 ```jsonl
 {"file": ".trellis/structure/backend/index.md", "reason": "Backend guidelines"}
 {"file": "src/api/auth.ts", "reason": "Existing auth pattern"}
-{"file": "src/middleware/", "type": "directory", "reason": "Middleware patterns"}
 ```
 
-**Dispatch Invocation**:
+**Why this design**:
+- Prevents context overload (Context Rot) — Only injects what's needed for current phase
+- Traceable — jsonl records what context each feature used
+- Decoupled — Agent doesn't need to search, focuses on execution
 
-```python
-Task(subagent_type="implement", prompt="Implement feature according to prd.md")
-# Hook automatically injects all files from implement.jsonl
+### 3.2 Ralph Loop
+
+**Essence**: A programmatic quality gate that intercepts Agent stop requests and forces continuation if verification fails.
+
+**Trigger timing**: When Check Agent attempts to stop
+
+**Flow**:
+
+```
+Check Agent attempts to stop
+        │
+        ▼
+SubagentStop Hook triggers ralph-loop.py
+        │
+        ▼
+    Has verify config?
+        │
+   ┌────┴────┐
+  Yes        No
+   │         │
+   ▼         ▼
+Run verify   Check completion
+commands     markers
+(pnpm lint)  (parse from output)
+   │         │
+   ▼         ▼
+┌──┴──┐   ┌──┴──┐
+│Pass  │   │Complete│
+│     │   │       │
+▼     ▼   ▼       ▼
+allow block allow  block
+(stop) (continue) (stop) (continue)
+
+Max 5 iterations, then force allow
 ```
 
-### 4.2 Advantages of This Workflow
+**verify config example** (worktree.yaml):
+```yaml
+verify:
+  - pnpm lint
+  - pnpm typecheck
+```
 
-1. **One-Click Start for Complete Workflow**:
-   - `/start` or `/parallel` one-click launch, AI automatically completes the entire Plan → Implement → Check → Finish → PR flow
-   - Users don't need step-by-step guidance, AI executes autonomously following preset flow and specifications
-   - What to do at each phase and which specifications to reference are all predefined
+**Why use programmatic verification instead of letting AI judge**:
+- Programmatic verification is reliable — lint pass means pass, doesn't depend on AI's judgment
+- Configurable — Different projects can configure different verification commands
+- Prevents infinite loops — Max 5 iterations, then force allow
 
-2. **Continuous Accumulation of Development Specifications**:
-   - Specifications are stored in `.trellis/structure/`, they are the project's knowledge assets
-   - Every time issues are found (bugs, omissions, inconsistencies), specifications are updated
-   - Specifications improve with use: AI references specifications to execute, clearer specs lead to better execution
-   - Thinking Guides help discover "didn't think of that" issues
+**Limitations**:
+- Complex architectural issues or logic bugs may require human intervention
+- Depends on guideline quality; unclear guidelines lead to limited check effectiveness
 
-3. **Complete End-to-End Flow**:
-   - From requirements analysis (Plan) → Implementation (Implement) → Check → Finish → PR
-   - Each phase has clear responsibilities and checkpoints
-   - Not a single-point tool, but a complete workflow
+---
 
-4. **Preventing Context Rot**:
-   - Too much context causes LLM Distraction, Confusion, and Clash
-   - Trellis injects by phase: implement phase injects requirements and related code, check phase injects development specs, finish phase injects commit checklist
-   - Each phase's Agent only receives context relevant to its task
+## 4. Complete Workflow
 
-5. **Programmatic Quality Control**:
-   - Ralph Loop programmatically intercepts Agent stop, continues loop if verification fails
-   - `verify` config can use lint/typecheck and other commands for verification, not relying on AI self-judgment
-   - More reliable than pure prompt constraints
+### 4.1 Phase Overview
 
-6. **Traceability**:
-   - jsonl records which context each feature used
-   - agent-traces records each session's work content
-   - When issues arise, can trace back which file was missing or which spec was unclear
+```
+Feature Directory
+├── prd.md           (Feature requirements)
+├── implement.jsonl  (Implementation phase context)
+├── check.jsonl      (Check phase context)
+└── feature.json     (Metadata)
+        │
+        ▼
+┌───────────────────────────────────────────────┐
+│  Phase 1: implement                           │
+│  ─────────────────                            │
+│  Agent: Implement Agent                       │
+│  Injects: prd.md + files from implement.jsonl │
+│  Task: Write code based on requirements       │
+└───────────────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────────────┐
+│  Phase 2: check                               │
+│  ─────────────────                            │
+│  Agent: Check Agent                           │
+│  Injects: Guideline files from check.jsonl   │
+│  Task: Check code compliance, fix issues     │
+│  Reconcile: Ralph Loop verifies, loops if fail│
+└───────────────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────────────┐
+│  Phase 3: finish                              │
+│  ─────────────────                            │
+│  Agent: Check Agent (with [finish] flag)     │
+│  Injects: finish-work.md (Pre-Commit List)   │
+│  Task: Pre-commit completeness check          │
+│        - lint/typecheck/test passing         │
+│        - Documentation in sync               │
+│        - API/DB changes complete             │
+│  Reconcile: Skips Ralph Loop (already verified)│
+└───────────────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────────────┐
+│  Phase 4: create-pr                           │
+│  ─────────────────                            │
+│  Task: Create Pull Request                    │
+└───────────────────────────────────────────────┘
+        │
+        ▼
+    Compliant Code + PR
+```
+
+### 4.2 Exception Path
+
+If Check Agent reports unfixable issues, Dispatch can call **Debug Agent** for deep analysis. This is not the default flow, but exception handling.
+
+---
+
+## 5. Why This Design
+
+### 5.1 One-Click Complete Workflow
+
+`/start` or `/parallel` launches with one click, AI completes the entire flow:
+
+```
+Plan → Implement → Check → Finish → PR
+```
+
+Users don't need to guide step-by-step. What to do at each phase, which guidelines to reference — it's all predefined.
+
+### 5.2 Continuous Accumulation of Development Guidelines
+
+```
+Guidelines stored in .trellis/structure/
+        │
+        ▼
+AI executes with guidelines ──> Finds issues ──> Updates guidelines
+        │                                    │
+        └────────────────────────────────────┘
+              Guidelines improve over time
+```
+
+Thinking Guides help discover "didn't think of that" problems.
+
+### 5.3 Preventing Context Rot
+
+Too much context causes LLM to:
+- **Distraction** — Gets sidetracked by irrelevant information
+- **Confusion** — Information contradicts itself
+- **Clash** — Old and new information conflict
+
+Trellis injects by phase:
+- implement phase: Requirements + related code
+- check phase: Development guidelines
+- finish phase: Pre-commit checklist
+
+Each phase's Agent only receives context relevant to its task.
+
+### 5.4 Programmatic Quality Control
+
+```
+Traditional approach:
+  "Please check code quality" ──> AI says "I checked" ──> Did it really?
+
+Trellis approach:
+  Ralph Loop runs pnpm lint ──> Pass to proceed ──> Programmatically guaranteed
+```
+
+Doesn't rely on AI's self-judgment, uses programmatic enforcement.
+
+### 5.5 Traceability
+
+| Record | Content |
+|--------|---------|
+| jsonl | What context each feature used |
+| agent-traces | Work content of each session |
+| feature.json | Complete feature lifecycle |
+
+When issues arise, you can trace back to which file was missing, or which guideline was unclear.
+
+---
+
+## Summary
+
+| Concept | K8s | Trellis |
+|---------|-----|---------|
+| Desired State | YAML Manifest | Feature Directory (prd.md + jsonl) |
+| Execution Unit | Pod/Container | Agent |
+| Reconciliation Loop | Controller | Dispatch + Ralph Loop |
+| Config Injection | ConfigMap | Hook + jsonl |
+| Final Product | Running Pods | Compliant Code |
+
+**Core philosophy aligned**: Declare desired → System reconciles → Eventually consistent.
