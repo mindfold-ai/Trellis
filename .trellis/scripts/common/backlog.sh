@@ -114,6 +114,29 @@ EOF
   echo "$id"
 }
 
+# Complete a backlog issue (set status to done)
+# Args: backlog_ref (e.g., "260119-my-feature.json")
+complete_backlog_issue() {
+  local backlog_ref="$1"
+  local repo_root="${2:-$(get_repo_root)}"
+
+  if [[ -z "$backlog_ref" ]]; then
+    return 0
+  fi
+
+  local backlog_dir=$(get_backlog_dir "$repo_root")
+  local backlog_file="$backlog_dir/$backlog_ref"
+
+  if [[ -f "$backlog_file" ]]; then
+    local completed_at=$(date -Iseconds)
+    jq --arg completed_at "$completed_at" '.status = "done" | .completed_at = $completed_at' "$backlog_file" > "${backlog_file}.tmp"
+    mv "${backlog_file}.tmp" "$backlog_file"
+    return 0
+  fi
+
+  return 1
+}
+
 # Delete a backlog issue by filename
 # Args: backlog_ref (e.g., "260119-my-feature.json")
 delete_backlog_issue() {

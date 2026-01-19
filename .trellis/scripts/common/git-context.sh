@@ -197,8 +197,9 @@ output_text() {
     for f in "$backlog_dir"/*.json; do
       if [[ -f "$f" ]]; then
         local assignee=$(jq -r '.assigned_to' "$f" 2>/dev/null)
-        # Only show items assigned to current developer
-        if [[ "$assignee" == "$developer" ]]; then
+        local status=$(jq -r '.status // "in_progress"' "$f" 2>/dev/null)
+        # Only show items assigned to current developer and not done
+        if [[ "$assignee" == "$developer" ]] && [[ "$status" != "done" ]]; then
           local id=$(jq -r '.id' "$f" 2>/dev/null)
           local title=$(jq -r '.title' "$f" 2>/dev/null)
           local priority=$(jq -r '.priority // "P2"' "$f" 2>/dev/null)
@@ -222,8 +223,9 @@ output_text() {
       if [[ -f "$f" ]]; then
         local creator=$(jq -r '.created_by' "$f" 2>/dev/null)
         local assignee=$(jq -r '.assigned_to' "$f" 2>/dev/null)
-        # Only show items created by me but assigned to others
-        if [[ "$creator" == "$developer" ]] && [[ "$assignee" != "$developer" ]]; then
+        local status=$(jq -r '.status // "in_progress"' "$f" 2>/dev/null)
+        # Only show items created by me but assigned to others, and not done
+        if [[ "$creator" == "$developer" ]] && [[ "$assignee" != "$developer" ]] && [[ "$status" != "done" ]]; then
           local id=$(jq -r '.id' "$f" 2>/dev/null)
           local title=$(jq -r '.title' "$f" 2>/dev/null)
           local priority=$(jq -r '.priority // "P2"' "$f" 2>/dev/null)

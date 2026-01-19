@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/paths.sh"
 source "$SCRIPT_DIR/../common/worktree.sh"
 source "$SCRIPT_DIR/../common/developer.sh"
+source "$SCRIPT_DIR/../common/backlog.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -121,6 +122,16 @@ archive_feature() {
     return 0
   fi
 
+  # Complete backlog issue if linked
+  local feature_json="${FEATURE_DIR_ABS}/feature.json"
+  if [ -f "$feature_json" ]; then
+    local backlog_ref=$(jq -r '.backlog_ref // empty' "$feature_json")
+    if [ -n "$backlog_ref" ]; then
+      complete_backlog_issue "$backlog_ref" "$PROJECT_ROOT"
+      log_info "Completed backlog issue: $backlog_ref"
+    fi
+  fi
+
   # Archive to archive/{YYYY-MM}/
   local features_dir=$(get_features_dir)
   local archive_dir="$features_dir/archive"
@@ -205,6 +216,16 @@ cleanup_registry_only() {
   # 1. Archive feature directory if exists
   FEATURE_DIR_ABS="${PROJECT_ROOT}/${feature_dir}"
   if [ -d "$FEATURE_DIR_ABS" ]; then
+    # Complete backlog issue if linked
+    local feature_json_path="${FEATURE_DIR_ABS}/feature.json"
+    if [ -f "$feature_json_path" ]; then
+      local backlog_ref=$(jq -r '.backlog_ref // empty' "$feature_json_path")
+      if [ -n "$backlog_ref" ]; then
+        complete_backlog_issue "$backlog_ref" "$PROJECT_ROOT"
+        log_info "Completed backlog issue: $backlog_ref"
+      fi
+    fi
+
     local features_dir=$(get_features_dir)
     local archive_dir="$features_dir/archive"
     local year_month=$(date +%Y-%m)
