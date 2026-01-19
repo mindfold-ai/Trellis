@@ -137,6 +137,7 @@ echo ""
 
 log_info "Step 1: Creating feature directory..."
 
+# Create feature with backlog (use requirement as title, feature name as slug)
 FEATURE_DIR=$("$SCRIPT_DIR/../feature.sh" create "$REQUIREMENT" --slug "$FEATURE_NAME")
 FEATURE_DIR_ABS="${PROJECT_ROOT}/${FEATURE_DIR}"
 

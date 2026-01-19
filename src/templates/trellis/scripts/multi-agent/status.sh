@@ -18,6 +18,7 @@ source "$SCRIPT_DIR/../common/paths.sh"
 source "$SCRIPT_DIR/../common/worktree.sh"
 source "$SCRIPT_DIR/../common/developer.sh"
 source "$SCRIPT_DIR/../common/phase.sh"
+source "$SCRIPT_DIR/../common/backlog.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -108,12 +109,12 @@ find_agent() {
     return 1
   fi
 
-  # Try exact ID match first
-  local agent=$(jq -r --arg id "$search" '.agents[] | select(.id == $id)' "$REGISTRY_FILE" 2>/dev/null)
+  # Try exact ID match first (use -c for compact single-line JSON output)
+  local agent=$(jq -c --arg id "$search" '.agents[] | select(.id == $id)' "$REGISTRY_FILE" 2>/dev/null)
 
-  # Try partial match on feature_dir
+  # Try partial match on feature_dir (use -c for compact single-line JSON output)
   if [ -z "$agent" ] || [ "$agent" = "null" ]; then
-    agent=$(jq -r --arg search "$search" '.agents[] | select(.feature_dir | contains($search))' "$REGISTRY_FILE" 2>/dev/null | head -1)
+    agent=$(jq -c --arg search "$search" '[.agents[] | select(.feature_dir | contains($search))] | first' "$REGISTRY_FILE" 2>/dev/null)
   fi
 
   echo "$agent"
@@ -306,8 +307,12 @@ cmd_summary() {
     done < <(jq -r '.agents[].pid' "$REGISTRY_FILE" 2>/dev/null)
   fi
 
+  # Backlog stats
+  local backlog_stats=$(get_backlog_stats "$PROJECT_ROOT")
+
   echo -e "${BLUE}=== Multi-Agent Status ===${NC}"
-  echo -e "  Agents: ${GREEN}${running_count}${NC} running / ${total_agents} registered"
+  echo -e "  Agents:  ${GREEN}${running_count}${NC} running / ${total_agents} registered"
+  echo -e "  Backlog: ${backlog_stats}"
   echo ""
 
   # Check if any agents are running and show detailed view
@@ -333,7 +338,7 @@ cmd_summary() {
     local is_agent_running=false
 
     if [ -f "$REGISTRY_FILE" ]; then
-      agent_info=$(jq -r --arg name "$name" '.agents[] | select(.feature_dir | contains($name))' "$REGISTRY_FILE" 2>/dev/null)
+      agent_info=$(jq -c --arg name "$name" '[.agents[] | select(.feature_dir | contains($name))] | first' "$REGISTRY_FILE" 2>/dev/null)
       if [ -n "$agent_info" ] && [ "$agent_info" != "null" ]; then
         pid=$(echo "$agent_info" | jq -r '.pid')
         worktree=$(echo "$agent_info" | jq -r '.worktree_path')
@@ -359,12 +364,22 @@ cmd_summary() {
       local elapsed=$(calc_elapsed "$started")
       local modified=$(count_modified_files "$worktree")
       local branch=$(jq -r '.branch // "N/A"' "$phase_source" 2>/dev/null)
+      local developer=$(jq -r '.developer // "?"' "$phase_source" 2>/dev/null)
+      local priority=$(jq -r '.priority // "?"' "$phase_source" 2>/dev/null)
+
+      # Color priority
+      local priority_color="${NC}"
+      case "$priority" in
+        P0) priority_color="${RED}" ;;
+        P1) priority_color="${YELLOW}" ;;
+        P2) priority_color="${BLUE}" ;;
+      esac
 
       # Get recent activity from log
       local log_file="$worktree/.agent-log"
       local last_tool=$(get_last_tool "$log_file")
 
-      echo -e "${GREEN}▶${NC} ${CYAN}${name}${NC} ${GREEN}[running]${NC}"
+      echo -e "${GREEN}▶${NC} ${CYAN}${name}${NC} ${GREEN}[running]${NC} ${priority_color}[${priority}]${NC} @${developer}"
       echo -e "  Phase:    ${phase_info}"
       echo -e "  Elapsed:  ${elapsed}"
       echo -e "  Branch:   ${DIM}${branch}${NC}"
@@ -380,8 +395,19 @@ cmd_summary() {
       echo -e "  ${DIM}PID ${pid} is no longer running${NC}"
       echo ""
     else
-      # No agent, just show status
-      echo -e "  ${color}●${NC} ${name} (${status})"
+      # No agent, just show status with developer and priority
+      local developer=$(jq -r '.developer // "?"' "$feature_json" 2>/dev/null)
+      local priority=$(jq -r '.priority // "?"' "$feature_json" 2>/dev/null)
+
+      # Color priority
+      local priority_color="${NC}"
+      case "$priority" in
+        P0) priority_color="${RED}" ;;
+        P1) priority_color="${YELLOW}" ;;
+        P2) priority_color="${BLUE}" ;;
+      esac
+
+      echo -e "  ${color}●${NC} ${name} (${status}) ${priority_color}[${priority}]${NC} @${developer}"
     fi
   done
 
