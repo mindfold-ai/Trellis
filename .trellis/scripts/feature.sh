@@ -35,6 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common/paths.sh"
 source "$SCRIPT_DIR/common/developer.sh"
 source "$SCRIPT_DIR/common/backlog.sh"
+source "$SCRIPT_DIR/common/feature-utils.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -574,15 +575,9 @@ cmd_archive() {
   ensure_developer
 
   local features_dir=$(get_features_dir)
-  local archive_dir="$features_dir/archive"
-  local year_month=$(date +%Y-%m)
-  local month_dir="$archive_dir/$year_month"
 
-  # Find feature directory (try exact match first, then suffix match)
-  local feature_dir=$(find "$features_dir" -maxdepth 1 -type d -name "${feature_name}" 2>/dev/null | head -1)
-  if [[ -z "$feature_dir" ]]; then
-    feature_dir=$(find "$features_dir" -maxdepth 1 -type d -name "*-${feature_name}" 2>/dev/null | head -1)
-  fi
+  # Find feature directory using common function
+  local feature_dir=$(find_feature_by_name "$feature_name" "$features_dir")
 
   if [[ -z "$feature_dir" ]] || [[ ! -d "$feature_dir" ]]; then
     echo -e "${RED}Error: Feature not found: $feature_name${NC}" >&2
@@ -591,23 +586,15 @@ cmd_archive() {
     exit 1
   fi
 
-  if [[ ! -d "$month_dir" ]]; then
-    mkdir -p "$month_dir"
-  fi
-
   local dir_name=$(basename "$feature_dir")
   local feature_json="$feature_dir/feature.json"
 
-  # Update status
+  # Update status before archiving
   local today=$(date +%Y-%m-%d)
   if [[ -f "$feature_json" ]] && command -v jq &> /dev/null; then
     local temp_file=$(mktemp)
     jq --arg date "$today" '.status = "completed" | .completedAt = $date' "$feature_json" > "$temp_file"
     mv "$temp_file" "$feature_json"
-  elif [[ -f "$feature_json" ]]; then
-    sed -i.bak 's/"status": "in-progress"/"status": "completed"/' "$feature_json"
-    sed -i.bak "s/\"completedAt\": null/\"completedAt\": \"$today\"/" "$feature_json"
-    rm -f "${feature_json}.bak"
   fi
 
   # Clear if current feature
@@ -616,19 +603,25 @@ cmd_archive() {
     clear_current_feature
   fi
 
-  # Delete linked backlog issue if exists
-  if [[ -f "$feature_json" ]] && command -v jq &> /dev/null; then
-    local backlog_ref=$(jq -r '.backlog_ref // empty' "$feature_json")
-    if [[ -n "$backlog_ref" ]]; then
-      if delete_backlog_issue "$backlog_ref" "$REPO_ROOT"; then
-        echo -e "${CYAN}Deleted linked backlog: $backlog_ref${NC}" >&2
-      fi
-    fi
-  fi
+  # Use common archive function (handles backlog completion + directory move)
+  local result=$(archive_feature_complete "$feature_dir" "$REPO_ROOT")
+  local archive_dest=""
 
-  mv "$feature_dir" "$month_dir/"
+  echo "$result" | while IFS= read -r line; do
+    case "$line" in
+      backlog_completed:*)
+        echo -e "${CYAN}Completed linked backlog: ${line#backlog_completed:}${NC}" >&2
+        ;;
+      archived_to:*)
+        archive_dest="${line#archived_to:}"
+        local year_month=$(basename "$(dirname "$archive_dest")")
+        echo -e "${GREEN}Archived: $dir_name -> archive/$year_month/${NC}" >&2
+        ;;
+    esac
+  done
 
-  echo -e "${GREEN}Archived: $dir_name -> archive/$year_month/${NC}" >&2
+  # Return the archive path
+  local year_month=$(date +%Y-%m)
   echo "$DIR_WORKFLOW/$DIR_PROGRESS/$(get_developer)/$DIR_FEATURES/$DIR_ARCHIVE/$year_month/$dir_name"
 }
 
