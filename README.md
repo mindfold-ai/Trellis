@@ -302,7 +302,7 @@ AI may "improvise" each time it executes tasks — using different commands, dif
 
 **`feature.sh`** - Feature Lifecycle Management:
 ```bash
-feature.sh create <name>                    # Create Feature directory
+feature.sh create "<title>" [--slug <name>] # Create Feature directory
 feature.sh init-context <dir> <type>        # Initialize jsonl files
 feature.sh add-context <dir> <file> <path> <reason>  # Add context entry
 feature.sh set-branch <dir> <branch>        # Set branch

@@ -298,7 +298,7 @@ AI 每次执行任务时可能会"随意发挥"——用不同的命令、不同
 
 **`feature.sh`** - Feature 生命周期管理：
 ```bash
-feature.sh create <name>                    # 创建 Feature 目录
+feature.sh create "<title>" [--slug <name>] # 创建 Feature 目录
 feature.sh init-context <dir> <type>        # 初始化 jsonl 文件
 feature.sh add-context <dir> <file> <path> <reason>  # 添加上下文条目
 feature.sh set-branch <dir> <branch>        # 设置分支
