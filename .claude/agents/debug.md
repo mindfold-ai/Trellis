@@ -102,5 +102,5 @@ Fixed X/Y issues. Z issues require discussion.
 - Don't refactor surrounding code
 - Don't add new features
 - Don't modify unrelated files
-- Don't use `!` non-null assertion
+- Don't use non-null assertion (`x!` operator)
 - Don't execute git commit

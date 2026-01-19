@@ -269,7 +269,7 @@ Before committing, ensure:
 - [ ] `pnpm typecheck` passes with no errors
 - [ ] All functions have explicit return types
 - [ ] No `any` types in code
-- [ ] No non-null assertions (`!`)
+- [ ] No non-null assertions (`x!` operator)
 - [ ] Using `??` instead of `||` for defaults
 - [ ] Using `?.` for optional property access
 - [ ] Using `const` by default, `let` only when needed
@@ -306,7 +306,7 @@ pnpm lint && pnpm typecheck
 ### DON'T
 
 - Don't use `any` type
-- Don't use non-null assertion (`!`)
+- Don't use non-null assertion (`x!` operator)
 - Don't use `var`
 - Don't use `||` for default values (use `??`)
 - Don't leave implicit return types

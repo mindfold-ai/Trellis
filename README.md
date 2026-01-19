@@ -128,6 +128,7 @@ your-project/
 │   ├── .gitignore               # .trellis directory gitignore rules
 │   ├── structure/               # Development guidelines (core knowledge base)
 │   ├── agent-traces/            # Session records and Feature tracking
+│   ├── backlog/                 # Requirements pool (bidirectional links with Features)
 │   └── scripts/                 # Automation scripts
 ├── .claude/                     # Claude Code specific configuration
 │   ├── commands/                # Slash Commands (13)
@@ -238,7 +239,8 @@ Each Feature is an independent work unit containing complete context configurati
     {"phase": 2, "action": "check"},
     {"phase": 3, "action": "finish"},
     {"phase": 4, "action": "create-pr"}
-  ]
+  ],
+  "backlog_ref": "260119-user-auth.json"
 }
 ```
 
@@ -261,6 +263,49 @@ Each Feature's jsonl files record which guideline files were used, which existin
 
 `traces-N.md` records each session's date, Feature, work summary, main changes, Git commits, test status, and next steps. Forms complete development history; new sessions can quickly review previous work.
 
+### Backlog System
+
+Backlog is a requirements pool for managing features and tasks to be developed. Each backlog issue establishes bidirectional links with Features.
+
+```
+.trellis/
+└── backlog/                     # Requirements pool directory
+    ├── 260119-user-auth.json    # Backlog issue (ID format: YYMMDD-slug)
+    └── 260119-payment-fix.json
+```
+
+**`backlog/*.json`** - Backlog Issue Structure:
+```json
+{
+  "id": "260119-user-auth",
+  "title": "Add user authentication",
+  "description": "Implement JWT-based auth with email verification",
+  "priority": "P1",
+  "status": "in_progress",
+  "assigned_to": "taosu",
+  "created_by": "taosu",
+  "created_at": "2026-01-19T10:30:00+08:00",
+  "completed_at": null
+}
+```
+
+**Bidirectional Links**:
+- `backlog/*.json`'s `assigned_to` points to the developer
+- `feature.json`'s `backlog_ref` points to the backlog filename
+- When archiving a Feature, the associated backlog status is automatically updated to `done`
+
+**Priority**: P0 (urgent) > P1 (high) > P2 (medium) > P3 (low)
+
+**Displayed in `get-context.sh`**:
+```
+## BACKLOG (Assigned to me)
+- [P1] Add user authentication (2026-01-19)
+- [P2] Fix payment display (2026-01-18)
+
+## CREATED BY ME (Assigned to others)
+- [P1] Review API design (assigned to: john)
+```
+
 ---
 
 ## III. Script System (`.trellis/scripts/`)
@@ -269,7 +314,7 @@ Automation scripts that power the entire workflow.
 
 ```
 scripts/
-├── get-context.sh               # Get session context (developer, branch, recent commits)
+├── get-context.sh               # Get session context (developer, branch, recent commits, backlog)
 ├── feature.sh                   # Feature management (create, archive, configure)
 ├── add-session.sh               # Record session
 ├── init-developer.sh            # Initialize developer identity
@@ -278,7 +323,10 @@ scripts/
 │   ├── developer.sh             # Developer utilities
 │   ├── git-context.sh           # Git context
 │   ├── phase.sh                 # Phase management
-│   └── worktree.sh              # Worktree utilities
+│   ├── worktree.sh              # Worktree utilities
+│   ├── backlog.sh               # Backlog utilities (create, complete, list)
+│   ├── registry.sh              # Agent registry CRUD operations
+│   └── feature-utils.sh         # Feature common utilities (find, archive, path safety)
 └── multi-agent/                 # Multi-Agent pipeline scripts
     ├── plan.sh                  # Launch Plan Agent
     ├── start.sh                 # Create Worktree and launch Dispatch Agent
@@ -302,13 +350,27 @@ AI may "improvise" each time it executes tasks — using different commands, dif
 
 **`feature.sh`** - Feature Lifecycle Management:
 ```bash
-feature.sh create "<title>" [--slug <name>] # Create Feature directory
+# Create Feature (auto-creates backlog issue with bidirectional links)
+feature.sh create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
 feature.sh init-context <dir> <type>        # Initialize jsonl files
 feature.sh add-context <dir> <file> <path> <reason>  # Add context entry
 feature.sh set-branch <dir> <branch>        # Set branch
 feature.sh start <dir>                      # Set as current Feature
-feature.sh archive <name>                   # Archive completed Feature
+feature.sh archive <name>                   # Archive Feature (also completes linked backlog)
 feature.sh list                             # List active Features
+feature.sh list-archive [YYYY-MM]           # List archived Features
+```
+
+**Create Examples**:
+```bash
+# Basic usage (slug auto-generated from title)
+feature.sh create "Add user authentication"
+
+# Specify slug and priority
+feature.sh create "Add login page" --slug login-ui --priority P1
+
+# Specify assignee (must be existing developer)
+feature.sh create "Fix payment bug" --assignee john --priority P0
 ```
 
 **`multi-agent/plan.sh`** - Launch Plan Agent:
@@ -442,7 +504,7 @@ Checks multiple dimensions to prevent "didn't think of that" bugs:
 **Purpose**: Ensure code completeness, execute before commit.
 
 **Checklist Items**:
-1. **Code Quality**: lint, type-check, test pass, no `console.log`, no `!`, no `any`
+1. **Code Quality**: lint, type-check, test pass, no `console.log`, no `x!` (non-null assertion), no `any`
 2. **Documentation Sync**: Does `.trellis/structure/` guidelines need updating
 3. **API Changes**: Are schema, docs, client code in sync
 4. **Database Changes**: Are migration, schema, queries updated

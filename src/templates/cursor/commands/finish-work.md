@@ -21,7 +21,7 @@ pnpm test
 - [ ] `pnpm type-check` passes with no type errors?
 - [ ] Tests pass?
 - [ ] No `console.log` statements (use logger)?
-- [ ] No non-null assertions `!`?
+- [ ] No non-null assertions (the `x!` operator)?
 - [ ] No `any` types?
 
 ### 2. Documentation Sync
