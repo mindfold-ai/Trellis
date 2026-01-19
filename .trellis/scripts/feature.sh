@@ -2,7 +2,7 @@
 # Feature Management Script for Multi-Agent Pipeline
 #
 # Usage:
-#   ./.trellis/scripts/feature.sh create <feature-name>       # Create new feature
+#   ./.trellis/scripts/feature.sh create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
 #   ./.trellis/scripts/feature.sh init-context <dir> <type>   # Initialize jsonl files
 #   ./.trellis/scripts/feature.sh add-context <dir> <file> <path> [reason] # Add jsonl entry
 #   ./.trellis/scripts/feature.sh validate <dir>              # Validate jsonl files
@@ -34,6 +34,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common/paths.sh"
 source "$SCRIPT_DIR/common/developer.sh"
+source "$SCRIPT_DIR/common/backlog.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -123,44 +124,110 @@ ensure_features_dir() {
 # =============================================================================
 
 cmd_create() {
-  local feature_name="$1"
+  local title=""
+  local assignee=""
+  local priority="P2"
+  local slug=""
+  local description=""
 
-  if [[ -z "$feature_name" ]]; then
-    echo -e "${RED}Error: Feature name is required${NC}" >&2
-    echo "Usage: $0 create <feature-name>" >&2
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --assignee|-a)
+        assignee="$2"
+        shift 2
+        ;;
+      --priority|-p)
+        priority="$2"
+        shift 2
+        ;;
+      --slug|-s)
+        slug="$2"
+        shift 2
+        ;;
+      --description|-d)
+        description="$2"
+        shift 2
+        ;;
+      -*)
+        echo -e "${RED}Error: Unknown option $1${NC}" >&2
+        exit 1
+        ;;
+      *)
+        if [[ -z "$title" ]]; then
+          title="$1"
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  # Validate required fields
+  if [[ -z "$title" ]]; then
+    echo -e "${RED}Error: title is required${NC}" >&2
+    echo "Usage: $0 create <title> [--assignee <dev>] [--priority P0|P1|P2|P3] [--slug <slug>]" >&2
     exit 1
   fi
 
-  ensure_developer
+  # Default assignee to current developer
+  if [[ -z "$assignee" ]]; then
+    assignee=$(get_developer "$REPO_ROOT")
+    if [[ -z "$assignee" ]]; then
+      echo -e "${RED}Error: No developer set. Run init-developer.sh first or use --assignee${NC}" >&2
+      exit 1
+    fi
+  fi
+
   ensure_features_dir
 
-  local features_dir=$(get_features_dir)
+  # Get current developer as creator
+  local creator=$(get_developer "$REPO_ROOT")
+  if [[ -z "$creator" ]]; then
+    creator="$assignee"
+  fi
+
+  # Create backlog issue (returns ID like "260119-my-feature")
+  local backlog_id=$(create_backlog_issue "$title" "$assignee" "$priority" "$slug" "$description" "$creator" "$REPO_ROOT")
+  if [[ -z "$backlog_id" ]]; then
+    echo -e "${RED}Error: Failed to create backlog issue${NC}" >&2
+    exit 1
+  fi
+
+  echo -e "${GREEN}Created backlog issue: ${backlog_id}.json${NC}" >&2
+
+  # Extract slug from backlog_id (remove date prefix)
+  local feature_slug=$(echo "$backlog_id" | sed 's/^[0-9]*-//')
+
+  # Create feature directory
+  local features_dir="$REPO_ROOT/$DIR_WORKFLOW/$DIR_PROGRESS/$assignee/$DIR_FEATURES"
+  if [[ ! -d "$features_dir" ]]; then
+    mkdir -p "$features_dir"
+  fi
+
   local day=$(date +%d)
-  local dir_name="${day}-${feature_name}"
+  local dir_name="${day}-${feature_slug}"
   local feature_dir="$features_dir/$dir_name"
   local feature_json="$feature_dir/feature.json"
 
   if [[ -d "$feature_dir" ]]; then
-    echo -e "${YELLOW}Warning: Feature already exists: $feature_dir${NC}" >&2
-    echo "$DIR_WORKFLOW/$DIR_PROGRESS/$(get_developer)/$DIR_FEATURES/$dir_name"
-    exit 0
+    echo -e "${YELLOW}Warning: Feature directory already exists: $dir_name${NC}" >&2
+  else
+    mkdir -p "$feature_dir"
   fi
 
-  mkdir -p "$feature_dir"
-
   local today=$(date +%Y-%m-%d)
-  local developer=$(get_developer)
+  local backlog_ref_json="\"${backlog_id}.json\""
 
   cat > "$feature_json" << EOF
 {
-  "id": "$feature_name",
-  "name": "$feature_name",
-  "description": "",
+  "id": "$feature_slug",
+  "name": "$feature_slug",
+  "description": "$description",
   "status": "planning",
   "dev_type": null,
   "scope": null,
-  "priority": "medium",
-  "developer": "$developer",
+  "priority": "$priority",
+  "developer": "$assignee",
   "createdAt": "$today",
   "completedAt": null,
   "branch": null,
@@ -175,6 +242,7 @@ cmd_create() {
   ],
   "commit": null,
   "pr_url": null,
+  "backlog_ref": $backlog_ref_json,
   "subtasks": [],
   "relatedFiles": [],
   "notes": ""
@@ -182,17 +250,16 @@ cmd_create() {
 EOF
 
   echo -e "${GREEN}Created feature: $dir_name${NC}" >&2
+  echo -e "${CYAN}Linked to backlog: $backlog_id${NC}" >&2
   echo -e "" >&2
   echo -e "${BLUE}Next steps:${NC}" >&2
   echo -e "  1. Create prd.md with requirements" >&2
   echo -e "  2. Run: $0 init-context <dir> <dev_type>" >&2
   echo -e "  3. Run: $0 start <dir>" >&2
-  echo -e "  4. (Optional) Set branch for multi-agent:" >&2
-  echo -e "     jq '.branch = \"feature/$feature_name\"' <dir>/feature.json > tmp && mv tmp <dir>/feature.json" >&2
   echo "" >&2
 
   # Output relative path for script chaining
-  echo "$DIR_WORKFLOW/$DIR_PROGRESS/$developer/$DIR_FEATURES/$dir_name"
+  echo "$DIR_WORKFLOW/$DIR_PROGRESS/$assignee/$DIR_FEATURES/$dir_name"
 }
 
 # =============================================================================
@@ -547,6 +614,16 @@ cmd_archive() {
   local current=$(get_current_feature)
   if [[ "$current" == *"$dir_name"* ]]; then
     clear_current_feature
+  fi
+
+  # Delete linked backlog issue if exists
+  if [[ -f "$feature_json" ]] && command -v jq &> /dev/null; then
+    local backlog_ref=$(jq -r '.backlog_ref // empty' "$feature_json")
+    if [[ -n "$backlog_ref" ]]; then
+      if delete_backlog_issue "$backlog_ref" "$REPO_ROOT"; then
+        echo -e "${CYAN}Deleted linked backlog: $backlog_ref${NC}" >&2
+      fi
+    fi
   fi
 
   mv "$feature_dir" "$month_dir/"
@@ -947,7 +1024,8 @@ EOF
 
 case "${1:-}" in
   create)
-    cmd_create "$2"
+    shift
+    cmd_create "$@"
     ;;
   init-context)
     cmd_init_context "$2" "$3"

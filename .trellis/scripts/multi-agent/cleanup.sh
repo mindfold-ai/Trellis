@@ -169,8 +169,8 @@ cleanup_registry_only() {
     exit 1
   fi
 
-  # Find agent by id or feature_dir containing search term
-  local agent_info=$(jq -r --arg search "$search" '.agents[] | select(.id == $search or (.feature_dir | contains($search)))' "$REGISTRY_FILE" 2>/dev/null | head -1)
+  # Find agent by id or feature_dir containing search term (use -c for compact single-line JSON)
+  local agent_info=$(jq -c --arg search "$search" '[.agents[] | select(.id == $search or (.feature_dir | contains($search)))] | first' "$REGISTRY_FILE" 2>/dev/null)
 
   if [ -z "$agent_info" ] || [ "$agent_info" = "null" ]; then
     log_error "No agent found in registry matching: $search"
