@@ -45,11 +45,10 @@
 ## Quick Start
 
 ```bash
-# 1. Install
+# 1. Install globally
 npm install -g @mindfoldhq/trellis@latest
 
-# 2. Initialize project
-cd your-project
+# 2. Initialize in your project directory
 trellis init -u your-name
 
 # 3. Open Claude Code — start using immediately
