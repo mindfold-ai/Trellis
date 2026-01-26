@@ -175,7 +175,7 @@ No. Each person has their own space at `.trellis/workspace/{name}/`. Spec files 
 
 ## Community
 
-- [Discord](https://discord.gg/trellis) — Join the conversation
+- [Discord](https://discord.com/invite/tWcCZ3aRHc) — Join the conversation
 - [GitHub Issues](https://github.com/mindfold-ai/Trellis/issues) — Report bugs & request features
 
 <p align="center">
