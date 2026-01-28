@@ -183,3 +183,7 @@ Made with care by <a href="https://github.com/mindfold-ai">Mindfold</a>
 <p align="center">
 <sub>觉得 Trellis 有用？欢迎点个 ⭐</sub>
 </p>
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=mindfold-ai/Trellis&type=Date)](https://star-history.com/#mindfold-ai/Trellis&Date)
