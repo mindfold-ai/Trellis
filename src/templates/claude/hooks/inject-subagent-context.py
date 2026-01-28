@@ -292,9 +292,7 @@ def get_implement_context(repo_root: str, task_dir: str) -> str:
     # 2. Requirements document
     prd_content = read_file_content(repo_root, f"{task_dir}/prd.md")
     if prd_content:
-        context_parts.append(
-            f"=== {task_dir}/prd.md (Requirements) ===\n{prd_content}"
-        )
+        context_parts.append(f"=== {task_dir}/prd.md (Requirements) ===\n{prd_content}")
 
     # 3. Technical design
     info_content = read_file_content(repo_root, f"{task_dir}/info.md")
@@ -325,10 +323,10 @@ def get_check_context(repo_root: str, task_dir: str) -> str:
     else:
         # Fallback: use hardcoded check files + spec.jsonl
         check_files = [
-            (".claude/commands/finish-work.md", "Finish work checklist"),
-            (".claude/commands/check-cross-layer.md", "Cross-layer check spec"),
-            (".claude/commands/check-backend.md", "Backend check spec"),
-            (".claude/commands/check-frontend.md", "Frontend check spec"),
+            (".claude/commands/trellis/finish-work.md", "Finish work checklist"),
+            (".claude/commands/trellis/check-cross-layer.md", "Cross-layer check spec"),
+            (".claude/commands/trellis/check-backend.md", "Backend check spec"),
+            (".claude/commands/trellis/check-frontend.md", "Frontend check spec"),
         ]
         for file_path, description in check_files:
             content = read_file_content(repo_root, file_path)
@@ -369,10 +367,12 @@ def get_finish_context(repo_root: str, task_dir: str) -> str:
             context_parts.append(f"=== {file_path} ===\n{content}")
     else:
         # Fallback: only finish-work.md (lightweight)
-        finish_work = read_file_content(repo_root, ".claude/commands/finish-work.md")
+        finish_work = read_file_content(
+            repo_root, ".claude/commands/trellis/finish-work.md"
+        )
         if finish_work:
             context_parts.append(
-                f"=== .claude/commands/finish-work.md (Finish checklist) ===\n{finish_work}"
+                f"=== .claude/commands/trellis/finish-work.md (Finish checklist) ===\n{finish_work}"
             )
 
     # 2. Requirements document (for verifying requirements are met)
@@ -408,9 +408,9 @@ def get_debug_context(repo_root: str, task_dir: str) -> str:
             context_parts.append(f"=== {file_path} (Dev spec) ===\n{content}")
 
         check_files = [
-            (".claude/commands/check-backend.md", "Backend check spec"),
-            (".claude/commands/check-frontend.md", "Frontend check spec"),
-            (".claude/commands/check-cross-layer.md", "Cross-layer check spec"),
+            (".claude/commands/trellis/check-backend.md", "Backend check spec"),
+            (".claude/commands/trellis/check-frontend.md", "Frontend check spec"),
+            (".claude/commands/trellis/check-cross-layer.md", "Cross-layer check spec"),
         ]
         for file_path, description in check_files:
             content = read_file_content(repo_root, file_path)
@@ -418,9 +418,7 @@ def get_debug_context(repo_root: str, task_dir: str) -> str:
                 context_parts.append(f"=== {file_path} ({description}) ===\n{content}")
 
     # 2. Codex review output (if exists)
-    codex_output = read_file_content(
-        repo_root, f"{task_dir}/codex-review-output.txt"
-    )
+    codex_output = read_file_content(repo_root, f"{task_dir}/codex-review-output.txt")
     if codex_output:
         context_parts.append(
             f"=== {task_dir}/codex-review-output.txt (Codex Review Results) ===\n{codex_output}"
@@ -600,9 +598,7 @@ def get_research_context(repo_root: str, task_dir: str | None) -> str:
 
     # 2. If task directory exists, try reading research.jsonl (optional)
     if task_dir:
-        research_entries = read_jsonl_entries(
-            repo_root, f"{task_dir}/research.jsonl"
-        )
+        research_entries = read_jsonl_entries(repo_root, f"{task_dir}/research.jsonl")
         if research_entries:
             context_parts.append(
                 "\n## Additional Search Context (from research.jsonl)\n"

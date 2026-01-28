@@ -60,15 +60,17 @@ export interface HookTemplate {
 
 /**
  * Get all command templates
+ * Commands are stored in commands/trellis/ subdirectory
+ * This creates commands like /trellis:start, /trellis:finish-work, etc.
  */
 export function getAllCommands(): CommandTemplate[] {
   const commands: CommandTemplate[] = [];
-  const files = listFiles("commands");
+  const files = listFiles("commands/trellis");
 
   for (const file of files) {
     if (file.endsWith(".md")) {
       const name = file.replace(".md", "");
-      const content = readTemplate(`commands/${file}`);
+      const content = readTemplate(`commands/trellis/${file}`);
       commands.push({ name, content });
     }
   }

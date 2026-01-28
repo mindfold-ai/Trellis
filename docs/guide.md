@@ -26,13 +26,13 @@ AI doesn't know what this project is, doesn't know the project's specialized cod
 
 Requires humans to guide AI step by step: first read guidelines, then implement, then check, then commit.
 
-**Trellis Solution**: Slash Commands encapsulate complete workflows. Users only need to type `/start` or `/parallel`. Task distribution, script invocation, Hook interception, and other mechanisms are invisible to users — AI automatically executes according to predefined processes.
+**Trellis Solution**: Slash Commands encapsulate complete workflows. Users only need to type `/trellis:start` or `/trellis:parallel`. Task distribution, script invocation, Hook interception, and other mechanisms are invisible to users — AI automatically executes according to predefined processes.
 
 ### 4. High Barrier for Multi-Agent Parallelism
 
 Some tools support multi-Agent parallel development, but learning costs are high, configuration is complex, and multiple Agents working simultaneously can easily conflict.
 
-**Trellis Solution**: One-click launch with `/parallel`. Uses Git Worktree for physical isolation underneath, with each Agent working in an independent directory without interference.
+**Trellis Solution**: One-click launch with `/trellis:parallel`. Uses Git Worktree for physical isolation underneath, with each Agent working in an independent directory without interference.
 
 ---
 
@@ -51,7 +51,7 @@ cd your-project
 trellis init -u your-name
 ```
 
-### 3. Configure worktree.yaml (if using `/parallel`)
+### 3. Configure worktree.yaml (if using `/trellis:parallel`)
 
 Edit `.trellis/worktree.yaml` according to your project:
 - `worktree_dir`: Worktree storage directory (relative to project root, e.g., `../trellis-worktrees`)
@@ -65,47 +65,47 @@ Edit `.trellis/worktree.yaml` according to your project:
 
 **Simple tasks**:
 ```
-/start → describe requirement → /record-session
+/trellis:start → describe requirement → /trellis:record-session
 ```
 
 **Complex features** (Multi-Agent Pipeline):
 ```
-/parallel → describe requirement → /record-session
+/trellis:parallel → describe requirement → /trellis:record-session
 ```
 
 #### Cursor Workflow
 
 ```
-/start → describe requirement → /before-frontend-dev or /before-backend-dev → implement → /check-frontend or /check-backend → /finish-work → /record-session
+/trellis:start → describe requirement → /trellis:before-frontend-dev or /trellis:before-backend-dev → implement → /trellis:check-frontend or /trellis:check-backend → /trellis:finish-work → /trellis:record-session
 ```
 
 ---
 
 ### 5. Behind-the-Scenes Process Details (Claude Code)
 
-**`/start` Initialization**:
+**`/trellis:start` Initialization**:
 1. AI reads `.trellis/workflow.md` to understand development process
 2. AI executes `get-context.sh` to get current developer, branch, recent commits, and other status
 3. AI reads `.trellis/spec/` guideline indexes
 4. AI reports ready status and asks user for task
 
-**`/start` Task Classification**:
+**`/trellis:start` Task Classification**:
 
 | Type | Criteria | Workflow |
 |------|----------|----------|
 | **Question** | User asks about code, architecture, or how something works | Answer directly |
-| **Trivial Fix** | Typo fix, comment update, single-line change | Direct edit, remind `/finish-work` |
+| **Trivial Fix** | Typo fix, comment update, single-line change | Direct edit, remind `/trellis:finish-work` |
 | **Development Task** | Any code change that modifies logic, adds features, fixes bugs, touches multiple files | **Feature Workflow** |
 
 > **Decision Rule**: If in doubt, use Feature Workflow. It ensures specs are injected to agents, resulting in higher quality code.
 
-**`/start` Feature Workflow (Development Tasks)**:
+**`/trellis:start` Feature Workflow (Development Tasks)**:
 1. AI calls **Research Agent** to analyze codebase and find relevant guideline files
 2. AI creates feature directory, records guideline file paths, and creates `prd.md` requirement document
 3. AI calls **Implement Agent** to implement according to guidelines (guideline files are automatically injected via Hook)
 4. AI calls **Check Agent** to review code and auto-fix issues (guideline files are automatically injected via Hook)
 
-**`/parallel` Multi-Agent Pipeline** (Two Modes):
+**`/trellis:parallel` Multi-Agent Pipeline** (Two Modes):
 
 **Mode A: Plan Agent Auto-Planning** (Recommended for complex features with unclear requirements)
 1. `plan.sh` script launches **Plan Agent** in background
@@ -155,7 +155,7 @@ your-project/
 **`AGENTS.md`** (~18 lines):
 - Lightweight instruction file following agents.md protocol
 - Uses `<!-- TRELLIS:START -->` and `<!-- TRELLIS:END -->` markers to protect content (`trellis update` won't overwrite)
-- Quick pointer to `/start` command and `.trellis/workflow.md`
+- Quick pointer to `/trellis:start` command and `.trellis/workflow.md`
 
 **`.trellis/workflow.md`** (Core Document):
 - **First-read document** for new AI Agent sessions
@@ -408,10 +408,10 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - Agent can directly read `$PLAN_FEATURE_DIR` and other variables, knowing which directory to operate on
 - Avoids hardcoding paths in prompts, keeps templates generic
 
-**`multi-agent/start.sh`** - Launch Dispatch Agent:
+**`multi-agent/trellis:start.sh`** - Launch Dispatch Agent:
 
 ```bash
-./start.sh <feature-dir>
+./trellis:start.sh <feature-dir>
 ```
 
 **How It Works**:
@@ -450,7 +450,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 
 Users interact with Trellis through Slash Commands. Slash Commands are **the entry point for users and the system**, calling scripts and Agents behind the scenes to do actual work.
 
-### `/start` - Session Initialization
+### `/trellis:start` - Session Initialization
 
 **Purpose**: Initialize development session, read project context and guidelines.
 
@@ -465,7 +465,7 @@ Users interact with Trellis through Slash Commands. Slash Commands are **the ent
 | Type | Criteria | Workflow |
 |------|----------|----------|
 | **Question** | Asks about code, architecture, how something works | Answer directly |
-| **Trivial Fix** | Typo, comment, single-line change | Direct edit → `/finish-work` |
+| **Trivial Fix** | Typo, comment, single-line change | Direct edit → `/trellis:finish-work` |
 | **Development Task** | Modifies logic, adds features, fixes bugs, multi-file | **Feature Workflow** |
 
 > **If in doubt, use Feature Workflow** — specs are injected to agents, not "remembered".
@@ -476,13 +476,13 @@ Users interact with Trellis through Slash Commands. Slash Commands are **the ent
 3. Implement Agent writes code (specs auto-injected via Hook)
 4. Check Agent reviews and fixes (specs auto-injected via Hook)
 
-### `/parallel` - Multi-Agent Pipeline (Claude Code Only)
+### `/trellis:parallel` - Multi-Agent Pipeline (Claude Code Only)
 
 **Purpose**: Launch parallel development pipeline using Git Worktree for isolated work environments.
 
-**Differences from `/start`**:
+**Differences from `/trellis:start`**:
 
-| Dimension | `/start` | `/parallel` |
+| Dimension | `/trellis:start` | `/trellis:parallel` |
 |-----------|----------|-------------|
 | Execution Location | Main repo single process | Main repo + Worktree multi-process |
 | Git Management | Develop directly on current branch | Create independent Worktree and branch |
@@ -492,7 +492,7 @@ Users interact with Trellis through Slash Commands. Slash Commands are **the ent
 - **Plan Agent Mode** (Recommended): `plan.sh --name <name> --type <type> --requirement "<req>"` → Plan Agent auto-analyzes requirements, configures Feature → `start.sh` launches Dispatch Agent
 - **Manual Configuration Mode**: Manually create Feature directory, configure jsonl, write prd.md → `start.sh` launches Dispatch Agent
 
-### `/before-frontend-dev` and `/before-backend-dev` - Pre-Development Guidelines Reading
+### `/trellis:before-frontend-dev` and `/trellis:before-backend-dev` - Pre-Development Guidelines Reading
 
 **Purpose**: Force reading of corresponding domain's development guidelines before coding.
 
@@ -503,15 +503,15 @@ Users interact with Trellis through Slash Commands. Slash Commands are **the ent
    - **Backend**: `database-guidelines.md`, `error-handling.md`, `logging-guidelines.md`, `type-safety.md`
 3. Begin development after understanding coding standards
 
-### `/check-frontend`, `/check-backend`, `/check-cross-layer` - Code Review
+### `/trellis:check-frontend`, `/trellis:check-backend`, `/trellis:check-cross-layer` - Code Review
 
-**`/check-frontend` and `/check-backend`**:
+**`/trellis:check-frontend` and `/trellis:check-backend`**:
 1. `git status` to see modified files
 2. Read corresponding guideline files
 3. Check code against guidelines
 4. Report violations and fix them
 
-**`/check-cross-layer`** (Cross-layer Check):
+**`/trellis:check-cross-layer`** (Cross-layer Check):
 
 Checks multiple dimensions to prevent "didn't think of that" bugs:
 
@@ -522,7 +522,7 @@ Checks multiple dimensions to prevent "didn't think of that" bugs:
 | **New Utility Functions** | Creating utility | Search first if similar function exists |
 | **After Batch Modifications** | Similar changes across multiple files | Any omissions, should it be abstracted |
 
-### `/finish-work` - Pre-Commit Checklist
+### `/trellis:finish-work` - Pre-Commit Checklist
 
 **Purpose**: Ensure code completeness, execute before commit.
 
@@ -534,7 +534,7 @@ Checks multiple dimensions to prevent "didn't think of that" bugs:
 5. **Cross-layer Validation**: Data flow, error handling, type consistency
 6. **Manual Testing**: Functionality, edge cases, error states, after refresh
 
-### `/record-session` - Record Session Progress
+### `/trellis:record-session` - Record Session Progress
 
 **Prerequisite**: User has tested and committed code (AI doesn't execute `git commit`)
 
@@ -549,9 +549,9 @@ Checks multiple dimensions to prevent "didn't think of that" bugs:
 
 | Command | Purpose |
 |---------|---------|
-| `/break-loop` | Deep bug analysis, break out of fix loops |
-| `/create-command` | Create new Slash Command |
-| `/integrate-skill` | Extract Claude Code skill into project guidelines |
+| `/trellis:break-loop` | Deep bug analysis, break out of fix loops |
+| `/trellis:create-command` | Create new Slash Command |
+| `/trellis:integrate-skill` | Extract Claude Code skill into project guidelines |
 | `/onboard-developer` | Landing guide for developers |
 
 ---
@@ -722,10 +722,10 @@ Core philosophy: **30 minutes of thinking can save 3 hours of debugging**
 
 ## VII. Complete Workflow Examples
 
-### Claude Code `/parallel` Complete Flow
+### Claude Code `/trellis:parallel` Complete Flow
 
 ```
-User: /parallel
+User: /trellis:parallel
 User: Implement user registration with email verification
          ↓
 ┌─────────────────────────────────────────────────────┐
@@ -803,35 +803,35 @@ User: Implement user registration with email verification
 │ 6. Update task.json (status: "review", pr_url)   │
 └─────────────────────────────────────────────────────┘
          ↓
-User: /record-session (record session)
+User: /trellis:record-session (record session)
 ```
 
 ### Cursor Complete Flow
 
 ```
-User: /start
+User: /trellis:start
          ↓
 AI: Read project status, report ready
          ↓
 User: Describe requirement
          ↓
-User: /before-backend-dev (if backend task)
+User: /trellis:before-backend-dev (if backend task)
          ↓
 AI: Read .trellis/spec/backend/ guidelines
          ↓
 AI: Implement feature
          ↓
-User: /check-backend
+User: /trellis:check-backend
          ↓
 AI: Review code, self-fix issues
          ↓
-User: /finish-work
+User: /trellis:finish-work
          ↓
 AI: Execute Pre-Commit Checklist
          ↓
 User: git commit (manual commit)
          ↓
-User: /record-session (record session)
+User: /trellis:record-session (record session)
 ```
 
 ---

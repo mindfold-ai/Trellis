@@ -218,13 +218,13 @@ function collectTemplateFiles(_cwd: string): Map<string, string> {
     frontendStateManagementContent,
   );
 
-  // Claude commands
+  // Claude commands (in trellis/ subdirectory for namespace)
   const claudeCommands = getCommandTemplates("claude-code");
   for (const [name, content] of Object.entries(claudeCommands)) {
-    files.set(`.claude/commands/${name}.md`, content);
+    files.set(`.claude/commands/trellis/${name}.md`, content);
   }
 
-  // Cursor commands
+  // Cursor commands (flat structure with trellis- prefix, Cursor doesn't support subdirs)
   const cursorCommands = getCommandTemplates("cursor");
   for (const [name, content] of Object.entries(cursorCommands)) {
     files.set(`.cursor/commands/${name}.md`, content);

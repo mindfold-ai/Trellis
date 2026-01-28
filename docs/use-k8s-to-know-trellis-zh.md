@@ -273,7 +273,7 @@ Task 目录
 
 ### 5.1 一键启动完整工作流
 
-`/start` 或 `/parallel` 一键启动，AI 自动完成整个流程：
+`/trellis:start` 或 `/trellis:parallel`（Claude Code 专有）一键启动，AI 自动完成整个流程：
 
 ```
 Plan → Implement → Check → Finish → PR

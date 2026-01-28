@@ -22,13 +22,13 @@ AI 不知道这个项目是什么，不知道这个项目的特化的代码规�
 
 需要人一步步指挥 AI：先读规范、再实现、再检查、再提交。
 
-**Trellis 的方案**：用 Slash Command 封装完整工作流。用户只需输入 `/start` 或 `/parallel`，背后的任务分发、脚本调用、Hook 拦截等机制对用户不可见，AI 会自动按预定义的流程执行。
+**Trellis 的方案**：用 Slash Command 封装完整工作流。用户只需输入 `/trellis:start` 或 `/trellis:parallel`，背后的任务分发、脚本调用、Hook 拦截等机制对用户不可见，AI 会自动按预定义的流程执行。
 
 ### 4. 多 Agent 并行的门槛高
 
 一些工具支持多 Agent 并行开发，但学习成本高、配置复杂，而且多个 Agent 同时工作容易互相冲突。
 
-**Trellis 的方案**：用 `/parallel` 一键启动，底层用 Git Worktree 做物理隔离，每个 Agent 在独立目录中工作，互不干扰。
+**Trellis 的方案**：用 `/trellis:parallel` 一键启动，底层用 Git Worktree 做物理隔离，每个 Agent 在独立目录中工作，互不干扰。
 
 ---
 
@@ -46,7 +46,7 @@ npm install -g @mindfoldhq/trellis@latest
 trellis init -u your-name
 ```
 
-### 3. 配置 worktree.yaml（如需使用 `/parallel`）
+### 3. 配置 worktree.yaml（如需使用 `/trellis:parallel`）
 
 编辑 `.trellis/worktree.yaml`，根据项目情况配置：
 - `worktree_dir`：Worktree 存储目录（相对于项目根目录，如 `../trellis-worktrees`）
@@ -60,47 +60,47 @@ trellis init -u your-name
 
 **简单任务**：
 ```
-/start → 说需求 → /record-session
+/trellis:start → 说需求 → /trellis:record-session
 ```
 
 **复杂功能**（多 Agent 流水线）：
 ```
-/parallel → 说需求 → /record-session
+/trellis:parallel → 说需求 → /trellis:record-session
 ```
 
 #### Cursor 工作流
 
 ```
-/start → 说需求 → /before-frontend-dev 或 /before-backend-dev → 实现 → /check-frontend 或 /check-backend → /finish-work → /record-session
+/trellis:start → 说需求 → /trellis:before-frontend-dev 或 /trellis:before-backend-dev → 实现 → /trellis:check-frontend 或 /trellis:check-backend → /trellis:finish-work → /trellis:record-session
 ```
 
 ---
 
 ### 5. 后台流程详解（Claude Code）
 
-**`/start` 初始化**：
+**`/trellis:start` 初始化**：
 1. AI 读取 `.trellis/workflow.md` 了解开发流程
 2. AI 执行 `get-context.sh` 获取当前开发者、分支、最近提交等状态
 3. AI 读取 `.trellis/spec/` 规范索引
 4. AI 报告就绪状态，询问用户任务
 
-**`/start` 任务分类**：
+**`/trellis:start` 任务分类**：
 
 | 类型 | 判断标准 | 处理方式 |
 |------|---------|---------|
 | **问题咨询** | 询问代码、架构、工作原理 | 直接回答 |
-| **简单修复** | 错别字、注释、单行改动 | 直接修改，提醒 `/finish-work` |
+| **简单修复** | 错别字、注释、单行改动 | 直接修改，提醒 `/trellis:finish-work` |
 | **开发任务** | 修改逻辑、添加功能、修复 bug、涉及多文件 | **Feature Workflow** |
 
 > **决策规则**：如有疑虑，使用 Feature Workflow。它能确保规范被注入到 agent，生成更高质量的代码。
 
-**`/start` Feature Workflow（开发任务）**：
+**`/trellis:start` Feature Workflow（开发任务）**：
 1. AI 调用 **Research Agent** 分析代码库，找出本需求相关的代码规范文件
 2. AI 创建 feature 目录，将规范文件路径记录进 jsonl，并创建 `prd.md` 需求文档
 3. AI 调用 **Implement Agent** 按规范实现功能（规范文件内容会被 Hook 自动注入）
 4. AI 调用 **Check Agent** 检查代码、自动修复问题（规范文件内容会被 Hook 自动注入）
 
-**`/parallel` 多 Agent 流水线**（两种模式）：
+**`/trellis:parallel` 多 Agent 流水线**（两种模式）：
 
 **模式 A：Plan Agent 自动规划**（推荐用于需求不明确的复杂功能）
 1. `plan.sh` 脚本在后台启动 **Plan Agent**
@@ -150,7 +150,7 @@ your-project/
 **`AGENTS.md`**（约 18 行）：
 - 遵循 agents.md 协议的轻量级指令文件
 - 使用 `<!-- TRELLIS:START -->` 和 `<!-- TRELLIS:END -->` 标记保护内容（`trellis update` 时不会被覆盖）
-- 快速指向 `/start` 命令和 `.trellis/workflow.md`
+- 快速指向 `/trellis:start` 命令和 `.trellis/workflow.md`
 
 **`.trellis/workflow.md`**（核心文档）：
 - AI Agent 新会话的**首读文档**
@@ -403,10 +403,10 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - Agent 可以直接读取 `$PLAN_FEATURE_DIR` 等变量，知道该操作哪个目录
 - 避免在 prompt 中硬编码路径，保持模板通用
 
-**`multi-agent/start.sh`** - 启动 Dispatch Agent：
+**`multi-agent/trellis:start.sh`** - 启动 Dispatch Agent：
 
 ```bash
-./start.sh <feature-dir>
+./trellis:start.sh <feature-dir>
 ```
 
 **工作原理**：
@@ -445,7 +445,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 
 用户通过 Slash Command 与 Trellis 交互。Slash Command 是**用户和系统的入口**，背后调用脚本和 Agent 完成实际工作。
 
-### `/start` - 会话初始化
+### `/trellis:start` - 会话初始化
 
 **作用**：初始化开发会话，读取项目上下文和规范。
 
@@ -460,7 +460,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 | 类型 | 判断标准 | 处理方式 |
 |------|---------|---------|
 | **问题咨询** | 询问代码、架构、工作原理 | 直接回答 |
-| **简单修复** | 错别字、注释、单行改动 | 直接修改 → `/finish-work` |
+| **简单修复** | 错别字、注释、单行改动 | 直接修改 → `/trellis:finish-work` |
 | **开发任务** | 修改逻辑、添加功能、修复 bug、多文件 | **Feature Workflow** |
 
 > **如有疑虑，使用 Feature Workflow** —— 规范是被注入到 agent 的，不是靠"记忆"。
@@ -471,13 +471,13 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 3. Implement Agent 实现功能（规范通过 Hook 自动注入）
 4. Check Agent 检查修复（规范通过 Hook 自动注入）
 
-### `/parallel` - 多 Agent 流水线（Claude Code 专有）
+### `/trellis:parallel` - 多 Agent 流水线（Claude Code 专有）
 
 **作用**：启动并行开发流水线，使用 Git Worktree 隔离工作环境。
 
-**与 `/start` 的区别**：
+**与 `/trellis:start` 的区别**：
 
-| 维度 | `/start` | `/parallel` |
+| 维度 | `/trellis:start` | `/trellis:parallel` |
 |------|----------|-------------|
 | 执行位置 | 主仓库单进程 | 主仓库 + Worktree 多进程 |
 | Git 管理 | 当前分支直接开发 | 创建独立 Worktree 和分支 |
@@ -487,7 +487,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - **Plan Agent 模式**（推荐）：`plan.sh --name <name> --type <type> --requirement "<req>"` → Plan Agent 自动分析需求、配置 Feature → `start.sh` 启动 Dispatch Agent
 - **手动配置模式**：手动创建 Feature 目录、配置 jsonl、写 prd.md → `start.sh` 启动 Dispatch Agent
 
-### `/before-frontend-dev` 和 `/before-backend-dev` - 开发前规范阅读
+### `/trellis:before-frontend-dev` 和 `/trellis:before-backend-dev` - 开发前规范阅读
 
 **作用**：编码前强制阅读对应领域的开发规范。
 
@@ -498,15 +498,15 @@ task.sh create "Fix payment bug" --assignee john --priority P0
    - **后端**：`database-guidelines.md`、`error-handling.md`、`logging-guidelines.md`、`type-safety.md`
 3. 理解编码标准后开始开发
 
-### `/check-frontend`、`/check-backend`、`/check-cross-layer` - 代码检查
+### `/trellis:check-frontend`、`/trellis:check-backend`、`/trellis:check-cross-layer` - 代码检查
 
-**`/check-frontend` 和 `/check-backend`**：
+**`/trellis:check-frontend` 和 `/trellis:check-backend`**：
 1. `git status` 查看修改的文件
 2. 读取对应的规范文件
 3. 对照规范检查代码
 4. 报告违规并修复
 
-**`/check-cross-layer`**（跨层检查）：
+**`/trellis:check-cross-layer`**（跨层检查）：
 
 检查多个维度，防止"没想到"导致的 bug：
 
@@ -517,7 +517,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 | **新建工具函数** | 创建 utility | 先搜索是否已有类似函数 |
 | **批量修改后** | 多文件相似修改 | 是否遗漏、是否应该抽象 |
 
-### `/finish-work` - 提交前检查清单
+### `/trellis:finish-work` - 提交前检查清单
 
 **作用**：确保代码完整性，在 commit 前执行。
 
@@ -529,7 +529,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 5. **跨层验证**：数据流、错误处理、类型一致性
 6. **手动测试**：功能、边界情况、错误状态、刷新后
 
-### `/record-session` - 记录会话进度
+### `/trellis:record-session` - 记录会话进度
 
 **前提**：用户已测试并提交代码（AI 不执行 `git commit`）
 
@@ -544,9 +544,9 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 
 | 命令 | 用途 |
 |------|------|
-| `/break-loop` | 深度 bug 分析，跳出修复循环 |
-| `/create-command` | 创建新的 Slash Command |
-| `/integrate-skill` | 提取 claude code skill 集成到项目规范 |
+| `/trellis:break-loop` | 深度 bug 分析，跳出修复循环 |
+| `/trellis:create-command` | 创建新的 Slash Command |
+| `/trellis:integrate-skill` | 提取 claude code skill 集成到项目规范 |
 | `/onboard-developer` | 给开发者的 landing 引导 |
 
 ---
@@ -717,10 +717,10 @@ AI 按规范执行 → 发现问题 → 更新 .trellis/spec/ → 下次执行�
 
 ## 七、完整工作流示例
 
-### Claude Code `/parallel` 完整流程
+### Claude Code `/trellis:parallel` 完整流程
 
 ```
-用户: /parallel
+用户: /trellis:parallel
 用户: 实现用户注册功能，包括邮箱验证
          ↓
 ┌─────────────────────────────────────────────────────┐
@@ -790,35 +790,35 @@ AI 按规范执行 → 发现问题 → 更新 .trellis/spec/ → 下次执行�
 │ 6. 更新 task.json（status: "review", pr_url）    │
 └─────────────────────────────────────────────────────┘
          ↓
-用户: /record-session（记录会话）
+用户: /trellis:record-session（记录会话）
 ```
 
 ### Cursor 完整流程
 
 ```
-用户: /start
+用户: /trellis:start
          ↓
 AI: 读取项目状态，报告就绪
          ↓
 用户: 说需求
          ↓
-用户: /before-backend-dev（如果是后端任务）
+用户: /trellis:before-backend-dev（如果是后端任务）
          ↓
 AI: 读取 .trellis/spec/backend/ 规范
          ↓
 AI: 实现功能
          ↓
-用户: /check-backend
+用户: /trellis:check-backend
          ↓
 AI: 检查代码，自行修复问题
          ↓
-用户: /finish-work
+用户: /trellis:finish-work
          ↓
 AI: 执行 Pre-Commit Checklist
          ↓
 用户: git commit（手动提交）
          ↓
-用户: /record-session（记录会话）
+用户: /trellis:record-session（记录会话）
 ```
 
 ---

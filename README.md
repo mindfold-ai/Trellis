@@ -72,7 +72,7 @@ Define your component guidelines, file structure rules, and patterns once. AI au
 
 ### Ship in Parallel
 
-Spawn multiple Claude sessions in isolated worktrees with `/parallel`. Work on several features at once, merge when ready.
+Spawn multiple Claude sessions in isolated worktrees with `/trellis:parallel`. Work on several features at once, merge when ready.
 
 <p align="center">
 <img src="assets/usecase2.png" alt="Parallel Work - Multiple features developing simultaneously" />
@@ -88,7 +88,7 @@ Define custom skills & commands that prepare Claude for specific tasks and conte
 <img src="assets/usecase3.png" alt="Workflows - Custom commands for instant context loading" />
 </p>
 
-Create commands like `/before-frontend-dev` that load component guidelines, check recent changes, pull in test patterns, and review shared hooks—all with a single slash.
+Create commands like `/trellis:before-frontend-dev` that load component guidelines, check recent changes, pull in test patterns, and review shared hooks—all with a single slash.
 
 ## How It Works
 
@@ -97,7 +97,7 @@ Create commands like `/before-frontend-dev` that load component guidelines, chec
 ```
 .trellis/
 ├── workflow.md              # Workflow guide (auto-injected on start)
-├── worktree.yaml            # Multi-agent config (for /parallel)
+├── worktree.yaml            # Multi-agent config (for /trellis:parallel)
 ├── spec/                    # Spec library
 │   ├── frontend/            #   Frontend specs
 │   ├── backend/             #   Backend specs
@@ -168,7 +168,7 @@ No. Each person has their own space at `.trellis/workspace/{name}/`.
 <details>
 <summary><strong>How does AI remember previous conversations?</strong></summary>
 
-Use `/record-session` at the end of each conversation. AI writes a session summary to `.trellis/workspace/{name}/journal-N.md` and indexes it in `index.md`. Next time you `/start`, AI automatically reads recent journals and git info to restore context. In theory, you could just submit your daily journal files as your work report 🤣.
+Use `/trellis:record-session` at the end of each conversation. AI writes a session summary to `.trellis/workspace/{name}/journal-N.md` and indexes it in `index.md`. Next time you `/trellis:start`, AI automatically reads recent journals and git info to restore context. In theory, you could just submit your daily journal files as your work report 🤣.
 
 </details>
 

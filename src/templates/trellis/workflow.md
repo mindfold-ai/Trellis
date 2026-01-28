@@ -250,7 +250,7 @@ This automatically:
 
 ### Pre-end Checklist
 
-Use `/finish-work` command to run through:
+Use `/trellis:finish-work` command to run through:
 1. [OK] All code committed, commit message follows convention
 2. [OK] Session recorded via `add-session.sh`
 3. [OK] No lint/test errors
@@ -336,13 +336,13 @@ tasks/
 
 2. **During development**:
    - [!] **Follow** `.trellis/spec/` guidelines
-   - For cross-layer features, use `/check-cross-layer`
+   - For cross-layer features, use `/trellis:check-cross-layer`
    - Develop only one task at a time
    - Run lint and tests frequently
 
 3. **After development complete**:
-   - Use `/finish-work` for completion checklist
-   - After fix bug, use `/break-loop` for deep analysis
+   - Use `/trellis:finish-work` for completion checklist
+   - After fix bug, use `/trellis:break-loop` for deep analysis
    - Human commits after testing passes
    - Use `add-session.sh` to record progress
 
@@ -388,9 +388,9 @@ git commit -m "type(scope): description"
 ./.trellis/scripts/task.sh create "<title>" # Create task
 
 # Slash commands
-/finish-work          # Pre-commit checklist
-/break-loop           # Post-debug analysis
-/check-cross-layer    # Cross-layer verification
+/trellis:finish-work          # Pre-commit checklist
+/trellis:break-loop           # Post-debug analysis
+/trellis:check-cross-layer    # Cross-layer verification
 ```
 
 ---

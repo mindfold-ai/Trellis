@@ -274,7 +274,7 @@ If Check Agent reports unfixable issues, Dispatch can call **Debug Agent** for d
 
 ### 5.1 One-Click Complete Workflow
 
-`/start` or `/parallel` launches with one click, AI completes the entire flow:
+`/trellis:start` or `/trellis:parallel` (Claude Code only) launches with one click, AI completes the entire flow:
 
 ```
 Plan → Implement → Check → Finish → PR

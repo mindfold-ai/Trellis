@@ -72,7 +72,7 @@ trellis init -u your-name
 
 ### 并行开发
 
-用 `/parallel` 可以同时跑多个任务，每个任务在独立的 git worktree 里由调度Agent 自动指挥多个子 agent 完成，干完自己提 PR。
+用 `/trellis:parallel` 可以同时跑多个任务，每个任务在独立的 git worktree 里由调度Agent 自动指挥多个子 agent 完成，干完自己提 PR。
 
 <p align="center">
 <img src="assets/usecase2.png" alt="并行开发 - 多个功能同时推进" />
@@ -88,7 +88,7 @@ trellis init -u your-name
 <img src="assets/usecase3.png" alt="工作流 - 一个命令加载全部上下文" />
 </p>
 
-创建类似 `/before-frontend-dev` 的短命令，一键加载组件规范、检查最近改动、拉取测试模式、查看共享 hooks。
+创建类似 `/trellis:before-frontend-dev` 的短命令，一键加载组件规范、检查最近改动、拉取测试模式、查看共享 hooks。
 
 ## 工作原理
 
@@ -97,7 +97,7 @@ trellis init -u your-name
 ```
 .trellis/
 ├── workflow.md              # 工作流指南（启动时自动注入）
-├── worktree.yaml            # 多 Agent 配置（用于 /parallel）
+├── worktree.yaml            # 多 Agent 配置（用于 /trellis:parallel）
 ├── spec/                    # 规范库
 │   ├── frontend/            #   前端规范
 │   ├── backend/             #   后端规范
@@ -168,7 +168,7 @@ Skills 是可选的——AI 可能跳过，导致质量不稳定。Trellis 通�
 <details>
 <summary><strong>AI 怎么知道之前的对话内容？</strong></summary>
 
-每次结束对话时用 `/record-session`，AI 会把会话摘要写入 `.trellis/workspace/{name}/journal-N.md`，并在 `index.md` 建立索引。下次 `/start` 时，AI 会自动读取最近的 journal 和 git 信息，恢复上下文。所以理论上直接扒每天的 journal 文件就能当你的工作日报提交了🤣。
+每次结束对话时用 `/trellis:record-session`，AI 会把会话摘要写入 `.trellis/workspace/{name}/journal-N.md`，并在 `index.md` 建立索引。下次 `/trellis:start` 时，AI 会自动读取最近的 journal 和 git 信息，恢复上下文。所以理论上直接扒每天的 journal 文件就能当你的工作日报提交了🤣。
 
 </details>
 

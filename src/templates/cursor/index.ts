@@ -38,6 +38,8 @@ export interface CommandTemplate {
 
 /**
  * Get all command templates
+ * Commands use trellis- prefix in filename (e.g., trellis-start.md → /trellis-start)
+ * Cursor doesn't support subdirectory namespacing like Claude Code does
  */
 export function getAllCommands(): CommandTemplate[] {
   const commands: CommandTemplate[] = [];

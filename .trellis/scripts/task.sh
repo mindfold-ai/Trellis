@@ -87,15 +87,15 @@ get_check_context() {
   local dev_type="$1"
 
   cat << EOF
-{"file": ".claude/commands/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
 {"file": "$DIR_WORKFLOW/$DIR_SPEC/shared/index.md", "reason": "Shared coding standards"}
 EOF
 
   if [[ "$dev_type" == "backend" ]] || [[ "$dev_type" == "fullstack" ]]; then
-    echo '{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}'
+    echo '{"file": ".claude/commands/trellis/check-backend.md", "reason": "Backend check spec"}'
   fi
   if [[ "$dev_type" == "frontend" ]] || [[ "$dev_type" == "fullstack" ]]; then
-    echo '{"file": ".claude/commands/check-frontend.md", "reason": "Frontend check spec"}'
+    echo '{"file": ".claude/commands/trellis/check-frontend.md", "reason": "Frontend check spec"}'
   fi
 }
 
@@ -105,10 +105,10 @@ get_debug_context() {
   echo "{\"file\": \"$DIR_WORKFLOW/$DIR_SPEC/shared/index.md\", \"reason\": \"Shared coding standards\"}"
 
   if [[ "$dev_type" == "backend" ]] || [[ "$dev_type" == "fullstack" ]]; then
-    echo '{"file": ".claude/commands/check-backend.md", "reason": "Backend check spec"}'
+    echo '{"file": ".claude/commands/trellis/check-backend.md", "reason": "Backend check spec"}'
   fi
   if [[ "$dev_type" == "frontend" ]] || [[ "$dev_type" == "fullstack" ]]; then
-    echo '{"file": ".claude/commands/check-frontend.md", "reason": "Frontend check spec"}'
+    echo '{"file": ".claude/commands/trellis/check-frontend.md", "reason": "Frontend check spec"}'
   fi
 }
 

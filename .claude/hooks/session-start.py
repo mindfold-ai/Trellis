@@ -109,7 +109,9 @@ Read and follow all instructions below carefully.
 
     # 5. Session Instructions
     print("<instructions>")
-    start_md = read_file(claude_dir / "commands" / "start.md", "No start.md found")
+    start_md = read_file(
+        claude_dir / "commands" / "trellis" / "start.md", "No start.md found"
+    )
     print(start_md)
     print("</instructions>")
     print()

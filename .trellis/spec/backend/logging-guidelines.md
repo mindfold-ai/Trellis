@@ -82,7 +82,7 @@ console.log(chalk.blue("🔍 Project type:"), chalk.gray(projectDescription));
 // Instructions with highlighted commands
 console.log(
   chalk.gray(`${stepNum}. Use `) +
-  chalk.white("/start") +
+  chalk.white("/trellis:start") +
   chalk.gray(" command in your AI tool to begin a session"),
 );
 ```
@@ -131,7 +131,7 @@ console.log(chalk.green("\n✅ Trellis initialized successfully!\n"));
 console.log(chalk.cyan("Next steps:"));
 console.log(
   chalk.gray(`1. Use `) +
-  chalk.white("/start") +
+  chalk.white("/trellis:start") +
   chalk.gray(" command in your AI tool"),
 );
 
@@ -232,7 +232,7 @@ console.log(chalk.green("\n✅ Trellis initialized successfully!\n"));
 console.log(chalk.cyan("Next steps:"));
 console.log(
   chalk.gray("1. Use ") +
-  chalk.white("/start") +
+  chalk.white("/trellis:start") +
   chalk.gray(" command to begin"),
 );
 ```
