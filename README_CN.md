@@ -185,6 +185,11 @@ Skills 是可选的——AI 可能跳过，导致质量不稳定。Trellis 通�
 
 - [Discord](https://discord.com/invite/tWcCZ3aRHc) — 加入讨论
 - [GitHub Issues](https://github.com/mindfold-ai/Trellis/issues) — 报告 Bug & 提功能建议
+- 微信群 — 扫码加入
+
+<p align="center">
+<img src="assets/wx_link.jpg" alt="微信群二维码" width="200" />
+</p>
 
 <p align="center">
 <a href="https://github.com/mindfold-ai/Trellis/blob/main/LICENSE">FSL License</a> •
