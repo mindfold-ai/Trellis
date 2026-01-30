@@ -8,6 +8,7 @@ import { VERSION, PACKAGE_NAME } from "../cli/index.js";
 import {
   getMigrationsForVersion,
   getAllMigrations,
+  getMigrationMetadata,
 } from "../migrations/index.js";
 import type {
   MigrationItem,
@@ -1183,6 +1184,45 @@ export async function update(options: UpdateOptions): Promise<void> {
     );
   }
 
+  // Display migration metadata (changelog, breaking changes, recommendations)
+  if (cliVsProject > 0 && projectVersion !== "unknown") {
+    const metadata = getMigrationMetadata(projectVersion, cliVersion);
+
+    if (metadata.breaking || metadata.changelog.length > 0) {
+      console.log(chalk.cyan("═".repeat(60)));
+
+      if (metadata.breaking) {
+        console.log(
+          chalk.bgRed.white.bold(" ⚠️  BREAKING CHANGES ") +
+            chalk.red.bold(" This update contains breaking changes!")
+        );
+        console.log("");
+      }
+
+      if (metadata.changelog.length > 0) {
+        console.log(chalk.cyan.bold("📋 What's Changed:"));
+        for (const entry of metadata.changelog) {
+          console.log(chalk.white(`   ${entry}`));
+        }
+        console.log("");
+      }
+
+      if (metadata.recommendMigrate) {
+        console.log(
+          chalk.bgGreen.black.bold(" 💡 RECOMMENDED ") +
+            chalk.green.bold(" Run with --migrate to complete the migration")
+        );
+        console.log(
+          chalk.gray("   This will remove legacy files and apply all changes.")
+        );
+        console.log("");
+      }
+
+      console.log(chalk.cyan("═".repeat(60)));
+      console.log("");
+    }
+  }
+
   // Load template hashes for modification detection
   const hashes = loadHashes(cwd);
   const isFirstHashTracking = Object.keys(hashes).length === 0;
@@ -1545,5 +1585,105 @@ export async function update(options: UpdateOptions): Promise<void> {
         "\nTip: Review .new files and merge changes manually if needed.",
       ),
     );
+  }
+
+  // Create migration task if there are breaking changes with migration guides
+  if (cliVsProject > 0 && projectVersion !== "unknown") {
+    const metadata = getMigrationMetadata(projectVersion, cliVersion);
+
+    if (metadata.breaking && metadata.migrationGuides.length > 0) {
+      // Create task directory
+      const today = new Date();
+      const monthDay = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const taskSlug = `migrate-to-${cliVersion}`;
+      const taskDirName = `${monthDay}-${taskSlug}`;
+      const tasksDir = path.join(cwd, DIR_NAMES.WORKFLOW, DIR_NAMES.TASKS);
+      const taskDir = path.join(tasksDir, taskDirName);
+
+      // Check if task already exists
+      if (!fs.existsSync(taskDir)) {
+        fs.mkdirSync(taskDir, { recursive: true });
+
+        // Get current developer for assignee
+        const developerFile = path.join(cwd, DIR_NAMES.WORKFLOW, ".developer");
+        let currentDeveloper = "unknown";
+        if (fs.existsSync(developerFile)) {
+          currentDeveloper = fs.readFileSync(developerFile, "utf-8").trim();
+        }
+
+        // Build task.json
+        const taskTitle = `Migrate to v${cliVersion}`;
+        const todayStr = today.toISOString().split("T")[0];
+        const taskJson = {
+          title: taskTitle,
+          description: `Breaking change migration from v${projectVersion} to v${cliVersion}`,
+          status: "planning",
+          dev_type: null,
+          scope: "migration",
+          priority: "P1",
+          creator: "trellis-update",
+          assignee: currentDeveloper,
+          createdAt: todayStr,
+          completedAt: null,
+          branch: null,
+          base_branch: null,
+          worktree_path: null,
+          current_phase: 0,
+          next_action: [
+            { phase: 1, action: "review-guide" },
+            { phase: 2, action: "update-files" },
+            { phase: 3, action: "run-migrate" },
+            { phase: 4, action: "test" },
+          ],
+          commit: null,
+          pr_url: null,
+          subtasks: [],
+        };
+
+        // Write task.json
+        const taskJsonPath = path.join(taskDir, "task.json");
+        fs.writeFileSync(taskJsonPath, JSON.stringify(taskJson, null, 2));
+
+        // Build PRD content
+        let prdContent = `# Migration Task: Upgrade to v${cliVersion}\n\n`;
+        prdContent += `**Created**: ${todayStr}\n`;
+        prdContent += `**From Version**: ${projectVersion}\n`;
+        prdContent += `**To Version**: ${cliVersion}\n`;
+        prdContent += `**Assignee**: ${currentDeveloper}\n\n`;
+        prdContent += `## Status\n\n- [ ] Review migration guide\n- [ ] Update custom files\n- [ ] Run \`trellis update --migrate\`\n- [ ] Test workflows\n\n`;
+
+        for (const { version, guide, aiInstructions } of metadata.migrationGuides) {
+          prdContent += `---\n\n## v${version} Migration Guide\n\n`;
+          prdContent += guide;
+          prdContent += "\n\n";
+
+          if (aiInstructions) {
+            prdContent += `### AI Assistant Instructions\n\n`;
+            prdContent += `When helping with this migration:\n\n`;
+            prdContent += aiInstructions;
+            prdContent += "\n\n";
+          }
+        }
+
+        // Write PRD
+        const prdPath = path.join(taskDir, "prd.md");
+        fs.writeFileSync(prdPath, prdContent);
+
+        console.log("");
+        console.log(chalk.bgCyan.black.bold(" 📋 MIGRATION TASK CREATED "));
+        console.log(
+          chalk.cyan(
+            `A task has been created to help you complete the migration:`
+          )
+        );
+        console.log(chalk.white(`   ${DIR_NAMES.WORKFLOW}/${DIR_NAMES.TASKS}/${taskDirName}/`));
+        console.log("");
+        console.log(
+          chalk.gray(
+            "Use AI to help: Ask Claude/Cursor to read the task and fix your custom files."
+          )
+        );
+      }
+    }
   }
 }
