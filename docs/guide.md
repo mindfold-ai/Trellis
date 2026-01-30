@@ -85,7 +85,7 @@ Edit `.trellis/worktree.yaml` according to your project:
 
 **`/trellis:start` Initialization**:
 1. AI reads `.trellis/workflow.md` to understand development process
-2. AI executes `get-context.sh` to get current developer, branch, recent commits, and other status
+2. AI executes `get_context.py` to get current developer, branch, recent commits, and other status
 3. AI reads `.trellis/spec/` guideline indexes
 4. AI reports ready status and asks user for task
 
@@ -108,7 +108,7 @@ Edit `.trellis/worktree.yaml` according to your project:
 **`/trellis:parallel` Multi-Agent Pipeline** (Two Modes):
 
 **Mode A: Plan Agent Auto-Planning** (Recommended for complex features with unclear requirements)
-1. `plan.sh` script launches **Plan Agent** in background
+1. `plan.py` script launches **Plan Agent** in background
 2. Plan Agent evaluates requirement validity (rejects with reasons if requirement is unclear), calls **Research Agent** to analyze codebase and find relevant guideline files
 3. Plan Agent records guideline file paths into feature directory and creates `prd.md` requirement document
 
@@ -117,11 +117,11 @@ Edit `.trellis/worktree.yaml` according to your project:
 2. AI records guideline file paths into feature directory and creates `prd.md` requirement document
 
 **Subsequent Flow for Both Modes**:
-1. `start.sh` creates independent Git Worktree, copies environment files per `worktree.yaml` `copy` field, runs initialization commands per `post_create` field, and launches **Dispatch Agent** in Worktree
+1. `start.py` creates independent Git Worktree, copies environment files per `worktree.yaml` `copy` field, runs initialization commands per `post_create` field, and launches **Dispatch Agent** in Worktree
 2. Dispatch Agent reads `.trellis/.current-task` to locate feature directory, reads `task.json` `next_action` array, calls sub-Agents in phase order
 3. **Implement Agent**: Hook (`inject-subagent-context.py`) automatically injects guideline files from `implement.jsonl` plus `prd.md` and `info.md` before Task call, then AI implements according to guidelines
 4. **Check Agent**: Hook injects guideline file contents from `check.jsonl`, AI reviews code changes and auto-fixes; **Ralph Loop** (`ralph-loop.py`) intercepts Agent stop requests, runs verification commands per `worktree.yaml` `verify` field (e.g., lint, typecheck), only allows ending when all pass
-5. `create-pr.sh` commits code (excluding agent-traces), pushes branch, creates Draft PR with `gh pr create`, updates `task.json` status to `review`
+5. `create_pr.py` commits code (excluding agent-traces), pushes branch, creates Draft PR with `gh pr create`, updates `task.json` status to `review`
 
 ---
 
@@ -281,24 +281,24 @@ Automation scripts that power the entire workflow.
 
 ```
 scripts/
-├── get-context.sh               # Get session context (developer, branch, recent commits, tasks)
-├── task.sh                   # Feature management (create, archive, configure)
-├── add-session.sh               # Record session
-├── init-developer.sh            # Initialize developer identity
+├── get_context.py               # Get session context (developer, branch, recent commits, tasks)
+├── task.py                      # Feature management (create, archive, configure)
+├── add_session.py               # Record session
+├── init_developer.py            # Initialize developer identity
 ├── common/                      # Common utilities
-│   ├── paths.sh                 # Path utilities
-│   ├── developer.sh             # Developer utilities
-│   ├── git-context.sh           # Git context
-│   ├── phase.sh                 # Phase management
-│   ├── worktree.sh              # Worktree utilities
-│   ├── registry.sh              # Agent registry CRUD operations
-│   └── task-utils.sh         # Feature common utilities (find, archive, path safety)
-└── multi-agent/                 # Multi-Agent pipeline scripts
-    ├── plan.sh                  # Launch Plan Agent
-    ├── start.sh                 # Create Worktree and launch Dispatch Agent
-    ├── status.sh                # View pipeline status
-    ├── create-pr.sh             # Create PR
-    └── cleanup.sh               # Clean up Worktree
+│   ├── paths.py                 # Path utilities
+│   ├── developer.py             # Developer utilities
+│   ├── git_context.py           # Git context
+│   ├── phase.py                 # Phase management
+│   ├── worktree.py              # Worktree utilities
+│   ├── registry.py              # Agent registry CRUD operations
+│   └── task_utils.py            # Feature common utilities (find, archive, path safety)
+└── multi_agent/                 # Multi-Agent pipeline scripts
+    ├── plan.py                  # Launch Plan Agent
+    ├── start.py                 # Create Worktree and launch Dispatch Agent
+    ├── status.py                # View pipeline status
+    ├── create_pr.py             # Create PR
+    └── cleanup.py               # Clean up Worktree
 ```
 
 ### Script System Design Philosophy
@@ -314,48 +314,48 @@ AI may "improvise" each time it executes tasks — using different commands, dif
 
 ### Key Script Descriptions
 
-**`task.sh`** - Feature Lifecycle Management:
+**`task.py`** - Feature Lifecycle Management:
 ```bash
 # Create Feature
-task.sh create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
-task.sh init-context <dir> <type>        # Initialize jsonl files
-task.sh add-context <dir> <file> <path> <reason>  # Add context entry
-task.sh set-branch <dir> <branch>        # Set branch
-task.sh start <dir>                      # Set as current Feature
-task.sh archive <name>                   # Archive Feature
-task.sh list                             # List active Features
-task.sh list-archive [YYYY-MM]           # List archived Features
+python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
+python3 ./.trellis/scripts/task.py init-context <dir> <type>        # Initialize jsonl files
+python3 ./.trellis/scripts/task.py add-context <dir> <file> <path> <reason>  # Add context entry
+python3 ./.trellis/scripts/task.py set-branch <dir> <branch>        # Set branch
+python3 ./.trellis/scripts/task.py start <dir>                      # Set as current Feature
+python3 ./.trellis/scripts/task.py archive <name>                   # Archive Feature
+python3 ./.trellis/scripts/task.py list                             # List active Features
+python3 ./.trellis/scripts/task.py list-archive [YYYY-MM]           # List archived Features
 ```
 
 **Create Examples**:
 ```bash
 # Basic usage (slug auto-generated from title)
-task.sh create "Add user authentication"
+python3 ./.trellis/scripts/task.py create "Add user authentication"
 
 # Specify slug and priority
-task.sh create "Add login page" --slug login-ui --priority P1
+python3 ./.trellis/scripts/task.py create "Add login page" --slug login-ui --priority P1
 
 # Specify assignee (must be existing developer)
-task.sh create "Fix payment bug" --assignee john --priority P0
+python3 ./.trellis/scripts/task.py create "Fix payment bug" --assignee john --priority P0
 ```
 
-**`multi-agent/plan.sh`** - Launch Plan Agent:
+**`multi_agent/plan.py`** - Launch Plan Agent:
 
 ```bash
-./plan.sh --name <feature-name> --type <dev-type> --requirement "<requirement>"
+python3 ./.trellis/scripts/multi_agent/plan.py --name <feature-name> --type <dev-type> --requirement "<requirement>"
 ```
 
 **How It Works**:
-1. Create Feature directory (calls `task.sh create`)
+1. Create Feature directory (calls `task.py create`)
 2. Read `.claude/agents/plan.md`, extract Agent prompt (skip frontmatter)
 3. Pass parameters to Agent via **environment variables**:
    ```bash
-   export PLAN_FEATURE_NAME="user-auth"
+   export PLAN_TASK_NAME="user-auth"
    export PLAN_DEV_TYPE="backend"
-   export PLAN_FEATURE_DIR=".trellis/workspace/taosu/tasks/19-user-auth"
+   export PLAN_TASK_DIR=".trellis/workspace/taosu/tasks/19-user-auth"
    export PLAN_REQUIREMENT="Add JWT-based authentication"
    ```
-4. Launch Claude Code in background: `nohup claude -p --dangerously-skip-permissions < prompt &`
+4. Launch Claude Code in background via subprocess
 5. Logs written to `<feature-dir>/.plan-log`
 
 **Why Use Environment Variables for Parameters?**
@@ -363,10 +363,10 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - Agent can directly read `$PLAN_FEATURE_DIR` and other variables, knowing which directory to operate on
 - Avoids hardcoding paths in prompts, keeps templates generic
 
-**`multi-agent/trellis:start.sh`** - Launch Dispatch Agent:
+**`multi_agent/start.py`** - Launch Dispatch Agent:
 
 ```bash
-./trellis:start.sh <feature-dir>
+python3 ./.trellis/scripts/multi_agent/start.py <feature-dir>
 ```
 
 **How It Works**:
@@ -380,11 +380,8 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 5. **Copy Feature Directory**: Feature directory may not be committed yet, needs manual copy to Worktree
 6. **Run Initialization Commands**: Read `worktree.yaml` `post_create` field, execute in order
 7. **Set Current Feature**: Write to `.trellis/.current-task` file
-8. **Prepare Agent Prompt**: Extract content from `dispatch.md`, write to `.agent-prompt`
-9. **Launch Claude Code in Background**:
-   ```bash
-   nohup ./agent-runner.sh > .agent-log 2>&1 &
-   ```
+8. **Generate Session ID**: Write to `.session-id` file for tracking
+9. **Launch Claude Code in Background**: Via cross-platform subprocess with logs to `.agent-log`
 10. **Register to registry.json**: Record PID, Worktree path, start time for later management
 
 **Key Design**:
@@ -392,7 +389,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - Agents know which Feature they're handling by reading `.current-task` file
 - All state persisted to files (registry.json, task.json), viewable and recoverable anytime
 
-**`multi-agent/create-pr.sh`** - Create PR:
+**`multi_agent/create_pr.py`** - Create PR:
 1. `git add -A` (exclude agent-traces)
 2. `git commit -m "type(scope): feature-name"`
 3. `git push origin <branch>`
@@ -427,7 +424,7 @@ Users interact with Trellis through Slash Commands. Slash Commands are **the ent
 
 **Execution Steps**:
 1. Read `.trellis/workflow.md` to understand workflow
-2. Execute `get-context.sh` to get current status (developer, branch, uncommitted files, active Features)
+2. Execute `get_context.py` to get current status (developer, branch, uncommitted files, active Features)
 3. Read `.trellis/spec/{frontend|backend}/index.md` guideline entry
 4. Report ready status, ask user for task
 
@@ -460,8 +457,8 @@ Users interact with Trellis through Slash Commands. Slash Commands are **the ent
 | Use Case | Simple tasks, quick implementation | Complex features, multi-module, needs isolation |
 
 **Two Modes**:
-- **Plan Agent Mode** (Recommended): `plan.sh --name <name> --type <type> --requirement "<req>"` → Plan Agent auto-analyzes requirements, configures Feature → `start.sh` launches Dispatch Agent
-- **Manual Configuration Mode**: Manually create Feature directory, configure jsonl, write prd.md → `start.sh` launches Dispatch Agent
+- **Plan Agent Mode** (Recommended): `plan.py --name <name> --type <type> --requirement "<req>"` → Plan Agent auto-analyzes requirements, configures Feature → `start.py` launches Dispatch Agent
+- **Manual Configuration Mode**: Manually create Feature directory, configure jsonl, write prd.md → `start.py` launches Dispatch Agent
 
 ### `/trellis:before-frontend-dev` and `/trellis:before-backend-dev` - Pre-Development Guidelines Reading
 
@@ -510,11 +507,11 @@ Checks multiple dimensions to prevent "didn't think of that" bugs:
 **Prerequisite**: User has tested and committed code (AI doesn't execute `git commit`)
 
 **Execution Steps**:
-1. Execute `get-context.sh` to get current context
-2. Execute `add-session.sh --title "..." --commit "hash"` to record session:
+1. Execute `get_context.py` to get current context
+2. Execute `add_session.py --title "..." --commit "hash"` to record session:
    - Append to `journal-N.md` (auto-creates new file when exceeding 2000 lines)
    - Update `index.md` (session count, last active time, history table)
-3. If Feature completed, execute `task.sh archive <name>` to archive
+3. If Feature completed, execute `task.py archive <name>` to archive
 
 ### Other Commands
 
@@ -702,7 +699,7 @@ User: Implement user registration with email verification
 ┌─────────────────────────────────────────────────────┐
 │ Plan Phase (Main Repo)                              │
 ├─────────────────────────────────────────────────────┤
-│ 1. plan.sh launches Plan Agent                      │
+│ 1. plan.py launches Plan Agent                      │
 │ 2. Plan Agent evaluates requirements (may reject    │
 │    unclear requirements)                            │
 │ 3. Plan Agent calls Research Agent to analyze       │
@@ -717,7 +714,7 @@ User: Implement user registration with email verification
 ┌─────────────────────────────────────────────────────┐
 │ Worktree Creation (Main Repo → Worktree)            │
 ├─────────────────────────────────────────────────────┤
-│ 1. start.sh creates Git Worktree                    │
+│ 1. start.py creates Git Worktree                    │
 │ 2. Copy environment files (worktree.yaml copy)      │
 │ 3. Run init commands (worktree.yaml post_create)    │
 │ 4. Write .trellis/.current-task marker           │
@@ -766,7 +763,7 @@ User: Implement user registration with email verification
 ┌─────────────────────────────────────────────────────┐
 │ Create-PR Phase (In Worktree)                       │
 ├─────────────────────────────────────────────────────┤
-│ 1. create-pr.sh executes                            │
+│ 1. create_pr.py executes                            │
 │ 2. git add -A (exclude agent-traces)                │
 │ 3. git commit -m "feat(scope): feature-name"        │
 │ 4. git push origin <branch>                         │

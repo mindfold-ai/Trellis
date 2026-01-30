@@ -48,7 +48,7 @@ Injected at session start via `SessionStart` hook:
 |-----------|--------|-----|------|
 | workflow.md | ~2,871 | 0.29% | 1.44% |
 | start.md (command) | ~1,638 | 0.16% | 0.82% |
-| get-context.sh output | ~748 | 0.07% | 0.37% |
+| get_context.py output | ~748 | 0.07% | 0.37% |
 | frontend/index.md | ~335 | 0.03% | 0.17% |
 | backend/index.md | ~352 | 0.04% | 0.18% |
 | guides/index.md | ~586 | 0.06% | 0.29% |

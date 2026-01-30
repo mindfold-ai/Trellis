@@ -80,7 +80,7 @@ trellis init -u your-name
 
 **`/trellis:start` 初始化**：
 1. AI 读取 `.trellis/workflow.md` 了解开发流程
-2. AI 执行 `get-context.sh` 获取当前开发者、分支、最近提交等状态
+2. AI 执行 `get_context.py` 获取当前开发者、分支、最近提交等状态
 3. AI 读取 `.trellis/spec/` 规范索引
 4. AI 报告就绪状态，询问用户任务
 
@@ -103,7 +103,7 @@ trellis init -u your-name
 **`/trellis:parallel` 多 Agent 流水线**（两种模式）：
 
 **模式 A：Plan Agent 自动规划**（推荐用于需求不明确的复杂功能）
-1. `plan.sh` 脚本在后台启动 **Plan Agent**
+1. `plan.py` 脚本在后台启动 **Plan Agent**
 2. Plan Agent 评估需求有效性（如果需求不够清晰明确会拒绝并给出原因），调用 **Research Agent** 分析代码库，找出本需求相关的代码规范文件
 3. Plan Agent 将规范文件路径记录进对应的 feature 目录，并创建 `prd.md` 需求文档
 
@@ -112,11 +112,11 @@ trellis init -u your-name
 2. AI 将规范文件路径记录进对应的 feature 目录，并创建 `prd.md` 需求文档
 
 **两种模式共同的后续流程**：
-1. `start.sh` 创建独立 Git Worktree，根据 `worktree.yaml` 的 `copy` 字段复制环境变量文件、`post_create` 字段运行项目的初始化命令，并在 Worktree 中启动 **Dispatch Agent**
+1. `start.py` 创建独立 Git Worktree，根据 `worktree.yaml` 的 `copy` 字段复制环境变量文件、`post_create` 字段运行项目的初始化命令，并在 Worktree 中启动 **Dispatch Agent**
 2. Dispatch Agent 读取 `.trellis/.current-task` 定位 feature 目录，读取 `task.json` 的 `next_action` 数组，按阶段顺序调用子 Agent
 3. **Implement Agent**：Hook（`inject-subagent-context.py`）在 Task 调用前自动注入 `implement.jsonl` 中的代码规范文件和 `prd.md`、`info.md`，然后 AI 会按规范实现功能
 4. **Check Agent**：Hook 注入 `check.jsonl` 中的规范文件内容，AI 检查代码变更并自动修复；**Ralph Loop**（`ralph-loop.py`）拦截 Agent 停止请求，根据 `worktree.yaml` 的 `verify` 字段运行验证命令（如 lint、typecheck），全部通过才允许结束
-5. `create-pr.sh` 提交代码（排除 agent-traces）、推送分支、用 `gh pr create` 创建 Draft PR，更新 `task.json` 状态为 `review`
+5. `create_pr.py` 提交代码（排除 agent-traces）、推送分支、用 `gh pr create` 创建 Draft PR，更新 `task.json` 状态为 `review`
 
 ---
 
@@ -276,24 +276,24 @@ workspace/
 
 ```
 scripts/
-├── get-context.sh               # 获取会话上下文（开发者、分支、最近提交、任务）
-├── task.sh                   # Feature 管理（创建、归档、配置）
-├── add-session.sh               # 记录会话
-├── init-developer.sh            # 初始化开发者身份
+├── get_context.py               # 获取会话上下文（开发者、分支、最近提交、任务）
+├── task.py                   # Feature 管理（创建、归档、配置）
+├── add_session.py               # 记录会话
+├── init_developer.py            # 初始化开发者身份
 ├── common/                      # 公共工具库
-│   ├── paths.sh                 # 路径工具
-│   ├── developer.sh             # 开发者工具
-│   ├── git-context.sh           # Git 上下文
-│   ├── phase.sh                 # 阶段管理
-│   ├── worktree.sh              # Worktree 工具
-│   ├── registry.sh              # Agent 注册表 CRUD 操作
-│   └── task-utils.sh         # Feature 公共工具（查找、归档、路径安全）
+│   ├── paths.py                 # 路径工具
+│   ├── developer.py             # 开发者工具
+│   ├── git_context.py           # Git 上下文
+│   ├── phase.py                 # 阶段管理
+│   ├── worktree.py              # Worktree 工具
+│   ├── registry.py              # Agent 注册表 CRUD 操作
+│   └── task_utils.py         # Feature 公共工具（查找、归档、路径安全）
 └── multi-agent/                 # 多 Agent 流水线脚本
-    ├── plan.sh                  # 启动 Plan Agent
-    ├── start.sh                 # 创建 Worktree 并启动 Dispatch Agent
-    ├── status.sh                # 查看流水线状态
-    ├── create-pr.sh             # 创建 PR
-    └── cleanup.sh               # 清理 Worktree
+    ├── plan.py                  # 启动 Plan Agent
+    ├── start.py                 # 创建 Worktree 并启动 Dispatch Agent
+    ├── status.py                # 查看流水线状态
+    ├── create_pr.py             # 创建 PR
+    └── cleanup.py               # 清理 Worktree
 ```
 
 ### 脚本系统的设计理念
@@ -309,39 +309,39 @@ AI 每次执行任务时可能会"随意发挥"——用不同的命令、不同
 
 ### 关键脚本说明
 
-**`task.sh`** - Feature 生命周期管理：
+**`task.py`** - Feature 生命周期管理：
 ```bash
 # 创建 Feature
-task.sh create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
-task.sh init-context <dir> <type>        # 初始化 jsonl 文件
-task.sh add-context <dir> <file> <path> <reason>  # 添加上下文条目
-task.sh set-branch <dir> <branch>        # 设置分支
-task.sh start <dir>                      # 设置为当前 Feature
-task.sh archive <name>                   # 归档 Feature
-task.sh list                             # 列出活跃 Feature
-task.sh list-archive [YYYY-MM]           # 列出归档 Feature
+task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
+task.py init-context <dir> <type>        # 初始化 jsonl 文件
+task.py add-context <dir> <file> <path> <reason>  # 添加上下文条目
+task.py set-branch <dir> <branch>        # 设置分支
+task.py start <dir>                      # 设置为当前 Feature
+task.py archive <name>                   # 归档 Feature
+task.py list                             # 列出活跃 Feature
+task.py list-archive [YYYY-MM]           # 列出归档 Feature
 ```
 
 **创建示例**：
 ```bash
 # 基本用法（slug 自动从标题生成）
-task.sh create "Add user authentication"
+task.py create "Add user authentication"
 
 # 指定 slug 和优先级
-task.sh create "Add login page" --slug login-ui --priority P1
+task.py create "Add login page" --slug login-ui --priority P1
 
 # 指定 assignee（必须是已存在的开发者）
-task.sh create "Fix payment bug" --assignee john --priority P0
+task.py create "Fix payment bug" --assignee john --priority P0
 ```
 
-**`multi-agent/plan.sh`** - 启动 Plan Agent：
+**`multi-agent/plan.py`** - 启动 Plan Agent：
 
 ```bash
-./plan.sh --name <feature-name> --type <dev-type> --requirement "<requirement>"
+./plan.py --name <feature-name> --type <dev-type> --requirement "<requirement>"
 ```
 
 **工作原理**：
-1. 创建 Feature 目录（调用 `task.sh create`）
+1. 创建 Feature 目录（调用 `task.py create`）
 2. 读取 `.claude/agents/plan.md`，提取 Agent prompt（跳过 frontmatter）
 3. 通过**环境变量**传递参数给 Agent：
    ```bash
@@ -358,10 +358,10 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - Agent 可以直接读取 `$PLAN_FEATURE_DIR` 等变量，知道该操作哪个目录
 - 避免在 prompt 中硬编码路径，保持模板通用
 
-**`multi-agent/trellis:start.sh`** - 启动 Dispatch Agent：
+**`multi-agent/trellis:start.py`** - 启动 Dispatch Agent：
 
 ```bash
-./trellis:start.sh <feature-dir>
+./trellis:start.py <feature-dir>
 ```
 
 **工作原理**：
@@ -378,7 +378,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 8. **准备 Agent prompt**：从 `dispatch.md` 提取内容，写入 `.agent-prompt`
 9. **后台启动 Claude Code**：
    ```bash
-   nohup ./agent-runner.sh > .agent-log 2>&1 &
+   # Via cross-platform subprocess, logs to .agent-log
    ```
 10. **注册到 registry.json**：记录 PID、Worktree 路径、启动时间，方便后续管理
 
@@ -387,7 +387,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 - Agent 通过读取 `.current-task` 文件知道当前在处理哪个 Feature
 - 所有状态都持久化到文件（registry.json、task.json），可随时查看和恢复
 
-**`multi-agent/create-pr.sh`** - 创建 PR：
+**`multi-agent/create_pr.py`** - 创建 PR：
 1. `git add -A`（排除 agent-traces）
 2. `git commit -m "type(scope): feature-name"`
 3. `git push origin <branch>`
@@ -422,7 +422,7 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 
 **执行步骤**：
 1. 读取 `.trellis/workflow.md` 了解工作流
-2. 执行 `get-context.sh` 获取当前状态（开发者、分支、未提交文件、活跃 Feature）
+2. 执行 `get_context.py` 获取当前状态（开发者、分支、未提交文件、活跃 Feature）
 3. 读取 `.trellis/spec/{frontend|backend}/index.md` 规范入口
 4. 报告就绪状态，询问用户任务
 
@@ -455,8 +455,8 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 | 适用场景 | 简单任务、快速实现 | 复杂功能、多模块、需要隔离 |
 
 **两种模式**：
-- **Plan Agent 模式**（推荐）：`plan.sh --name <name> --type <type> --requirement "<req>"` → Plan Agent 自动分析需求、配置 Feature → `start.sh` 启动 Dispatch Agent
-- **手动配置模式**：手动创建 Feature 目录、配置 jsonl、写 prd.md → `start.sh` 启动 Dispatch Agent
+- **Plan Agent 模式**（推荐）：`plan.py --name <name> --type <type> --requirement "<req>"` → Plan Agent 自动分析需求、配置 Feature → `start.py` 启动 Dispatch Agent
+- **手动配置模式**：手动创建 Feature 目录、配置 jsonl、写 prd.md → `start.py` 启动 Dispatch Agent
 
 ### `/trellis:before-frontend-dev` 和 `/trellis:before-backend-dev` - 开发前规范阅读
 
@@ -505,11 +505,11 @@ task.sh create "Fix payment bug" --assignee john --priority P0
 **前提**：用户已测试并提交代码（AI 不执行 `git commit`）
 
 **执行步骤**：
-1. 执行 `get-context.sh` 获取当前上下文
-2. 执行 `add-session.sh --title "..." --commit "hash"` 记录会话：
+1. 执行 `get_context.py` 获取当前上下文
+2. 执行 `add_session.py --title "..." --commit "hash"` 记录会话：
    - 追加到 `journal-N.md`（超过 2000 行自动创建新文件）
    - 更新 `index.md`（会话数、最后活跃时间、历史表）
-3. 如果 Feature 完成，执行 `task.sh archive <name>` 归档
+3. 如果 Feature 完成，执行 `task.py archive <name>` 归档
 
 ### 其他命令
 
@@ -697,7 +697,7 @@ AI 按规范执行 → 发现问题 → 更新 .trellis/spec/ → 下次执行�
 ┌─────────────────────────────────────────────────────┐
 │ Plan 阶段（主仓库）                                   │
 ├─────────────────────────────────────────────────────┤
-│ 1. plan.sh 启动 Plan Agent                          │
+│ 1. plan.py 启动 Plan Agent                          │
 │ 2. Plan Agent 评估需求（可能拒绝不清晰的需求）         │
 │ 3. Plan Agent 调用 Research Agent 分析代码库         │
 │ 4. Plan Agent 创建 Feature 目录：                    │
@@ -710,7 +710,7 @@ AI 按规范执行 → 发现问题 → 更新 .trellis/spec/ → 下次执行�
 ┌─────────────────────────────────────────────────────┐
 │ Worktree 创建（主仓库 → Worktree）                   │
 ├─────────────────────────────────────────────────────┤
-│ 1. start.sh 创建 Git Worktree                       │
+│ 1. start.py 创建 Git Worktree                       │
 │ 2. 复制环境变量文件（worktree.yaml 的 copy 字段）     │
 │ 3. 运行初始化命令（worktree.yaml 的 post_create 字段）│
 │ 4. 写入 .trellis/.current-task 标记              │
@@ -753,7 +753,7 @@ AI 按规范执行 → 发现问题 → 更新 .trellis/spec/ → 下次执行�
 ┌─────────────────────────────────────────────────────┐
 │ Create-PR 阶段（Worktree 中）                        │
 ├─────────────────────────────────────────────────────┤
-│ 1. create-pr.sh 执行                                 │
+│ 1. create_pr.py 执行                                 │
 │ 2. git add -A（排除 agent-traces）                   │
 │ 3. git commit -m "feat(scope): feature-name"        │
 │ 4. git push origin <branch>                         │
