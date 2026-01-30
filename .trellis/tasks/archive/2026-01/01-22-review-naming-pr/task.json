@@ -3,23 +3,35 @@
   "name": "review-naming-pr",
   "title": "Review naming redesign PR",
   "description": "Review and merge the comprehensive naming redesign PR (refactor/naming-redesign branch)",
-  "status": "planning",
+  "status": "completed",
   "dev_type": "docs",
   "scope": "refactor",
   "priority": "P1",
   "creator": "kleinhe",
   "assignee": "taosu",
   "createdAt": "2026-01-22",
-  "completedAt": null,
+  "completedAt": "2026-01-30",
   "branch": null,
   "base_branch": null,
   "worktree_path": null,
   "current_phase": 0,
   "next_action": [
-    {"phase": 1, "action": "implement"},
-    {"phase": 2, "action": "check"},
-    {"phase": 3, "action": "finish"},
-    {"phase": 4, "action": "create-pr"}
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
   ],
   "commit": null,
   "pr_url": null,
