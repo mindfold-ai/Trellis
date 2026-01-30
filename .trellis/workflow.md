@@ -105,9 +105,9 @@ cat .trellis/spec/backend/logging-guidelines.md    # For logging
 ```
 .trellis/
 |-- .developer           # Developer identity (gitignored)
-|-- scripts/             # Shell scripts (legacy, use CLI instead)
-|   |-- multi-agent/     # Multi-agent pipeline scripts
-|   \-- ...
+|-- scripts/             # Shell scripts (some legacy, prefer CLI)
+|   |-- _archive/        # Archived scripts (replaced by CLI)
+|   \-- common/          # Shared utilities
 |-- workspace/           # Developer workspaces
 |   |-- index.md         # Workspace index + Session template
 |   \-- {developer}/     # Per-developer directories
@@ -388,6 +388,14 @@ trellis task finish          # Clear current task
 # Developer management
 trellis developer init <name> # Initialize identity
 trellis developer show        # Show developer info
+
+# Multi-Agent Pipeline
+trellis pipeline plan "<req>" # Start Plan Agent
+trellis pipeline start <dir>  # Create worktree + start Dispatch
+trellis pipeline status       # View all agent status
+trellis pipeline status <id>  # View specific agent detail
+trellis pipeline cleanup <id> # Remove worktree + cleanup
+trellis pipeline create-pr    # Create PR from task
 
 # Slash commands
 /trellis:finish-work          # Pre-commit checklist

@@ -14,6 +14,7 @@ export const TaskStatusSchema = z.enum([
   "in_progress",
   "completed",
   "archived",
+  "rejected",
 ]);
 
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;

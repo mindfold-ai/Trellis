@@ -21,3 +21,6 @@ export * from "./session/index.js";
 
 // Platform adapters
 export * from "./platforms/index.js";
+
+// Pipeline orchestration
+export * from "./pipeline/index.js";

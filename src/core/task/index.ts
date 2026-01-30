@@ -54,3 +54,52 @@ export {
   validateContext,
   listContext,
 } from "./context.js";
+
+// Queue filtering and selection
+export {
+  // Schema
+  TaskFilterSchema,
+  // Types
+  type TaskFilter,
+  type TaskStats,
+  // Filter functions
+  filterTasks,
+  getTasksByStatus,
+  getTasksByAssignee,
+  getTasksByPriority,
+  getTasksByCreator,
+  getTasksByDevType,
+  // Convenience functions
+  getReadyTasks,
+  getInProgressTasks,
+  getPendingTasks,
+  getCompletedTasks,
+  // Statistics
+  getTaskStats,
+  formatTaskStats,
+  // Query
+  queryTasks,
+} from "./queue.js";
+
+// Utility functions
+export {
+  // Path validation
+  isValidTaskPath,
+  isValidTaskDir,
+  getTaskFullPath,
+  getTaskRelativePath,
+  // Archive checks
+  canArchiveTask,
+  canArchiveTaskDir,
+  // Task lookup
+  findTaskDirByName,
+  getTaskNameFromDir,
+  parseTaskDirName,
+  // PRD helpers
+  hasPrd,
+  getPrdPath,
+  // Status helpers
+  canStartTask,
+  isActiveTask,
+  isFinishedTask,
+} from "./utils.js";

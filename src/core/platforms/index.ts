@@ -19,8 +19,19 @@ export type {
   ContextGenerator,
 } from "./types.js";
 
-// Re-export Claude adapter
+// Re-export Claude adapter and launcher
 export { claudeAdapter } from "./claude/index.js";
+export {
+  launchAgent as launchClaudeAgent,
+  isAgentRunning as isClaudeAgentRunning,
+  stopAgent as stopClaudeAgent,
+  getSessionId as getClaudeSessionId,
+  getResumeCommand as getClaudeResumeCommand,
+  getAgentFilePath as getClaudeAgentFilePath,
+  agentFileExists as claudeAgentFileExists,
+  type ClaudeLaunchOptions,
+  type ClaudeLaunchResult,
+} from "./claude/index.js";
 
 /**
  * Platform configuration directories

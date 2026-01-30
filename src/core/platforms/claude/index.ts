@@ -17,6 +17,8 @@ import type {
   AgentLogEntry,
 } from "../types.js";
 import { claudeContextGenerator } from "./context.js";
+import { launchAgent as launchClaudeAgent } from "./launcher.js";
+import type { ClaudeLaunchOptions } from "./launcher.js";
 
 /**
  * Write JSONL entries to a file
@@ -78,53 +80,22 @@ export const claudeAdapter: PlatformAdapter = {
   },
 
   async launchAgent(options: LaunchAgentOptions): Promise<AgentProcess> {
-    // Import execa dynamically to avoid issues with ESM
-    const { execa } = await import("execa");
+    // Use the launcher module for robust agent launching
+    const launchOptions: ClaudeLaunchOptions = {
+      agentType: options.agentType,
+      workDir: options.workDir,
+      agentFile: options.agentFile,
+      background: options.background ?? true,
+      verbose: false,
+    };
 
-    const agentFile =
-      options.agentFile ??
-      `.claude/agents/${options.agentType}.md`;
+    const result = await launchClaudeAgent(launchOptions);
 
-    const logFile = path.join(options.workDir, ".agent-log");
-
-    // Build claude command arguments
-    const args = ["--agent", agentFile];
-
-    if (options.background) {
-      // For background execution, we need to use nohup or similar
-      // This is a simplified implementation - full implementation would
-      // handle process management more robustly
-      const subprocess = execa("claude", args, {
-        cwd: options.workDir,
-        detached: true,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      // Write stdout to log file
-      if (subprocess.stdout) {
-        const logStream = fs.createWriteStream(logFile, { flags: "a" });
-        subprocess.stdout.pipe(logStream);
-      }
-
-      subprocess.unref();
-
-      return {
-        pid: subprocess.pid ?? 0,
-        logFile,
-        sessionId: undefined,
-      };
-    } else {
-      // Foreground execution
-      const subprocess = execa("claude", args, {
-        cwd: options.workDir,
-        stdio: "inherit",
-      });
-
-      return {
-        pid: subprocess.pid ?? 0,
-        logFile,
-      };
-    }
+    return {
+      pid: result.pid,
+      logFile: result.logFile ?? path.join(options.workDir, ".agent-log"),
+      sessionId: result.sessionId,
+    };
   },
 
   parseAgentLog(line: string): AgentLogEntry | null {
@@ -166,3 +137,16 @@ export const claudeAdapter: PlatformAdapter = {
 
 // Re-export context generator for direct access if needed
 export { claudeContextGenerator };
+
+// Re-export launcher functions and types
+export {
+  launchAgent,
+  isAgentRunning,
+  stopAgent,
+  getSessionId,
+  getResumeCommand,
+  getAgentFilePath,
+  agentFileExists,
+  type ClaudeLaunchOptions,
+  type ClaudeLaunchResult,
+} from "./launcher.js";

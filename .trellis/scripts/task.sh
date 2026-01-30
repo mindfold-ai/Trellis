@@ -784,7 +784,7 @@ cmd_set_branch() {
   echo -e "${GREEN}✓ Branch set to: $branch${NC}"
   echo ""
   echo -e "${BLUE}Now you can start the multi-agent pipeline:${NC}"
-  echo "  ./.trellis/scripts/multi-agent/start.sh $1"
+  echo "  trellis pipeline start $1"
 }
 
 # =============================================================================
@@ -1094,9 +1094,9 @@ case "${1:-}" in
     cmd_set_scope "$2" "$3"
     ;;
   create-pr)
-    # Delegate to multi-agent/create-pr.sh
+    # Delegate to CLI pipeline create-pr
     shift
-    "$SCRIPT_DIR/multi-agent/create-pr.sh" "$@"
+    trellis pipeline create-pr "$@"
     ;;
   archive)
     cmd_archive "$2"

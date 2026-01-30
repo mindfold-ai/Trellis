@@ -1,12 +1,15 @@
 # Shell Script Conventions
 
-> Standards for multi-agent pipeline scripts in `.trellis/scripts/multi-agent/`.
+> Standards for shell scripts in `.trellis/scripts/`.
 
 ---
 
 ## Overview
 
-Most CLI functionality has migrated to TypeScript (`trellis` command). Shell scripts are only used for **multi-agent pipeline** orchestration, which requires shell-level process management.
+Most CLI functionality has migrated to TypeScript (`trellis` command), including the multi-agent pipeline. Shell scripts now only serve as:
+
+1. **Legacy utilities** - Some scripts still in use, gradually being migrated
+2. **Hook scripts** - Python hooks for agent context injection (not covered here)
 
 For TypeScript CLI patterns, see [Quality Guidelines](./quality-guidelines.md).
 
@@ -16,71 +19,49 @@ For TypeScript CLI patterns, see [Quality Guidelines](./quality-guidelines.md).
 
 ```
 .trellis/scripts/
-├── common/               # Shared utilities (still used by multi-agent)
+├── _archive/             # Archived scripts (replaced by CLI)
+│   ├── multi-agent/      # Pipeline scripts → trellis pipeline
+│   ├── common/           # Libraries → src/core/pipeline/
+│   └── README.md         # Migration reference
+├── common/               # Shared utilities (still in use)
 │   ├── paths.sh          # Path constants
-│   ├── phase.sh          # Phase tracking
-│   ├── registry.sh       # Agent registry
-│   └── worktree.sh       # Git worktree utilities
-├── multi-agent/          # Pipeline scripts
-│   ├── start.sh          # Start pipeline
-│   ├── status.sh         # Check status
-│   ├── cleanup.sh        # Cleanup worktrees
-│   └── create-pr.sh      # Create PR from worktree
-└── add-session.sh        # Session recording (legacy)
+│   ├── developer.sh      # Developer identity
+│   ├── worktree.sh       # Git worktree config reading
+│   └── git-context.sh    # Git context gathering
+├── task.sh               # Task management (legacy wrapper)
+├── add-session.sh        # Session recording (legacy)
+└── *.sh                  # Other utilities
 ```
 
 ---
 
-## Multi-Agent Script Patterns
+## Migration Status
 
-### Phase Tracking
+### Completed Migrations
 
-```bash
-source "$SCRIPT_DIR/common/phase.sh"
+| Old Shell Script | New CLI Command |
+|------------------|-----------------|
+| `multi-agent/plan.sh` | `trellis pipeline plan` |
+| `multi-agent/start.sh` | `trellis pipeline start` |
+| `multi-agent/status.sh` | `trellis pipeline status` |
+| `multi-agent/cleanup.sh` | `trellis pipeline cleanup` |
+| `multi-agent/create-pr.sh` | `trellis pipeline create-pr` |
+| `common/registry.sh` | `src/core/pipeline/state.ts` |
+| `common/phase.sh` | `src/core/pipeline/state.ts` |
+| `task.sh create` | `trellis task create` |
+| `task.sh list` | `trellis task list` |
+| `init-developer.sh` | `trellis developer init` |
+| `get-developer.sh` | `trellis developer get` |
+| `get-context.sh` | `trellis context` |
 
-# Set current phase
-set_phase "$TASK_DIR" 1
+### Still In Use
 
-# Get current phase
-current=$(get_phase "$TASK_DIR")
-
-# Check if phase complete
-if is_phase_complete "$TASK_DIR" 1; then
-  set_phase "$TASK_DIR" 2
-fi
-```
-
-### Agent Registry
-
-```bash
-source "$SCRIPT_DIR/common/registry.sh"
-
-# Register agent
-register_agent "$TASK_DIR" "implement" "$PID"
-
-# Check agent status
-if is_agent_running "$TASK_DIR" "implement"; then
-  echo "Agent still running"
-fi
-
-# Cleanup on exit
-cleanup_agent "$TASK_DIR" "implement"
-```
-
-### Worktree Management
-
-```bash
-source "$SCRIPT_DIR/common/worktree.sh"
-
-# Create worktree for task
-create_task_worktree "$TASK_DIR" "$BRANCH_NAME"
-
-# Get worktree path
-worktree_path=$(get_worktree_path "$TASK_DIR")
-
-# Cleanup worktree
-cleanup_worktree "$TASK_DIR"
-```
+| Script | Purpose | Migration Plan |
+|--------|---------|----------------|
+| `common/paths.sh` | Path constants | Low priority |
+| `common/developer.sh` | Developer identity | Used by task.sh |
+| `common/worktree.sh` | Worktree config | Used by hooks |
+| `task.sh` | Task operations | Gradually migrate remaining commands |
 
 ---
 
@@ -111,23 +92,15 @@ if [[ -z "$TASK_DIR" ]]; then
   echo -e "${RED}Error: Task directory required${NC}" >&2
   exit 1
 fi
-
-# Cleanup on exit
-trap 'cleanup_agent "$TASK_DIR" "$$"' EXIT
 ```
 
 ---
 
-## Migration Note
+## Best Practice
 
-Core functionality has moved to TypeScript CLI:
+For new features, **always prefer TypeScript CLI over shell scripts**.
 
-| Old Shell | New CLI |
-|-----------|---------|
-| `task.sh create` | `trellis task create` |
-| `task.sh list` | `trellis task list` |
-| `init-developer.sh` | `trellis developer init` |
-| `get-developer.sh` | `trellis developer get` |
-| `get-context.sh` | `trellis context` |
-
-For new features, prefer TypeScript CLI over shell scripts.
+Shell scripts should only be used when:
+- Interacting with existing shell-only workflows
+- Quick prototyping (then migrate to TypeScript)
+- Platform hooks that require shell execution

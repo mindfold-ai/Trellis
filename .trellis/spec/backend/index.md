@@ -80,6 +80,17 @@ console.error(chalk.green("Created task"));
 if (options.json) console.log(JSON.stringify(result));
 ```
 
+### Worktree Data Sync (Critical!)
+```typescript
+// Write to BOTH locations
+updateTask(worktreeTaskDir, updates);
+updateTask(mainRepoTaskDir, updates);
+
+// Read from WORKTREE for agent data
+const task = readTask(path.join(agent.worktree_path, agent.task_dir));
+```
+See [Quality Guidelines](./quality-guidelines.md#worktree-data-synchronization-pattern) for details.
+
 ### Path Management
 ```typescript
 // Always use centralized path functions

@@ -837,6 +837,106 @@ export * from "./context.js";
 
 ---
 
+## Worktree Data Synchronization Pattern
+
+### Problem
+
+When using git worktrees for multi-agent pipeline, `task.json` exists in two locations:
+1. **Main repo**: `.trellis/tasks/<task-dir>/task.json`
+2. **Worktree**: `<worktree-path>/.trellis/tasks/<task-dir>/task.json`
+
+These can get out of sync, causing stale data issues.
+
+### Rule 1: Write to Both Locations
+
+When updating task state, ALWAYS update both copies:
+
+```typescript
+// Good: Update both main repo and worktree
+const taskUpdates = {
+  status: "completed" as const,
+  pr_url: prUrl,
+  current_phase: createPrPhase,
+};
+
+// Update worktree copy
+updateTask(worktreeTaskDir, taskUpdates);
+
+// Also update main repo copy
+if (taskDirRel && workDir !== repoRoot) {
+  const mainRepoTaskDir = path.join(repoRoot, taskDirRel);
+  if (fs.existsSync(mainRepoTaskDir)) {
+    updateTask(mainRepoTaskDir, taskUpdates);
+  }
+}
+
+// Bad: Only update one location
+updateTask(taskDir, { status: "completed" });  // Which one? Main or worktree?
+```
+
+### Rule 2: Read from Worktree for Agent Context
+
+When reading data about a running agent, read from the worktree (where the agent is working):
+
+```typescript
+// Good: Read from worktree where agent is actually working
+const taskDirAbs = path.join(agent.worktree_path, agent.task_dir);
+const task = readTask(taskDirAbs);
+const phaseInfo = getPhaseInfo(taskDirAbs);
+
+// Bad: Read from main repo (stale data)
+const taskDirAbs = path.join(repoRoot, agent.task_dir);
+const task = readTask(taskDirAbs);  // May have old status
+```
+
+### Rule 3: Preserve Existing Values
+
+When preparing worktrees, don't overwrite values that are already set:
+
+```typescript
+// Good: Preserve existing base_branch if already set
+const existingTask = readTask(taskDirAbs);
+const updates: { worktree_path: string; base_branch?: string } = {
+  worktree_path: worktreePath,
+};
+
+if (!existingTask?.base_branch) {
+  updates.base_branch = await getCurrentBranchAsync(root);
+}
+
+updateTask(taskDirAbs, updates);
+
+// Bad: Always overwrite (loses intentionally set values)
+updateTask(taskDirAbs, {
+  worktree_path: worktreePath,
+  base_branch: await getCurrentBranchAsync(root),  // Overwrites even if already set!
+});
+```
+
+### Common Mistake: Forgetting to Sync on Worktree Reuse
+
+When reusing an existing worktree, you must still update task state:
+
+```typescript
+if (!worktreePath) {
+  // New worktree - update both locations ✓
+  const worktreeResult = await createPipelineWorktree({ ... });
+  updateTask(taskDirAbs, taskUpdates);
+  updateTask(worktreeTaskDir, taskUpdates);
+} else {
+  // Reusing worktree - DON'T FORGET to update! ✓
+  await prepareWorktreeForTask(worktreePath, taskDirRel, repoRoot);
+
+  // Must still sync task state
+  updateTask(taskDirAbs, taskUpdates);
+  updateTask(worktreeTaskDir, taskUpdates);
+}
+```
+
+> **Gotcha**: `prepareWorktreeForTask()` only syncs `worktree_path` and `base_branch`. It does NOT update `status` to `in_progress`. You must do that explicitly.
+
+---
+
 ## Quality Checklist
 
 Before committing, ensure:

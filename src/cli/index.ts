@@ -21,7 +21,15 @@ import {
   taskBootstrap,
 } from "../commands/task/index.js";
 import { sessionAdd, sessionStatus } from "../commands/session.js";
+import {
+  pipelinePlan,
+  pipelineStart,
+  pipelineStatus,
+  pipelineCleanup,
+  pipelineCreatePr,
+} from "../commands/pipeline/index.js";
 import { DIR_NAMES } from "../constants/paths.js";
+import type { DevType } from "../types/task.js";
 
 interface PackageJson {
   name: string;
@@ -344,6 +352,125 @@ sessionCmd
   .option("-j, --json", "Output in JSON format")
   .action(async (options: Record<string, unknown>) => {
     await sessionStatus({ json: options.json as boolean });
+  });
+
+// =============================================================================
+// Pipeline Commands
+// =============================================================================
+
+const pipelineCmd = program
+  .command("pipeline")
+  .description("Manage multi-agent pipeline");
+
+pipelineCmd
+  .command("plan <requirement>")
+  .description("Start Plan Agent to analyze requirements and create task")
+  .requiredOption("-n, --name <name>", "Task name (slug)")
+  .requiredOption("-t, --type <type>", "Development type: backend | frontend | fullstack | test")
+  .option("-v, --verbose", "Enable verbose output")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (requirement: string, options: Record<string, unknown>) => {
+    try {
+      await pipelinePlan(requirement, {
+        name: options.name as string,
+        type: options.type as DevType,
+        verbose: options.verbose as boolean,
+        json: options.json as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      process.exit(1);
+    }
+  });
+
+pipelineCmd
+  .command("start <task-dir>")
+  .description("Create worktree and start Dispatch Agent")
+  .option("-v, --verbose", "Enable verbose output")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (taskDir: string, options: Record<string, unknown>) => {
+    try {
+      await pipelineStart(taskDir, {
+        verbose: options.verbose as boolean,
+        json: options.json as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      process.exit(1);
+    }
+  });
+
+pipelineCmd
+  .command("status [agent-id]")
+  .description("View agent status (summary if no ID, detail if specified)")
+  .option("-w, --watch", "Watch agent log in real-time")
+  .option("--registry", "Show raw registry data")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (agentId: string | undefined, options: Record<string, unknown>) => {
+    try {
+      await pipelineStatus(agentId, {
+        watch: options.watch as boolean,
+        registry: options.registry as boolean,
+        json: options.json as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      process.exit(1);
+    }
+  });
+
+pipelineCmd
+  .command("cleanup <agent-id>")
+  .description("Remove worktree and clean up agent")
+  .option("-a, --archive", "Archive the task after cleanup")
+  .option("-f, --force", "Force removal even with uncommitted changes")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (agentId: string, options: Record<string, unknown>) => {
+    try {
+      await pipelineCleanup(agentId, {
+        archive: options.archive as boolean,
+        force: options.force as boolean,
+        json: options.json as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      process.exit(1);
+    }
+  });
+
+pipelineCmd
+  .command("create-pr [agent-id-or-task-dir]")
+  .description("Create PR from completed task")
+  .option("--draft", "Create as draft PR (default: true)")
+  .option("--no-draft", "Create as non-draft PR")
+  .option("--dry-run", "Preview what would be done without making changes")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (agentIdOrTaskDir: string | undefined, options: Record<string, unknown>) => {
+    try {
+      await pipelineCreatePr(agentIdOrTaskDir, {
+        draft: options.draft as boolean,
+        dryRun: options.dryRun as boolean,
+        json: options.json as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      process.exit(1);
+    }
   });
 
 program.parse();

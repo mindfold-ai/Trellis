@@ -17,7 +17,16 @@ src/
 ├── cli/                 # CLI entry point and argument parsing
 │   └── index.ts         # Main CLI entry (Commander.js setup)
 ├── commands/            # Command implementations
-│   └── init.ts          # Each command in its own file
+│   ├── init.ts          # Each command in its own file
+│   ├── task/            # Task commands (create, list, show, etc.)
+│   ├── session.ts       # Session commands
+│   └── pipeline/        # Multi-agent pipeline commands
+│       ├── index.ts     # Re-exports all pipeline commands
+│       ├── plan.ts      # trellis pipeline plan
+│       ├── start.ts     # trellis pipeline start
+│       ├── status.ts    # trellis pipeline status
+│       ├── cleanup.ts   # trellis pipeline cleanup
+│       └── create-pr.ts # trellis pipeline create-pr
 ├── configurators/       # Configuration generators
 │   ├── claude.ts        # Copies .claude/ directory
 │   ├── cursor.ts        # Copies .cursor/ directory
@@ -59,10 +68,10 @@ These directories are copied to `dist/` during build and used as templates:
 └── settings.json        # Hook configuration
 
 .trellis/                # Trellis workflow (partially dogfooded)
-├── scripts/             # Shell scripts (dogfooded)
-│   ├── common/          # Shared utilities
-│   ├── multi-agent/     # Pipeline scripts
-│   └── *.sh             # Main scripts
+├── scripts/             # Shell scripts (mostly migrated to CLI)
+│   ├── _archive/        # Archived scripts (replaced by CLI)
+│   ├── common/          # Shared utilities (still in use)
+│   └── *.sh             # Legacy scripts
 ├── workspace/           # Developer progress tracking
 │   └── index.md         # Index template (dogfooded)
 ├── spec/                # Project guidelines (NOT dogfooded)
@@ -154,7 +163,9 @@ src/core/
 │   ├── index.ts          # Unified exports
 │   ├── schemas.ts        # Zod schemas (Task, ContextEntry types)
 │   ├── crud.ts           # Task CRUD operations
-│   └── context.ts        # Context file management (.jsonl)
+│   ├── context.ts        # Context file management (.jsonl)
+│   ├── queue.ts          # Task filtering and selection
+│   └── utils.ts          # Task utilities (path validation, lookup)
 │
 ├── developer/            # Developer identity domain
 │   ├── index.ts          # Unified exports
@@ -173,12 +184,20 @@ src/core/
 │   ├── worktree.ts       # Worktree operations
 │   └── config.ts         # worktree.yaml config parsing
 │
+├── pipeline/             # Multi-agent pipeline domain
+│   ├── index.ts          # Unified exports
+│   ├── schemas.ts        # Zod schemas (Agent, Registry, Phase)
+│   ├── state.ts          # Agent registry, phase, currentTask management
+│   ├── worktree.ts       # Pipeline-specific worktree operations
+│   └── orchestrator.ts   # High-level pipeline orchestration
+│
 └── platforms/            # Platform adapters (Claude, OpenCode, etc.)
     ├── index.ts          # detectPlatform() + getPlatformAdapter()
     ├── types.ts          # Platform, PlatformAdapter interface
     └── claude/
         ├── index.ts      # Claude adapter implementation
-        └── context.ts    # Claude-specific context generation
+        ├── context.ts    # Claude-specific context generation
+        └── launcher.ts   # Agent launching, session management
 ```
 
 **Design Decision**: Organize by business domain, NOT by I/O separation.
