@@ -2,7 +2,7 @@
   "id": "cli-commands-expansion",
   "name": "cli-commands-expansion",
   "title": "CLI 命令扩展 - 收敛 Shell 脚本到 TypeScript CLI",
-  "description": "",
+  "description": "将 .trellis/scripts/ 中的核心功能迁移到 TypeScript CLI，实现跨平台支持",
   "status": "in_progress",
   "dev_type": "backend",
   "scope": "cli",
@@ -14,16 +14,29 @@
   "branch": "refactor/shell-to-cli",
   "base_branch": "main",
   "worktree_path": null,
-  "current_phase": 0,
+  "current_phase": 1,
   "next_action": [
-    {"phase": 1, "action": "implement"},
     {"phase": 2, "action": "check"},
     {"phase": 3, "action": "finish"},
     {"phase": 4, "action": "create-pr"}
   ],
   "commit": null,
   "pr_url": null,
-  "subtasks": [],
-  "relatedFiles": [],
-  "notes": ""
+  "subtasks": [
+    {"name": "trellis context", "status": "completed"},
+    {"name": "trellis developer init/show/get", "status": "completed"},
+    {"name": "trellis task create/list/start/finish/archive", "status": "completed"},
+    {"name": "trellis task context init/add/validate/list", "status": "completed"},
+    {"name": "trellis task bootstrap", "status": "completed"},
+    {"name": "trellis session add/status", "status": "completed"},
+    {"name": "更新 workflow.md 文档", "status": "completed"},
+    {"name": "Windows 环境测试", "status": "pending"},
+    {"name": "单元测试覆盖", "status": "pending"}
+  ],
+  "relatedFiles": [
+    "src/commands/",
+    "src/core/",
+    "src/cli/index.ts"
+  ],
+  "notes": "Phase 1 完成：除 multi-agent 外所有 shell 脚本已有 CLI 对应命令，workflow.md 已更新。待完成：Windows 测试、单元测试。"
 }

@@ -24,11 +24,11 @@
 
 ```bash
 # Check if already initialized
-./.trellis/scripts/get-developer.sh
+trellis developer get
 
 # If not initialized, run:
-./.trellis/scripts/init-developer.sh <your-name>
-# Example: ./.trellis/scripts/init-developer.sh cursor-agent
+trellis developer init <your-name>
+# Example: trellis developer init cursor-agent
 ```
 
 This creates:
@@ -44,12 +44,12 @@ This creates:
 
 ```bash
 # Get full context in one command
-./.trellis/scripts/get-context.sh
+trellis context
 
 # Or check manually:
-./.trellis/scripts/get-developer.sh      # Your identity
-./.trellis/scripts/task.sh list          # Active tasks
-git status && git log --oneline -10      # Git state
+trellis developer get           # Your identity
+trellis task list               # Active tasks
+git status && git log --oneline -10  # Git state
 ```
 
 ### Step 2: Read Project Guidelines [MANDATORY]
@@ -105,16 +105,9 @@ cat .trellis/spec/backend/logging-guidelines.md    # For logging
 ```
 .trellis/
 |-- .developer           # Developer identity (gitignored)
-|-- scripts/
-|   |-- common/              # Shared utilities
-|   |   |-- paths.sh         # Path utilities
-|   |   |-- developer.sh     # Developer management
-|   |   \-- git-context.sh   # Git context implementation
-|   |-- init-developer.sh    # Initialize developer identity
-|   |-- get-developer.sh     # Get current developer name
-|   |-- task.sh              # Manage tasks
-|   |-- get-context.sh       # Get session context
-|   \-- add-session.sh       # One-click session recording
+|-- scripts/             # Shell scripts (legacy, use CLI instead)
+|   |-- multi-agent/     # Multi-agent pipeline scripts
+|   \-- ...
 |-- workspace/           # Developer workspaces
 |   |-- index.md         # Workspace index + Session template
 |   \-- {developer}/     # Per-developer directories
@@ -143,14 +136,14 @@ cat .trellis/spec/backend/logging-guidelines.md    # For logging
 
 ### Step 1: Get Session Context
 
-Use the unified context script:
+Use the CLI context command:
 
 ```bash
 # Get all context in one command
-./.trellis/scripts/get-context.sh
+trellis context
 
 # Or get JSON format
-./.trellis/scripts/get-context.sh --json
+trellis context --json
 ```
 
 ### Step 2: Read Development Guidelines [!] REQUIRED
@@ -179,14 +172,14 @@ cat .trellis/spec/guides/cross-layer-thinking-guide.md
 
 ### Step 3: Select Task to Develop
 
-Use the task management script:
+Use the task management commands:
 
 ```bash
 # List active tasks
-./.trellis/scripts/task.sh list
+trellis task list
 
 # Create new task (creates directory with task.json)
-./.trellis/scripts/task.sh create "<title>" --slug <task-name>
+trellis task create "<title>" --slug <task-name>
 ```
 
 ---
@@ -197,7 +190,8 @@ Use the task management script:
 
 ```
 1. Create or select task
-   \-> ./.trellis/scripts/task.sh create "<title>" --slug <name> or list
+   \-> trellis task create "<title>" --slug <name>
+   \-> trellis task list
 
 2. Write code according to guidelines
    \-> Read .trellis/spec/ docs relevant to your task
@@ -213,7 +207,7 @@ Use the task management script:
        Format: feat/fix/docs/refactor/test/chore
 
 5. Record session (one command)
-   \-> ./.trellis/scripts/add-session.sh --title "Title" --commit "hash"
+   \-> trellis session add "Title" --commit "hash"
 ```
 
 ### Code Quality Checklist
@@ -236,8 +230,7 @@ Use the task management script:
 After code is committed, use:
 
 ```bash
-./.trellis/scripts/add-session.sh \
-  --title "Session Title" \
+trellis session add "Session Title" \
   --commit "abc1234" \
   --summary "Brief summary"
 ```
@@ -252,7 +245,7 @@ This automatically:
 
 Use `/trellis:finish-work` command to run through:
 1. [OK] All code committed, commit message follows convention
-2. [OK] Session recorded via `add-session.sh`
+2. [OK] Session recorded via `trellis session add`
 3. [OK] No lint/test errors
 4. [OK] Working directory clean (or WIP noted)
 5. [OK] Spec docs updated if needed
@@ -318,10 +311,12 @@ tasks/
 
 **Commands**:
 ```bash
-./.trellis/scripts/task.sh create "<title>" [--slug <name>]   # Create task directory
-./.trellis/scripts/task.sh archive <name>  # Archive to archive/{year-month}/
-./.trellis/scripts/task.sh list            # List active tasks
-./.trellis/scripts/task.sh list-archive    # List archived tasks
+trellis task create "<title>" [--slug <name>]   # Create task directory
+trellis task archive <name>                     # Archive to archive/{year-month}/
+trellis task list                               # List active tasks
+trellis task list-archive                       # List archived tasks
+trellis task start <task-dir>                   # Set as current task
+trellis task finish                             # Clear current task
 ```
 
 ---
@@ -331,7 +326,7 @@ tasks/
 ### [OK] DO - Should Do
 
 1. **Before session start**:
-   - Run `./.trellis/scripts/get-context.sh` for full context
+   - Run `trellis context` for full context
    - [!] **MUST read** relevant `.trellis/spec/` docs
 
 2. **During development**:
@@ -344,7 +339,7 @@ tasks/
    - Use `/trellis:finish-work` for completion checklist
    - After fix bug, use `/trellis:break-loop` for deep analysis
    - Human commits after testing passes
-   - Use `add-session.sh` to record progress
+   - Use `trellis session add` to record progress
 
 ### [X] DON'T - Should Not Do
 
@@ -380,12 +375,19 @@ git commit -m "type(scope): description"
 
 ```bash
 # Session management
-./.trellis/scripts/get-context.sh    # Get full context
-./.trellis/scripts/add-session.sh    # Record session
+trellis context              # Get full context
+trellis session add "Title"  # Record session
+trellis session status       # Check journal status
 
 # Task management
-./.trellis/scripts/task.sh list      # List tasks
-./.trellis/scripts/task.sh create "<title>" # Create task
+trellis task list            # List tasks
+trellis task create "<title>" # Create task
+trellis task start <dir>     # Set current task
+trellis task finish          # Clear current task
+
+# Developer management
+trellis developer init <name> # Initialize identity
+trellis developer show        # Show developer info
 
 # Slash commands
 /trellis:finish-work          # Pre-commit checklist

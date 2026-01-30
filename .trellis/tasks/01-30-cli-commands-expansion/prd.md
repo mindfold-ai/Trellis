@@ -20,19 +20,21 @@
 
 ### Phase 1: 核心命令（本任务）
 
-| 新命令 | 替代脚本 | 优先级 |
-|--------|---------|--------|
-| `trellis context` | `get-context.sh`, `git-context.sh` | P0 |
-| `trellis developer init` | `init-developer.sh` | P0 |
-| `trellis developer show` | `get-developer.sh` | P0 |
-| `trellis task create` | `task.sh create` | P0 |
-| `trellis task list` | `task.sh list` | P0 |
-| `trellis task start` | `task.sh start` | P1 |
-| `trellis task finish` | `task.sh finish` | P1 |
-| `trellis task archive` | `task.sh archive` | P1 |
-| `trellis task context init` | `task.sh init-context` | P1 |
-| `trellis task context add` | `task.sh add-context` | P2 |
-| `trellis session add` | `add-session.sh` | P2 |
+| 新命令 | 替代脚本 | 优先级 | 状态 |
+|--------|---------|--------|------|
+| `trellis context` | `get-context.sh`, `git-context.sh` | P0 | ✅ |
+| `trellis developer init` | `init-developer.sh` | P0 | ✅ |
+| `trellis developer show` | `get-developer.sh` | P0 | ✅ |
+| `trellis task create` | `task.sh create` | P0 | ✅ |
+| `trellis task list` | `task.sh list` | P0 | ✅ |
+| `trellis task start` | `task.sh start` | P1 | ✅ |
+| `trellis task finish` | `task.sh finish` | P1 | ✅ |
+| `trellis task archive` | `task.sh archive` | P1 | ✅ |
+| `trellis task context init` | `task.sh init-context` | P1 | ✅ |
+| `trellis task context add` | `task.sh add-context` | P2 | ✅ |
+| `trellis task bootstrap` | `create-bootstrap.sh` | P2 | ✅ |
+| `trellis session add` | `add-session.sh` | P2 | ✅ |
+| `trellis session status` | (新增) | P2 | ✅ |
 
 ### Phase 2: Pipeline 命令（后续任务）
 
@@ -196,27 +198,28 @@ export function registerCreateCommand(program: Command) {
 
 ### 功能验收
 
-- [ ] `trellis context` 输出与 `get-context.sh` 一致
-- [ ] `trellis developer init/show` 功能正常
-- [ ] `trellis task create/list/start/finish/archive` 完整可用
-- [ ] `trellis task context init/add` 正确生成 jsonl 文件
+- [x] `trellis context` 输出与 `get-context.sh` 一致
+- [x] `trellis developer init/show` 功能正常
+- [x] `trellis task create/list/start/finish/archive` 完整可用
+- [x] `trellis task context init/add` 正确生成 jsonl 文件
+- [x] `trellis session add/status` 功能正常
 - [ ] Windows 环境下所有命令可正常运行
 
 ### 质量验收
 
-- [ ] TypeScript 类型完整，无 any
+- [x] TypeScript 类型完整，无 any
 - [ ] 单元测试覆盖核心模块
-- [ ] 错误处理友好，有明确提示
+- [x] 错误处理友好，有明确提示
 
 ## 实施计划
 
-1. **Step 1**: 创建 `src/core/` 基础模块（paths, developer, git）
-2. **Step 2**: 实现 `trellis context` 命令
-3. **Step 3**: 实现 `trellis developer` 命令
-4. **Step 4**: 实现 `trellis task` 命令族
-5. **Step 5**: 实现 `trellis session` 命令
-6. **Step 6**: Windows 环境测试
-7. **Step 7**: 更新文档
+1. ✅ **Step 1**: 创建 `src/core/` 基础模块（paths, developer, git）
+2. ✅ **Step 2**: 实现 `trellis context` 命令
+3. ✅ **Step 3**: 实现 `trellis developer` 命令
+4. ✅ **Step 4**: 实现 `trellis task` 命令族（含 bootstrap）
+5. ✅ **Step 5**: 实现 `trellis session` 命令
+6. ⬜ **Step 6**: Windows 环境测试
+7. ✅ **Step 7**: 更新文档（workflow.md 已更新使用 CLI 命令）
 
 ## 参考
 

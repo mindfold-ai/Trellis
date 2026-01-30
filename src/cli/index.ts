@@ -18,7 +18,9 @@ import {
   taskAddContext,
   taskValidate,
   taskListContext,
+  taskBootstrap,
 } from "../commands/task/index.js";
+import { sessionAdd, sessionStatus } from "../commands/session.js";
 import { DIR_NAMES } from "../constants/paths.js";
 
 interface PackageJson {
@@ -266,6 +268,14 @@ taskCmd
     await taskListArchive(month, { json: options.json as boolean });
   });
 
+taskCmd
+  .command("bootstrap [project-type]")
+  .description("Create bootstrap task for first-time setup (fills project guidelines)")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (projectType: string | undefined, options: Record<string, unknown>) => {
+    await taskBootstrap(projectType, { json: options.json as boolean });
+  });
+
 // Task context subcommands
 const taskContextCmd = taskCmd
   .command("context")
@@ -304,6 +314,36 @@ taskContextCmd
   .option("-j, --json", "Output in JSON format")
   .action(async (taskDir: string, options: Record<string, unknown>) => {
     await taskListContext(taskDir, { json: options.json as boolean });
+  });
+
+// =============================================================================
+// Session Commands
+// =============================================================================
+
+const sessionCmd = program.command("session").description("Manage development sessions");
+
+sessionCmd
+  .command("add <title>")
+  .description("Add a new session to the journal")
+  .option("-c, --commit <hash>", "Commit hash(es), comma-separated for multiple")
+  .option("-s, --summary <text>", "Brief summary of the session")
+  .option("--content <text>", "Detailed content (or pipe via stdin)")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (title: string, options: Record<string, unknown>) => {
+    await sessionAdd(title, {
+      commit: options.commit as string | undefined,
+      summary: options.summary as string | undefined,
+      content: options.content as string | undefined,
+      json: options.json as boolean,
+    });
+  });
+
+sessionCmd
+  .command("status")
+  .description("Show journal status")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (options: Record<string, unknown>) => {
+    await sessionStatus({ json: options.json as boolean });
   });
 
 program.parse();
