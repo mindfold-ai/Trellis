@@ -2,7 +2,7 @@
 """
 Multi-Agent Pipeline: Plan Agent Launcher.
 
-Usage: python plan.py --name <task-name> --type <dev-type> --requirement "<requirement>"
+Usage: python3 plan.py --name <task-name> --type <dev-type> --requirement "<requirement>"
 
 This script:
 1. Creates task directory
@@ -211,7 +211,7 @@ def main() -> int:
     print(f"  ls -la {task_dir}")
     print()
     print(f"{Colors.YELLOW}After completion, run:{Colors.NC}")
-    print(f"  python ./.trellis/scripts/py/multi_agent/start.py {task_dir}")
+    print(f"  python3 ./.trellis/scripts/multi_agent/start.py {task_dir}")
 
     return 0
 

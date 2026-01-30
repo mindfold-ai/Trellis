@@ -3,7 +3,7 @@
 Multi-Agent Pipeline: Create PR.
 
 Usage:
-    python create_pr.py [task-dir] [--dry-run]
+    python3 create_pr.py [task-dir] [--dry-run]
 
 This script:
 1. Stages and commits all changes (excluding workspace/)
@@ -109,7 +109,7 @@ def main() -> int:
 
     if not target_dir:
         print(f"{Colors.RED}Error: No task directory specified and no current task set{Colors.NC}")
-        print("Usage: python create_pr.py [task-dir] [--dry-run]")
+        print("Usage: python3 create_pr.py [task-dir] [--dry-run]")
         return 1
 
     # Support relative paths

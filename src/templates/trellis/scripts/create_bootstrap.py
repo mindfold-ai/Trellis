@@ -6,7 +6,7 @@ Creates a guided task to help users fill in project guidelines
 after initializing Trellis for the first time.
 
 Usage:
-    python create_bootstrap.py [project-type]
+    python3 create_bootstrap.py [project-type]
 
 Arguments:
     project-type: frontend | backend | fullstack (default: fullstack)

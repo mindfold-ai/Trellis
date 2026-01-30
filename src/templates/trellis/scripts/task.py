@@ -3,19 +3,19 @@
 Task Management Script for Multi-Agent Pipeline.
 
 Usage:
-    python task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
-    python task.py init-context <dir> <type>   # Initialize jsonl files
-    python task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
-    python task.py validate <dir>              # Validate jsonl files
-    python task.py list-context <dir>          # List jsonl entries
-    python task.py start <dir>                 # Set as current task
-    python task.py finish                      # Clear current task
-    python task.py set-branch <dir> <branch>   # Set git branch
-    python task.py set-scope <dir> <scope>     # Set scope for PR title
-    python task.py create-pr [dir] [--dry-run] # Create PR from task
-    python task.py archive <task-name>         # Archive completed task
-    python task.py list                        # List active tasks
-    python task.py list-archive [month]        # List archived tasks
+    python3 task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
+    python3 task.py init-context <dir> <type>   # Initialize jsonl files
+    python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
+    python3 task.py validate <dir>              # Validate jsonl files
+    python3 task.py list-context <dir>          # List jsonl entries
+    python3 task.py start <dir>                 # Set as current task
+    python3 task.py finish                      # Clear current task
+    python3 task.py set-branch <dir> <branch>   # Set git branch
+    python3 task.py set-scope <dir> <scope>     # Set scope for PR title
+    python3 task.py create-pr [dir] [--dry-run] # Create PR from task
+    python3 task.py archive <task-name>         # Archive completed task
+    python3 task.py list                        # List active tasks
+    python3 task.py list-archive [month]        # List archived tasks
 """
 
 from __future__ import annotations
@@ -266,8 +266,8 @@ def cmd_create(args: argparse.Namespace) -> int:
     print("", file=sys.stderr)
     print(colored("Next steps:", Colors.BLUE), file=sys.stderr)
     print("  1. Create prd.md with requirements", file=sys.stderr)
-    print("  2. Run: task.py init-context <dir> <dev_type>", file=sys.stderr)
-    print("  3. Run: task.py start <dir>", file=sys.stderr)
+    print("  2. Run: python3 task.py init-context <dir> <dev_type>", file=sys.stderr)
+    print("  3. Run: python3 task.py start <dir>", file=sys.stderr)
     print("", file=sys.stderr)
 
     # Output relative path for script chaining
@@ -287,7 +287,7 @@ def cmd_init_context(args: argparse.Namespace) -> int:
 
     if not dev_type:
         print(colored("Error: Missing arguments", Colors.RED))
-        print("Usage: task.py init-context <task-dir> <dev_type>")
+        print("Usage: python3 task.py init-context <task-dir> <dev_type>")
         print("  dev_type: backend | frontend | fullstack | test | docs")
         return 1
 
@@ -333,8 +333,8 @@ def cmd_init_context(args: argparse.Namespace) -> int:
     print(colored("✓ All context files created", Colors.GREEN))
     print()
     print(colored("Next steps:", Colors.BLUE))
-    print("  1. Add task-specific specs: task.py add-context <dir> <jsonl> <path>")
-    print("  2. Set as current: task.py start <dir>")
+    print("  1. Add task-specific specs: python3 task.py add-context <dir> <jsonl> <path>")
+    print("  2. Set as current: python3 task.py start <dir>")
 
     return 0
 
@@ -739,7 +739,7 @@ def cmd_set_branch(args: argparse.Namespace) -> int:
 
     if not branch:
         print(colored("Error: Missing arguments", Colors.RED))
-        print("Usage: task.py set-branch <task-dir> <branch-name>")
+        print("Usage: python3 task.py set-branch <task-dir> <branch-name>")
         return 1
 
     task_json = target_dir / FILE_TASK_JSON
@@ -773,7 +773,7 @@ def cmd_set_scope(args: argparse.Namespace) -> int:
 
     if not scope:
         print(colored("Error: Missing arguments", Colors.RED))
-        print("Usage: task.py set-scope <task-dir> <scope>")
+        print("Usage: python3 task.py set-scope <task-dir> <scope>")
         return 1
 
     task_json = target_dir / FILE_TASK_JSON
@@ -821,19 +821,19 @@ def show_usage() -> None:
     print("""Task Management Script for Multi-Agent Pipeline
 
 Usage:
-  task.py create <title>                     Create new task directory
-  task.py init-context <dir> <dev_type>      Initialize jsonl files
-  task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
-  task.py validate <dir>                     Validate jsonl files
-  task.py list-context <dir>                 List jsonl entries
-  task.py start <dir>                        Set as current task
-  task.py finish                             Clear current task
-  task.py set-branch <dir> <branch>          Set git branch for multi-agent
-  task.py set-scope <dir> <scope>            Set scope for PR title
-  task.py create-pr [dir] [--dry-run]        Create PR from task
-  task.py archive <task-name>                Archive completed task
-  task.py list [--mine] [--status <status>]  List tasks
-  task.py list-archive [YYYY-MM]             List archived tasks
+  python3 task.py create <title>                     Create new task directory
+  python3 task.py init-context <dir> <dev_type>      Initialize jsonl files
+  python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
+  python3 task.py validate <dir>                     Validate jsonl files
+  python3 task.py list-context <dir>                 List jsonl entries
+  python3 task.py start <dir>                        Set as current task
+  python3 task.py finish                             Clear current task
+  python3 task.py set-branch <dir> <branch>          Set git branch for multi-agent
+  python3 task.py set-scope <dir> <scope>            Set scope for PR title
+  python3 task.py create-pr [dir] [--dry-run]        Create PR from task
+  python3 task.py archive <task-name>                Archive completed task
+  python3 task.py list [--mine] [--status <status>]  List tasks
+  python3 task.py list-archive [YYYY-MM]             List archived tasks
 
 Arguments:
   dev_type: backend | frontend | fullstack | test | docs
@@ -843,18 +843,18 @@ List options:
   --status, -s <s>     Filter by status (planning, in_progress, review, completed)
 
 Examples:
-  task.py create "Add login feature" --slug add-login
-  task.py init-context .trellis/tasks/01-21-add-login backend
-  task.py add-context <dir> implement .trellis/spec/backend/auth.md "Auth guidelines"
-  task.py set-branch <dir> task/add-login
-  task.py start .trellis/tasks/01-21-add-login
-  task.py create-pr                          # Uses current task
-  task.py create-pr <dir> --dry-run          # Preview without changes
-  task.py finish
-  task.py archive add-login
-  task.py list                               # List all active tasks
-  task.py list --mine                        # List my tasks only
-  task.py list --mine --status in_progress   # List my in-progress tasks
+  python3 task.py create "Add login feature" --slug add-login
+  python3 task.py init-context .trellis/tasks/01-21-add-login backend
+  python3 task.py add-context <dir> implement .trellis/spec/backend/auth.md "Auth guidelines"
+  python3 task.py set-branch <dir> task/add-login
+  python3 task.py start .trellis/tasks/01-21-add-login
+  python3 task.py create-pr                          # Uses current task
+  python3 task.py create-pr <dir> --dry-run          # Preview without changes
+  python3 task.py finish
+  python3 task.py archive add-login
+  python3 task.py list                               # List all active tasks
+  python3 task.py list --mine                        # List my tasks only
+  python3 task.py list --mine --status in_progress   # List my in-progress tasks
 """)
 
 

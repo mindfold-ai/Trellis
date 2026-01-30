@@ -2,8 +2,8 @@
 """
 Multi-Agent Pipeline: Start Worktree Agent.
 
-Usage: python start.py <task-dir>
-Example: python start.py .trellis/tasks/01-21-my-task
+Usage: python3 start.py <task-dir>
+Example: python3 start.py .trellis/tasks/01-21-my-task
 
 This script:
 1. Creates worktree (if not exists) with dependency install
@@ -128,8 +128,8 @@ def main() -> int:
     """Main entry point."""
     if len(sys.argv) < 2:
         log_error("Task directory required")
-        print("Usage: python start.py <task-dir>")
-        print("Example: python start.py .trellis/tasks/01-21-my-task")
+        print("Usage: python3 start.py <task-dir>")
+        print("Example: python3 start.py .trellis/tasks/01-21-my-task")
         return 1
 
     task_dir_arg = sys.argv[1]

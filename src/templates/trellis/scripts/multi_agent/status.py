@@ -3,13 +3,13 @@
 Multi-Agent Pipeline: Status Monitor.
 
 Usage:
-    python status.py                     Show summary of all tasks (default)
-    python status.py -a <assignee>       Filter tasks by assignee
-    python status.py --list              List all worktrees and agents
-    python status.py --detail <task>     Detailed task status
-    python status.py --watch <task>      Watch agent log in real-time
-    python status.py --log <task>        Show recent log entries
-    python status.py --registry          Show agent registry
+    python3 status.py                     Show summary of all tasks (default)
+    python3 status.py -a <assignee>       Filter tasks by assignee
+    python3 status.py --list              List all worktrees and agents
+    python3 status.py --detail <task>     Detailed task status
+    python3 status.py --watch <task>      Watch agent log in real-time
+    python3 status.py --log <task>        Show recent log entries
+    python3 status.py --registry          Show agent registry
 """
 
 from __future__ import annotations
@@ -217,21 +217,21 @@ def cmd_help() -> int:
     print("""Multi-Agent Pipeline: Status Monitor
 
 Usage:
-  python status.py                         Show summary of all tasks
-  python status.py -a <assignee>           Filter tasks by assignee
-  python status.py --list                  List all worktrees and agents
-  python status.py --detail <task>         Detailed task status
-  python status.py --progress <task>       Quick progress view with recent activity
-  python status.py --watch <task>          Watch agent log in real-time
-  python status.py --log <task>            Show recent log entries
-  python status.py --registry              Show agent registry
+  python3 status.py                         Show summary of all tasks
+  python3 status.py -a <assignee>           Filter tasks by assignee
+  python3 status.py --list                  List all worktrees and agents
+  python3 status.py --detail <task>         Detailed task status
+  python3 status.py --progress <task>       Quick progress view with recent activity
+  python3 status.py --watch <task>          Watch agent log in real-time
+  python3 status.py --log <task>            Show recent log entries
+  python3 status.py --registry              Show agent registry
 
 Examples:
-  python status.py -a taosu
-  python status.py --detail my-task
-  python status.py --progress my-task
-  python status.py --watch 01-16-worktree-support
-  python status.py --log worktree-support
+  python3 status.py -a taosu
+  python3 status.py --detail my-task
+  python3 status.py --progress my-task
+  python3 status.py --watch 01-16-worktree-support
+  python3 status.py --log worktree-support
 """)
     return 0
 

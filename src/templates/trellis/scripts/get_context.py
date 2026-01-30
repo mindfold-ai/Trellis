@@ -3,8 +3,8 @@
 Get Session Context for AI Agent.
 
 Usage:
-    python get_context.py           Output context in text format
-    python get_context.py --json    Output context in JSON format
+    python3 get_context.py           Output context in text format
+    python3 get_context.py --json    Output context in JSON format
 """
 
 from __future__ import annotations

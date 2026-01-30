@@ -250,4 +250,4 @@ if __name__ == "__main__":
         print(f"Current phase: {get_current_phase(path)}")
         print(f"Total phases: {get_total_phases(path)}")
     else:
-        print("Usage: python phase.py <task.json>")
+        print("Usage: python3 phase.py <task.json>")
