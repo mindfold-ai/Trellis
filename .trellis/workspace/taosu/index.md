@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
-- **Last Active**: 2026-01-29
+- **Total Sessions**: 20
+- **Last Active**: 2026-01-30
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~759 | Active |
+| `journal-1.md` | ~955 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,9 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 20 | 2026-01-30 | Brainstorming: Core 重构架构设计 | `f0e1a2a` |
+| 19 | 2026-01-30 | Session 18 - CLI Commands Expansion Complete | `75e8c0c` |
+| 18 | 2026-01-30 | Session 18: 创建 CLI 扩展与多平台 IDE 支持任务 | `eb7b47d`, `22d9b57` |
 | 17 | 2026-01-29 | Multi-Agent Pipeline 研究与修复 | `cb596fc`, `ace7dea` |
 | 16 | 2026-01-25 | Bugfix and Readme Update | `a711df3`, `900bd01` |
 | 15 | 2026-01-25 | Agent Session Resume Support | `853c2d0`, `fd2f97e`, `964dcd5`, `9376793` |

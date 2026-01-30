@@ -757,3 +757,199 @@ Fixed a bug in add-session.sh and updated readme with new images.
 ### Next Steps
 
 - None - task complete
+
+## Session 18: Session 18: 创建 CLI 扩展与多平台 IDE 支持任务
+
+**Date**: 2026-01-30
+**Task**: Session 18: 创建 CLI 扩展与多平台 IDE 支持任务
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 本次工作
+
+### Research 阶段
+1. **Trellis 工作流研究** - 完整梳理了现有脚本体系 (~3,500 行 bash)
+2. **多平台 AI IDE 研究** - 对比了 Claude Code / OpenCode / Codex 的功能差异
+   - OpenCode: 支持 Hook 插件系统，可完整适配
+   - Codex: 缺少 Hook，需降级策略
+3. **现有 CLI 分析** - 已有 `trellis init` 和 `trellis update`，使用 Commander.js
+
+### 任务创建
+创建了两个任务，确定了实施顺序：**先 CLI 扩展 (2)，再多平台适配 (1)**
+
+| 任务 | 优先级 | 状态 |
+|------|--------|------|
+| `01-30-cli-commands-expansion` | P1 | in_progress |
+| `01-30-multi-ide-support` | P2 | planning |
+
+### 决策记录
+- **分支**: `refactor/shell-to-cli`
+- **为什么先做 CLI**: 底层功能 CLI 化后，上层 AI IDE 适配变成薄薄一层调用
+
+## 新增文件
+- `.trellis/tasks/01-30-cli-commands-expansion/` - PRD + context files
+- `.trellis/tasks/01-30-multi-ide-support/` - PRD + task.json
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `eb7b47d` | (see git log) |
+| `22d9b57` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+## Session 19: Session 18 - CLI Commands Expansion Complete
+
+**Date**: 2026-01-30
+**Task**: Session 18 - CLI Commands Expansion Complete
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Completed CLI commands expansion task - consolidated shell scripts into TypeScript CLI.
+
+## Changes
+
+| Category | Description |
+|----------|-------------|
+| Core Modules | Added paths.ts, developer.ts, git.ts, task.ts |
+| Commands | Added context, developer, task command groups |
+| Types | Created src/types/task.ts with TypeScript definitions |
+| Integration | Registered all commands in CLI entry point |
+
+## New Commands
+
+- `trellis context` - Get context for agents (replaces get-context.sh)
+- `trellis developer init|show|get` - Developer identity management
+- `trellis task create|list|start|finish|archive` - Task CRUD operations
+- `trellis task context init|add|validate|list` - Task context management
+
+## Key Files
+
+- `src/core/paths.ts` (200 lines) - Runtime path utilities
+- `src/core/developer.ts` (243 lines) - Developer management
+- `src/core/git.ts` (183 lines) - Git operations wrapper
+- `src/core/task.ts` (629 lines) - Task CRUD and context
+- `src/types/task.ts` - Type definitions
+- `src/commands/task/*.ts` (6 files) - Task command implementations
+
+## Testing
+
+- Tested in isolated `test-dir/` directory
+- Verified full workflow: init developer → create task → manage context → archive
+
+## Next Steps
+
+- Created `01-30-refactor-core-structure` task for next phase
+- Will refactor core with adapters pattern and zod types
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `75e8c0c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+## Session 20: Brainstorming: Core 重构架构设计
+
+**Date**: 2026-01-30
+**Task**: Brainstorming: Core 重构架构设计
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 概要
+
+完成了 `src/core/` 重构的架构设计 brainstorming，产出两个 task PRD：
+
+1. **01-30-refactor-core-structure** - 核心模块重构
+2. **01-30-multi-agent-pipeline-refactor** - Multi-Agent Pipeline 重构
+
+## 关键设计决策
+
+| 决策 | 选择 | 原因 |
+|------|------|------|
+| I/O 分离 | ❌ 不采用 | CLI 工具 I/O 是业务逻辑，强制分离增加复杂性 |
+| 平台适配 | `core/platforms/` 独立模块 | 平台差异不仅是 context，还有 hooks、模板等 |
+| Git 操作 | `execa` | simple-git 对 worktree 没封装，execa 是业界标准 |
+| YAML 解析 | `yaml` 包 | ESM + TypeScript 友好 |
+| Pipeline 启动 | `PlatformAdapter.launchAgent()` | 不硬编码 `claude` 命令，支持多平台扩展 |
+
+## 目标目录结构
+
+```
+src/core/
+├── platforms/           # 平台适配 (Claude/OpenCode/Cursor)
+│   ├── types.ts         # PlatformAdapter 接口
+│   └── claude/          # Claude 实现
+├── task/                # Task CRUD + context
+├── developer/           # 开发者管理
+├── session/             # Session/Journal 管理 (新增)
+├── git/                 # Git + worktree + config
+└── paths.ts             # 路径工具
+```
+
+## 新增依赖
+
+```bash
+pnpm add zod execa yaml
+```
+
+## 任务拆分
+
+- **refactor-core-structure** (P1): 核心模块重构，包含 session 模块
+- **multi-agent-pipeline-refactor** (P2): Agent Registry, Phase, Pipeline 命令
+
+两个任务有依赖关系：refactor 完成后需要检查更新 pipeline PRD。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f0e1a2a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
