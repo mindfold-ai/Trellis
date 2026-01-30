@@ -1354,6 +1354,31 @@ export async function update(options: UpdateOptions): Promise<void> {
     );
   }
 
+  // Show breaking change warning before confirm
+  if (cliVsProject > 0 && projectVersion !== "unknown") {
+    const preConfirmMetadata = getMigrationMetadata(projectVersion, cliVersion);
+    if (preConfirmMetadata.breaking) {
+      console.log(chalk.cyan("═".repeat(60)));
+      console.log(
+        chalk.bgRed.white.bold(" ⚠️  BREAKING CHANGES ") +
+          chalk.red.bold(" Review the changes above carefully!")
+      );
+      if (preConfirmMetadata.changelog.length > 0) {
+        console.log("");
+        console.log(chalk.white(preConfirmMetadata.changelog[0]));
+      }
+      if (preConfirmMetadata.recommendMigrate && !options.migrate) {
+        console.log("");
+        console.log(
+          chalk.bgGreen.black.bold(" 💡 RECOMMENDED ") +
+            chalk.green.bold(" Run with --migrate to complete the migration")
+        );
+      }
+      console.log(chalk.cyan("═".repeat(60)));
+      console.log("");
+    }
+  }
+
   // Dry run mode
   if (options.dryRun) {
     console.log(chalk.gray("[Dry run] No changes made."));
