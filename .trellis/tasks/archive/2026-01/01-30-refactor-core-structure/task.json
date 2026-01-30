@@ -16,10 +16,22 @@
   "worktree_path": null,
   "current_phase": 4,
   "next_action": [
-    {"phase": 1, "action": "implement"},
-    {"phase": 2, "action": "check"},
-    {"phase": 3, "action": "finish"},
-    {"phase": 4, "action": "create-pr"}
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
   ],
   "commit": "2daa22f,1b27f5c,5e829a2,7a5a170,33c1a52,5bc12c7",
   "pr_url": null,
