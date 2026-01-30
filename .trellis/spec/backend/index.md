@@ -91,6 +91,17 @@ const task = readTask(path.join(agent.worktree_path, agent.task_dir));
 ```
 See [Quality Guidelines](./quality-guidelines.md#worktree-data-synchronization-pattern) for details.
 
+### Claude Code Integration
+```typescript
+// Agent name only (not full path)
+claude --agent dispatch  // ✓
+claude --agent .claude/agents/dispatch.md  // ✗
+
+// Per-developer registry
+.trellis/workspace/{developer}/.agents/registry.json
+```
+See [Quality Guidelines](./quality-guidelines.md#claude-code-integration-patterns) for details.
+
 ### Path Management
 ```typescript
 // Always use centralized path functions

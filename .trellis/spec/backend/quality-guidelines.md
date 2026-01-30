@@ -499,6 +499,94 @@ await adapter.launchAgent({ agentType: "dispatch", ... });
 
 ---
 
+## Claude Code Integration Patterns
+
+### Agent File Naming
+
+Claude Code's `--agent` flag accepts just the agent name, not the full path:
+
+```bash
+# Good: Just the agent name
+claude --agent dispatch
+
+# Bad: Full path (not needed)
+claude --agent .claude/agents/dispatch.md
+```
+
+The agent file should exist at `.claude/agents/<name>.md`.
+
+### Per-Developer Registry
+
+Agent registry is stored per-developer to avoid conflicts in multi-developer scenarios:
+
+```
+.trellis/workspace/{developer}/.agents/
+├── registry.json    # Agent registry (id, pid, worktree_path, etc.)
+└── current-task     # Current task for this developer
+```
+
+**Why per-developer?**
+- Multiple developers can run pipelines simultaneously
+- Each developer's agents don't interfere with others
+- Registry is gitignored (not committed)
+
+### Background Process Management
+
+When launching agents in background mode:
+
+```typescript
+// 1. Create runner script (for claude --print compatibility)
+const runnerScript = createRunnerScript({
+  workDir,
+  agentType,
+  prompt,
+  logFile,
+});
+
+// 2. Spawn detached process
+const subprocess = spawn("bash", [runnerScript], {
+  detached: true,
+  stdio: ["ignore", logFd, logFd],
+  cwd: workDir,
+});
+
+// 3. Unref to allow parent to exit
+subprocess.unref();
+
+// 4. Store session ID for resume capability
+fs.writeFileSync(sessionIdFile, sessionId);
+```
+
+**Key Points:**
+- Use `detached: true` for background processes
+- Redirect stdio to log file
+- Call `unref()` so parent can exit
+- Store session ID for `claude --resume`
+
+### Session Resume Pattern
+
+Store session ID to enable resuming interrupted agents:
+
+```typescript
+// Save session ID when starting
+const sessionId = randomUUID();
+fs.writeFileSync(path.join(workDir, ".session-id"), sessionId);
+
+// Read for resume command
+export function getSessionId(workDir: string): string | null {
+  const sessionIdFile = path.join(workDir, ".session-id");
+  if (!fs.existsSync(sessionIdFile)) return null;
+  return fs.readFileSync(sessionIdFile, "utf-8").trim();
+}
+
+// Generate resume command
+export function getResumeCommand(workDir: string, sessionId: string): string {
+  return `cd ${workDir} && claude --resume ${sessionId}`;
+}
+```
+
+---
+
 ## Large File Refactoring
 
 ### When to Split
