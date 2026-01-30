@@ -1,0 +1,9 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/shared/index.md", "reason": "Shared coding standards"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/backend/api-module.md", "reason": "API module conventions"}
+{"file": ".trellis/spec/backend/quality.md", "reason": "Code quality requirements"}
+{"file": "src/cli/index.ts", "reason": "Current CLI implementation"}
+{"file": "src/commands/init.ts", "reason": "Existing init command pattern"}
+{"file": ".trellis/scripts/task.sh", "reason": "Shell script to replace"}
+{"file": ".trellis/scripts/common/paths.sh", "reason": "Path utilities to convert"}

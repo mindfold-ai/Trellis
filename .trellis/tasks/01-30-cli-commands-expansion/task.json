@@ -1,0 +1,29 @@
+{
+  "id": "cli-commands-expansion",
+  "name": "cli-commands-expansion",
+  "title": "CLI 命令扩展 - 收敛 Shell 脚本到 TypeScript CLI",
+  "description": "",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "cli",
+  "priority": "P1",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-01-30",
+  "completedAt": null,
+  "branch": "refactor/shell-to-cli",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}
