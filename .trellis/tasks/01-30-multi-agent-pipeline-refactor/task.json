@@ -1,0 +1,29 @@
+{
+  "id": "multi-agent-pipeline-refactor",
+  "name": "multi-agent-pipeline-refactor",
+  "title": "Multi-Agent Pipeline 重构 - Agent Registry, Phase, Pipeline 脚本",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-01-30",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}
