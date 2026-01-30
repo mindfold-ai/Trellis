@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 23
+- **Total Sessions**: 24
 - **Last Active**: 2026-01-30
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1064 | Active |
+| `journal-1.md` | ~1075 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 24 | 2026-01-30 | CLI 命令扩展完成 - Session/Bootstrap/测试/归档 | `ee16e5d,5ae2474,3451486` |
 | 23 | 2026-01-30 | CLI Commands Expansion - Session & Bootstrap | `ee16e5d` |
 | 22 | 2026-01-30 | Task Management: Complete refactor, Update dependencies, Create new task | `ee16e5d` |
 | 21 | 2026-01-30 | Shell-to-CLI Migration: Core Module Refactor | `ee16e5d` |
@@ -38,7 +39,6 @@
 | 17 | 2026-01-29 | Multi-Agent Pipeline 研究与修复 | `ee16e5d` |
 | 16 | 2026-01-25 | Bugfix and Readme Update | `ee16e5d` |
 | 15 | 2026-01-25 | Agent Session Resume Support | `ee16e5d` |
-| 14 | 2026-01-22 | Complete naming consistency fixes for 0.2.0 | `ee16e5d` |
 <!-- @@@/auto:session-history -->
 
 ---

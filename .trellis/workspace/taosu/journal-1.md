@@ -1061,3 +1061,14 @@ Marked 01-30-refactor-core-structure as completed. Updated 01-30-multi-agent-pip
 
 ---
 
+## Session 24: CLI 命令扩展完成 - Session/Bootstrap/测试/归档
+
+**Date**: 2026-01-30
+**Commit**: `ee16e5d,5ae2474,3451486`
+
+### Summary
+
+实现 trellis session 和 task bootstrap 命令，全面测试所有 CLI 命令，归档完成的任务
+
+---
+
