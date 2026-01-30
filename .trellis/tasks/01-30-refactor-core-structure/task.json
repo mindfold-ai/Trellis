@@ -3,39 +3,40 @@
   "name": "refactor-core-structure",
   "title": "重构 src/core 目录结构 - 引入 adapters 分层和 zod 类型验证",
   "description": "",
-  "status": "planning",
+  "status": "completed",
   "dev_type": "backend",
   "scope": null,
   "priority": "P1",
   "creator": "taosu",
   "assignee": "taosu",
   "createdAt": "2026-01-30",
-  "completedAt": null,
-  "branch": null,
+  "completedAt": "2026-01-30",
+  "branch": "refactor/shell-to-cli",
   "base_branch": null,
   "worktree_path": null,
-  "current_phase": 1,
+  "current_phase": 4,
   "next_action": [
-    {
-      "phase": 1,
-      "action": "implement"
-    },
-    {
-      "phase": 2,
-      "action": "check"
-    },
-    {
-      "phase": 3,
-      "action": "finish"
-    },
-    {
-      "phase": 4,
-      "action": "create-pr"
-    }
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
   ],
-  "commit": null,
+  "commit": "2daa22f,1b27f5c,5e829a2,7a5a170,33c1a52,5bc12c7",
   "pr_url": null,
-  "subtasks": [],
-  "relatedFiles": [],
-  "notes": ""
+  "subtasks": [
+    "Split task.ts into task/ module",
+    "Split developer.ts into developer/ module",
+    "Split git.ts into git/ module",
+    "Add session/ module",
+    "Add platforms/ module with adapter pattern",
+    "Update spec documentation"
+  ],
+  "relatedFiles": [
+    "src/core/task/",
+    "src/core/developer/",
+    "src/core/git/",
+    "src/core/session/",
+    "src/core/platforms/"
+  ],
+  "notes": "Completed. Core modules now organized by domain with Zod validation."
 }

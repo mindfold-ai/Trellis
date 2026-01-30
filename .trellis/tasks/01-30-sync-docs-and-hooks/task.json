@@ -1,0 +1,47 @@
+{
+  "id": "sync-docs-and-hooks",
+  "name": "sync-docs-and-hooks",
+  "title": "更新 Slash Commands, Workflow 文档和 Hooks - 同步 CLI 迁移变更",
+  "description": "Shell-to-CLI 迁移后，更新所有引用旧 shell 脚本的文档和 hooks",
+  "status": "planning",
+  "dev_type": "backend",
+  "scope": null,
+  "priority": "P1",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-01-30",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [
+    "Audit: List all files referencing shell scripts",
+    "Update .trellis/workflow.md",
+    "Update .claude/commands/*.md",
+    "Update .claude/hooks/*.py (if needed)",
+    "Update .claude/agents/*.md",
+    "Update src/templates/trellis/workflow.md",
+    "Update src/templates/claude/commands/*.md",
+    "Update src/templates/claude/hooks/*.py (if needed)",
+    "Update src/templates/claude/agents/*.md",
+    "Verify: pnpm build && trellis init test"
+  ],
+  "relatedFiles": [
+    ".trellis/workflow.md",
+    ".claude/commands/",
+    ".claude/hooks/",
+    ".claude/agents/",
+    "src/templates/trellis/",
+    "src/templates/claude/"
+  ],
+  "notes": "Depends on: 01-30-refactor-core-structure (completed)"
+}
