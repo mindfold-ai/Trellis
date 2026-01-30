@@ -1072,3 +1072,71 @@ Marked 01-30-refactor-core-structure as completed. Updated 01-30-multi-agent-pip
 
 ---
 
+
+## Session 25: Customize Slash Commands & Record Progress
+
+**Date**: 2026-01-30
+**Task**: Customize Slash Commands & Record Progress
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Customized all 7 Trellis slash command files from generic templates to project-specific versions, and committed all outstanding work files.
+
+## Changes
+
+### Slash Commands Customized (`docs(commands)`)
+
+| File | Customization |
+|------|---------------|
+| `before-backend-dev.md` | Added pnpm commands, Trellis-specific guidelines |
+| `check-backend.md` | Added `pnpm lint/typecheck/build`, worktree sync checks |
+| `check-frontend.md` | Marked N/A - pure CLI project |
+| `before-frontend-dev.md` | Marked N/A - redirects to backend |
+| `check-cross-layer.md` | Added Trellis layer structure, worktree/dogfooding dimensions |
+| `break-loop.md` | Added Trellis bug examples (worktree sync, Claude agent flag) |
+| `update-spec.md` | Added Trellis spec structure, knowledge categories |
+
+### Spec Updates (`docs(spec)`)
+
+- Added "Claude Code Integration Patterns" to `quality-guidelines.md`
+  - Agent naming convention (name only, not path)
+  - Per-developer registry pattern
+  - Background process management
+
+### Task Management (`chore(tasks)`)
+
+- Updated `multi-agent-pipeline-refactor` progress (phase 2, expanded subtasks)
+- Added agent session logs (implement.jsonl, check.jsonl, debug.jsonl)
+- Created new `hooks-migration` task
+
+### Workspace (`chore(workspace)`)
+
+- Updated developer journal and index
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e48344e` | (see git log) |
+| `651042b` | (see git log) |
+| `ed02638` | (see git log) |
+| `21d7cd1` | (see git log) |
+| `f6fe288` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
