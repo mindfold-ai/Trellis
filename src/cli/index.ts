@@ -5,6 +5,20 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { init } from "../commands/init.js";
 import { update } from "../commands/update.js";
+import { context } from "../commands/context.js";
+import { developerInit, developerShow, developerGet } from "../commands/developer.js";
+import {
+  taskCreate,
+  taskList,
+  taskStart,
+  taskFinish,
+  taskArchive,
+  taskListArchive,
+  taskInitContext,
+  taskAddContext,
+  taskValidate,
+  taskListContext,
+} from "../commands/task/index.js";
 import { DIR_NAMES } from "../constants/paths.js";
 
 interface PackageJson {
@@ -139,6 +153,157 @@ program
       );
       process.exit(1);
     }
+  });
+
+// =============================================================================
+// Context Command
+// =============================================================================
+
+program
+  .command("context")
+  .description("Display session context for AI agents")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (options: Record<string, unknown>) => {
+    await context({ json: options.json as boolean });
+  });
+
+// =============================================================================
+// Developer Commands
+// =============================================================================
+
+const developerCmd = program
+  .command("developer")
+  .description("Manage developer identity");
+
+developerCmd
+  .command("init <name>")
+  .description("Initialize developer identity")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (name: string, options: Record<string, unknown>) => {
+    await developerInit(name, { json: options.json as boolean });
+  });
+
+developerCmd
+  .command("show")
+  .description("Show current developer info")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (options: Record<string, unknown>) => {
+    await developerShow({ json: options.json as boolean });
+  });
+
+developerCmd
+  .command("get")
+  .description("Get developer name (for scripting)")
+  .action(async () => {
+    await developerGet();
+  });
+
+// =============================================================================
+// Task Commands
+// =============================================================================
+
+const taskCmd = program.command("task").description("Manage tasks");
+
+taskCmd
+  .command("create <title>")
+  .description("Create a new task")
+  .option("-s, --slug <name>", "Custom slug for task directory")
+  .option("-a, --assignee <developer>", "Assign to developer")
+  .option("-p, --priority <level>", "Priority (P0-P3)", "P2")
+  .option("-d, --description <text>", "Task description")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (title: string, options: Record<string, unknown>) => {
+    await taskCreate(title, {
+      slug: options.slug as string | undefined,
+      assignee: options.assignee as string | undefined,
+      priority: options.priority as string | undefined,
+      description: options.description as string | undefined,
+      json: options.json as boolean,
+    });
+  });
+
+taskCmd
+  .command("list")
+  .description("List active tasks")
+  .option("-m, --mine", "Show only tasks assigned to me")
+  .option("-s, --status <status>", "Filter by status")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (options: Record<string, unknown>) => {
+    await taskList({
+      mine: options.mine as boolean,
+      status: options.status as string | undefined,
+      json: options.json as boolean,
+    });
+  });
+
+taskCmd
+  .command("start <task-dir>")
+  .description("Set a task as the current task")
+  .action(async (taskDir: string) => {
+    await taskStart(taskDir);
+  });
+
+taskCmd
+  .command("finish")
+  .description("Clear the current task")
+  .action(async () => {
+    await taskFinish();
+  });
+
+taskCmd
+  .command("archive <task-name>")
+  .description("Archive a completed task")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (taskName: string, options: Record<string, unknown>) => {
+    await taskArchive(taskName, { json: options.json as boolean });
+  });
+
+taskCmd
+  .command("list-archive [month]")
+  .description("List archived tasks")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (month: string | undefined, options: Record<string, unknown>) => {
+    await taskListArchive(month, { json: options.json as boolean });
+  });
+
+// Task context subcommands
+const taskContextCmd = taskCmd
+  .command("context")
+  .description("Manage task context files");
+
+taskContextCmd
+  .command("init <task-dir> <dev-type>")
+  .description("Initialize context files (implement.jsonl, check.jsonl, debug.jsonl)")
+  .option("-j, --json", "Output in JSON format")
+  .action(
+    async (taskDir: string, devType: string, options: Record<string, unknown>) => {
+      await taskInitContext(taskDir, devType, { json: options.json as boolean });
+    },
+  );
+
+taskContextCmd
+  .command("add <task-dir> <jsonl-file> <path> [reason]")
+  .description("Add a context entry to a JSONL file")
+  .action(
+    async (taskDir: string, jsonlFile: string, filePath: string, reason?: string) => {
+      await taskAddContext(taskDir, jsonlFile, filePath, reason);
+    },
+  );
+
+taskContextCmd
+  .command("validate <task-dir>")
+  .description("Validate context files")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (taskDir: string, options: Record<string, unknown>) => {
+    await taskValidate(taskDir, { json: options.json as boolean });
+  });
+
+taskContextCmd
+  .command("list <task-dir>")
+  .description("List context entries")
+  .option("-j, --json", "Output in JSON format")
+  .action(async (taskDir: string, options: Record<string, unknown>) => {
+    await taskListContext(taskDir, { json: options.json as boolean });
   });
 
 program.parse();
