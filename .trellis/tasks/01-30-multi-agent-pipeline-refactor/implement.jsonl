@@ -1,0 +1,11 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/shared/index.md", "reason": "Shared coding standards"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/backend/api-module.md", "reason": "API module conventions"}
+{"file": ".trellis/spec/backend/quality.md", "reason": "Code quality requirements"}
+{"file": ".trellis/scripts/common/registry.sh", "reason": "Agent registry reference"}
+{"file": ".trellis/scripts/common/phase.sh", "reason": "Phase management reference"}
+{"file": ".trellis/scripts/common/worktree.sh", "reason": "Worktree management reference"}
+{"file": ".trellis/scripts/multi-agent/start.sh", "reason": "Start pipeline reference"}
+{"file": "src/core/platforms/claude/index.ts", "reason": "Existing Claude adapter"}
+{"file": "src/core/platforms/types.ts", "reason": "Platform adapter types"}

@@ -14,21 +14,44 @@
   "branch": null,
   "base_branch": null,
   "worktree_path": null,
-  "current_phase": 0,
+  "current_phase": 2,
   "next_action": [
-    {"phase": 1, "action": "implement"},
-    {"phase": 2, "action": "check"},
-    {"phase": 3, "action": "finish"},
-    {"phase": 4, "action": "create-pr"}
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
   ],
   "commit": null,
   "pr_url": null,
   "subtasks": [
-    "core/pipeline/schemas.ts - Agent, Phase schemas",
-    "core/pipeline/registry.ts - Agent Registry",
-    "core/pipeline/phase.ts - Phase management",
-    "commands/pipeline/* - CLI commands"
+    "Phase 1: core/pipeline/schemas.ts - Zod schemas",
+    "Phase 1: core/pipeline/state.ts - 统一状态管理",
+    "Phase 1: core/pipeline/worktree.ts - Worktree 管理",
+    "Phase 1: core/pipeline/orchestrator.ts - 编排逻辑",
+    "Phase 2: core/platforms/claude/launcher.ts - Agent 启动",
+    "Phase 3: core/task/queue.ts - 任务队列筛选",
+    "Phase 4: cli/commands/pipeline/* - CLI 命令",
+    "Phase 5: 清理 shell 脚本到 _archive/",
+    "Phase 6: 验证 + 更新文档"
   ],
-  "relatedFiles": [],
-  "notes": "Prerequisite task 01-30-refactor-core-structure COMPLETED. Ready to start. Uses core/platforms/ adapter for multi-IDE support."
+  "relatedFiles": [
+    ".trellis/scripts/multi-agent/",
+    ".trellis/scripts/common/registry.sh",
+    ".trellis/scripts/common/phase.sh",
+    ".trellis/scripts/common/worktree.sh",
+    "src/core/platforms/claude/"
+  ],
+  "notes": "Brainstorm completed 2026-01-30. Key decisions: 一次性迁移, per-developer registry, hooks 暂不迁移, 模板暂不动."
 }

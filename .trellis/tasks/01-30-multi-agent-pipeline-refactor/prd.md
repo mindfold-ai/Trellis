@@ -11,9 +11,82 @@
 - **前置任务**: `01-30-refactor-core-structure` 必须先完成
 - **依赖模块**: `core/task/`, `core/git/`, `core/developer/`, `core/session/`, `core/platforms/`
 
-## 设计决策
+## 核心设计决策 (Brainstorm 2026-01-30)
 
-### Pipeline 通过 Platform Adapter 启动 Agent
+### 1. 迁移策略：一次性迁移
+
+- **不做 wrapper**：CLI 不调用 shell，直接 TypeScript 实现所有逻辑
+- **本项目 shell 脚本**：迁移完成后移到 `.trellis/scripts/_archive/`
+- **模板 shell 脚本**：暂不动，用户项目继续用 shell，等 CLI 稳定后再考虑
+
+### 2. 架构：按 Agent 生命周期分模块
+
+```
+src/core/pipeline/
+├── schemas.ts       # AgentSchema, PhaseSchema, RegistrySchema (Zod)
+├── state.ts         # 统一状态管理 (registry + phase + currentTask)
+├── orchestrator.ts  # 编排逻辑 (plan → start → monitor → cleanup)
+└── worktree.ts      # Git worktree 管理 (create, copy env, hooks)
+
+src/core/platforms/claude/
+└── launcher.ts      # Claude 专属启动逻辑 (现有 adapter 扩展)
+```
+
+**为什么这样分**：
+- `state.ts` 统一管理避免 registry/phase/task 状态分散
+- `orchestrator.ts` 封装流程，CLI 命令只是薄薄一层
+- launcher 放在 platform adapter 里，天然支持扩展
+
+### 3. Registry 位置：保持 per-developer
+
+```
+.trellis/workspace/{developer}/.agents/registry.json
+```
+
+- 沿用现有设计，每个开发者管自己的 agents
+- TypeScript 重写读写逻辑，位置不变
+- 隔离性好，多开发者并行工作不冲突
+
+### 4. Hooks：暂不迁移
+
+- `inject-subagent-context.py` 和 `ralph-loop.py` **保持 Python**
+- 这次只迁移 pipeline 脚本，hooks 独立运行
+- **后续单独建 task 迁移 hooks 到 TypeScript**
+
+### 5. 平台支持：Claude Code 优先
+
+- 先只支持 Claude Code
+- 架构通过 PlatformAdapter 预留扩展
+- OpenCode 等平台后续实现 adapter 即可
+
+### 6. start 命令的分层拆分
+
+`start.sh` 是最复杂的脚本，拆分为：
+
+```typescript
+// orchestrator.ts
+async function startPipeline(taskDir: string) {
+  const task = await readTask(taskDir);
+
+  // 1-4: worktree 管理
+  const worktreePath = await worktree.create(task.branch, task.base_branch);
+  await worktree.copyEnvFiles(worktreePath);
+  await worktree.runPostCreateHooks(worktreePath);
+
+  // 5: 设置当前任务
+  await state.setCurrentTask(worktreePath, taskDir);
+
+  // 6: 启动 agent (通过 platform adapter)
+  const agent = await launcher.launchDispatch(worktreePath, taskDir);
+
+  // 7: 注册
+  await state.registerAgent(agent);
+}
+```
+
+---
+
+## Pipeline 通过 Platform Adapter 启动 Agent
 
 不同平台启动 Agent 的方式不同：
 
@@ -88,9 +161,15 @@ src/
 ├── core/
 │   ├── pipeline/                      # Pipeline 模块 (新增)
 │   │   ├── index.ts                   # 统一导出
-│   │   ├── registry.ts                # Agent Registry 管理
-│   │   ├── phase.ts                   # Phase 跟踪
-│   │   └── schemas.ts                 # Agent, Phase schemas
+│   │   ├── schemas.ts                 # AgentSchema, PhaseSchema, RegistrySchema
+│   │   ├── state.ts                   # 统一状态管理 (registry + phase + currentTask)
+│   │   ├── orchestrator.ts            # 编排逻辑 (组合调用各模块)
+│   │   └── worktree.ts                # Git worktree 管理
+│   │
+│   ├── platforms/claude/
+│   │   ├── index.ts                   # 现有 adapter
+│   │   ├── context.ts                 # 现有 context generator
+│   │   └── launcher.ts                # Agent 启动逻辑 (新增)
 │   │
 │   ├── task/
 │   │   ├── ...                        # 现有文件
@@ -99,7 +178,7 @@ src/
 │   │
 │   └── ...                            # 其他现有模块
 │
-├── commands/
+├── cli/commands/
 │   ├── pipeline/                      # Pipeline 命令 (新增)
 │   │   ├── index.ts                   # pipeline 子命令入口
 │   │   ├── plan.ts                    # trellis pipeline plan
@@ -113,125 +192,163 @@ src/
 
 ## 技术要求
 
-### 1. Agent Registry
+### 1. Zod Schemas
 
 ```typescript
 // core/pipeline/schemas.ts
 import { z } from "zod";
 
 export const AgentSchema = z.object({
-  id: z.string(),
-  task_dir: z.string(),
-  worktree_path: z.string(),
-  branch: z.string(),
-  pid: z.number().optional(),
-  status: z.enum(["running", "completed", "failed"]),
-  started_at: z.string(),
+  id: z.string(),                              // UUID
+  taskDir: z.string(),                         // 任务目录路径
+  worktreePath: z.string(),                    // Worktree 路径
+  branch: z.string(),                          // 分支名
+  pid: z.number().optional(),                  // 进程 ID
+  status: z.enum(["running", "stopped", "failed"]),
+  startedAt: z.string(),                       // ISO timestamp
+});
+
+export const RegistrySchema = z.object({
+  agents: z.array(AgentSchema),
+  version: z.number(),                         // 用于并发写保护
+});
+
+export const PhaseActionSchema = z.object({
+  phase: z.number(),
+  action: z.string(),                          // "implement" | "check" | "finish" | "create-pr"
 });
 
 export type Agent = z.infer<typeof AgentSchema>;
+export type Registry = z.infer<typeof RegistrySchema>;
+export type PhaseAction = z.infer<typeof PhaseActionSchema>;
 ```
 
+### 2. 统一状态管理
+
 ```typescript
-// core/pipeline/registry.ts
+// core/pipeline/state.ts
+
+// Registry 操作 (存储在 workspace/{dev}/.agents/registry.json)
 export function addAgent(agent: Agent, repoRoot?: string): void;
 export function getAgentById(id: string, repoRoot?: string): Agent | null;
-export function getAgentByWorktree(path: string, repoRoot?: string): Agent | null;
+export function getAgentByTaskDir(taskDir: string, repoRoot?: string): Agent | null;
 export function removeAgent(id: string, repoRoot?: string): void;
 export function listAgents(repoRoot?: string): Agent[];
-```
+export function updateAgentStatus(id: string, status: Agent["status"], repoRoot?: string): void;
 
-### 2. Phase 管理
-
-```typescript
-// core/pipeline/phase.ts
+// Phase 操作 (存储在 task.json 的 current_phase 字段)
 export function getCurrentPhase(taskDir: string): number;
 export function getTotalPhases(taskDir: string): number;
-export function getPhaseAction(taskDir: string, phase: number): string;
+export function getPhaseAction(taskDir: string, phase: number): string | null;
 export function setPhase(taskDir: string, phase: number): void;
 export function advancePhase(taskDir: string): number;
+
+// CurrentTask 操作 (存储在 .trellis/.current-task)
+export function setCurrentTask(repoRoot: string, taskDir: string): void;
+export function getCurrentTask(repoRoot: string): string | null;
+export function clearCurrentTask(repoRoot: string): void;
 ```
 
-### 3. Pipeline 命令
-
-每个命令应该：
-- **通过 `PlatformAdapter` 启动 agent**（不直接调用 `claude` 命令）
-- 使用 `core/pipeline/` 模块管理状态 (registry, phase)
-- 使用 `core/git/worktree.ts` 管理 worktree
-- 检测平台能力，不支持时优雅提示
-- 提供清晰的输出和错误处理
+### 3. Worktree 管理
 
 ```typescript
-// 示例：commands/pipeline/start.ts
-import { getPlatformAdapter } from '../../core/platforms/index.js';
-import { createWorktree } from '../../core/git/worktree.js';
-import { addAgent } from '../../core/pipeline/registry.js';
+// core/pipeline/schemas.ts (追加)
+export const WorktreeOptionsSchema = z.object({
+  branch: z.string(),
+  baseBranch: z.string(),
+  repoRoot: z.string().optional(),
+});
 
-export async function start(taskDir: string, options: StartOptions) {
-  const adapter = getPlatformAdapter();
+export const WorktreeConfigSchema = z.object({
+  post_create: z.array(z.string()).optional(),  // shell commands to run after create
+  env_files: z.array(z.string()).optional(),     // extra env files to copy
+});
 
-  // 1. 检测平台能力
-  if (!adapter.supportsMultiAgent()) {
-    throw new Error(`${adapter.platform} does not support multi-agent pipeline`);
-  }
+export type WorktreeOptions = z.infer<typeof WorktreeOptionsSchema>;
+export type WorktreeConfig = z.infer<typeof WorktreeConfigSchema>;
 
-  // 2. 创建 worktree
-  const worktreePath = await createWorktree(repoRoot, branchName);
+// core/pipeline/worktree.ts
+export async function createWorktree(options: WorktreeOptions): Promise<string>;
+export async function removeWorktree(worktreePath: string): Promise<void>;
+export async function copyEnvFiles(worktreePath: string, repoRoot: string): Promise<void>;
+export async function runPostCreateHooks(worktreePath: string): Promise<void>;
+export function getWorktreeConfig(worktreePath: string): WorktreeConfig | null;
+```
 
-  // 3. 通过 adapter 启动 agent
-  const process = await adapter.launchAgent({
-    agentType: 'dispatch',
-    workDir: worktreePath,
-    taskDir,
-    background: true,
-  });
+### 4. 编排器
 
-  // 4. 注册 agent
-  addAgent({
-    id: process.sessionId,
-    task_dir: taskDir,
-    worktree_path: worktreePath,
-    pid: process.pid,
-    // ...
-  });
-}
+```typescript
+// core/pipeline/schemas.ts (追加)
+export const StartPipelineOptionsSchema = z.object({
+  taskDir: z.string(),
+  repoRoot: z.string().optional(),
+  verbose: z.boolean().optional(),
+});
+
+export const StartPipelineResultSchema = z.object({
+  agent: AgentSchema,
+  worktreePath: z.string(),
+});
+
+export type StartPipelineOptions = z.infer<typeof StartPipelineOptionsSchema>;
+export type StartPipelineResult = z.infer<typeof StartPipelineResultSchema>;
+
+// core/pipeline/orchestrator.ts
+export async function startPipeline(options: StartPipelineOptions): Promise<StartPipelineResult>;
+export async function stopPipeline(agentId: string, repoRoot?: string): Promise<void>;
+export async function cleanupPipeline(agentId: string, archive?: boolean, repoRoot?: string): Promise<void>;
 ```
 
 ## 实施步骤
 
 ### Phase 1: Core Pipeline 模块
-- [ ] `core/pipeline/schemas.ts` - Agent, Phase schemas
-- [ ] `core/pipeline/registry.ts` - Agent Registry
-- [ ] `core/pipeline/phase.ts` - Phase 管理
+- [ ] `core/pipeline/schemas.ts` - AgentSchema, RegistrySchema, PhaseActionSchema
+- [ ] `core/pipeline/state.ts` - 统一状态管理 (registry + phase + currentTask)
+- [ ] `core/pipeline/worktree.ts` - Worktree 创建、清理、env 复制、hooks
+- [ ] `core/pipeline/orchestrator.ts` - 编排逻辑
 - [ ] `core/pipeline/index.ts` - 统一导出
 
-### Phase 2: Task 扩展
-- [ ] `core/task/queue.ts` - 任务队列筛选
+### Phase 2: Platform Launcher
+- [ ] `core/platforms/claude/launcher.ts` - Claude agent 启动逻辑
+- [ ] 更新 `core/platforms/claude/index.ts` - 导出 launcher
+
+### Phase 3: Task 扩展
+- [ ] `core/task/queue.ts` - 任务队列筛选 (按 status/assignee)
 - [ ] `core/task/utils.ts` - 任务工具函数
 
-### Phase 3: Pipeline 命令
-- [ ] `commands/pipeline/index.ts` - 子命令入口
-- [ ] `commands/pipeline/plan.ts`
-- [ ] `commands/pipeline/start.ts`
-- [ ] `commands/pipeline/status.ts`
-- [ ] `commands/pipeline/cleanup.ts`
-- [ ] `commands/pipeline/create-pr.ts`
+### Phase 4: Pipeline CLI 命令
+- [ ] `cli/commands/pipeline/index.ts` - 子命令入口
+- [ ] `cli/commands/pipeline/plan.ts` - 启动 Plan Agent
+- [ ] `cli/commands/pipeline/start.ts` - 创建 worktree + 启动 Dispatch
+- [ ] `cli/commands/pipeline/status.ts` - 查看 agent 状态
+- [ ] `cli/commands/pipeline/cleanup.ts` - 清理 worktree + 归档
+- [ ] `cli/commands/pipeline/create-pr.ts` - 创建 PR
 
-### Phase 4: Init 扩展
-- [ ] `commands/init.ts` - 添加 `--bootstrap` 选项
+### Phase 5: 清理
+- [ ] 移动本项目 shell 脚本到 `.trellis/scripts/_archive/`
+- [ ] 更新 workflow.md 文档引用
 
-### Phase 5: 验证
+### Phase 6: 验证
 - [ ] `pnpm build` 编译通过
 - [ ] `pnpm lint` 无警告
 - [ ] 测试所有 pipeline 命令
+- [ ] 验证 hooks 仍正常工作 (Python hooks 不变)
 
 ## 验收标准
 
-- [ ] Agent Registry 功能完整 (CRUD)
-- [ ] Phase 管理功能完整
-- [ ] 所有 pipeline 命令可用
-- [ ] 与现有 bash 脚本行为一致
-- [ ] 编译和 lint 通过
+- [ ] Agent Registry 功能完整 (CRUD + status update)
+- [ ] Phase 管理功能完整 (get/set/advance)
+- [ ] Worktree 管理功能完整 (create/remove/env copy/hooks)
+- [ ] 所有 pipeline 命令可用且行为与 shell 脚本一致
+- [ ] Python hooks 继续正常工作 (不迁移)
+- [ ] 本项目 shell 脚本已移到 `_archive/`
+- [ ] `pnpm build` 和 `pnpm lint` 通过
+
+## 范围外 (Out of Scope)
+
+- **Hooks 迁移**：`inject-subagent-context.py` 和 `ralph-loop.py` 暂不迁移，后续单独 task
+- **模板迁移**：`src/templates/scripts/` 保持 shell，用户项目不受影响
+- **OpenCode 支持**：架构预留，但本次不实现 OpenCodeAdapter
 
 ## 外部依赖
 
