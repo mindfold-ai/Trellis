@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 20
+- **Total Sessions**: 22
 - **Last Active**: 2026-01-30
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~955 | Active |
+| `journal-1.md` | ~1052 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 22 | 2026-01-30 | Task Management: Complete refactor, Update dependencies, Create new task | `c6ed9df` |
+| 21 | 2026-01-30 | Shell-to-CLI Migration: Core Module Refactor | `2daa22f`, `1b27f5c`, `5e829a2`, `7a5a170`, `33c1a52`, `5bc12c7` |
 | 20 | 2026-01-30 | Brainstorming: Core 重构架构设计 | `f0e1a2a` |
 | 19 | 2026-01-30 | Session 18 - CLI Commands Expansion Complete | `75e8c0c` |
 | 18 | 2026-01-30 | Session 18: 创建 CLI 扩展与多平台 IDE 支持任务 | `eb7b47d`, `22d9b57` |

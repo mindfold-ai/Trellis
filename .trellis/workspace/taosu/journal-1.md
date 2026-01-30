@@ -953,3 +953,100 @@ pnpm add zod execa yaml
 ### Next Steps
 
 - None - task complete
+
+## Session 21: Shell-to-CLI Migration: Core Module Refactor
+
+**Date**: 2026-01-30
+**Task**: Shell-to-CLI Migration: Core Module Refactor
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Completed the shell-to-CLI migration for core modules, splitting monolithic files into domain-driven structure with Zod validation.
+
+## Changes
+
+| Category | Description |
+|----------|-------------|
+| Core Refactor | Split task.ts (629 lines) into task/ module (schemas, crud, context) |
+| Core Refactor | Split developer.ts into developer/ module with Zod schemas |
+| Core Refactor | Split git.ts into git/ module (base, worktree, config, types) |
+| New Module | Added session/ module for journal and workspace management |
+| New Module | Added platforms/ module with adapter pattern for multi-IDE support |
+| Dependencies | Added execa@^9.6.1, yaml@^2.8.2 |
+| Template Fix | Synced create-bootstrap.sh with Zod TaskSchema |
+| Spec Docs | Updated quality-guidelines.md, directory-structure.md, error-handling.md |
+| Spec Docs | Simplified shell-conventions.md to multi-agent only |
+| New Guide | Added shell-to-cli-migration-guide.md with pitfalls & decisions |
+
+## Key Patterns Established
+
+1. **Schema-first types**: `z.infer<typeof Schema>` for all domain objects
+2. **Domain-driven modules**: task/, git/, developer/, session/, platforms/
+3. **Nullable returns**: Return `null` for "not found", throw for errors
+4. **Command output**: stdout for data, stderr for messages, --json flag
+
+## Pitfalls Documented
+
+- Zod v4 doesn't export SafeParseReturnType (use type inference)
+- Shell templates must match Zod schemas exactly
+- ESM requires .js extensions in imports
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2daa22f` | (see git log) |
+| `1b27f5c` | (see git log) |
+| `5e829a2` | (see git log) |
+| `7a5a170` | (see git log) |
+| `33c1a52` | (see git log) |
+| `5bc12c7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+## Session 22: Task Management: Complete refactor, Update dependencies, Create new task
+
+**Date**: 2026-01-30
+**Task**: Task Management: Complete refactor, Update dependencies, Create new task
+
+### Summary
+
+Marked 01-30-refactor-core-structure as completed. Updated 01-30-multi-agent-pipeline-refactor with prerequisite note. Created 01-30-sync-docs-and-hooks task for updating slash commands, workflow.md and hooks.
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c6ed9df` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
