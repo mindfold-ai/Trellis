@@ -1,13 +1,28 @@
-Read the frontend development guidelines before starting your development task.
+# Frontend Development - Not Applicable
 
-Execute these steps:
-1. Read `.trellis/spec/frontend/index.md` to understand available guidelines
-2. Based on your task, read the relevant guideline files:
-   - Component work → `.trellis/spec/frontend/component-guidelines.md`
-   - Hook work → `.trellis/spec/frontend/hook-guidelines.md`
-   - State management → `.trellis/spec/frontend/state-management.md`
-   - Type questions → `.trellis/spec/frontend/type-safety.md`
-3. Understand the coding standards and patterns you need to follow
-4. Then proceed with your development plan
+**This project** (`@mindfoldhq/trellis`) is a **pure CLI tool** with no frontend.
 
-This step is **mandatory** before writing any frontend code.
+---
+
+## If You're Looking For
+
+| Need | Use Instead |
+|------|-------------|
+| Development guidelines | `/trellis:before-backend-dev` |
+| Code quality checks | `/trellis:check-backend` |
+| All guidelines | `.trellis/spec/backend/` |
+
+---
+
+## Note for Template Users
+
+If you're using Trellis in a project **with a frontend**, you should:
+
+1. Fill in `.trellis/spec/frontend/` with your frontend guidelines:
+   - `component-guidelines.md` - Component patterns
+   - `hook-guidelines.md` - Custom hooks
+   - `state-management.md` - State patterns
+   - `type-safety.md` - TypeScript usage
+   - `quality-guidelines.md` - Code quality rules
+
+2. Update this file with your frontend-specific pre-development checklist

@@ -2,6 +2,8 @@
 
 When debug is complete, use this command for deep analysis to break the "fix bug -> forget -> repeat" cycle.
 
+**This project**: TypeScript CLI tool (`@mindfoldhq/trellis`)
+
 ---
 
 ## Analysis Framework
@@ -105,3 +107,36 @@ Three levels of insight:
 3. **Philosophical**: How to expand thinking patterns
 
 30 minutes of analysis saves 30 hours of future debugging.
+
+---
+
+## Trellis-Specific Examples
+
+### Example 1: Worktree Data Sync Bug
+
+**Bug**: Pipeline status shows stale task data after agent runs
+
+**Analysis**:
+- **Category**: B - Cross-Layer Contract
+- **Root Cause**: Reading task.json from main repo instead of worktree
+- **Prevention**: Added "Worktree Data Sync Pattern" to `quality-guidelines.md`
+- **Lesson**: Agent works in worktree, so read data from worktree
+
+### Example 2: Claude Agent Flag
+
+**Bug**: `claude --agent .claude/agents/dispatch.md` fails
+
+**Analysis**:
+- **Category**: E - Implicit Assumption
+- **Root Cause**: Assumed full path, but Claude Code only needs name
+- **Fix**: `claude --agent dispatch`
+- **Prevention**: Added to `quality-guidelines.md` → Claude Code Integration
+
+### Common Trellis Bug Categories
+
+| Bug Type | Example | Check |
+|----------|---------|-------|
+| Worktree sync | Only updated one location | Write to both |
+| Module export | New file not visible | Check index.ts |
+| Dogfooding | Works here, breaks in new project | Test fresh init |
+| Platform | Assumed Claude-specific | Use adapter pattern |

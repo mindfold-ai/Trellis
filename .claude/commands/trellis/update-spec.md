@@ -2,6 +2,8 @@
 
 When you learn something valuable (from debugging, implementing, or discussion), use this command to update the relevant spec documents.
 
+**This project**: TypeScript CLI tool (`@mindfoldhq/trellis`)
+
 **Timing**: After completing a task, fixing a bug, or discovering a new pattern
 
 ---
@@ -10,28 +12,31 @@ When you learn something valuable (from debugging, implementing, or discussion),
 
 | Trigger | Example | Target Spec |
 |---------|---------|-------------|
-| **Fixed a bug** | Found a subtle issue with error handling | `backend/error-handling.md` |
-| **Discovered a pattern** | Found a better way to structure code | Relevant guidelines file |
-| **Hit a gotcha** | Learned that X must be done before Y | Relevant spec + "Common Mistakes" section |
-| **Established a convention** | Team agreed on naming pattern | `quality-guidelines.md` |
-| **Cross-layer insight** | Understood how data flows between layers | `guides/cross-layer-thinking-guide.md` |
+| **Fixed a bug** | Worktree/main repo sync issue | `backend/quality-guidelines.md` |
+| **Discovered a pattern** | Platform adapter pattern for multi-IDE | `backend/quality-guidelines.md` |
+| **Hit a gotcha** | Claude `--agent` uses name only, not path | `backend/quality-guidelines.md` |
+| **Established a convention** | Zod-first schema design | `backend/quality-guidelines.md` |
+| **Cross-layer insight** | CLI → Command → Core data flow | `guides/cross-layer-thinking-guide.md` |
+| **New module added** | Pipeline module structure | `backend/directory-structure.md` |
 
 ---
 
-## Spec Structure Overview
+## Trellis Spec Structure
 
 ```
 .trellis/spec/
-├── backend/           # Backend development standards
-│   ├── index.md       # Overview and links
-│   └── *.md           # Topic-specific guidelines
-├── frontend/          # Frontend development standards
-│   ├── index.md       # Overview and links
-│   └── *.md           # Topic-specific guidelines
-└── guides/            # Thinking guides
-    ├── index.md       # Guide index
-    └── *.md           # Topic-specific guides
+├── backend/                    # Backend/CLI development standards
+│   ├── index.md                # Overview and links
+│   ├── quality-guidelines.md   # Code quality, patterns, conventions
+│   └── directory-structure.md  # Module organization
+├── frontend/                   # N/A (pure CLI project)
+│   └── (placeholder files)
+└── guides/                     # Thinking guides
+    ├── index.md                # Guide index
+    └── *.md                    # Topic-specific guides
 ```
+
+**Note**: Trellis is a pure CLI tool. The `frontend/` directory contains placeholder files for template completeness.
 
 ---
 
@@ -211,3 +216,37 @@ The goal is **institutional memory**:
 - What one person learns, everyone benefits from
 - What AI learns in one session, persists to future sessions
 - Mistakes become documented guardrails
+
+---
+
+## Trellis-Specific Knowledge Categories
+
+When updating specs for Trellis, consider these common categories:
+
+| Category | Examples | Target File |
+|----------|----------|-------------|
+| **Worktree Patterns** | Data sync between main/worktree, branch naming | `quality-guidelines.md` |
+| **Pipeline Orchestration** | Agent lifecycle, queue management, status tracking | `quality-guidelines.md` |
+| **Platform Adapters** | Claude Code, Cursor, IDE-specific behavior | `quality-guidelines.md` |
+| **CLI Conventions** | stdout/stderr usage, JSON output, initialization checks | `quality-guidelines.md` |
+| **Module Structure** | New module organization, index.ts exports | `directory-structure.md` |
+| **Dogfooding** | Template changes affecting new projects | `quality-guidelines.md` |
+
+### Common Trellis Patterns to Document
+
+1. **Worktree Data Synchronization**
+   - Always update task.json in BOTH locations
+   - Read from worktree for agent context
+
+2. **Zod-First Schema Design**
+   - Define schema first, derive types via `z.infer`
+   - Use `nullable()` for optional file reads
+
+3. **Claude Code Integration**
+   - `--agent` flag uses name only (not path)
+   - Per-developer agent registry pattern
+   - Background process management
+
+4. **Command Output Conventions**
+   - Data → stdout (for piping)
+   - Messages → stderr (for user)

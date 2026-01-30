@@ -2,17 +2,7 @@
 
 Check if your changes considered all dimensions. Most bugs come from "didn't think of it", not lack of technical skill.
 
-> **Note**: This is a **post-implementation** safety net. Ideally, read the [Pre-Implementation Checklist](.trellis/spec/guides/pre-implementation-checklist.md) **before** writing code.
-
----
-
-## Related Documents
-
-| Document | Purpose | Timing |
-|----------|---------|--------|
-| [Pre-Implementation Checklist](.trellis/spec/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
-| [Code Reuse Thinking Guide](.trellis/spec/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
-| **`/trellis:check-cross-layer`** (this) | Verification check | **After** implementation |
+**This project**: TypeScript CLI tool (`@mindfoldhq/trellis`)
 
 ---
 
@@ -27,108 +17,106 @@ git diff --name-only
 
 ### 2. Select Applicable Check Dimensions
 
-Based on your change type, execute relevant checks below:
+Based on your change type, execute relevant checks below.
 
 ---
 
-## Dimension A: Cross-Layer Data Flow (Required when 3+ layers)
+## Trellis Layer Structure
 
-**Trigger**: Changes involve 3 or more layers
+| Layer | Directory | Responsibility |
+|-------|-----------|----------------|
+| **CLI** | `src/cli/` | Argument parsing, help text |
+| **Commands** | `src/commands/` | Command implementation, user-facing logic |
+| **Core** | `src/core/` | Business logic, domain modules |
+| **Platforms** | `src/core/platforms/` | Platform-specific adapters (Claude, etc.) |
+| **Templates** | `src/templates/` | Template files for `trellis init` |
+| **Dogfooding** | `.claude/`, `.trellis/` | Self-used configs (copied to new projects) |
 
-| Layer | Common Locations |
-|-------|------------------|
-| API/Routes | `routes/`, `api/`, `handlers/`, `controllers/` |
-| Service/Business Logic | `services/`, `lib/`, `core/`, `domain/` |
-| Database/Storage | `db/`, `models/`, `repositories/`, `schema/` |
-| UI/Presentation | `components/`, `views/`, `templates/`, `pages/` |
-| Utility | `utils/`, `helpers/`, `common/` |
+---
+
+## Dimension A: Cross-Layer Data Flow
+
+**Trigger**: Changes involve 2+ layers (e.g., command + core)
 
 **Checklist**:
-- [ ] Read flow: Database -> Service -> API -> UI
-- [ ] Write flow: UI -> API -> Service -> Database
-- [ ] Types/schemas correctly passed between layers?
+- [ ] Types correctly passed between layers?
 - [ ] Errors properly propagated to caller?
-- [ ] Loading/pending states handled at each layer?
+- [ ] Return value matches what caller expects?
 
-**Detailed Guide**: `.trellis/spec/guides/cross-layer-thinking-guide.md`
+**Example flow**:
+```
+CLI (parse args) → Command (validate, format output) → Core (business logic)
+                                                           ↓
+                                              Platforms (Claude-specific)
+```
 
 ---
 
-## Dimension B: Code Reuse (Required when modifying constants/config)
+## Dimension B: Worktree/Main Repo Sync
 
-**Trigger**: 
-- Modifying UI constants (label, icon, color)
-- Modifying any hardcoded value
-- Seeing similar code in multiple places
-- Creating a new utility/helper function
-- Just finished batch modifications across files
+**Trigger**: Changes to pipeline, task, or worktree code
 
 **Checklist**:
-- [ ] Search first: How many places define this value?
+- [ ] Writing task.json? → Update BOTH main repo AND worktree
+- [ ] Reading task data for agent? → Read from WORKTREE (not main repo)
+- [ ] Setting base_branch? → Preserve if already set
+
+**Critical Pattern** (from `quality-guidelines.md`):
+```typescript
+// Write to both
+updateTask(worktreeTaskDir, updates);
+updateTask(mainRepoTaskDir, updates);
+
+// Read from worktree for agent context
+const task = readTask(path.join(agent.worktree_path, agent.task_dir));
+```
+
+---
+
+## Dimension C: Code Reuse
+
+**Trigger**:
+- Modifying constants or config
+- Creating new utility function
+- Just finished batch modifications
+
+**Checklist**:
+- [ ] Search first: Does similar code/utility already exist?
   ```bash
-  # Search in source files (adjust extensions for your project)
-  grep -r "value-to-change" src/
+  grep -r "functionName" src/
   ```
-- [ ] If 2+ places define same value -> Should extract to shared constant
+- [ ] If 2+ places define same value → Extract to shared constant
 - [ ] After modification, all usage sites updated?
-- [ ] If creating utility: Does similar utility already exist?
-
-**Detailed Guide**: `.trellis/spec/guides/code-reuse-thinking-guide.md`
 
 ---
 
-## Dimension B2: New Utility Functions
+## Dimension D: Module Exports
 
-**Trigger**: About to create a new utility/helper function
+**Trigger**: Creating or modifying modules in `src/core/`
 
 **Checklist**:
-- [ ] Search for existing similar utilities first
-  ```bash
-  grep -r "functionNamePattern" src/
-  ```
-- [ ] If similar exists, can you extend it instead?
-- [ ] If creating new, is it in the right location (shared vs domain-specific)?
+- [ ] New file → Added to module's `index.ts`?
+- [ ] New module → Added to `src/core/index.ts`?
+- [ ] Types exported along with functions?
+
+**Pattern**:
+```typescript
+// core/pipeline/index.ts
+export * from "./schemas.js";
+export * from "./state.js";
+export * from "./orchestrator.js";
+```
 
 ---
 
-## Dimension B3: After Batch Modifications
+## Dimension E: Dogfooding Impact
 
-**Trigger**: Just modified similar patterns in multiple files
-
-**Checklist**:
-- [ ] Did you check ALL files with similar patterns?
-  ```bash
-  grep -r "patternYouChanged" src/
-  ```
-- [ ] Any files missed that should also be updated?
-- [ ] Should this pattern be abstracted to prevent future duplication?
-
----
-
-## Dimension C: Import/Dependency Paths (Required when creating new files)
-
-**Trigger**: Creating new source files
+**Trigger**: Changes to `.claude/`, `.cursor/`, or `.trellis/scripts/`
 
 **Checklist**:
-- [ ] Using correct import paths (relative vs absolute)?
-- [ ] No circular dependencies?
-- [ ] Consistent with project's module organization?
-
----
-
-## Dimension D: Same-Layer Consistency
-
-**Trigger**: 
-- Modifying display logic or formatting
-- Same domain concept used in multiple places
-
-**Checklist**:
-- [ ] Search for other places using same concept
-  ```bash
-  grep -r "ConceptName" src/
-  ```
-- [ ] Are these usages consistent?
-- [ ] Should they share configuration/constants?
+- [ ] These files are copied to user projects via `trellis init`
+- [ ] Change intentional for all users?
+- [ ] Template still valid for empty/new projects?
 
 ---
 
@@ -136,12 +124,10 @@ Based on your change type, execute relevant checks below:
 
 | Issue | Root Cause | Prevention |
 |-------|------------|------------|
-| Changed one place, missed others | Didn't search impact scope | `grep` before changing |
-| Data lost at some layer | Didn't check data flow | Trace data source to destination |
-| Type/schema mismatch | Cross-layer types inconsistent | Use shared type definitions |
-| UI/output inconsistent | Same concept in multiple places | Extract shared constants |
-| Similar utility exists | Didn't search first | Search before creating |
-| Batch fix incomplete | Didn't verify all occurrences | grep after fixing |
+| Task data stale | Read from wrong location | Always read from worktree for agent |
+| PR status not visible | Only updated worktree | Update both locations |
+| Module not found | Not exported in index.ts | Add to index.ts |
+| User config broken | Dogfooding change too specific | Test on fresh project |
 
 ---
 
