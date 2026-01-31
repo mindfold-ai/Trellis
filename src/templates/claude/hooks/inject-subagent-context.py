@@ -741,7 +741,7 @@ def main():
     if not context:
         sys.exit(0)
 
-    # Return updated input
+    # Return updated input with correct Claude Code PreToolUse format
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
