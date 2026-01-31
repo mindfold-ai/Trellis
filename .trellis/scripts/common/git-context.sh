@@ -182,7 +182,7 @@ output_text() {
           assignee=$(jq -r '.assignee // "-"' "$t_json")
         fi
         echo "- $dir_name/ ($status) @$assignee"
-        ((task_count++))
+        ((task_count++)) || true
       fi
     done
   fi
@@ -205,7 +205,7 @@ output_text() {
             local title=$(jq -r '.title // .name // "unknown"' "$t_json")
             local priority=$(jq -r '.priority // "P2"' "$t_json")
             echo "- [$priority] $title ($status)"
-            ((my_task_count++))
+            ((my_task_count++)) || true
           fi
         fi
       fi
