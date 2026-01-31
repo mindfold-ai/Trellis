@@ -1056,3 +1056,76 @@ Simplified release scripts - CI auto-publishes on tag push:
 ### Next Steps
 
 - None - task complete
+
+---
+
+## Session: Windows Compatibility & Hook JSON Format Fix
+
+**Date**: 2026-01-31
+**Issues**: #18, #19
+
+### Summary
+
+Fixed two GitHub issues related to Windows compatibility and Claude Code hook integration:
+- Issue #18: Hook outputs non-JSON causing parse error in Cursor
+- Issue #19: Multiple Windows compatibility issues (encoding, python command)
+
+### Bug Analysis
+
+#### Root Cause Category
+- **Category A (Missing Spec)**: Claude Code hook JSON 输出格式没有明确文档
+- **Category E (Implicit Assumption)**: 假设所有平台都有 `python3`、默认 UTF-8、`tail -f` 可用
+
+#### Why Fixes Failed
+1. **Hook JSON 格式**: 猜测 `{"result": "continue"}` - 错误，实际需要 `{"hookSpecificOutput": {...}}`
+2. **run-hook.cmd polyglot**: Claude Code 2.1.x 自动检测并加前缀，反而破坏执行
+
+#### Prevention Mechanisms
+| Priority | Mechanism | Action | Status |
+|----------|-----------|--------|--------|
+| P0 | Documentation | Hook 文件头部注释说明格式 | DONE |
+| P0 | Compile-time | `getPythonCommand()` 替代硬编码 | DONE |
+| P1 | Documentation | Manifest 说明 Windows 手动配置 | DONE |
+| P2 | Architecture | 将 `createBootstrapTask` 迁移到 TypeScript | DONE |
+
+#### Systematic Expansion
+- **Similar Issues**: 其他平台特性依赖（shebang、路径分隔符）
+- **Design Improvement**: Python 脚本逐步迁移到 TypeScript
+- **Process Improvement**: Windows 测试成为发布前必要步骤
+
+### Key Changes
+
+| File | Change |
+|------|--------|
+| `.claude/hooks/session-start.py` | 修正 JSON 输出格式 |
+| `.claude/settings.json` | 使用 `python3` 直接调用 |
+| `.trellis/scripts/common/git_context.py` | 强制 UTF-8 编码 |
+| `.trellis/scripts/multi_agent/status.py` | 跨平台 `tail_follow()` |
+| `src/commands/init.ts` | `createBootstrapTask` TypeScript 重写 |
+| `src/commands/init.ts` | 添加 `getPythonCommand()` 辅助函数 |
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| `6e9e7fa` | fix(hooks): correct JSON output format for Claude Code hooks |
+| `eef6609` | fix(scripts): add UTF-8 encoding for cross-platform compatibility |
+| `5b3f62c` | refactor(init): rewrite createBootstrapTask in TypeScript |
+| `75d3ab0` | chore: add husky, lint-staged, and basedpyright for dev tooling |
+| `c54e39a` | refactor(workflow): always create both backend and frontend specs |
+| `d103cf1` | docs: add migration manifest for 0.3.0-beta.7 |
+
+### Key Insight
+
+> **外部工具集成的 API 契约必须显式验证，不能基于假设编码。**
+> **跨平台兼容性是系统性问题，需要 checklist 而非逐个修复。**
+
+### Status
+
+[OK] **Completed**
+
+### Follow-up TODOs
+
+- [ ] 更新 `.trellis/spec/guides/` 添加 "Cross-Platform Development" 指南
+- [ ] 创建 GitHub Issue: "Add Windows CI testing"
+- [ ] 创建 GitHub Issue: "Migrate remaining Python scripts to TypeScript"
