@@ -2,16 +2,15 @@
 description: |
   Code and tech search expert. Pure research, no code modifications. Finds files, patterns, and tech solutions.
 mode: subagent
-model: claude-max/claude-opus-4
-tools:
-  read: true
-  write: false
-  edit: false
-  bash: false
-  glob: true
-  grep: true
-  mcp__exa__*: true
-  mcp__chrome-devtools__*: true
+permission:
+  read: allow
+  write: deny
+  edit: deny
+  bash: deny
+  glob: allow
+  grep: allow
+  mcp__exa__*: allow
+  mcp__chrome-devtools__*: allow
 ---
 # Research Agent
 

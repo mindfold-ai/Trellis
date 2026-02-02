@@ -2,15 +2,14 @@
 description: |
   Code quality check expert. Reviews code changes against specs and self-fixes issues.
 mode: subagent
-model: claude-max/claude-opus-4
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: true
-  glob: true
-  grep: true
-  mcp__exa__*: true
+permission:
+  read: allow
+  write: allow
+  edit: allow
+  bash: allow
+  glob: allow
+  grep: allow
+  mcp__exa__*: allow
 ---
 # Check Agent
 

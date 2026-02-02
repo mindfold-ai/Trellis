@@ -2,16 +2,15 @@
 description: |
   Multi-Agent Pipeline main dispatcher. Pure dispatcher. Only responsible for calling subagents and scripts in phase order.
 mode: primary
-model: claude-max/claude-opus-4
-tools:
-  read: true
-  write: false
-  edit: false
-  bash: true
-  glob: false
-  grep: false
-  task: true
-  mcp__exa__*: true
+permission:
+  read: allow
+  write: deny
+  edit: deny
+  bash: allow
+  glob: deny
+  grep: deny
+  task: allow
+  mcp__exa__*: allow
 ---
 # Dispatch Agent
 
