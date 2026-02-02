@@ -76,6 +76,23 @@ export function getClaudeTemplatePath(): string {
 }
 
 /**
+ * Get the path to the opencode templates directory.
+ *
+ * This reads from src/templates/opencode/ (development) or dist/templates/opencode/ (production).
+ * These are GENERIC templates, not the Trellis project's own .opencode/ configuration.
+ */
+export function getOpenCodeTemplatePath(): string {
+  const templatePath = path.join(__dirname, "opencode");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find opencode templates directory. Expected at templates/opencode/",
+  );
+}
+
+/**
  * @deprecated Use getClaudeTemplatePath() instead.
  */
 export function getClaudeSourcePath(): string {
@@ -149,6 +166,24 @@ export function readCursorFile(relativePath: string): string {
 export function readClaudeFile(relativePath: string): string {
   const claudePath = getClaudeSourcePath();
   const filePath = path.join(claudePath, relativePath);
+  return fs.readFileSync(filePath, "utf-8");
+}
+
+/**
+ * @deprecated Use getOpenCodeTemplatePath() instead.
+ */
+export function getOpenCodeSourcePath(): string {
+  return getOpenCodeTemplatePath();
+}
+
+/**
+ * Read a file from the .opencode directory (dogfooding)
+ * @param relativePath - Path relative to .opencode/ (e.g., 'commands/start.md')
+ * @returns File content as string
+ */
+export function readOpenCodeFile(relativePath: string): string {
+  const opencodePath = getOpenCodeSourcePath();
+  const filePath = path.join(opencodePath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
 
