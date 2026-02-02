@@ -332,13 +332,13 @@ Which path?
 ### 4.1 Create Task Directory
 
 ```bash
-TASK_DIR=$(./.trellis/scripts/task.sh create "<goal>" --slug <suggested_slug>)
+TASK_DIR=$(python3 ./.trellis/scripts/task.py create "<goal>" --slug <suggested_slug>)
 ```
 
 ### 4.2 Initialize Default Context
 
 ```bash
-./.trellis/scripts/task.sh init-context "$TASK_DIR" <dev_type>
+python3 ./.trellis/scripts/task.py init-context "$TASK_DIR" <dev_type>
 ```
 
 ### 4.3 Add Task-Specific Context
@@ -347,11 +347,11 @@ Based on Phase 2 Research results:
 
 ```bash
 # Add Relevant Specs (to both implement and check)
-./.trellis/scripts/task.sh add-context "$TASK_DIR" implement "<spec>" "<reason>"
-./.trellis/scripts/task.sh add-context "$TASK_DIR" check "<spec>" "<reason>"
+python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" implement "<spec>" "<reason>"
+python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" check "<spec>" "<reason>"
 
 # Add Reusable Code Patterns (implement only)
-./.trellis/scripts/task.sh add-context "$TASK_DIR" implement "<pattern-file>" "<reason>"
+python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" implement "<pattern-file>" "<reason>"
 ```
 
 ### 4.4 Write prd.md (Requirements)
@@ -415,7 +415,7 @@ Create `$TASK_DIR/info.md`:
 ### 4.6 Activate Task
 
 ```bash
-./.trellis/scripts/task.sh start "$TASK_DIR"
+python3 ./.trellis/scripts/task.py start "$TASK_DIR"
 ```
 
 **Then proceed to Phase 5.**
