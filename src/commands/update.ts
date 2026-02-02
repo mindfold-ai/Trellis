@@ -92,6 +92,12 @@ import {
   getAllHooks,
   getSettingsTemplate,
 } from "../templates/claude/index.js";
+import {
+  getAllAgents as getAllIflowAgents,
+  getAllCommands as getAllIflowCommands,
+  getAllHooks as getAllIflowHooks,
+  getSettingsTemplate as getIflowSettingsTemplate,
+} from "../templates/iflow/index.js";
 
 export interface UpdateOptions {
   dryRun?: boolean;
@@ -263,6 +269,28 @@ function collectTemplateFiles(_cwd: string): Map<string, string> {
   // Claude settings
   const settingsTemplate = getSettingsTemplate();
   files.set(`.claude/${settingsTemplate.targetPath}`, settingsTemplate.content);
+
+  // iFlow commands
+  const iflowCommands = getAllIflowCommands();
+  for (const command of iflowCommands) {
+    files.set(`.iflow/commands/${command.name}.md`, command.content);
+  }
+
+  // iFlow agents
+  const iflowAgents = getAllIflowAgents();
+  for (const agent of iflowAgents) {
+    files.set(`.iflow/agents/${agent.name}.md`, agent.content);
+  }
+
+  // iFlow hooks
+  const iflowHooks = getAllIflowHooks();
+  for (const hook of iflowHooks) {
+    files.set(`.iflow/${hook.targetPath}`, hook.content);
+  }
+
+  // iFlow settings
+  const iflowSettingsTemplate = getIflowSettingsTemplate();
+  files.set(`.iflow/${iflowSettingsTemplate.targetPath}`, iflowSettingsTemplate.content);
 
   return files;
 }

@@ -1,0 +1,40 @@
+{
+    "hooks": {
+        "SessionStart": [
+            {
+                "matcher": "startup",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 .iflow/hooks/session-start.py",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Task",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 .iflow/hooks/inject-subagent-context.py",
+                        "timeout": 30
+                    }
+                ]
+            }
+        ],
+        "SubagentStop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 .iflow/hooks/ralph-loop.py",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ]
+    },
+    "enabledPlugins": {}
+}

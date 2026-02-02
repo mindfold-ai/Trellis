@@ -7,6 +7,7 @@ import figlet from "figlet";
 import inquirer from "inquirer";
 import { configureClaude } from "../configurators/claude.js";
 import { configureCursor } from "../configurators/cursor.js";
+import { configureIflow } from "../configurators/iflow.js";
 import { configureOpenCode } from "../configurators/opencode.js";
 import { createWorkflowStructure } from "../configurators/workflow.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
@@ -283,6 +284,7 @@ function createBootstrapTask(
 interface InitOptions {
   cursor?: boolean;
   claude?: boolean;
+  iflow?: boolean;
   opencode?: boolean;
   yes?: boolean;
   user?: string;
@@ -366,7 +368,7 @@ export async function init(options: InitOptions): Promise<void> {
     if (detectedType === "unknown") {
       projectType = "fullstack";
     }
-  } else if (options.cursor || options.claude || options.opencode) {
+  } else if (options.cursor || options.claude || options.iflow || options.opencode) {
     // Use flags
     tools = [];
     if (options.cursor) {
@@ -374,6 +376,9 @@ export async function init(options: InitOptions): Promise<void> {
     }
     if (options.claude) {
       tools.push("claude");
+    }
+    if (options.iflow) {
+      tools.push("iflow");
     }
     if (options.opencode) {
       tools.push("opencode");
@@ -399,6 +404,7 @@ export async function init(options: InitOptions): Promise<void> {
         choices: [
           { name: "Cursor", value: "cursor", checked: true },
           { name: "Claude Code", value: "claude", checked: true },
+          { name: "iFlow CLI", value: "iflow", checked: false },
           { name: "OpenCode", value: "opencode", checked: false },
         ],
       },
@@ -442,6 +448,13 @@ export async function init(options: InitOptions): Promise<void> {
       chalk.blue("📝 Configuring Claude Code (commands, agents, hooks)..."),
     );
     await configureClaude(cwd);
+  }
+
+  if (tools.includes("iflow")) {
+    console.log(
+      chalk.blue("📝 Configuring iFlow CLI (commands, agents, hooks)..."),
+    );
+    await configureIflow(cwd);
   }
 
   if (tools.includes("opencode")) {

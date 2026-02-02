@@ -100,6 +100,30 @@ export function getClaudeSourcePath(): string {
 }
 
 /**
+ * Get the path to the iflow templates directory.
+ *
+ * This reads from src/templates/iflow/ (development) or dist/templates/iflow/ (production).
+ * These are GENERIC templates, not the Trellis project's own .iflow/ configuration.
+ */
+export function getIflowTemplatePath(): string {
+  const templatePath = path.join(__dirname, "iflow");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find iflow templates directory. Expected at templates/iflow/",
+  );
+}
+
+/**
+ * @deprecated Use getIflowTemplatePath() instead.
+ */
+export function getIflowSourcePath(): string {
+  return getIflowTemplatePath();
+}
+
+/**
  * Read a file from the .trellis directory
  * @param relativePath - Path relative to .trellis/ (e.g., 'scripts/task.py')
  * @returns File content as string

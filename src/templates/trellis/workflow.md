@@ -39,6 +39,7 @@ This creates:
 - Human developers: Use your name, e.g., `john-doe`
 - Cursor AI: `cursor-agent` or `cursor-<task>`
 - Claude Code: `claude-agent` or `claude-<task>`
+- iFlow cli: `iflow-agent` or `iflow-<task>`
 
 ### Step 1: Understand Current Context
 
