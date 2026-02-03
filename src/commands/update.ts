@@ -508,7 +508,7 @@ function backupFile(
 /**
  * Directories to backup as complete snapshot
  */
-const BACKUP_DIRS = [".trellis", ".claude", ".cursor"];
+const BACKUP_DIRS = [".trellis", ".claude", ".cursor", ".iflow", ".opencode"];
 
 /**
  * Patterns to exclude from backup (user data that shouldn't be backed up)
@@ -535,7 +535,7 @@ function shouldExcludeFromBackup(relativePath: string): boolean {
 
 /**
  * Create complete snapshot backup of all managed directories
- * Backs up .trellis, .claude, .cursor directories entirely
+ * Backs up .trellis, .claude, .cursor, .iflow, .opencode directories entirely
  * (excluding user data like workspace/, tasks/, backlog/)
  */
 function createFullBackup(cwd: string): string | null {
@@ -963,7 +963,9 @@ function cleanupEmptyDirs(cwd: string, dirPath: string): void {
   if (
     !dirPath.startsWith(".trellis/") &&
     !dirPath.startsWith(".claude/") &&
-    !dirPath.startsWith(".cursor/")
+    !dirPath.startsWith(".cursor/") &&
+    !dirPath.startsWith(".iflow/") &&
+    !dirPath.startsWith(".opencode/")
   ) {
     return;
   }
@@ -985,7 +987,9 @@ function cleanupEmptyDirs(cwd: string, dirPath: string): void {
         parent !== dirPath &&
         parent !== ".trellis" &&
         parent !== ".claude" &&
-        parent !== ".cursor"
+        parent !== ".cursor" &&
+        parent !== ".iflow" &&
+        parent !== ".opencode"
       ) {
         cleanupEmptyDirs(cwd, parent);
       }
@@ -1482,7 +1486,7 @@ export async function update(options: UpdateOptions): Promise<void> {
     return;
   }
 
-  // Create complete backup of .trellis, .claude, .cursor directories
+  // Create complete backup of .trellis, .claude, .cursor, .iflow, .opencode directories
   const backupDir = createFullBackup(cwd);
 
   if (backupDir) {

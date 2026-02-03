@@ -69,12 +69,14 @@ class CLIAdapter:
         """Get platform-specific config directory name.
 
         Returns:
-            Directory name ('.claude', '.opencode', or '.cursor')
+            Directory name ('.claude', '.opencode', '.cursor', or '.iflow')
         """
         if self.platform == "opencode":
             return ".opencode"
         elif self.platform == "cursor":
             return ".cursor"
+        elif self.platform == "iflow":
+            return ".iflow"
         else:
             return ".claude"
 
@@ -85,7 +87,7 @@ class CLIAdapter:
             project_root: Project root directory
 
         Returns:
-            Path to config directory (.claude or .opencode)
+            Path to config directory (.claude, .opencode, .cursor, or .iflow)
         """
         return project_root / self.config_dir_name
 

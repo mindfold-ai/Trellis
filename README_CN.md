@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-<strong>Claude Code & Cursor 的一站式 AI 开发框架</strong><br/>
+<strong>Claude Code、Cursor 和 iFlow 的一站式 AI 开发框架</strong><br/>
 <sub>能解决以下问题</sub>
 </p>
 
@@ -48,6 +48,9 @@ npm install -g @mindfoldhq/trellis@latest
 
 # 2. 在项目目录初始化
 trellis init -u your-name
+
+# 或包含 iFlow CLI 支持
+trellis init --iflow -u your-name
 
 # 3. 启动 Claude Code，开始干活
 ```

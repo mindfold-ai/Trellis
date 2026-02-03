@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-<strong>All-in-one AI framework & toolkit for Claude Code & Cursor</strong><br/>
+<strong>All-in-one AI framework & toolkit for Claude Code, Cursor & iFlow</strong><br/>
 <sub>Wild AI ships nothing.</sub>
 </p>
 
@@ -48,6 +48,9 @@ npm install -g @mindfoldhq/trellis@latest
 
 # 2. Initialize in your project directory
 trellis init -u your-name
+
+# Or include iFlow CLI support
+trellis init --iflow -u your-name
 
 # 3. Start Claude Code and begin working
 ```

@@ -153,6 +153,9 @@ vite.config.ts.timestamp-*
 # OpenCode local config (contains local proxy settings)
 opencode.json
 
+# iFlow local config (if it has local state files)
+.iflow/settings.local.json
+
 # Python cache
 __pycache__/
 *.pyc

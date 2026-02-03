@@ -9,6 +9,8 @@
  * - src/templates/trellis/ - Workflow scripts and config
  * - src/templates/claude/ - Claude Code commands, agents, hooks
  * - src/templates/cursor/ - Cursor commands
+ * - src/templates/iflow/ - iFlow CLI commands, agents, hooks
+ * - src/templates/opencode/ - OpenCode commands, agents, hooks
  * - src/templates/markdown/ - Markdown templates (spec, guides)
  *
  * Note: We NO LONGER copy from the project's own .trellis/, .cursor/, .claude/

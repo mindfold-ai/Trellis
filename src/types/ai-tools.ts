@@ -7,12 +7,12 @@
 /**
  * Supported AI coding tools
  */
-export type AITool = "claude-code" | "cursor" | "opencode";
+export type AITool = "claude-code" | "cursor" | "opencode" | "iflow";
 
 /**
  * Template directory categories
  */
-export type TemplateDir = "common" | "claude" | "cursor" | "opencode";
+export type TemplateDir = "common" | "claude" | "cursor" | "opencode" | "iflow";
 
 /**
  * Configuration for an AI tool
@@ -39,6 +39,10 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
   opencode: {
     name: "OpenCode",
     templateDirs: ["common", "opencode"],
+  },
+  iflow: {
+    name: "iFlow CLI",
+    templateDirs: ["common", "iflow"],
   },
 };
 

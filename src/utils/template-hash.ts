@@ -192,7 +192,7 @@ export function getModificationStatus(
 /**
  * Directories to scan for template files during init
  */
-const TEMPLATE_DIRS = [".trellis", ".claude", ".cursor"];
+const TEMPLATE_DIRS = [".trellis", ".claude", ".cursor", ".iflow", ".opencode"];
 
 /**
  * Patterns to exclude from hash tracking
