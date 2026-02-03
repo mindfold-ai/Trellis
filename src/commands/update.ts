@@ -41,6 +41,7 @@ import {
   commonTaskUtils,
   commonPhase,
   commonRegistry,
+  commonCliAdapter,
   // Python scripts - multi_agent
   multiAgentInit,
   multiAgentStart,
@@ -147,6 +148,7 @@ function collectTemplateFiles(_cwd: string): Map<string, string> {
   files.set(`${PATHS.SCRIPTS}/common/task_utils.py`, commonTaskUtils);
   files.set(`${PATHS.SCRIPTS}/common/phase.py`, commonPhase);
   files.set(`${PATHS.SCRIPTS}/common/registry.py`, commonRegistry);
+  files.set(`${PATHS.SCRIPTS}/common/cli_adapter.py`, commonCliAdapter);
 
   // Python scripts - multi_agent
   files.set(`${PATHS.SCRIPTS}/multi_agent/__init__.py`, multiAgentInit);

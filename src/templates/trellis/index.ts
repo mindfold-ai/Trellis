@@ -41,6 +41,7 @@ export const commonTaskQueue = readTemplate("scripts/common/task_queue.py");
 export const commonTaskUtils = readTemplate("scripts/common/task_utils.py");
 export const commonPhase = readTemplate("scripts/common/phase.py");
 export const commonRegistry = readTemplate("scripts/common/registry.py");
+export const commonCliAdapter = readTemplate("scripts/common/cli_adapter.py");
 
 // Python scripts - multi_agent
 export const multiAgentInit = readTemplate("scripts/multi_agent/__init__.py");
@@ -82,6 +83,7 @@ export function getAllScripts(): Map<string, string> {
   scripts.set("common/task_utils.py", commonTaskUtils);
   scripts.set("common/phase.py", commonPhase);
   scripts.set("common/registry.py", commonRegistry);
+  scripts.set("common/cli_adapter.py", commonCliAdapter);
 
   // Multi-agent
   scripts.set("multi_agent/__init__.py", multiAgentInit);
