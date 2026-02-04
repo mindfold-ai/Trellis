@@ -1,12 +1,13 @@
 """
 CLI Adapter for Multi-Platform Support.
 
-Abstracts differences between Claude Code, OpenCode, and Cursor interfaces.
+Abstracts differences between Claude Code, OpenCode, Cursor, and iFlow interfaces.
 
 Supported platforms:
 - claude: Claude Code (default)
 - opencode: OpenCode
 - cursor: Cursor IDE
+- iflow: iFlow CLI
 
 Usage:
     from common.cli_adapter import CLIAdapter
@@ -25,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Literal
 
-Platform = Literal["claude", "opencode", "cursor"]
+Platform = Literal["claude", "opencode", "cursor", "iflow"]
 
 
 @dataclass
@@ -343,7 +344,7 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
     """Get CLI adapter for the specified platform.
 
     Args:
-        platform: Platform name ('claude', 'opencode', or 'cursor')
+        platform: Platform name ('claude', 'opencode', 'cursor', or 'iflow')
 
     Returns:
         CLIAdapter instance
@@ -351,8 +352,8 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
     Raises:
         ValueError: If platform is not supported
     """
-    if platform not in ("claude", "opencode", "cursor"):
-        raise ValueError(f"Unsupported platform: {platform} (must be 'claude', 'opencode', or 'cursor')")
+    if platform not in ("claude", "opencode", "cursor", "iflow"):
+        raise ValueError(f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', or 'iflow')")
 
     return CLIAdapter(platform=platform)  # type: ignore
 
@@ -363,26 +364,32 @@ def detect_platform(project_root: Path) -> Platform:
     Detection order:
     1. TRELLIS_PLATFORM environment variable (if set)
     2. .opencode directory exists → opencode
-    3. .cursor directory exists (without .claude) → cursor
-    4. Default → claude
+    3. .iflow directory exists → iflow
+    4. .cursor directory exists (without .claude) → cursor
+    5. Default → claude
 
     Args:
         project_root: Project root directory
 
     Returns:
-        Detected platform ('claude', 'opencode', or 'cursor')
+        Detected platform ('claude', 'opencode', 'cursor', or 'iflow')
     """
     import os
 
     # Check environment variable first
     env_platform = os.environ.get("TRELLIS_PLATFORM", "").lower()
-    if env_platform in ("claude", "opencode", "cursor"):
+    if env_platform in ("claude", "opencode", "cursor", "iflow"):
         return env_platform  # type: ignore
 
     # Check for .opencode directory (OpenCode-specific)
     # Note: .claude might exist in both platforms during migration
     if (project_root / ".opencode").is_dir():
         return "opencode"
+
+    # Check for .iflow directory (iFlow-specific)
+    # Note: .claude might exist in both platforms during migration
+    if (project_root / ".iflow").is_dir():
+        return "iflow"
 
     # Check for .cursor directory (Cursor-specific)
     # Only detect as cursor if .claude doesn't exist (to avoid confusion)
