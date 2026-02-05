@@ -38,7 +38,32 @@ print("Usage: python3 script.py <args>")
 print("Run: python3 ./script.py <args>")
 ```
 
-**Rule 2**: When calling Python from TypeScript/Node.js, detect the available command:
+**Rule 2**: When generating config files at init time, use placeholder + platform detection:
+
+```typescript
+// In template file (settings.json):
+{ "command": "{{PYTHON_CMD}} .claude/hooks/script.py" }
+
+// In configurator:
+function getPythonCommand(): string {
+  return process.platform === "win32" ? "python" : "python3";
+}
+
+function replacePlaceholders(content: string): string {
+  return content.replace(/\{\{PYTHON_CMD\}\}/g, getPythonCommand());
+}
+```
+
+**Rule 3**: When calling Python at runtime from JavaScript, detect platform dynamically:
+
+```javascript
+import { platform } from "os"
+
+const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
+execSync(`${PYTHON_CMD} "${scriptPath}"`, { ... })
+```
+
+**Rule 4**: If you need to verify Python is actually installed (not just choose command):
 
 ```typescript
 function getPythonCommand(): string {

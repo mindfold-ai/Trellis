@@ -584,6 +584,16 @@ export async function init(options: InitOptions): Promise<void> {
     await configureOpenCode(cwd);
   }
 
+  // Show Windows platform detection notice
+  if (
+    process.platform === "win32" &&
+    (tools.includes("claude") || tools.includes("iflow"))
+  ) {
+    console.log(
+      chalk.yellow('📌 Windows detected: Using "python" for hooks'),
+    );
+  }
+
   // Create root files (skip if exists)
   await createRootFiles(cwd);
 

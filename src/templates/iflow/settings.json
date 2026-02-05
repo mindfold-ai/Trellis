@@ -6,7 +6,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python3 .iflow/hooks/session-start.py",
+                        "command": "{{PYTHON_CMD}} .iflow/hooks/session-start.py",
                         "timeout": 10
                     }
                 ]
@@ -18,7 +18,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python3 .iflow/hooks/inject-subagent-context.py",
+                        "command": "{{PYTHON_CMD}} .iflow/hooks/inject-subagent-context.py",
                         "timeout": 30
                     }
                 ]
@@ -29,7 +29,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python3 .iflow/hooks/ralph-loop.py",
+                        "command": "{{PYTHON_CMD}} .iflow/hooks/ralph-loop.py",
                         "timeout": 10
                     }
                 ]

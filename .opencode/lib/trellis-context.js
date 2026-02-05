@@ -12,8 +12,11 @@
 
 import { existsSync, readFileSync, appendFileSync, readdirSync } from "fs"
 import { join } from "path"
-import { homedir } from "os"
+import { homedir, platform } from "os"
 import { execSync } from "child_process"
+
+// Python command: Windows uses 'python', macOS/Linux use 'python3'
+const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 
 // Debug logging
 const DEBUG_LOG = "/tmp/trellis-plugin-debug.log"
@@ -265,7 +268,7 @@ export class TrellisContext {
    */
   runScript(scriptPath, cwd = null) {
     try {
-      const result = execSync(`python3 "${scriptPath}"`, {
+      const result = execSync(`${PYTHON_CMD} "${scriptPath}"`, {
         cwd: cwd || this.directory,
         timeout: 10000,
         encoding: "utf-8",

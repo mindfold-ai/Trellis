@@ -4,6 +4,21 @@ import { getClaudeTemplatePath } from "../templates/extract.js";
 import { ensureDir, writeFile } from "../utils/file-writer.js";
 
 /**
+ * Get the Python command based on platform
+ * Windows uses 'python', macOS/Linux use 'python3'
+ */
+function getPythonCommand(): string {
+  return process.platform === "win32" ? "python" : "python3";
+}
+
+/**
+ * Replace template placeholders in content
+ */
+function replacePlaceholders(content: string): string {
+  return content.replace(/\{\{PYTHON_CMD\}\}/g, getPythonCommand());
+}
+
+/**
  * Files to exclude when copying templates
  * These are TypeScript compilation artifacts
  */
@@ -46,7 +61,11 @@ async function copyDirFiltered(src: string, dest: string): Promise<void> {
     if (stat.isDirectory()) {
       await copyDirFiltered(srcPath, destPath);
     } else {
-      const content = readFileSync(srcPath, "utf-8");
+      let content = readFileSync(srcPath, "utf-8");
+      // Replace placeholders in settings.json
+      if (entry === "settings.json") {
+        content = replacePlaceholders(content);
+      }
       await writeFile(destPath, content);
     }
   }
