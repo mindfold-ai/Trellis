@@ -37,7 +37,8 @@ src/
 │   └── ai-tools.ts      # AI tool types and registry
 ├── utils/               # Shared utility functions
 │   ├── file-writer.ts   # File writing with conflict handling
-│   └── project-detector.ts # Project type detection
+│   ├── project-detector.ts # Project type detection
+│   └── template-fetcher.ts # Remote template download from GitHub
 └── index.ts             # Package entry point (exports public API)
 ```
 
@@ -208,3 +209,78 @@ Templates use `.txt` extension to:
 - Don't duplicate content between templates and dogfooding sources
 - Don't put project-specific content in generic templates
 - Don't use dogfooding for spec/ (users fill these in)
+
+---
+
+## Design Decisions
+
+### Remote Template Download (giget)
+
+**Context**: Need to download GitHub subdirectories for remote template support.
+
+**Options Considered**:
+1. `degit` / `tiged` - Simple, but no programmatic API
+2. `giget` - TypeScript native, has programmatic API, used by Nuxt/UnJS
+3. Manual GitHub API - Too complex
+
+**Decision**: Use `giget` because:
+- TypeScript native with programmatic API
+- Supports GitHub subdirectory: `gh:user/repo/path/to/subdir`
+- Built-in caching for offline support
+- Actively maintained by UnJS ecosystem
+
+**Example**:
+```typescript
+import { downloadTemplate } from "giget";
+
+await downloadTemplate("gh:mindfold-ai/docs/marketplace/specs/electron-fullstack", {
+  dir: destDir,
+  preferOffline: true,
+});
+```
+
+### Directory Conflict Strategy (skip/overwrite/append)
+
+**Context**: When downloading remote templates, target directory may already exist.
+
+**Decision**: Three strategies with `skip` as default:
+- `skip` - Don't download if directory exists (safe default)
+- `overwrite` - Delete existing, download fresh
+- `append` - Only copy files that don't exist (merge)
+
+**Why**: giget doesn't support append natively, so we:
+1. Download to temp directory
+2. Walk and copy missing files only
+3. Clean up temp directory
+
+**Example**:
+```typescript
+// append strategy implementation
+const tempDir = path.join(os.tmpdir(), `trellis-template-${Date.now()}`);
+await downloadTemplate(source, { dir: tempDir });
+await copyMissing(tempDir, destDir);  // Only copy non-existing files
+await fs.promises.rm(tempDir, { recursive: true });
+```
+
+### Extensible Template Type Mapping
+
+**Context**: Currently only `spec` templates, but future needs `skill`, `command`, `full` types.
+
+**Decision**: Use type field + mapping table for extensibility:
+
+```typescript
+const INSTALL_PATHS: Record<string, string> = {
+  spec: ".trellis/spec",
+  skill: ".claude/skills",
+  command: ".claude/commands",
+  full: ".",  // Entire project root
+};
+
+// Usage: auto-detect install path from template type
+const destDir = INSTALL_PATHS[template.type] || INSTALL_PATHS.spec;
+```
+
+**Extensibility**: To add new template type:
+1. Add entry to `INSTALL_PATHS`
+2. Add templates to `index.json` with new type
+3. No code changes needed for download logic
