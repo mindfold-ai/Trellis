@@ -1,25 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import { Command } from "commander";
 import { init } from "../commands/init.js";
 import { update } from "../commands/update.js";
 import { DIR_NAMES } from "../constants/paths.js";
+import { VERSION, PACKAGE_NAME } from "../constants/version.js";
 
-interface PackageJson {
-  name: string;
-  version: string;
-}
-
-// Read version from package.json
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const packageJsonPath = path.resolve(__dirname, "../../package.json");
-const packageJson: PackageJson = JSON.parse(
-  fs.readFileSync(packageJsonPath, "utf-8"),
-);
-export const VERSION: string = packageJson.version;
-export const PACKAGE_NAME: string = packageJson.name;
+// Re-export for backwards compatibility (consumers should prefer constants/version.js)
+export { VERSION, PACKAGE_NAME };
 
 /**
  * Compare two semver versions. Returns:

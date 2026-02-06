@@ -5,5 +5,5 @@
  * https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents
  */
 
-export { VERSION } from "./cli/index.js";
+export { VERSION } from "./constants/version.js";
 export { init } from "./commands/init.js";

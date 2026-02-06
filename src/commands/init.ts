@@ -5,13 +5,16 @@ import readline from "node:readline";
 import chalk from "chalk";
 import figlet from "figlet";
 import inquirer from "inquirer";
-import { configureClaude } from "../configurators/claude.js";
-import { configureCursor } from "../configurators/cursor.js";
-import { configureIflow } from "../configurators/iflow.js";
-import { configureOpenCode } from "../configurators/opencode.js";
 import { createWorkflowStructure } from "../configurators/workflow.js";
+import {
+  getInitToolChoices,
+  resolveCliFlag,
+  configurePlatform,
+  getPlatformsWithPythonHooks,
+} from "../configurators/index.js";
+import { AI_TOOLS, type CliFlag } from "../types/ai-tools.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
-import { VERSION } from "../cli/index.js";
+import { VERSION } from "../constants/version.js";
 import { agentsMdContent } from "../templates/markdown/index.js";
 import {
   setWriteMode,
@@ -300,6 +303,14 @@ interface InitOptions {
   append?: boolean;
 }
 
+// Compile-time check: every CliFlag must be a key of InitOptions.
+// If a new platform is added to CliFlag but not to InitOptions, this line errors.
+// Uses [X] extends [Y] to prevent distributive conditional behavior.
+type _AssertCliFlagsInOptions = [CliFlag] extends [keyof InitOptions]
+  ? true
+  : "ERROR: CliFlag has values not present in InitOptions";
+const _cliFlagCheck: _AssertCliFlagsInOptions = true;
+
 interface InitAnswers {
   tools: string[];
   template?: string;
@@ -368,13 +379,8 @@ export async function init(options: InitOptions): Promise<void> {
   // Detect project type (silent - no output)
   const detectedType = detectProjectType(cwd);
 
-  // Tool definitions: [flag key, display name, default checked in interactive]
-  const TOOLS = [
-    { key: "cursor", name: "Cursor", defaultChecked: true },
-    { key: "claude", name: "Claude Code", defaultChecked: true },
-    { key: "iflow", name: "iFlow CLI", defaultChecked: false },
-    { key: "opencode", name: "OpenCode", defaultChecked: false },
-  ] as const;
+  // Tool definitions derived from platform registry
+  const TOOLS = getInitToolChoices();
 
   // Build tools from explicit flags
   const explicitTools = TOOLS.filter(
@@ -538,40 +544,25 @@ export async function init(options: InitOptions): Promise<void> {
   fs.writeFileSync(versionPath, VERSION);
 
   // Configure selected tools by copying entire directories (dogfooding)
-  if (tools.includes("cursor")) {
-    console.log(chalk.blue("📝 Configuring Cursor..."));
-    await configureCursor(cwd);
-  }
-
-  if (tools.includes("claude")) {
-    console.log(
-      chalk.blue("📝 Configuring Claude Code (commands, agents, hooks)..."),
-    );
-    await configureClaude(cwd);
-  }
-
-  if (tools.includes("iflow")) {
-    console.log(
-      chalk.blue("📝 Configuring iFlow CLI (commands, agents, hooks)..."),
-    );
-    await configureIflow(cwd);
-  }
-
-  if (tools.includes("opencode")) {
-    console.log(
-      chalk.blue("📝 Configuring OpenCode (commands, agents, plugins)..."),
-    );
-    await configureOpenCode(cwd);
+  for (const tool of tools) {
+    const platformId = resolveCliFlag(tool);
+    if (platformId) {
+      console.log(chalk.blue(`📝 Configuring ${AI_TOOLS[platformId].name}...`));
+      await configurePlatform(platformId, cwd);
+    }
   }
 
   // Show Windows platform detection notice
-  if (
-    process.platform === "win32" &&
-    (tools.includes("claude") || tools.includes("iflow"))
-  ) {
-    console.log(
-      chalk.yellow('📌 Windows detected: Using "python" for hooks'),
+  if (process.platform === "win32") {
+    const pythonPlatforms = getPlatformsWithPythonHooks();
+    const hasSelectedPythonPlatform = pythonPlatforms.some((id) =>
+      tools.includes(AI_TOOLS[id].cliFlag),
     );
+    if (hasSelectedPythonPlatform) {
+      console.log(
+        chalk.yellow('📌 Windows detected: Using "python" for hooks'),
+      );
+    }
   }
 
   // Create root files (skip if exists)

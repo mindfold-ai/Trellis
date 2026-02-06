@@ -4,7 +4,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 
 import { PATHS, DIR_NAMES } from "../constants/paths.js";
-import { VERSION, PACKAGE_NAME } from "../cli/index.js";
+import { VERSION, PACKAGE_NAME } from "../constants/version.js";
 import {
   getMigrationsForVersion,
   getAllMigrations,
@@ -66,7 +66,6 @@ import {
   guidesIndexContent,
   guidesCrossLayerThinkingGuideContent,
   guidesCodeReuseThinkingGuideContent,
-  guidesCrossPlatformThinkingGuideContent,
   // Backend structure (multi-doc)
   backendIndexContent,
   backendDirectoryStructureContent,
@@ -86,18 +85,13 @@ import {
   workspaceIndexContent,
 } from "../templates/markdown/index.js";
 
-import { getCommandTemplates } from "../configurators/templates.js";
 import {
-  getAllAgents,
-  getAllHooks,
-  getSettingsTemplate,
-} from "../templates/claude/index.js";
-import {
-  getAllAgents as getAllIflowAgents,
-  getAllCommands as getAllIflowCommands,
-  getAllHooks as getAllIflowHooks,
-  getSettingsTemplate as getIflowSettingsTemplate,
-} from "../templates/iflow/index.js";
+  ALL_MANAGED_DIRS,
+  getConfiguredPlatforms,
+  collectPlatformTemplates,
+  isManagedPath,
+  isManagedRootDir,
+} from "../configurators/index.js";
 
 export interface UpdateOptions {
   dryRun?: boolean;
@@ -134,19 +128,6 @@ const PROTECTED_PATHS = [
   `${DIR_NAMES.WORKFLOW}/.developer`,
   `${DIR_NAMES.WORKFLOW}/.current-task`,
 ];
-
-/**
- * Detect which AI tool platforms are configured in the project
- * by checking for their config directories
- */
-function getConfiguredPlatforms(cwd: string): Set<string> {
-  const platforms = new Set<string>();
-  if (fs.existsSync(path.join(cwd, ".claude"))) platforms.add("claude");
-  if (fs.existsSync(path.join(cwd, ".cursor"))) platforms.add("cursor");
-  if (fs.existsSync(path.join(cwd, ".iflow"))) platforms.add("iflow");
-  if (fs.existsSync(path.join(cwd, ".opencode"))) platforms.add("opencode");
-  return platforms;
-}
 
 /**
  * Collect all template files that should be managed by update
@@ -205,10 +186,6 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
     `${PATHS.SPEC}/guides/code-reuse-thinking-guide.md`,
     guidesCodeReuseThinkingGuideContent,
   );
-  files.set(
-    `${PATHS.SPEC}/guides/cross-platform-thinking-guide.md`,
-    guidesCrossPlatformThinkingGuideContent,
-  );
 
   // Spec - backend (created if missing, protected by hash tracking if modified)
   files.set(`${PATHS.SPEC}/backend/index.md`, backendIndexContent);
@@ -257,66 +234,15 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
     frontendStateManagementContent,
   );
 
-  // Claude templates (only if .claude/ exists)
-  if (platforms.has("claude")) {
-    // Claude commands (in trellis/ subdirectory for namespace)
-    const claudeCommands = getCommandTemplates("claude-code");
-    for (const [name, content] of Object.entries(claudeCommands)) {
-      files.set(`.claude/commands/trellis/${name}.md`, content);
-    }
-
-    // Claude agents
-    const agents = getAllAgents();
-    for (const agent of agents) {
-      files.set(`.claude/agents/${agent.name}.md`, agent.content);
-    }
-
-    // Claude hooks
-    const hooks = getAllHooks();
-    for (const hook of hooks) {
-      files.set(`.claude/${hook.targetPath}`, hook.content);
-    }
-
-    // Claude settings
-    const settingsTemplate = getSettingsTemplate();
-    files.set(`.claude/${settingsTemplate.targetPath}`, settingsTemplate.content);
-  }
-
-  // Cursor templates (only if .cursor/ exists)
-  if (platforms.has("cursor")) {
-    // Cursor commands (flat structure with trellis- prefix, Cursor doesn't support subdirs)
-    const cursorCommands = getCommandTemplates("cursor");
-    for (const [name, content] of Object.entries(cursorCommands)) {
-      files.set(`.cursor/commands/${name}.md`, content);
+  // Platform-specific templates (only for configured platforms)
+  for (const platformId of platforms) {
+    const platformFiles = collectPlatformTemplates(platformId);
+    if (platformFiles) {
+      for (const [filePath, content] of platformFiles) {
+        files.set(filePath, content);
+      }
     }
   }
-
-  // iFlow templates (only if .iflow/ exists)
-  if (platforms.has("iflow")) {
-    // iFlow commands
-    const iflowCommands = getAllIflowCommands();
-    for (const command of iflowCommands) {
-      files.set(`.iflow/commands/${command.name}.md`, command.content);
-    }
-
-    // iFlow agents
-    const iflowAgents = getAllIflowAgents();
-    for (const agent of iflowAgents) {
-      files.set(`.iflow/agents/${agent.name}.md`, agent.content);
-    }
-
-    // iFlow hooks
-    const iflowHooks = getAllIflowHooks();
-    for (const hook of iflowHooks) {
-      files.set(`.iflow/${hook.targetPath}`, hook.content);
-    }
-
-    // iFlow settings
-    const iflowSettingsTemplate = getIflowSettingsTemplate();
-    files.set(`.iflow/${iflowSettingsTemplate.targetPath}`, iflowSettingsTemplate.content);
-  }
-
-  // Note: OpenCode uses plugin system, templates handled separately
 
   return files;
 }
@@ -532,9 +458,9 @@ function backupFile(
 }
 
 /**
- * Directories to backup as complete snapshot
+ * Directories to backup as complete snapshot (derived from platform registry)
  */
-const BACKUP_DIRS = [".trellis", ".claude", ".cursor", ".iflow", ".opencode"];
+const BACKUP_DIRS = ALL_MANAGED_DIRS;
 
 /**
  * Patterns to exclude from backup (user data that shouldn't be backed up)
@@ -982,17 +908,17 @@ async function promptMigrationAction(
  * Clean up empty directories after file migration
  * Recursively removes empty parent directories up to .trellis root
  */
-function cleanupEmptyDirs(cwd: string, dirPath: string): void {
+/** @internal Exported for testing only */
+export function cleanupEmptyDirs(cwd: string, dirPath: string): void {
   const fullPath = path.join(cwd, dirPath);
 
-  // Safety: don't delete outside of expected directories
-  if (
-    !dirPath.startsWith(".trellis/") &&
-    !dirPath.startsWith(".claude/") &&
-    !dirPath.startsWith(".cursor/") &&
-    !dirPath.startsWith(".iflow/") &&
-    !dirPath.startsWith(".opencode/")
-  ) {
+  // Safety: don't delete outside of managed directories
+  if (!isManagedPath(dirPath)) {
+    return;
+  }
+
+  // Safety: never delete managed root directories themselves (e.g., .claude, .trellis)
+  if (isManagedRootDir(dirPath)) {
     return;
   }
 
@@ -1011,11 +937,7 @@ function cleanupEmptyDirs(cwd: string, dirPath: string): void {
       if (
         parent !== "." &&
         parent !== dirPath &&
-        parent !== ".trellis" &&
-        parent !== ".claude" &&
-        parent !== ".cursor" &&
-        parent !== ".iflow" &&
-        parent !== ".opencode"
+        !isManagedRootDir(parent)
       ) {
         cleanupEmptyDirs(cwd, parent);
       }
@@ -1030,7 +952,8 @@ function cleanupEmptyDirs(cwd: string, dirPath: string): void {
  * - rename-dir with deeper paths first (to handle nested directories)
  * - rename-dir before rename/delete
  */
-function sortMigrationsForExecution(
+/** @internal Exported for testing only */
+export function sortMigrationsForExecution(
   migrations: MigrationItem[],
 ): MigrationItem[] {
   return [...migrations].sort((a, b) => {

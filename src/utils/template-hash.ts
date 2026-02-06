@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { DIR_NAMES } from "../constants/paths.js";
+import { ALL_MANAGED_DIRS } from "../configurators/index.js";
 import type { TemplateHashes } from "../types/migration.js";
 
 /** File name for storing template hashes */
@@ -190,9 +191,9 @@ export function getModificationStatus(
 }
 
 /**
- * Directories to scan for template files during init
+ * Directories to scan for template files during init (derived from platform registry)
  */
-const TEMPLATE_DIRS = [".trellis", ".claude", ".cursor", ".iflow", ".opencode"];
+const TEMPLATE_DIRS = ALL_MANAGED_DIRS;
 
 /**
  * Patterns to exclude from hash tracking
