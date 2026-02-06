@@ -18,32 +18,25 @@ import { configureCursor } from "./cursor.js";
 import { configureIflow } from "./iflow.js";
 import { configureOpenCode } from "./opencode.js";
 
+// Shared utilities
+import { resolvePlaceholders } from "./shared.js";
+
 // Template content for update tracking
-import { getCommandTemplates } from "./templates.js";
 import {
   getAllAgents as getClaudeAgents,
+  getAllCommands as getClaudeCommands,
   getAllHooks as getClaudeHooks,
   getSettingsTemplate as getClaudeSettings,
 } from "../templates/claude/index.js";
+import {
+  getAllCommands as getCursorCommands,
+} from "../templates/cursor/index.js";
 import {
   getAllAgents as getIflowAgents,
   getAllCommands as getIflowCommands,
   getAllHooks as getIflowHooks,
   getSettingsTemplate as getIflowSettings,
 } from "../templates/iflow/index.js";
-
-// =============================================================================
-// Shared Utilities
-// =============================================================================
-
-/**
- * Resolve platform-specific placeholders in template content.
- * Must match the same replacements done in each configurator's configure() function.
- */
-function resolvePlaceholders(content: string): string {
-  const pythonCmd = process.platform === "win32" ? "python" : "python3";
-  return content.replace(/\{\{PYTHON_CMD\}\}/g, pythonCmd);
-}
 
 // =============================================================================
 // Platform Functions Registry
@@ -66,9 +59,8 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
     collectTemplates: () => {
       const files = new Map<string, string>();
       // Commands (in trellis/ subdirectory for namespace)
-      const commands = getCommandTemplates("claude-code");
-      for (const [name, content] of Object.entries(commands)) {
-        files.set(`.claude/commands/trellis/${name}.md`, content);
+      for (const cmd of getClaudeCommands()) {
+        files.set(`.claude/commands/trellis/${cmd.name}.md`, cmd.content);
       }
       // Agents
       for (const agent of getClaudeAgents()) {
@@ -92,9 +84,8 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
     collectTemplates: () => {
       const files = new Map<string, string>();
       // Commands (flat structure with trellis- prefix, Cursor doesn't support subdirs)
-      const commands = getCommandTemplates("cursor");
-      for (const [name, content] of Object.entries(commands)) {
-        files.set(`.cursor/commands/${name}.md`, content);
+      for (const cmd of getCursorCommands()) {
+        files.set(`.cursor/commands/${cmd.name}.md`, cmd.content);
       }
       return files;
     },
