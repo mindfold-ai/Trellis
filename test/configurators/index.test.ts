@@ -62,6 +62,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".cursor/rules/bar.md")).toBe(true);
     expect(isManagedPath(".iflow/hooks/test.py")).toBe(true);
     expect(isManagedPath(".opencode/config.json")).toBe(true);
+    expect(isManagedPath(".agents/skills/start/SKILL.md")).toBe(true);
   });
 
   // Positive: exact match (startsWith(d + "/") = false, === d = true)
@@ -70,6 +71,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".cursor")).toBe(true);
     expect(isManagedPath(".iflow")).toBe(true);
     expect(isManagedPath(".opencode")).toBe(true);
+    expect(isManagedPath(".agents/skills")).toBe(true);
     expect(isManagedPath(".trellis")).toBe(true);
   });
 
@@ -85,6 +87,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".trellis-old")).toBe(false);
     expect(isManagedPath(".cursorignore")).toBe(false);
     expect(isManagedPath(".opencode-v2")).toBe(false);
+    expect(isManagedPath(".agents/skills-backup")).toBe(false);
   });
 
   // Boundary: empty string
@@ -111,6 +114,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".claude\\commands\\foo.md")).toBe(true);
     expect(isManagedPath(".trellis\\spec\\backend")).toBe(true);
     expect(isManagedPath(".iflow\\hooks\\test.py")).toBe(true);
+    expect(isManagedPath(".agents\\skills\\start\\SKILL.md")).toBe(true);
   });
 
   // Mixed separators

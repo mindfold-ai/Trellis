@@ -14,7 +14,7 @@ describe("getInstallPath", () => {
 
   it("returns skill path for 'skill' type", () => {
     const result = getInstallPath("/project", "skill");
-    expect(result).toBe(path.join("/project", ".claude/skills"));
+    expect(result).toBe(path.join("/project", ".agents/skills"));
   });
 
   it("returns command path for 'command' type", () => {

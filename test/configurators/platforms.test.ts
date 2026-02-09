@@ -9,6 +9,7 @@ import {
 } from "../../src/configurators/index.js";
 import { AI_TOOLS } from "../../src/types/ai-tools.js";
 import { setWriteMode } from "../../src/utils/file-writer.js";
+import { getAllSkills } from "../../src/templates/codex/index.js";
 
 // =============================================================================
 // getConfiguredPlatforms — detects existing platform directories
@@ -54,9 +55,17 @@ describe("getConfiguredPlatforms", () => {
     expect(result.has("opencode")).toBe(true);
   });
 
+  it("detects .agents/skills directory as codex", () => {
+    fs.mkdirSync(path.join(tmpDir, ".agents", "skills"), { recursive: true });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("codex")).toBe(true);
+  });
+
   it("detects multiple platforms simultaneously", () => {
     for (const id of PLATFORM_IDS) {
-      fs.mkdirSync(path.join(tmpDir, AI_TOOLS[id].configDir));
+      fs.mkdirSync(path.join(tmpDir, AI_TOOLS[id].configDir), {
+        recursive: true,
+      });
     }
     const result = getConfiguredPlatforms(tmpDir);
     expect(result.size).toBe(PLATFORM_IDS.length);
@@ -109,6 +118,34 @@ describe("configurePlatform", () => {
   it("configurePlatform('opencode') creates .opencode directory", async () => {
     await configurePlatform("opencode", tmpDir);
     expect(fs.existsSync(path.join(tmpDir, ".opencode"))).toBe(true);
+  });
+
+  it("configurePlatform('codex') creates .agents/skills directory", async () => {
+    await configurePlatform("codex", tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(true);
+  });
+
+  it("configurePlatform('codex') writes all skill templates", async () => {
+    await configurePlatform("codex", tmpDir);
+
+    const expectedSkills = getAllSkills();
+    const expectedNames = expectedSkills.map((skill) => skill.name).sort();
+
+    const skillsRoot = path.join(tmpDir, ".agents", "skills");
+    const actualNames = fs
+      .readdirSync(skillsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    expect(actualNames).toEqual(expectedNames);
+    expect(actualNames).not.toContain("parallel");
+
+    for (const skill of expectedSkills) {
+      const skillPath = path.join(skillsRoot, skill.name, "SKILL.md");
+      expect(fs.existsSync(skillPath)).toBe(true);
+      expect(fs.readFileSync(skillPath, "utf-8")).toBe(skill.content);
+    }
   });
 
   it("claude-code configuration includes commands directory", async () => {
