@@ -7,7 +7,6 @@ Execute these steps:
    - Database changes → `.trellis/spec/backend/database-guidelines.md`
    - Error handling → `.trellis/spec/backend/error-handling.md`
    - Logging changes → `.trellis/spec/backend/logging-guidelines.md`
-   - Type changes → `.trellis/spec/backend/type-safety.md`
    - Any changes → `.trellis/spec/backend/quality-guidelines.md`
 4. Check if tests need to be added or updated (see `.trellis/spec/unit-test/conventions.md` "When to Write Tests"):
    - New pure function → needs unit test
