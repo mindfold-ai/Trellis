@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-<strong>All-in-one AI framework & toolkit for Claude Code, Cursor & iFlow</strong><br/>
+<strong>All-in-one AI framework & toolkit for Claude Code, Cursor, iFlow & Codex</strong><br/>
 <sub>Wild AI ships nothing.</sub>
 </p>
 
@@ -51,6 +51,9 @@ trellis init -u your-name
 
 # Or include iFlow CLI support
 trellis init --iflow -u your-name
+
+# Or include Codex skills support
+trellis init --codex -u your-name
 
 # 3. Start Claude Code and begin working
 ```

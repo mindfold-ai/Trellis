@@ -290,7 +290,7 @@ def registry_add_agent(
         pid: Process ID.
         task_dir: Task directory path.
         repo_root: Repository root path. Defaults to auto-detected.
-        platform: Platform used ('claude' or 'opencode'). Defaults to 'claude'.
+        platform: Platform used (e.g., 'claude', 'opencode', 'codex'). Defaults to 'claude'.
 
     Returns:
         True on success.

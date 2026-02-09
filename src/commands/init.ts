@@ -294,6 +294,7 @@ interface InitOptions {
   claude?: boolean;
   iflow?: boolean;
   opencode?: boolean;
+  codex?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

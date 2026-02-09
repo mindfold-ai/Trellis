@@ -22,7 +22,7 @@ const TEMPLATE_REPO = "gh:mindfold-ai/docs";
 /** Map template type to installation path */
 const INSTALL_PATHS: Record<string, string> = {
   spec: ".trellis/spec",
-  skill: ".claude/skills",
+  skill: ".agents/skills",
   command: ".claude/commands",
   full: ".", // Entire project root
 };

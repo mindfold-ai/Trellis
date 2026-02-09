@@ -17,6 +17,7 @@ import { configureClaude } from "./claude.js";
 import { configureCursor } from "./cursor.js";
 import { configureIflow } from "./iflow.js";
 import { configureOpenCode } from "./opencode.js";
+import { configureCodex } from "./codex.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -37,6 +38,7 @@ import {
   getAllHooks as getIflowHooks,
   getSettingsTemplate as getIflowSettings,
 } from "../templates/iflow/index.js";
+import { getAllSkills as getCodexSkills } from "../templates/codex/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -116,6 +118,16 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
         `.iflow/${settings.targetPath}`,
         resolvePlaceholders(settings.content),
       );
+      return files;
+    },
+  },
+  codex: {
+    configure: configureCodex,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const skill of getCodexSkills()) {
+        files.set(`.agents/skills/${skill.name}/SKILL.md`, skill.content);
+      }
       return files;
     },
   },

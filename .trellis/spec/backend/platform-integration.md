@@ -74,6 +74,16 @@ When adding a new platform `{platform}`, update the following:
 
 > Note: OpenCode uses JS plugins instead of Python hooks, has no `index.ts` template module, and has no `collectTemplates` — so `trellis update` does not track OpenCode template files. If a new platform uses JS plugins, follow this pattern.
 
+**Skills pattern** (Codex):
+
+| Directory | Contents |
+|-----------|----------|
+| `src/templates/{platform}/` | Root directory |
+| `src/templates/{platform}/index.ts` | Export functions for listing skills |
+| `src/templates/{platform}/skills/<skill-name>/SKILL.md` | Skill definitions |
+
+> Note: Codex uses skills (not slash commands). Skill content should use `$<skill-name>` / `/skills` semantics, not `/trellis:*` syntax.
+
 ### Step 5: Template Extraction
 
 | File | Change |
@@ -86,11 +96,13 @@ When adding a new platform `{platform}`, update the following:
 |------|--------|
 | `src/templates/trellis/scripts/common/cli_adapter.py` | Add to `Platform` literal type, `config_dir_name` property, `detect_platform()`, `get_cli_adapter()` validation |
 | `src/templates/trellis/scripts/common/registry.py` | Update default platform if needed |
-| `src/templates/trellis/scripts/multi_agent/plan.py` | Add to `--platform` choices |
-| `src/templates/trellis/scripts/multi_agent/start.py` | Add to `--platform` choices |
-| `src/templates/trellis/scripts/multi_agent/status.py` | Add platform-specific behavior if needed |
+| `src/templates/trellis/scripts/multi_agent/plan.py` | Add to `--platform` choices (only if this platform supports multi-agent runtime) |
+| `src/templates/trellis/scripts/multi_agent/start.py` | Add to `--platform` choices (only if this platform supports multi-agent runtime) |
+| `src/templates/trellis/scripts/multi_agent/status.py` | Add platform-specific behavior if needed (only if supported) |
 
 > Note: Python scripts run in user projects at runtime — they cannot import from the TS registry and maintain their own registry in `cli_adapter.py`.
+>
+> Current scope for Codex integration: common scripts + `task.py` context path mapping. Multi-agent runtime (`multi_agent/*.py`) is intentionally out of scope.
 
 ### Step 7: Documentation
 
@@ -150,8 +162,9 @@ These are now **automatically derived** from the registry:
 | Cursor | `/trellis-xxx` | `/trellis-start` |
 | OpenCode | `/trellis:xxx` | `/trellis:start` |
 | iFlow | `/trellis:xxx` | `/trellis:start` |
+| Codex | `$<skill-name>` / `/skills` | `$start` |
 
-When creating command templates, ensure the command references match the platform's format.
+When creating platform templates, ensure references match the platform's interaction format.
 
 ---
 
@@ -191,6 +204,18 @@ if sys.platform == "win32":
 **Symptom**: Slash commands don't work or show wrong format.
 
 **Fix**: Check platform's command format and update all command references in templates.
+
+### Codex template copied from project `.agents/skills` instead of `src/templates`
+
+**Symptom**: Generated templates accidentally include repo-specific customizations and drift from template source-of-truth.
+
+**Fix**: Always use `src/templates/{platform}/...` as source templates for `init/update`. Do not copy from project runtime directories.
+
+### Codex skill directory exists but `SKILL.md` is missing
+
+**Symptom**: Template loading fails with `ENOENT` when scanning skills.
+
+**Fix**: Keep `src/templates/codex/skills/<skill-name>/SKILL.md` complete; when removing a skill, delete both `SKILL.md` and the directory.
 
 ### Missing CLI flag or InitOptions field
 

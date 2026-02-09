@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-<strong>Claude Code、Cursor 和 iFlow 的一站式 AI 开发框架</strong><br/>
+<strong>Claude Code、Cursor、iFlow 和 Codex 的一站式 AI 开发框架</strong><br/>
 <sub>能解决以下问题</sub>
 </p>
 
@@ -51,6 +51,9 @@ trellis init -u your-name
 
 # 或包含 iFlow CLI 支持
 trellis init --iflow -u your-name
+
+# 或包含 Codex Skills 支持
+trellis init --codex -u your-name
 
 # 3. 启动 Claude Code，开始干活
 ```

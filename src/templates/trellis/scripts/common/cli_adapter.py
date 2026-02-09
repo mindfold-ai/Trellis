@@ -1,13 +1,14 @@
 """
 CLI Adapter for Multi-Platform Support.
 
-Abstracts differences between Claude Code, OpenCode, Cursor, and iFlow interfaces.
+Abstracts differences between Claude Code, OpenCode, Cursor, iFlow, and Codex interfaces.
 
 Supported platforms:
 - claude: Claude Code (default)
 - opencode: OpenCode
 - cursor: Cursor IDE
 - iflow: iFlow CLI
+- codex: Codex CLI (skills-based)
 
 Usage:
     from common.cli_adapter import CLIAdapter
@@ -26,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Literal
 
-Platform = Literal["claude", "opencode", "cursor", "iflow"]
+Platform = Literal["claude", "opencode", "cursor", "iflow", "codex"]
 
 
 @dataclass
@@ -70,7 +71,7 @@ class CLIAdapter:
         """Get platform-specific config directory name.
 
         Returns:
-            Directory name ('.claude', '.opencode', '.cursor', or '.iflow')
+            Directory name ('.claude', '.opencode', '.cursor', '.iflow', or '.agents')
         """
         if self.platform == "opencode":
             return ".opencode"
@@ -78,6 +79,8 @@ class CLIAdapter:
             return ".cursor"
         elif self.platform == "iflow":
             return ".iflow"
+        elif self.platform == "codex":
+            return ".agents"
         else:
             return ".claude"
 
@@ -88,7 +91,7 @@ class CLIAdapter:
             project_root: Project root directory
 
         Returns:
-            Path to config directory (.claude, .opencode, .cursor, or .iflow)
+            Path to config directory (.claude, .opencode, .cursor, .iflow, or .agents)
         """
         return project_root / self.config_dir_name
 
@@ -141,10 +144,13 @@ class CLIAdapter:
 
         Note:
             Cursor: .cursor/commands/trellis-<name>.md
+            Codex: .agents/skills/<name>/SKILL.md
             Others: .{platform}/commands/trellis/<name>.md
         """
         if self.platform == "cursor":
             return f".cursor/commands/trellis-{name}.md"
+        elif self.platform == "codex":
+            return f".agents/skills/{name}/SKILL.md"
         else:
             return f"{self.config_dir_name}/commands/trellis/{name}.md"
 
@@ -160,6 +166,8 @@ class CLIAdapter:
         """
         if self.platform == "opencode":
             return {"OPENCODE_NON_INTERACTIVE": "1"}
+        elif self.platform == "codex":
+            return {"CODEX_NON_INTERACTIVE": "1"}
         else:
             return {"CLAUDE_NON_INTERACTIVE": "1"}
 
@@ -210,6 +218,10 @@ class CLIAdapter:
 
             cmd.append(prompt)
 
+        elif self.platform == "codex":
+            cmd = ["codex", "exec"]
+            cmd.append(prompt)
+
         else:  # claude
             cmd = ["claude", "-p"]
             cmd.extend(["--agent", mapped_agent])
@@ -241,6 +253,8 @@ class CLIAdapter:
         """
         if self.platform == "opencode":
             return ["opencode", "run", "--session", session_id]
+        elif self.platform == "codex":
+            return ["codex", "resume", session_id]
         else:
             return ["claude", "--resume", session_id]
 
@@ -344,7 +358,7 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
     """Get CLI adapter for the specified platform.
 
     Args:
-        platform: Platform name ('claude', 'opencode', 'cursor', or 'iflow')
+        platform: Platform name ('claude', 'opencode', 'cursor', 'iflow', or 'codex')
 
     Returns:
         CLIAdapter instance
@@ -352,8 +366,8 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
     Raises:
         ValueError: If platform is not supported
     """
-    if platform not in ("claude", "opencode", "cursor", "iflow"):
-        raise ValueError(f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', or 'iflow')")
+    if platform not in ("claude", "opencode", "cursor", "iflow", "codex"):
+        raise ValueError(f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', or 'codex')")
 
     return CLIAdapter(platform=platform)  # type: ignore
 
@@ -366,19 +380,20 @@ def detect_platform(project_root: Path) -> Platform:
     2. .opencode directory exists → opencode
     3. .iflow directory exists → iflow
     4. .cursor directory exists (without .claude) → cursor
-    5. Default → claude
+    5. .agents/skills exists and no other platform dirs → codex
+    6. Default → claude
 
     Args:
         project_root: Project root directory
 
     Returns:
-        Detected platform ('claude', 'opencode', 'cursor', or 'iflow')
+        Detected platform ('claude', 'opencode', 'cursor', 'iflow', or 'codex')
     """
     import os
 
     # Check environment variable first
     env_platform = os.environ.get("TRELLIS_PLATFORM", "").lower()
-    if env_platform in ("claude", "opencode", "cursor", "iflow"):
+    if env_platform in ("claude", "opencode", "cursor", "iflow", "codex"):
         return env_platform  # type: ignore
 
     # Check for .opencode directory (OpenCode-specific)
@@ -395,6 +410,14 @@ def detect_platform(project_root: Path) -> Platform:
     # Only detect as cursor if .claude doesn't exist (to avoid confusion)
     if (project_root / ".cursor").is_dir() and not (project_root / ".claude").is_dir():
         return "cursor"
+
+    # Check for Codex skills directory only when no other platform config exists
+    other_platform_dirs = (".claude", ".cursor", ".iflow", ".opencode")
+    has_other_platform_config = any(
+        (project_root / directory).is_dir() for directory in other_platform_dirs
+    )
+    if (project_root / ".agents" / "skills").is_dir() and not has_other_platform_config:
+        return "codex"
 
     return "claude"
 

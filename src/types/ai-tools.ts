@@ -7,18 +7,24 @@
 /**
  * Supported AI coding tools
  */
-export type AITool = "claude-code" | "cursor" | "opencode" | "iflow";
+export type AITool = "claude-code" | "cursor" | "opencode" | "iflow" | "codex";
 
 /**
  * Template directory categories
  */
-export type TemplateDir = "common" | "claude" | "cursor" | "opencode" | "iflow";
+export type TemplateDir =
+  | "common"
+  | "claude"
+  | "cursor"
+  | "opencode"
+  | "iflow"
+  | "codex";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor)
  * Must match keys in InitOptions (src/commands/init.ts)
  */
-export type CliFlag = "claude" | "cursor" | "opencode" | "iflow";
+export type CliFlag = "claude" | "cursor" | "opencode" | "iflow" | "codex";
 
 /**
  * Configuration for an AI tool
@@ -81,6 +87,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     cliFlag: "iflow",
     defaultChecked: false,
     hasPythonHooks: true,
+  },
+  codex: {
+    name: "Codex",
+    templateDirs: ["common", "codex"],
+    configDir: ".agents/skills",
+    cliFlag: "codex",
+    defaultChecked: false,
+    hasPythonHooks: false,
   },
 };
 

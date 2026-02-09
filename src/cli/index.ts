@@ -64,6 +64,7 @@ program
   .option("--claude", "Include Claude Code commands")
   .option("--iflow", "Include iFlow CLI commands")
   .option("--opencode", "Include OpenCode commands")
+  .option("--codex", "Include Codex skills")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",
