@@ -1,6 +1,6 @@
 {
   "name": "@mindfoldhq/trellis",
-  "version": "0.3.0-rc.1",
+  "version": "0.3.0-rc.2",
   "description": "AI capabilities grow like ivy — Trellis provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",
