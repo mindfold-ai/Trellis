@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 48
-- **Last Active**: 2026-02-06
+- **Total Sessions**: 49
+- **Last Active**: 2026-02-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~962 | Active |
+| `journal-2.md` | ~1011 | Active |
 | `journal-1.md` | ~1998 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 49 | 2026-02-09 | Codex platform integration + UT workflow alignment | `bb9fcea`, `3f2cb2f`, `c3a3306`, `8b13a15` |
 | 48 | 2026-02-06 | fix: compareVersions prerelease bug + rc.0/rc.1 release | `f98a085`, `7affd33`, `72ef5fc`, `00c4793` |
 | 47 | 2026-02-06 | RC manifest + fragile test audit & cleanup (339→312) | `7ee4c69` |
 | 46 | 2026-02-06 | docs: platform-integration spec deep fix + journal | `07a57d3` |

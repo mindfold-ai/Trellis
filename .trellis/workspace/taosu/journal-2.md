@@ -960,3 +960,52 @@ Enhanced `/trellis:brainstorm` command with major workflow improvements.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 49: Codex platform integration + UT workflow alignment
+
+**Date**: 2026-02-09
+**Task**: Codex platform integration + UT workflow alignment
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Description |
+|------|-------------|
+| Platform Integration | Added Codex as a first-class platform in registry, CLI flags, init options, configurator wiring, and template tracking paths. |
+| Codex Templates | Added `src/templates/codex/skills/*/SKILL.md` with Codex-compatible skill structure and removed parallel-related skill usage. |
+| Runtime Adapter | Updated Python `cli_adapter.py` and `registry.py` to recognize Codex (`.agents/skills`) and support Codex CLI command path mapping/detection. |
+| Tests | Added/updated Codex-focused tests for init integration, platform configurators, managed path detection, regression checks, and template fetcher path mapping. |
+| Workflow Docs | Added `$improve-ut` skill + `/trellis:improve-ut` command as spec-first UT guidance and aligned backend check command references. |
+| Task Tracking | Archived task `02-09-codex-skills-template-init` after completion. |
+
+**Validation**:
+- `pnpm lint` passed
+- `pnpm typecheck` passed
+- `pnpm test` passed (321 tests)
+- `pnpm test:coverage` generated report (`coverage/index.html`)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bb9fcea` | (see git log) |
+| `3f2cb2f` | (see git log) |
+| `c3a3306` | (see git log) |
+| `8b13a15` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
