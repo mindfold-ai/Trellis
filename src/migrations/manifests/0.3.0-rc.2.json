@@ -1,0 +1,9 @@
+{
+  "version": "0.3.0-rc.2",
+  "description": "Codex platform integration and test/doc alignment",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**New Features:**\n- feat(platform): add Codex as a first-class platform in AI tool registry (types, CLI flag, init options, configurator dispatch)\n- feat(templates): add Codex skill templates under `src/templates/codex/skills/*/SKILL.md`\n- feat(configurator): add `configureCodex()` and template collection mapping to `.agents/skills/<name>/SKILL.md`\n- feat(runtime): extend Python `cli_adapter.py` / `registry.py` to support Codex detection and command path mapping\n\n**Testing:**\n- test(codex): add focused coverage for Codex template loading, init behavior, managed path detection, platform configurator output, and regression checks\n- test: full suite passing (`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:coverage`)\n\n**Documentation & Workflow:**\n- docs(workflow): add `improve-ut` skill/command to standardize UT planning and reporting\n- docs(spec): update backend platform integration guidance for Codex scope and common pitfalls",
+  "migrations": [],
+  "notes": "No migration required. Existing projects can adopt Codex via re-init/update workflows; no file rename/delete migration is needed."
+}
