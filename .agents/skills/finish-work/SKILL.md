@@ -29,9 +29,9 @@ pnpm test
 - [ ] No non-null assertions (the `x!` operator)?
 - [ ] No `any` types?
 
-### 2. Documentation Sync
+### 2. Code-Spec Sync
 
-**Structure Docs**:
+**Code-Spec Docs**:
 - [ ] Does `.trellis/spec/backend/` need updates?
   - New patterns, new modules, new conventions
 - [ ] Does `.trellis/spec/frontend/` need updates?
@@ -42,7 +42,20 @@ pnpm test
 **Key Question**: 
 > "If I fixed a bug or discovered something non-obvious, should I document it so future me (or others) won't hit the same issue?"
 
-If YES -> Update the relevant spec doc.
+If YES -> Update the relevant code-spec doc.
+
+### 2.5. Code-Spec Hard Block (Infra/Cross-Layer)
+
+If this change touches infra or cross-layer contracts, this is a blocking checklist:
+
+- [ ] Spec content is executable (real signatures/contracts), not principle-only text
+- [ ] Includes file path + command/API name + payload field names
+- [ ] Includes validation and error matrix
+- [ ] Includes Good/Base/Bad cases
+- [ ] Includes required tests and assertion points
+
+**Block Rule**:
+If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Complete `/trellis:update-spec` first.
 
 ### 3. API Changes
 
@@ -99,7 +112,8 @@ git diff --name-only
 
 | Oversight | Consequence | Check |
 |-----------|-------------|-------|
-| Structure docs not updated | Others don't know the change | Check .trellis/spec/ |
+| Code-spec docs not updated | Others don't know the change | Check .trellis/spec/ |
+| Spec text is abstract only | Easy regressions in infra/cross-layer changes | Require signature/contract/matrix/cases/tests |
 | Migration not created | Schema out of sync | Check db/migrations/ |
 | Types not synced | Runtime errors | Check shared types |
 | Tests not updated | False confidence | Run full test suite |
