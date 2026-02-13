@@ -38,9 +38,9 @@ This returns:
 - Active tasks
 - Journal file status
 
-### Step 3: Read Project Guidelines `[AI]`
+### Step 3: Read Project Code-Spec Index `[AI]`
 
-Based on the upcoming task, read appropriate spec docs:
+Based on the upcoming task, read appropriate code-spec docs:
 
 **For Frontend Work**:
 ```bash
@@ -90,7 +90,7 @@ Ready for your task. What would you like to work on?
 
 ### For Simple Tasks
 
-1. Read relevant guidelines based on task type `[AI]`
+1. Read relevant code-spec docs based on task type `[AI]`
 2. Implement the task directly `[AI]`
 3. Remind user to run `/trellis-finish-work` before committing `[USER]`
 
@@ -102,9 +102,25 @@ Ready for your task. What would you like to work on?
 python3 ./.trellis/scripts/task.py create "<title>" --slug <name>
 ```
 
+#### Step 1.5: Code-Spec Depth Requirement (CRITICAL) `[AI]`
+
+If the task touches infra or cross-layer contracts, do not start implementation until code-spec depth is defined.
+
+Trigger this requirement when the change includes any of:
+- New or changed command/API signatures
+- Database schema or migration changes
+- Infra integrations (storage, queue, cache, secrets, env contracts)
+- Cross-layer payload transformations
+
+Must-have before implementation:
+- [ ] Target code-spec files to update are identified
+- [ ] Concrete contract is defined (signature, fields, env keys)
+- [ ] Validation and error matrix is defined
+- [ ] At least one Good/Base/Bad case is defined
+
 #### Step 2: Implement and Verify `[AI]`
 
-1. Read relevant spec docs
+1. Read relevant code-spec docs
 2. Implement the task
 3. Run lint and type checks
 
