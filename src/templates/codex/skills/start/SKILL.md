@@ -70,7 +70,7 @@ When user describes a task, classify it:
 
 > **If in doubt, use Task Workflow.**
 >
-> Task Workflow ensures specs are injected to the right context, resulting in higher quality code.
+> Task Workflow ensures code-specs are injected to the right context, resulting in higher quality code.
 > The overhead is minimal, but the benefit is significant.
 
 ---
@@ -101,6 +101,22 @@ Before creating anything, understand what user wants:
 - Any specific requirements or constraints?
 
 If unclear, ask clarifying questions.
+
+### Step 1.5: Code-Spec Depth Requirement (CRITICAL) `[AI]`
+
+If the task touches infra or cross-layer contracts, do not start implementation until code-spec depth is defined.
+
+Trigger this requirement when the change includes any of:
+- New or changed command/API signatures
+- Database schema or migration changes
+- Infra integrations (storage, queue, cache, secrets, env contracts)
+- Cross-layer payload transformations
+
+Must-have before implementation:
+- [ ] Target code-spec files to update are identified
+- [ ] Concrete contract is defined (signature, fields, env keys)
+- [ ] Validation and error matrix is defined
+- [ ] At least one Good/Base/Bad case is defined
 
 ### Step 2: Research the Codebase `[AI]`
 
@@ -256,7 +272,7 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 ## Key Principle
 
-> **Specs are injected, not remembered.**
+> **Code-spec context is injected, not remembered.**
 >
-> The Task Workflow ensures agents receive relevant specs automatically.
+> The Task Workflow ensures agents receive relevant code-spec context automatically.
 > This is more reliable than hoping the AI "remembers" conventions.
