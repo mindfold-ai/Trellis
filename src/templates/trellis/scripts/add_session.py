@@ -265,7 +265,7 @@ def update_index(
 
         if in_session_history:
             new_lines.append(line)
-            if line.startswith("|---") and not header_written:
+            if re.match(r"^\|\s*-", line) and not header_written:
                 new_lines.append(f"| {new_session} | {today} | {title} | {commit_display} |")
                 header_written = True
             continue

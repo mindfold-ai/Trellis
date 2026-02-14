@@ -107,6 +107,13 @@ describe("regression: Windows encoding (beta.10, beta.11, beta.16)", () => {
     expect(addSessionScript).toContain("reconfigure");
   });
 
+  it("[rc.2] add_session.py table separator matching tolerates formatted markdown", () => {
+    // Bug: startswith("|---") breaks when formatters add spaces: "| ---- |"
+    // Fix: use re.match(r"^\\|\\s*-", line) to allow optional whitespace
+    expect(addSessionScript).not.toContain('startswith("|---")');
+    expect(addSessionScript).toContain(String.raw`re.match(r"^\|\s*-", line)`);
+  });
+
   it("[beta.10] git_context.py has inline encoding fix", () => {
     expect(commonGitContext).toContain('sys.platform == "win32"');
     expect(commonGitContext).toContain("reconfigure");
