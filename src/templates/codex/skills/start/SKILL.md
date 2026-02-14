@@ -13,8 +13,8 @@ Initialize your AI development session and begin working on tasks.
 
 | Marker | Meaning | Executor |
 |--------|---------|----------|
-| `[AI]` | Bash scripts executed by AI | You (AI) |
-| `[USER]` | Skills invoked by user | User |
+| `[AI]` | Bash scripts or tool calls executed by AI | You (AI) |
+| `[USER]` | Skills executed by user | User |
 
 ---
 
@@ -63,30 +63,14 @@ When user describes a task, classify it:
 | Type | Criteria | Workflow |
 |------|----------|----------|
 | **Question** | User asks about code, architecture, or how something works | Answer directly |
-| **Trivial Fix** | Typo fix, comment update, single-line change | Direct Edit |
-| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Implement |
-| **Complex Task** | Vague goal, multiple files, architectural decisions | **Brainstorm → Task Workflow** |
-
-### Classification Signals
-
-**Trivial/Simple indicators:**
-- User specifies exact file and change
-- "Fix the typo in X"
-- "Add field Y to component Z"
-- Clear acceptance criteria already stated
-
-**Complex indicators:**
-- "I want to add a feature for..."
-- "Can you help me improve..."
-- Mentions multiple areas or systems
-- No clear implementation path
-- User seems unsure about approach
+| **Trivial Fix** | Typo fix, comment update, single-line change, < 5 minutes | Direct Edit |
+| **Development Task** | Any code change that: modifies logic, adds features, fixes bugs, touches multiple files | **Task Workflow** |
 
 ### Decision Rule
 
-> **If in doubt, use Brainstorm + Task Workflow.**
+> **If in doubt, use Task Workflow.**
 >
-> Task Workflow ensures code-spec context is injected to agents, resulting in higher quality code.
+> Task Workflow ensures specs are injected to the right context, resulting in higher quality code.
 > The overhead is minimal, but the benefit is significant.
 
 ---
@@ -100,82 +84,48 @@ For questions or trivial fixes, work directly:
 
 ---
 
-## Simple Task
-
-For simple, well-defined tasks:
-
-1. Quick confirm: "I understand you want to [goal]. Ready to proceed?"
-2. If yes, skip to **Task Workflow Step 2** (Research)
-3. If no, clarify and confirm again
-
----
-
-## Complex Task - Brainstorm First
-
-For complex or vague tasks, use the brainstorm process to clarify requirements.
-
-See `$brainstorm` for the full process. Summary:
-
-1. **Acknowledge and classify** - State your understanding
-2. **Create task directory** - Track evolving requirements in `prd.md`
-3. **Ask questions one at a time** - Update PRD after each answer
-4. **Propose approaches** - For architectural decisions
-5. **Confirm final requirements** - Get explicit approval
-6. **Proceed to Task Workflow** - With clear requirements in PRD
-
-### Key Brainstorm Principles
-
-| Principle | Description |
-|-----------|-------------|
-| **One question at a time** | Never overwhelm with multiple questions |
-| **Update PRD immediately** | After each answer, update the document |
-| **Prefer multiple choice** | Easier for users to answer |
-| **YAGNI** | Challenge unnecessary complexity |
-
----
-
 ## Task Workflow (Development Tasks)
 
 **Why this workflow?**
-- Research phase analyzes what code-spec files are needed
-- Code-spec files are configured in jsonl files
-- Implementation receives code-spec context via Hook injection
-- Check phase verifies against code-spec requirements
+- Run a dedicated research pass before coding
+- Configure specs in jsonl context files
+- Implement using injected context
+- Verify with a separate check pass
 - Result: Code that follows project conventions automatically
 
 ### Step 1: Understand the Task `[AI]`
 
-**If coming from Brainstorm:** Skip this step - requirements are already in PRD.
-
-**If Simple Task:** Quick confirm understanding:
+Before creating anything, understand what user wants:
 - What is the goal?
 - What type of development? (frontend / backend / fullstack)
 - Any specific requirements or constraints?
 
-### Step 1.5: Code-Spec Depth Requirement (CRITICAL) `[AI]`
-
-If the task touches infra or cross-layer contracts, do not start implementation until code-spec depth is defined.
-
-Trigger this requirement when the change includes any of:
-- New or changed command/API signatures
-- Database schema or migration changes
-- Infra integrations (storage, queue, cache, secrets, env contracts)
-- Cross-layer payload transformations
-
-Must-have before implementation:
-- [ ] Target code-spec files to update are identified
-- [ ] Concrete contract is defined (signature, fields, env keys)
-- [ ] Validation and error matrix is defined
-- [ ] At least one Good/Base/Bad case is defined
+If unclear, ask clarifying questions.
 
 ### Step 2: Research the Codebase `[AI]`
 
-Analyze the codebase for the task:
+Run a focused research pass and produce:
 
-1. Find relevant code-spec files in `.trellis/spec/`
-2. Find existing code patterns to follow (2-3 examples)
-3. Identify files that will likely need modification
-4. Suggest a task name (short slug)
+1. Relevant spec files in `.trellis/spec/`
+2. Existing code patterns to follow (2-3 examples)
+3. Files that will likely need modification
+4. Suggested task slug
+
+Use this output format:
+
+```markdown
+## Relevant Specs
+- <path>: <why it's relevant>
+
+## Code Patterns Found
+- <pattern>: <example file path>
+
+## Files to Modify
+- <path>: <what change>
+
+## Suggested Task Name
+- <short-slug-name>
+```
 
 ### Step 3: Create Task Directory `[AI]`
 
@@ -194,10 +144,10 @@ python3 ./.trellis/scripts/task.py init-context "$TASK_DIR" <type>
 # type: backend | frontend | fullstack
 ```
 
-Add code-spec files found during research:
+Add specs found in your research pass:
 
 ```bash
-# For each relevant code-spec and code pattern:
+# For each relevant spec and code pattern:
 python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
 python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
 ```
@@ -234,16 +184,18 @@ This sets `.current-task` so hooks can inject context.
 
 ### Step 7: Implement `[AI]`
 
-Implement the task described in `prd.md`:
+Implement the task described in `prd.md`.
 
-- Follow all code-spec files that have been configured for this task
+- Follow all specs injected into implement context
+- Keep changes scoped to requirements
 - Run lint and typecheck before finishing
 
 ### Step 8: Check Quality `[AI]`
 
-Review all code changes against the code-spec requirements:
+Run a quality pass against check context:
 
-- Fix any issues found directly
+- Review all code changes against the specs
+- Fix issues directly
 - Ensure lint and typecheck pass
 
 ### Step 9: Complete `[AI]`
@@ -269,14 +221,13 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 ---
 
-## Commands Reference
+## Skills Reference
 
 ### User Skills `[USER]`
 
 | Skill | When to Use |
-|-------|-------------|
+|---------|-------------|
 | `$start` | Begin a session (this skill) |
-| `$brainstorm` | Clarify vague requirements (called from start) |
 | `$finish-work` | Before committing changes |
 | `$record-session` | After completing a task |
 
@@ -287,16 +238,25 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 | `python3 ./.trellis/scripts/get_context.py` | Get session context |
 | `python3 ./.trellis/scripts/task.py create` | Create task directory |
 | `python3 ./.trellis/scripts/task.py init-context` | Initialize jsonl files |
-| `python3 ./.trellis/scripts/task.py add-context` | Add code-spec/context file to jsonl |
+| `python3 ./.trellis/scripts/task.py add-context` | Add spec to jsonl |
 | `python3 ./.trellis/scripts/task.py start` | Set current task |
 | `python3 ./.trellis/scripts/task.py finish` | Clear current task |
 | `python3 ./.trellis/scripts/task.py archive` | Archive completed task |
+
+### Workflow Phases `[AI]`
+
+| Phase | Purpose | Context Source |
+|-------|---------|----------------|
+| research | Analyze codebase | direct repo inspection |
+| implement | Write code | `implement.jsonl` |
+| check | Review & fix | `check.jsonl` |
+| debug | Fix specific issues | `debug.jsonl` |
 
 ---
 
 ## Key Principle
 
-> **Code-spec context is injected, not remembered.**
+> **Specs are injected, not remembered.**
 >
-> The Task Workflow ensures code-spec context is provided automatically.
+> The Task Workflow ensures agents receive relevant specs automatically.
 > This is more reliable than hoping the AI "remembers" conventions.

@@ -1,59 +1,29 @@
 ---
 name: update-spec
-description: "Update Code-Spec - Capture Executable Contracts"
+description: "Update Spec - Capture Knowledge into Specifications"
 ---
 
-# Update Code-Spec - Capture Executable Contracts
+# Update Spec - Capture Knowledge into Specifications
 
-When you learn something valuable (from debugging, implementing, or discussion), use this command to update the relevant code-spec documents.
+When you learn something valuable (from debugging, implementing, or discussion), use this skill to update the relevant spec documents.
 
 **Timing**: After completing a task, fixing a bug, or discovering a new pattern
 
 ---
 
-## Code-Spec First Rule (CRITICAL)
-
-In this project, "spec" for implementation work means **code-spec**:
-- Executable contracts (not principle-only text)
-- Concrete signatures, payload fields, env keys, and boundary behavior
-- Testable validation/error behavior
-
-If the change touches infra or cross-layer contracts, code-spec depth is mandatory.
-
-### Mandatory Triggers
-
-Apply code-spec depth when the change includes any of:
-- New/changed command or API signature
-- Cross-layer request/response contract change
-- Database schema/migration change
-- Infra integration (storage, queue, cache, secrets, env wiring)
-
-### Mandatory Output (7 Sections)
-
-For triggered tasks, include all sections below:
-1. Scope / Trigger
-2. Signatures (command/API/DB)
-3. Contracts (request/response/env)
-4. Validation & Error Matrix
-5. Good/Base/Bad Cases
-6. Tests Required (with assertion points)
-7. Wrong vs Correct (at least one pair)
-
----
-
-## When to Update Code-Specs
+## When to Update Specs
 
 | Trigger | Example | Target Spec |
 |---------|---------|-------------|
 | **Implemented a feature** | Added template download with giget | Relevant `backend/` or `frontend/` file |
-| **Made a design decision** | Used type field + mapping table for extensibility | Relevant code-spec + "Design Decisions" section |
+| **Made a design decision** | Used type field + mapping table for extensibility | Relevant spec + "Design Decisions" section |
 | **Fixed a bug** | Found a subtle issue with error handling | `backend/error-handling.md` |
 | **Discovered a pattern** | Found a better way to structure code | Relevant `backend/` or `frontend/` file |
-| **Hit a gotcha** | Learned that X must be done before Y | Relevant code-spec + "Common Mistakes" section |
+| **Hit a gotcha** | Learned that X must be done before Y | Relevant spec + "Common Mistakes" section |
 | **Established a convention** | Team agreed on naming pattern | `quality-guidelines.md` |
 | **New thinking trigger** | "Don't forget to check X before doing Y" | `guides/*.md` (as a checklist item, not detailed rules) |
 
-**Key Insight**: Code-spec updates are NOT just for problems. Every feature implementation contains design decisions and contracts that future AI/developers need to execute safely.
+**Key Insight**: Spec updates are NOT just for problems. Every feature implementation contains design decisions and project conventions that future AI/developers need to know.
 
 ---
 
@@ -72,11 +42,11 @@ For triggered tasks, include all sections below:
     └── *.md           # Topic-specific guides
 ```
 
-### CRITICAL: Code-Spec vs Guide - Know the Difference
+### CRITICAL: Spec vs Guide - Know the Difference
 
 | Type | Location | Purpose | Content Style |
 |------|----------|---------|---------------|
-| **Code-Spec** | `backend/*.md`, `frontend/*.md` | Tell AI "how to implement safely" | Signatures, contracts, matrices, cases, test points |
+| **Spec** | `backend/*.md`, `frontend/*.md` | Tell AI "how to write code" | Detailed rules, code examples, forbidden patterns |
 | **Guide** | `guides/*.md` | Help AI "what to think about" | Checklists, questions, pointers to specs |
 
 **Decision Rule**: Ask yourself:
@@ -117,9 +87,9 @@ Answer these questions:
 | **Convention** | Agreed-upon standard | Add to relevant section |
 | **Gotcha** | Non-obvious behavior | Add warning callout |
 
-### Step 3: Read the Target Code-Spec
+### Step 3: Read the Target Spec
 
-Before editing, read the current code-spec to:
+Before editing, read the current spec to:
 - Understand existing structure
 - Avoid duplicating content
 - Find the right section for your update
@@ -134,51 +104,16 @@ Follow these principles:
 
 1. **Be Specific**: Include concrete examples, not just abstract rules
 2. **Explain Why**: State the problem this prevents
-3. **Show Contracts**: Add signatures, payload fields, and error behavior
-4. **Show Code**: Add code snippets for key patterns
-5. **Keep it Short**: One concept per section
+3. **Show Code**: Add code snippets for patterns
+4. **Keep it Short**: One concept per section
 
 ### Step 5: Update the Index (if needed)
 
-If you added a new section or the code-spec status changed, update the category's `index.md`.
+If you added a new section or the spec status changed, update the category's `index.md`.
 
 ---
 
 ## Update Templates
-
-### Mandatory Template for Infra/Cross-Layer Work
-
-```markdown
-## Scenario: <name>
-
-### 1. Scope / Trigger
-- Trigger: <why this requires code-spec depth>
-
-### 2. Signatures
-- Backend command/API/DB signature(s)
-
-### 3. Contracts
-- Request fields (name, type, constraints)
-- Response fields (name, type, constraints)
-- Environment keys (required/optional)
-
-### 4. Validation & Error Matrix
-- <condition> -> <error>
-
-### 5. Good/Base/Bad Cases
-- Good: ...
-- Base: ...
-- Bad: ...
-
-### 6. Tests Required
-- Unit/Integration/E2E with assertion points
-
-### 7. Wrong vs Correct
-#### Wrong
-...
-#### Correct
-...
-```
 
 ### Adding a Design Decision
 
@@ -318,16 +253,12 @@ If you're unsure what to update, answer these prompts:
 
 ## Quality Checklist
 
-Before finishing your code-spec update:
+Before finishing your spec update:
 
 - [ ] Is the content specific and actionable?
 - [ ] Did you include a code example?
 - [ ] Did you explain WHY, not just WHAT?
-- [ ] Did you include executable signatures/contracts?
-- [ ] Did you include validation and error matrix?
-- [ ] Did you include Good/Base/Bad cases?
-- [ ] Did you include required tests with assertion points?
-- [ ] Is it in the right code-spec file?
+- [ ] Is it in the right spec file?
 - [ ] Does it duplicate existing content?
 - [ ] Would a new team member understand it?
 
@@ -338,20 +269,20 @@ Before finishing your code-spec update:
 ```
 Development Flow:
   Learn something → $update-spec → Knowledge captured
-       ↑                           ↓
+       ↑                                  ↓
   $break-loop ←──────────────────── Future sessions benefit
   (deep bug analysis)
 ```
 
 - `$break-loop` - Analyzes bugs deeply, often reveals spec updates needed
-- `$update-spec` - Actually makes the updates (this command)
+- `$update-spec` - Actually makes the updates (this skill)
 - `$finish-work` - Reminds you to check if specs need updates
 
 ---
 
 ## Core Philosophy
 
-> **Code-specs are living documents. Every debugging session, every "aha moment" is an opportunity to make the implementation contract clearer.**
+> **Specs are living documents. Every debugging session, every "aha moment" is an opportunity to make the spec better.**
 
 The goal is **institutional memory**:
 - What one person learns, everyone benefits from
