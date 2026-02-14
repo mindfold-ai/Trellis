@@ -1,0 +1,9 @@
+{
+  "version": "0.3.0-rc.3",
+  "description": "Code-spec enforcement, codex skill fixes, and add_session robustness",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(templates): tolerate formatted markdown in add_session.py table separator matching — `startswith(\"|---\")` replaced with `re.match(r\"^\\|\\s*-\", line)` to handle formatters adding spaces\n- fix(codex): replace `/trellis:xxx` with `$xxx` syntax in codex skill templates (finish-work, update-spec, start)\n- fix(codex): remove Claude Code-specific `Task()`, `subagent_type`, `model: \"opus\"` references from codex start skill\n\n**Enhancements:**\n- feat(codex): add codex platform support to local cli_adapter.py (config dir, detect, command path)\n- docs(code-spec): enforce executable spec requirements — add Step 1.5 Code-Spec Depth Requirement to start, Section 2.5 Hard Block to finish-work, 7-section structure to update-spec\n- docs(templates): sync code-spec requirements to all 5 platform command templates\n\n**Testing:**\n- test(regression): add [rc.2] regression test for add_session.py table separator fix",
+  "migrations": [],
+  "notes": "No migration required. Fixes and enhancements are template-level only."
+}
