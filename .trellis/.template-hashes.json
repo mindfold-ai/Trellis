@@ -56,7 +56,7 @@
   ".trellis/spec/guides/index.md": "c41ea8dd33dc9ae01b376f2bf66c6b2f80e699d84a895ca87d55c7a44368d2d5",
   ".trellis/spec/guides/cross-layer-thinking-guide.md": "b89b09d8356f9985a838613d425e15e97bd4b5b9e8640cfe0c941d97fb152ef6",
   ".trellis/spec/guides/code-reuse-thinking-guide.md": "e768d4937198ccfacfb927a27e6ee731766a7dd2de0d770a3d7293ea6e3f19d5",
-  ".trellis/scripts/common/cli_adapter.py": "dbab64c5369649ccaf353b5664c93436fcc0a180cb789ed737a4cb34edef7ff5",
+  ".trellis/scripts/common/cli_adapter.py": "fa5df20e22f323d67ea7a9d0d9432ec0523496b143f86c89b3eac7adea78bdfe",
   ".trellis/scripts/multi_agent/start.py": "786ec4a97a7f149697c9b4e9807443a583901f1af35acc9bac0c48734fc39399",
   ".trellis/scripts/multi_agent/plan.py": "25f59dca80e3932a71dd5e7d6e62a3a1ece45538e902bfee88657159dc80f53b",
   ".cursor/commands/trellis-integrate-skill.md": "bb15144c308939abfd41cb008da71088910b6ec432c763ab4c0762dd6f0819e8",
