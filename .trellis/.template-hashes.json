@@ -60,5 +60,6 @@
   ".trellis/scripts/multi_agent/start.py": "786ec4a97a7f149697c9b4e9807443a583901f1af35acc9bac0c48734fc39399",
   ".trellis/scripts/multi_agent/plan.py": "25f59dca80e3932a71dd5e7d6e62a3a1ece45538e902bfee88657159dc80f53b",
   ".cursor/commands/trellis-integrate-skill.md": "bb15144c308939abfd41cb008da71088910b6ec432c763ab4c0762dd6f0819e8",
-  ".cursor/commands/trellis-onboard.md": "ebfbe707f428f036b7d716061dfc33187b940ef9acdf3f824d1c43d1e2035ecb"
+  ".cursor/commands/trellis-onboard.md": "ebfbe707f428f036b7d716061dfc33187b940ef9acdf3f824d1c43d1e2035ecb",
+  ".trellis/scripts/common/registry.py": "19ae676b713e93e630f9ee78e3703b717aefc0cc2287fa11d999943257b42f35"
 }
