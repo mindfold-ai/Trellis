@@ -55,7 +55,7 @@ If this change touches infra or cross-layer contracts, this is a blocking checkl
 - [ ] Includes required tests and assertion points
 
 **Block Rule**:
-If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Complete `/trellis:update-spec` first.
+If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Complete `$update-spec` first.
 
 ### 3. API Changes
 
@@ -125,19 +125,19 @@ git diff --name-only
 
 ```
 Development Flow:
-  Write code -> Test -> /trellis:finish-work -> git commit -> /trellis:record-session
+  Write code -> Test -> $finish-work -> git commit -> $record-session
                           |                              |
                    Ensure completeness              Record progress
-                   
+
 Debug Flow:
-  Hit bug -> Fix -> /trellis:break-loop -> Knowledge capture
+  Hit bug -> Fix -> $break-loop -> Knowledge capture
                        |
                   Deep analysis
 ```
 
-- `/trellis:finish-work` - Check work completeness (this command)
-- `/trellis:record-session` - Record session and commits
-- `/trellis:break-loop` - Deep analysis after debugging
+- `$finish-work` - Check work completeness (this command)
+- `$record-session` - Record session and commits
+- `$break-loop` - Deep analysis after debugging
 
 ---
 
