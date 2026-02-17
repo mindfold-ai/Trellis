@@ -1,0 +1,9 @@
+{
+  "version": "0.3.0-rc.4",
+  "description": "Active spec sync in finish agent and codex skill template fixes",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(templates): finish agent now actively syncs spec docs during pipeline runs — injects `update-spec.md` into finish context across all pipeline platforms (claude/iflow/opencode), rewrites finish workflow from passive verification to active spec sync that detects new patterns/contracts and updates spec files before confirming PR readiness\n\n**Documentation:**\n- docs(templates): update dispatch.md across claude/iflow/opencode to document the new finish-phase spec injection (update-spec.md + finish-work.md + prd.md)\n- docs(templates): update finish-work.md block rule — pipeline platforms note automatic spec sync by finish agent, non-pipeline platforms (cursor/codex) retain manual-first wording\n- docs(codex): restore code-spec enforcement sections (Section 2.5 Hard Block) in codex skill templates that were missing from initial codex integration",
+  "migrations": [],
+  "notes": "No migration required. Template-level changes only — run `trellis update` to sync."
+}
