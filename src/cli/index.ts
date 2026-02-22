@@ -65,6 +65,7 @@ program
   .option("--iflow", "Include iFlow CLI commands")
   .option("--opencode", "Include OpenCode commands")
   .option("--codex", "Include Codex skills")
+  .option("--kilo", "Include Kilo CLI commands")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",
@@ -76,7 +77,10 @@ program
     "-t, --template <name>",
     "Use a remote spec template (e.g., electron-fullstack)",
   )
-  .option("--overwrite", "Overwrite existing spec directory when using template")
+  .option(
+    "--overwrite",
+    "Overwrite existing spec directory when using template",
+  )
   .option("--append", "Only add missing files when using template")
   .action(async (options: Record<string, unknown>) => {
     try {

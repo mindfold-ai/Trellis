@@ -124,6 +124,23 @@ export function getIflowSourcePath(): string {
 }
 
 /**
+ * Get the path to the kilo templates directory.
+ *
+ * This reads from src/templates/kilo/ (development) or dist/templates/kilo/ (production).
+ * These are GENERIC templates, not the Trellis project's own .kilo/ configuration.
+ */
+export function getKiloTemplatePath(): string {
+  const templatePath = path.join(__dirname, "kilo");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find kilo templates directory. Expected at templates/kilo/",
+  );
+}
+
+/**
  * Read a file from the .trellis directory
  * @param relativePath - Path relative to .trellis/ (e.g., 'scripts/task.py')
  * @returns File content as string
@@ -208,6 +225,17 @@ export function getOpenCodeSourcePath(): string {
 export function readOpenCodeFile(relativePath: string): string {
   const opencodePath = getOpenCodeSourcePath();
   const filePath = path.join(opencodePath, relativePath);
+  return fs.readFileSync(filePath, "utf-8");
+}
+
+/**
+ * Read a file from the .kilo directory (dogfooding)
+ * @param relativePath - Path relative to .kilo/ (e.g., 'commands/start.md')
+ * @returns File content as string
+ */
+export function readKiloFile(relativePath: string): string {
+  const kiloPath = getKiloTemplatePath();
+  const filePath = path.join(kiloPath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
 

@@ -6,6 +6,7 @@ import {
   getClaudeTemplatePath,
   getOpenCodeTemplatePath,
   getIflowTemplatePath,
+  getKiloTemplatePath,
   getTrellisSourcePath,
   getCursorSourcePath,
   getClaudeSourcePath,
@@ -18,6 +19,7 @@ import {
   readCursorFile,
   readClaudeFile,
   readOpenCodeFile,
+  readKiloFile,
 } from "../../src/templates/extract.js";
 
 // =============================================================================
@@ -51,6 +53,12 @@ describe("template path functions", () => {
 
   it("getIflowTemplatePath returns existing directory", () => {
     const p = getIflowTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
+
+  it("getKiloTemplatePath returns existing directory", () => {
+    const p = getKiloTemplatePath();
     expect(fs.existsSync(p)).toBe(true);
     expect(fs.statSync(p).isDirectory()).toBe(true);
   });
@@ -181,6 +189,23 @@ describe("readOpenCodeFile", () => {
         const fullPath = `${opencodePath}/${entry}`;
         if (fs.statSync(fullPath).isFile()) {
           const content = readOpenCodeFile(entry);
+          expect(typeof content).toBe("string");
+          return;
+        }
+      }
+    }
+  });
+});
+
+describe("readKiloFile", () => {
+  it("can read a file from kilo templates", () => {
+    const kiloPath = getKiloTemplatePath();
+    const entries = fs.readdirSync(kiloPath);
+    if (entries.length > 0) {
+      for (const entry of entries) {
+        const fullPath = `${kiloPath}/${entry}`;
+        if (fs.statSync(fullPath).isFile()) {
+          const content = readKiloFile(entry);
           expect(typeof content).toBe("string");
           return;
         }

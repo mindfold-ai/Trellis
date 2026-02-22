@@ -7,7 +7,13 @@
 /**
  * Supported AI coding tools
  */
-export type AITool = "claude-code" | "cursor" | "opencode" | "iflow" | "codex";
+export type AITool =
+  | "claude-code"
+  | "cursor"
+  | "opencode"
+  | "iflow"
+  | "codex"
+  | "kilo";
 
 /**
  * Template directory categories
@@ -18,13 +24,20 @@ export type TemplateDir =
   | "cursor"
   | "opencode"
   | "iflow"
-  | "codex";
+  | "codex"
+  | "kilo";
 
 /**
- * CLI flag names for platform selection (e.g., --claude, --cursor)
+ * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo)
  * Must match keys in InitOptions (src/commands/init.ts)
  */
-export type CliFlag = "claude" | "cursor" | "opencode" | "iflow" | "codex";
+export type CliFlag =
+  | "claude"
+  | "cursor"
+  | "opencode"
+  | "iflow"
+  | "codex"
+  | "kilo";
 
 /**
  * Configuration for an AI tool
@@ -93,6 +106,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "codex"],
     configDir: ".agents/skills",
     cliFlag: "codex",
+    defaultChecked: false,
+    hasPythonHooks: false,
+  },
+  kilo: {
+    name: "Kilo CLI",
+    templateDirs: ["common", "kilo"],
+    configDir: ".kilocode",
+    cliFlag: "kilo",
     defaultChecked: false,
     hasPythonHooks: false,
   },

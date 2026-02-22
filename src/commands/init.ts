@@ -295,6 +295,7 @@ interface InitOptions {
   iflow?: boolean;
   opencode?: boolean;
   codex?: boolean;
+  kilo?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;
@@ -505,9 +506,7 @@ export async function init(options: InitOptions): Promise<void> {
   let useRemoteTemplate = false;
 
   if (selectedTemplate) {
-    console.log(
-      chalk.blue(`📦 Downloading template "${selectedTemplate}"...`),
-    );
+    console.log(chalk.blue(`📦 Downloading template "${selectedTemplate}"...`));
     const result = await downloadTemplateById(
       cwd,
       selectedTemplate,

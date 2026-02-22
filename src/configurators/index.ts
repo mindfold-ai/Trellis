@@ -18,6 +18,7 @@ import { configureCursor } from "./cursor.js";
 import { configureIflow } from "./iflow.js";
 import { configureOpenCode } from "./opencode.js";
 import { configureCodex } from "./codex.js";
+import { configureKilo } from "./kilo.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -29,9 +30,7 @@ import {
   getAllHooks as getClaudeHooks,
   getSettingsTemplate as getClaudeSettings,
 } from "../templates/claude/index.js";
-import {
-  getAllCommands as getCursorCommands,
-} from "../templates/cursor/index.js";
+import { getAllCommands as getCursorCommands } from "../templates/cursor/index.js";
 import {
   getAllAgents as getIflowAgents,
   getAllCommands as getIflowCommands,
@@ -39,6 +38,7 @@ import {
   getSettingsTemplate as getIflowSettings,
 } from "../templates/iflow/index.js";
 import { getAllSkills as getCodexSkills } from "../templates/codex/index.js";
+import { getAllCommands as getKiloCommands } from "../templates/kilo/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -127,6 +127,16 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       const files = new Map<string, string>();
       for (const skill of getCodexSkills()) {
         files.set(`.agents/skills/${skill.name}/SKILL.md`, skill.content);
+      }
+      return files;
+    },
+  },
+  kilo: {
+    configure: configureKilo,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const cmd of getKiloCommands()) {
+        files.set(`.kilocode/commands/trellis/${cmd.name}.md`, cmd.content);
       }
       return files;
     },
