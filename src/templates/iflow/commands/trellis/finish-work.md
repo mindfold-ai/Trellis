@@ -24,6 +24,15 @@ pnpm test
 - [ ] No non-null assertions (the `x!` operator)?
 - [ ] No `any` types?
 
+### 1.5. Test Coverage
+
+Check if your change needs new or updated tests (see `.trellis/spec/unit-test/conventions.md`):
+
+- [ ] New pure function → unit test added?
+- [ ] Bug fix → regression test added in `test/regression.test.ts`?
+- [ ] Changed init/update behavior → integration test added/updated?
+- [ ] No logic change (text/data only) → no test needed
+
 ### 2. Code-Spec Sync
 
 **Code-Spec Docs**:

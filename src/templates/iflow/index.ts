@@ -9,7 +9,7 @@
  *   ├── commands/       # Slash commands
  *   ├── agents/         # Multi-agent pipeline agents
  *   ├── hooks/          # Context injection hooks
- *   ├── settings.json   # Settings configuration
+ *   └── settings.json   # Settings configuration
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -60,16 +60,17 @@ export interface HookTemplate {
 
 /**
  * Get all command templates
- * Commands are stored in commands/ directory
+ * Commands are stored in commands/trellis/ subdirectory
+ * This creates commands like /trellis:start, /trellis:finish-work, etc.
  */
 export function getAllCommands(): CommandTemplate[] {
   const commands: CommandTemplate[] = [];
-  const files = listFiles("commands");
+  const files = listFiles("commands/trellis");
 
   for (const file of files) {
     if (file.endsWith(".md")) {
       const name = file.replace(".md", "");
-      const content = readTemplate(`commands/${file}`);
+      const content = readTemplate(`commands/trellis/${file}`);
       commands.push({ name, content });
     }
   }
@@ -103,11 +104,8 @@ export function getAllHooks(): HookTemplate[] {
   const files = listFiles("hooks");
 
   for (const file of files) {
-    if (file.endsWith(".py")) {
-      const targetPath = `hooks/${file}`;
-      const content = readTemplate(`hooks/${file}`);
-      hooks.push({ targetPath, content });
-    }
+    const content = readTemplate(`hooks/${file}`);
+    hooks.push({ targetPath: `hooks/${file}`, content });
   }
 
   return hooks;

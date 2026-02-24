@@ -43,6 +43,7 @@ This shows: developer identity, git status, current task (if any), active tasks.
 cat .trellis/spec/frontend/index.md  # Frontend guidelines
 cat .trellis/spec/backend/index.md   # Backend guidelines
 cat .trellis/spec/guides/index.md    # Thinking guides
+cat .trellis/spec/unit-test/index.md # Testing guidelines
 ```
 
 ### Step 4: Report and Ask
@@ -58,9 +59,24 @@ When user describes a task, classify it:
 | Type | Criteria | Workflow |
 |------|----------|----------|
 | **Question** | User asks about code, architecture, or how something works | Answer directly |
-| **Trivial Fix** | Typo fix, comment update, single-line change, < 5 minutes | Direct Edit |
-| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Task Workflow |
+| **Trivial Fix** | Typo fix, comment update, single-line change | Direct Edit |
+| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Implement |
 | **Complex Task** | Vague goal, multiple files, architectural decisions | **Brainstorm → Task Workflow** |
+
+### Classification Signals
+
+**Trivial/Simple indicators:**
+- User specifies exact file and change
+- "Fix the typo in X"
+- "Add field Y to component Z"
+- Clear acceptance criteria already stated
+
+**Complex indicators:**
+- "I want to add a feature for..."
+- "Can you help me improve..."
+- Mentions multiple areas or systems
+- No clear implementation path
+- User seems unsure about approach
 
 ### Decision Rule
 
@@ -80,6 +96,16 @@ For questions or trivial fixes, work directly:
 
 ---
 
+## Simple Task
+
+For simple, well-defined tasks:
+
+1. Quick confirm: "I understand you want to [goal]. Ready to proceed?"
+2. If yes, skip to **Task Workflow Step 2** (Research)
+3. If no, clarify and confirm again
+
+---
+
 ## Complex Task - Brainstorm First
 
 For complex or vague tasks, use the brainstorm process to clarify requirements.
@@ -92,6 +118,15 @@ See `/trellis:brainstorm` for the full process. Summary:
 4. **Propose approaches** - For architectural decisions
 5. **Confirm final requirements** - Get explicit approval
 6. **Proceed to Task Workflow** - With clear requirements in PRD
+
+### Key Brainstorm Principles
+
+| Principle | Description |
+|-----------|-------------|
+| **One question at a time** | Never overwhelm with multiple questions |
+| **Update PRD immediately** | After each answer, update the document |
+| **Prefer multiple choice** | Easier for users to answer |
+| **YAGNI** | Challenge unnecessary complexity |
 
 ---
 
@@ -112,8 +147,6 @@ See `/trellis:brainstorm` for the full process. Summary:
 - What is the goal?
 - What type of development? (frontend / backend / fullstack)
 - Any specific requirements or constraints?
-
-If unclear, ask clarifying questions.
 
 ### Step 1.5: Code-Spec Depth Requirement (CRITICAL) `[AI]`
 

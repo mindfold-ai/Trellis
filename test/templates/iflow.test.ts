@@ -26,10 +26,22 @@ describe("iflow settingsTemplate", () => {
 // =============================================================================
 
 describe("iflow getAllCommands", () => {
-  it("returns empty list (commands are in trellis/ subdirectory, not listed by getAllCommands)", () => {
-    // iflow getAllCommands lists commands/ top-level only, but actual .md files are in commands/trellis/
+  it("returns commands from commands/trellis/ subdirectory", () => {
+    // iflow getAllCommands now reads from commands/trellis/ subdirectory
+    // This creates commands like /trellis:start, /trellis:finish-work, etc.
     const commands = getAllCommands();
-    expect(commands.length).toBe(0);
+    expect(commands.length).toBeGreaterThan(0);
+
+    // Each command should have a name and content
+    for (const command of commands) {
+      expect(command.name.length).toBeGreaterThan(0);
+      expect(command.content.length).toBeGreaterThan(0);
+    }
+
+    // Check for expected commands
+    const commandNames = commands.map((c) => c.name);
+    expect(commandNames).toContain("start");
+    expect(commandNames).toContain("finish-work");
   });
 
 });
