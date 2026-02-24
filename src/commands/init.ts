@@ -115,29 +115,43 @@ filled with general best practices. You can customize them for your project if n
 
 ## How to Fill Guidelines
 
-### Principle: Document Reality, Not Ideals
+### Step 0: Import from Existing Specs (Recommended)
+
+Many projects already have coding conventions documented. **Check these first** before writing from scratch:
+
+| File / Directory | Tool |
+|------|------|
+| \`CLAUDE.md\` / \`CLAUDE.local.md\` | Claude Code |
+| \`AGENTS.md\` | Claude Code |
+| \`.cursorrules\` | Cursor |
+| \`.cursor/rules/*.mdc\` | Cursor (rules directory) |
+| \`.windsurfrules\` | Windsurf |
+| \`.clinerules\` | Cline |
+| \`.roomodes\` | Roo Code |
+| \`.github/copilot-instructions.md\` | GitHub Copilot |
+| \`.vscode/settings.json\` → \`github.copilot.chat.codeGeneration.instructions\` | VS Code Copilot |
+| \`CONVENTIONS.md\` / \`.aider.conf.yml\` | aider |
+| \`CONTRIBUTING.md\` | General project conventions |
+| \`.editorconfig\` | Editor formatting rules |
+
+If any of these exist, read them first and extract the relevant coding conventions into the corresponding \`.trellis/spec/\` files. This saves significant effort compared to writing everything from scratch.
+
+### Step 1: Analyze the Codebase
+
+Ask AI to help discover patterns from actual code:
+
+- "Read all existing config files (CLAUDE.md, .cursorrules, etc.) and extract coding conventions into .trellis/spec/"
+- "Analyze my codebase and document the patterns you see"
+- "Find error handling / component / API patterns and document them"
+
+### Step 2: Document Reality, Not Ideals
 
 Write what your codebase **actually does**, not what you wish it did.
 AI needs to match existing patterns, not introduce new ones.
 
-### Steps
-
-1. **Look at existing code** - Find 2-3 examples of each pattern
-2. **Document the pattern** - Describe what you see
-3. **Include file paths** - Reference real files as examples
-4. **List anti-patterns** - What does your team avoid?
-
----
-
-## Tips for Using AI
-
-Ask AI to help analyze your codebase:
-
-- "Look at my codebase and document the patterns you see"
-- "Analyze my code structure and summarize the conventions"
-- "Find error handling patterns and document them"
-
-The AI will read your code and help you document it.
+- **Look at existing code** - Find 2-3 examples of each pattern
+- **Include file paths** - Reference real files as examples
+- **List anti-patterns** - What does your team avoid?
 
 ---
 
