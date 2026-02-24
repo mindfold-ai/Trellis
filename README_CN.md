@@ -55,6 +55,9 @@ trellis init --iflow -u your-name
 # 或包含 Codex Skills 支持
 trellis init --codex -u your-name
 
+# 或包含 Kilo CLI 支持
+trellis init --kilo -u your-name
+
 # 3. 启动 Claude Code，开始干活
 ```
 

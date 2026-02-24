@@ -55,6 +55,9 @@ trellis init --iflow -u your-name
 # Or include Codex skills support
 trellis init --codex -u your-name
 
+# Or include Kilo CLI support
+trellis init --kilo -u your-name
+
 # 3. Start Claude Code and begin working
 ```
 
