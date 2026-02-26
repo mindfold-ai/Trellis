@@ -67,6 +67,7 @@ program
   .option("--codex", "Include Codex skills")
   .option("--kilo", "Include Kilo CLI commands")
   .option("--kiro", "Include Kiro Code skills")
+  .option("--gemini", "Include Gemini CLI commands")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",

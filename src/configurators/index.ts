@@ -20,6 +20,7 @@ import { configureOpenCode } from "./opencode.js";
 import { configureCodex } from "./codex.js";
 import { configureKilo } from "./kilo.js";
 import { configureKiro } from "./kiro.js";
+import { configureGemini } from "./gemini.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -41,6 +42,7 @@ import {
 import { getAllSkills as getCodexSkills } from "../templates/codex/index.js";
 import { getAllCommands as getKiloCommands } from "../templates/kilo/index.js";
 import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
+import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -149,6 +151,16 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       const files = new Map<string, string>();
       for (const skill of getKiroSkills()) {
         files.set(`.kiro/skills/${skill.name}/SKILL.md`, skill.content);
+      }
+      return files;
+    },
+  },
+  gemini: {
+    configure: configureGemini,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const cmd of getGeminiCommands()) {
+        files.set(`.gemini/commands/trellis/${cmd.name}.toml`, cmd.content);
       }
       return files;
     },

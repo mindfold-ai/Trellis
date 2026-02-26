@@ -311,6 +311,7 @@ interface InitOptions {
   codex?: boolean;
   kilo?: boolean;
   kiro?: boolean;
+  gemini?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;
