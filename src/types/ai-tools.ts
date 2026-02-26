@@ -15,7 +15,8 @@ export type AITool =
   | "codex"
   | "kilo"
   | "kiro"
-  | "gemini";
+  | "gemini"
+  | "antigravity";
 
 /**
  * Template directory categories
@@ -29,10 +30,11 @@ export type TemplateDir =
   | "codex"
   | "kilo"
   | "kiro"
-  | "gemini";
+  | "gemini"
+  | "antigravity";
 
 /**
- * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro)
+ * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
  * Must match keys in InitOptions (src/commands/init.ts)
  */
 export type CliFlag =
@@ -43,7 +45,8 @@ export type CliFlag =
   | "codex"
   | "kilo"
   | "kiro"
-  | "gemini";
+  | "gemini"
+  | "antigravity";
 
 /**
  * Configuration for an AI tool
@@ -136,6 +139,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "gemini"],
     configDir: ".gemini",
     cliFlag: "gemini",
+    defaultChecked: false,
+    hasPythonHooks: false,
+  },
+  antigravity: {
+    name: "Antigravity",
+    templateDirs: ["common", "antigravity"],
+    configDir: ".agent/workflows",
+    cliFlag: "antigravity",
     defaultChecked: false,
     hasPythonHooks: false,
   },

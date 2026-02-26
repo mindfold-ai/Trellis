@@ -46,7 +46,10 @@ import {
   commonCliAdapter,
   getAllScripts,
 } from "../src/templates/trellis/index.js";
-import { collectPlatformTemplates, PLATFORM_IDS } from "../src/configurators/index.js";
+import {
+  collectPlatformTemplates,
+  PLATFORM_IDS,
+} from "../src/configurators/index.js";
 
 afterEach(() => {
   clearManifestCache();
@@ -61,7 +64,7 @@ describe("regression: Windows encoding (beta.10, beta.11, beta.16)", () => {
     expect(commonInit).toContain("def _configure_stream");
   });
 
-  it("[beta.10] common/__init__.py has reconfigure(encoding=\"utf-8\") pattern", () => {
+  it('[beta.10] common/__init__.py has reconfigure(encoding="utf-8") pattern', () => {
     expect(commonInit).toContain('reconfigure(encoding="utf-8"');
   });
 
@@ -69,7 +72,7 @@ describe("regression: Windows encoding (beta.10, beta.11, beta.16)", () => {
     expect(commonInit).toContain("TextIOWrapper");
   });
 
-  it("[beta.10] common/__init__.py has sys.platform == \"win32\" guard", () => {
+  it('[beta.10] common/__init__.py has sys.platform == "win32" guard', () => {
     expect(commonInit).toContain('sys.platform == "win32"');
   });
 
@@ -88,7 +91,9 @@ describe("regression: Windows encoding (beta.10, beta.11, beta.16)", () => {
     // The reconfigure pattern is safe to call multiple times
     // The function should NOT use detach() unconditionally (beta.16 bug root cause)
     // It should check hasattr(stream, "reconfigure") FIRST
-    const reconfigureIndex = commonInit.indexOf('hasattr(stream, "reconfigure")');
+    const reconfigureIndex = commonInit.indexOf(
+      'hasattr(stream, "reconfigure")',
+    );
     const detachIndex = commonInit.indexOf('hasattr(stream, "detach")');
     expect(reconfigureIndex).toBeLessThan(detachIndex);
   });
@@ -181,9 +186,10 @@ describe("regression: task directory paths (0.2.14, 0.2.15, beta.13)", () => {
     for (const [name, content] of scripts) {
       // Check for hardcoded username in path patterns (workspace/taosu, /Users/taosu)
       // but allow usage examples like "python3 status.py -a taosu"
-      expect(content, `${name} should not contain hardcoded username in paths`).not.toMatch(
-        /workspace\/taosu|\/Users\/taosu/,
-      );
+      expect(
+        content,
+        `${name} should not contain hardcoded username in paths`,
+      ).not.toMatch(/workspace\/taosu|\/Users\/taosu/);
     }
   });
 });
@@ -247,7 +253,9 @@ describe("regression: semver prerelease handling (beta.5)", () => {
     // Should not include beta.0 itself (only > fromVersion)
     const versions = getAllMigrationVersions();
     if (versions.includes("0.3.0-beta.1")) {
-      expect(hasPendingMigrations("0.3.0-beta.0", "0.3.0-beta.2")).toBeDefined();
+      expect(
+        hasPendingMigrations("0.3.0-beta.0", "0.3.0-beta.2"),
+      ).toBeDefined();
     }
   });
 });
@@ -256,7 +264,10 @@ describe("regression: migration data integrity (beta.14)", () => {
   it("[beta.14] all migrations have non-undefined 'from' field", () => {
     const allMigrations = getAllMigrations();
     for (const m of allMigrations) {
-      expect(m.from, `migration should have 'from' field defined`).toBeDefined();
+      expect(
+        m.from,
+        `migration should have 'from' field defined`,
+      ).toBeDefined();
       expect(typeof m.from).toBe("string");
       expect(m.from.length).toBeGreaterThan(0);
     }
@@ -276,7 +287,10 @@ describe("regression: migration data integrity (beta.14)", () => {
       (m) => m.type === "rename" || m.type === "rename-dir",
     );
     for (const m of renames) {
-      expect(m.to, `rename migration from '${m.from}' should have 'to'`).toBeDefined();
+      expect(
+        m.to,
+        `rename migration from '${m.from}' should have 'to'`,
+      ).toBeDefined();
       expect(typeof m.to).toBe("string");
       expect((m.to as string).length).toBeGreaterThan(0);
     }
@@ -298,7 +312,16 @@ describe("regression: update only configured platforms (beta.16)", () => {
   });
 
   it("[beta.16] collectPlatformTemplates returns Map for platforms with tracking", () => {
-    const withTracking = ["claude-code", "cursor", "iflow", "codex", "kilo", "kiro", "gemini"] as const;
+    const withTracking = [
+      "claude-code",
+      "cursor",
+      "iflow",
+      "codex",
+      "kilo",
+      "kiro",
+      "gemini",
+      "antigravity",
+    ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);
       expect(result, `${id} should have template tracking`).toBeInstanceOf(Map);
@@ -314,7 +337,9 @@ describe("regression: shell to Python migration (beta.0)", () => {
   it("[beta.0] no .sh scripts remain in trellis templates", () => {
     const scripts = getAllScripts();
     for (const [name] of scripts) {
-      expect(name.endsWith(".sh"), `${name} should not end with .sh`).toBe(false);
+      expect(name.endsWith(".sh"), `${name} should not end with .sh`).toBe(
+        false,
+      );
     }
   });
 
@@ -383,7 +408,9 @@ describe("regression: hook JSON format (beta.7)", () => {
 
   it("[beta.7] iFlow hook commands use {{PYTHON_CMD}} placeholder", () => {
     const settings = JSON.parse(iflowSettingsTemplate);
-    const hookTypes = Object.values(settings.hooks) as { hooks: { command: string }[] }[][];
+    const hookTypes = Object.values(settings.hooks) as {
+      hooks: { command: string }[];
+    }[][];
     for (const entries of hookTypes) {
       for (const entry of entries) {
         for (const hook of entry.hooks) {
@@ -463,6 +490,11 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.gemini.configDir).toBe(".gemini");
   });
 
+  it("[antigravity] Antigravity platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("antigravity");
+    expect(AI_TOOLS.antigravity.configDir).toBe(".agent/workflows");
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -508,6 +540,11 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".gemini");
   });
 
+  it("[antigravity] cli_adapter.py supports antigravity platform", () => {
+    expect(commonCliAdapter).toContain('"antigravity"');
+    expect(commonCliAdapter).toContain(".agent");
+  });
+
   it("[beta.9] cli_adapter.py has detect_platform function", () => {
     expect(commonCliAdapter).toContain("def detect_platform");
   });
@@ -527,6 +564,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".agents");
     expect(commonCliAdapter).toContain(".kiro");
     expect(commonCliAdapter).toContain(".gemini");
+    expect(commonCliAdapter).toContain(".agent");
   });
 });
 
@@ -570,7 +608,10 @@ describe("regression: migration manifest consistency", () => {
       expect(idx, `${knownOrder[i]} should be in versions`).not.toBe(-1);
       if (i > 0) {
         const prevIdx = versions.indexOf(knownOrder[i - 1]);
-        expect(idx, `${knownOrder[i]} should come after ${knownOrder[i - 1]}`).toBeGreaterThan(prevIdx);
+        expect(
+          idx,
+          `${knownOrder[i]} should come after ${knownOrder[i - 1]}`,
+        ).toBeGreaterThan(prevIdx);
       }
     }
   });

@@ -13,6 +13,7 @@
  * - src/templates/opencode/ - OpenCode commands, agents, hooks
  * - src/templates/codex/ - Codex skills
  * - src/templates/kilo/ - Kilo CLI commands
+ * - src/templates/antigravity/ - Antigravity workflows
  * - src/templates/kiro/ - Kiro Code skills
  * - src/templates/gemini/ - Gemini CLI commands (TOML)
  * - src/templates/markdown/ - Markdown templates (spec, guides)

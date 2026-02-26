@@ -64,6 +64,9 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".agent", "workflows"))).toBe(
+      false,
+    );
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
 
@@ -79,6 +82,9 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".iflow"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".opencode"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".agent", "workflows"))).toBe(
+      false,
+    );
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
   });
@@ -91,6 +97,9 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".opencode"))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".iflow"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".agent", "workflows"))).toBe(
+      false,
+    );
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
   });
@@ -99,8 +108,14 @@ describe("init() integration", () => {
     await init({ yes: true, codex: true });
 
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, ".agents", "skills", "start", "SKILL.md"))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, ".agents", "skills", "parallel"))).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".agents", "skills", "parallel")),
+    ).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
@@ -110,8 +125,30 @@ describe("init() integration", () => {
     await init({ yes: true, kiro: true });
 
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills", "start", "SKILL.md"))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills", "parallel"))).toBe(false);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".kiro", "skills", "start", "SKILL.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".kiro", "skills", "parallel")),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
+  });
+
+  it("#3d antigravity platform creates .agent/workflows", async () => {
+    await init({ yes: true, antigravity: true });
+
+    expect(fs.existsSync(path.join(tmpDir, ".agent", "workflows"))).toBe(
+      true,
+    );
+    expect(
+      fs.existsSync(path.join(tmpDir, ".agent", "workflows", "start.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agent", "workflows", "parallel.md"),
+      ),
+    ).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
@@ -209,9 +246,7 @@ describe("init() integration", () => {
     await init({ yes: true });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    expect(fs.existsSync(path.join(specDir, "backend", "index.md"))).toBe(
-      true,
-    );
+    expect(fs.existsSync(path.join(specDir, "backend", "index.md"))).toBe(true);
     expect(fs.existsSync(path.join(specDir, "frontend", "index.md"))).toBe(
       true,
     );

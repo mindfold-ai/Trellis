@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-<strong>All-in-one AI framework & toolkit for Claude Code, Cursor, Gemini CLI, iFlow, Codex & Kiro Code</strong><br/>
+<strong>All-in-one AI framework & toolkit for Claude Code, Cursor, Gemini CLI, iFlow, Codex, Kilo, Kiro & Antigravity</strong><br/>
 <sub>Wild AI ships nothing.</sub>
 </p>
 
@@ -63,6 +63,9 @@ trellis init --kiro -u your-name
 
 # Or include Gemini CLI support
 trellis init --gemini -u your-name
+
+# Or include Antigravity workflow support
+trellis init --antigravity -u your-name
 
 # 3. Start Claude Code and begin working
 ```
@@ -146,7 +149,7 @@ Create commands like `/trellis:before-frontend-dev` that load component guidelin
 
 - [ ] **Better Code Review** — More thorough automated review workflow
 - [ ] **Skill Packs** — Pre-built workflow packs, plug and play
-- [ ] **Broader Tool Support** — Cursor, OpenCode, Codex, Kiro, Gemini integration
+- [ ] **Broader Tool Support** — Cursor, OpenCode, Codex, Kilo, Kiro, Gemini, Antigravity integration
 - [ ] **Stronger Session Continuity** — Autosave session-wide history
 - [ ] **Visual Parallel Sessions** — Real-time progress for each agent
 

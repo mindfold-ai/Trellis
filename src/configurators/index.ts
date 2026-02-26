@@ -21,6 +21,7 @@ import { configureCodex } from "./codex.js";
 import { configureKilo } from "./kilo.js";
 import { configureKiro } from "./kiro.js";
 import { configureGemini } from "./gemini.js";
+import { configureAntigravity } from "./antigravity.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -43,6 +44,7 @@ import { getAllSkills as getCodexSkills } from "../templates/codex/index.js";
 import { getAllCommands as getKiloCommands } from "../templates/kilo/index.js";
 import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
 import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
+import { getAllWorkflows as getAntigravityWorkflows } from "../templates/antigravity/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -161,6 +163,16 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       const files = new Map<string, string>();
       for (const cmd of getGeminiCommands()) {
         files.set(`.gemini/commands/trellis/${cmd.name}.toml`, cmd.content);
+      }
+      return files;
+    },
+  },
+  antigravity: {
+    configure: configureAntigravity,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const workflow of getAntigravityWorkflows()) {
+        files.set(`.agent/workflows/${workflow.name}.md`, workflow.content);
       }
       return files;
     },

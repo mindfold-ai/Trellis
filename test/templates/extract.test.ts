@@ -9,6 +9,7 @@ import {
   getKiloTemplatePath,
   getKiroTemplatePath,
   getGeminiTemplatePath,
+  getAntigravityTemplatePath,
   getTrellisSourcePath,
   getCursorSourcePath,
   getClaudeSourcePath,
@@ -16,6 +17,7 @@ import {
   getOpenCodeSourcePath,
   getKiroSourcePath,
   getGeminiSourcePath,
+  getAntigravitySourcePath,
   readTrellisFile,
   readTemplate,
   readScript,
@@ -79,6 +81,12 @@ describe("template path functions", () => {
     expect(fs.existsSync(p)).toBe(true);
     expect(fs.statSync(p).isDirectory()).toBe(true);
   });
+
+  it("getAntigravityTemplatePath returns existing directory", () => {
+    const p = getAntigravityTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
 });
 
 // =============================================================================
@@ -112,6 +120,10 @@ describe("deprecated source path aliases", () => {
 
   it("getGeminiSourcePath equals getGeminiTemplatePath", () => {
     expect(getGeminiSourcePath()).toBe(getGeminiTemplatePath());
+  });
+
+  it("getAntigravitySourcePath equals getAntigravityTemplatePath", () => {
+    expect(getAntigravitySourcePath()).toBe(getAntigravityTemplatePath());
   });
 });
 

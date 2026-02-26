@@ -10,6 +10,7 @@ import {
 import { AI_TOOLS } from "../../src/types/ai-tools.js";
 import { setWriteMode } from "../../src/utils/file-writer.js";
 import { getAllSkills } from "../../src/templates/codex/index.js";
+import { getAllWorkflows as getAllAntigravityWorkflows } from "../../src/templates/antigravity/index.js";
 import { getAllSkills as getAllKiroSkills } from "../../src/templates/kiro/index.js";
 import { getAllCommands as getAllGeminiCommands } from "../../src/templates/gemini/index.js";
 
@@ -61,6 +62,14 @@ describe("getConfiguredPlatforms", () => {
     fs.mkdirSync(path.join(tmpDir, ".agents", "skills"), { recursive: true });
     const result = getConfiguredPlatforms(tmpDir);
     expect(result.has("codex")).toBe(true);
+  });
+
+  it("detects .agent/workflows directory as antigravity", () => {
+    fs.mkdirSync(path.join(tmpDir, ".agent", "workflows"), {
+      recursive: true,
+    });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("antigravity")).toBe(true);
   });
 
   it("detects .kiro/skills directory as kiro", () => {
@@ -235,6 +244,38 @@ describe("configurePlatform", () => {
       expect(file).not.toMatch(/\.d\.ts$/);
       expect(file).not.toMatch(/\.js\.map$/);
       expect(file).not.toMatch(/\.d\.ts\.map$/);
+    }
+  });
+
+  it("configurePlatform('antigravity') creates .agent/workflows directory", async () => {
+    await configurePlatform("antigravity", tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, ".agent", "workflows"))).toBe(
+      true,
+    );
+  });
+
+  it("configurePlatform('antigravity') writes all workflow templates", async () => {
+    await configurePlatform("antigravity", tmpDir);
+
+    const expectedWorkflows = getAllAntigravityWorkflows();
+    const expectedNames = expectedWorkflows
+      .map((workflow) => workflow.name)
+      .sort();
+
+    const workflowsRoot = path.join(tmpDir, ".agent", "workflows");
+    const actualNames = fs
+      .readdirSync(workflowsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name.replace(/\.md$/, ""))
+      .sort();
+
+    expect(actualNames).toEqual(expectedNames);
+    expect(actualNames).not.toContain("parallel");
+
+    for (const workflow of expectedWorkflows) {
+      const workflowPath = path.join(workflowsRoot, `${workflow.name}.md`);
+      expect(fs.existsSync(workflowPath)).toBe(true);
+      expect(fs.readFileSync(workflowPath, "utf-8")).toBe(workflow.content);
     }
   });
 

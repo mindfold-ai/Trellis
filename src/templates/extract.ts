@@ -165,6 +165,30 @@ export function getKiroSourcePath(): string {
 }
 
 /**
+ * Get the path to the antigravity templates directory.
+ *
+ * This reads from src/templates/antigravity/ (development) or dist/templates/antigravity/ (production).
+ * These are GENERIC templates, not the Trellis project's own .agent/workflows configuration.
+ */
+export function getAntigravityTemplatePath(): string {
+  const templatePath = path.join(__dirname, "antigravity");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find antigravity templates directory. Expected at templates/antigravity/",
+  );
+}
+
+/**
+ * @deprecated Use getAntigravityTemplatePath() instead.
+ */
+export function getAntigravitySourcePath(): string {
+  return getAntigravityTemplatePath();
+}
+
+/**
  * Read a file from the .trellis directory
  * @param relativePath - Path relative to .trellis/ (e.g., 'scripts/task.py')
  * @returns File content as string

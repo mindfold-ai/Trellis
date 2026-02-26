@@ -312,6 +312,7 @@ interface InitOptions {
   kilo?: boolean;
   kiro?: boolean;
   gemini?: boolean;
+  antigravity?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;
