@@ -1333,3 +1333,51 @@ Found by comparing with PR #47 — original implementation had zero tests.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 55: 0.3.0 Release Prep: Bug Fix, Manifest, Tests, Promote Script
+
+**Date**: 2026-02-28
+**Task**: 0.3.0 Release Prep: Bug Fix, Manifest, Tests, Promote Script
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Change | Description |
+|--------|-------------|
+| Bug Fix | `update.ts` early-return 不再跳过 `.version` 写入 — 修复 rc→stable 升级死循环 |
+| Manifest | 新增 `0.3.0.json`，聚合 beta.0~rc.6 全部 changelog，含迁移指南和 AI 指令 |
+| Tests | 新增 10 个测试：集成 #12、迁移边界、回归防护（369 total） |
+| Release Script | 新增 `release:promote` 脚本，预发布→正式版一键升级 |
+
+**Root Cause**: `update.ts:1287-1303` 在无文件变更时直接 return，未调用 `updateVersionFile(cwd)`。rc.6→0.3.0 模板完全相同，导致 `.version` 永远停在 rc.6。
+
+**Updated Files**:
+- `src/commands/update.ts` — 修复 early-return，升级/降级均正确更新版本戳
+- `src/migrations/manifests/0.3.0.json` — 新增正式版 manifest
+- `test/commands/update.integration.test.ts` — 集成测试 #12
+- `test/migrations/index.test.ts` — 预发布→正式版迁移测试
+- `test/regression.test.ts` — rc→stable 回归测试
+- `package.json` — 新增 `release:promote` 脚本
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e4b7227` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
