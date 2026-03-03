@@ -23,6 +23,7 @@ if sys.platform == "win32":
 
 import argparse
 import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -34,9 +35,7 @@ from common.paths import (
     get_workspace_dir,
 )
 from common.developer import ensure_developer
-
-
-MAX_LINES = 2000
+from common.config import get_session_commit_message, get_max_journal_lines
 
 
 # =============================================================================
@@ -110,14 +109,16 @@ def count_journal_files(dev_dir: Path, active_num: int) -> str:
     return "\n".join(result_lines)
 
 
-def create_new_journal_file(dev_dir: Path, num: int, developer: str, today: str) -> Path:
+def create_new_journal_file(
+    dev_dir: Path, num: int, developer: str, today: str, max_lines: int = 2000,
+) -> Path:
     """Create a new journal file."""
     prev_num = num - 1
     new_file = dev_dir / f"{FILE_JOURNAL_PREFIX}{num}.md"
 
     content = f"""# Journal - {developer} (Part {num})
 
-> Continuation from `{FILE_JOURNAL_PREFIX}{prev_num}.md` (archived at ~{MAX_LINES} lines)
+> Continuation from `{FILE_JOURNAL_PREFIX}{prev_num}.md` (archived at ~{max_lines} lines)
 > Started: {today}
 
 ---
@@ -281,11 +282,40 @@ def update_index(
 # Main Function
 # =============================================================================
 
+def _auto_commit_workspace(repo_root: Path) -> None:
+    """Stage .trellis/workspace and commit with a configured message."""
+    commit_msg = get_session_commit_message(repo_root)
+    subprocess.run(
+        ["git", "add", "-A", ".trellis/workspace"],
+        cwd=repo_root,
+        capture_output=True,
+    )
+    # Check if there are staged changes
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--quiet", "--", ".trellis/workspace"],
+        cwd=repo_root,
+    )
+    if result.returncode == 0:
+        print("[OK] No workspace changes to commit.", file=sys.stderr)
+        return
+    commit_result = subprocess.run(
+        ["git", "commit", "-m", commit_msg],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    if commit_result.returncode == 0:
+        print(f"[OK] Auto-committed: {commit_msg}", file=sys.stderr)
+    else:
+        print(f"[WARN] Auto-commit failed: {commit_result.stderr.strip()}", file=sys.stderr)
+
+
 def add_session(
     title: str,
     commit: str = "-",
     summary: str = "(Add summary)",
-    extra_content: str = "(Add details)"
+    extra_content: str = "(Add details)",
+    auto_commit: bool = True,
 ) -> int:
     """Add a new session."""
     repo_root = get_repo_root()
@@ -300,6 +330,8 @@ def add_session(
     if not dev_dir:
         print("Error: Workspace directory not found", file=sys.stderr)
         return 1
+
+    max_lines = get_max_journal_lines(repo_root)
 
     index_file = dev_dir / "index.md"
     today = datetime.now().strftime("%Y-%m-%d")
@@ -330,10 +362,10 @@ def add_session(
     target_file = journal_file
     target_num = current_num
 
-    if current_lines + content_lines > MAX_LINES:
+    if current_lines + content_lines > max_lines:
         target_num = current_num + 1
-        print(f"[!] Exceeds {MAX_LINES} lines, creating {FILE_JOURNAL_PREFIX}{target_num}.md", file=sys.stderr)
-        target_file = create_new_journal_file(dev_dir, target_num, developer, today)
+        print(f"[!] Exceeds {max_lines} lines, creating {FILE_JOURNAL_PREFIX}{target_num}.md", file=sys.stderr)
+        target_file = create_new_journal_file(dev_dir, target_num, developer, today, max_lines)
         print(f"Created: {target_file}", file=sys.stderr)
 
     # Append session content
@@ -358,6 +390,11 @@ def add_session(
     print(f"  - {target_file.name if target_file else 'journal'}", file=sys.stderr)
     print("  - index.md", file=sys.stderr)
 
+    # Auto-commit workspace changes
+    if auto_commit:
+        print("", file=sys.stderr)
+        _auto_commit_workspace(repo_root)
+
     return 0
 
 
@@ -374,6 +411,8 @@ def main() -> int:
     parser.add_argument("--commit", default="-", help="Comma-separated commit hashes")
     parser.add_argument("--summary", default="(Add summary)", help="Brief summary")
     parser.add_argument("--content-file", help="Path to file with detailed content")
+    parser.add_argument("--no-commit", action="store_true",
+                        help="Skip auto-commit of workspace changes")
 
     args = parser.parse_args()
 
@@ -385,7 +424,10 @@ def main() -> int:
     elif not sys.stdin.isatty():
         extra_content = sys.stdin.read()
 
-    return add_session(args.title, args.commit, args.summary, extra_content)
+    return add_session(
+        args.title, args.commit, args.summary, extra_content,
+        auto_commit=not args.no_commit,
+    )
 
 
 if __name__ == "__main__":

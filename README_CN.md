@@ -117,6 +117,7 @@ trellis init --antigravity -u your-name
 ```
 .trellis/
 ├── workflow.md              # 工作流指南（启动时自动注入）
+├── config.yaml              # 项目级配置
 ├── worktree.yaml            # 多 Agent 配置（用于 /trellis:parallel）
 ├── spec/                    # 规范库
 │   ├── frontend/            #   前端规范

@@ -1,0 +1,15 @@
+# Trellis Configuration
+# Project-level settings for the Trellis workflow system
+#
+# All values have sensible defaults. Only override what you need.
+
+#-------------------------------------------------------------------------------
+# Session Recording
+#-------------------------------------------------------------------------------
+
+# Commit message used when auto-committing journal/index changes
+# after running add_session.py
+session_commit_message: "chore: record journal"
+
+# Maximum lines per journal file before rotating to a new one
+max_journal_lines: 2000

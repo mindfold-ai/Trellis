@@ -134,6 +134,7 @@ your-project/
 ├── AGENTS.md                    # Lightweight AI instructions (agents.md protocol compatible)
 ├── .trellis/                    # Workflow and guidelines center
 │   ├── workflow.md              # Development process guide (core document, read first in new sessions)
+│   ├── config.yaml              # Project-level settings
 │   ├── worktree.yaml            # Multi-Agent pipeline configuration
 │   ├── .developer               # Developer identity (git-ignored)
 │   ├── .gitignore               # .trellis directory gitignore rules

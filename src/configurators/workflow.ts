@@ -6,6 +6,7 @@ import { copyTrellisDir } from "../templates/extract.js";
 // Import trellis templates (generic, not project-specific)
 import {
   workflowMdTemplate,
+  configYamlTemplate,
   worktreeYamlTemplate,
   gitignoreTemplate,
 } from "../templates/trellis/index.js";
@@ -94,6 +95,12 @@ export async function createWorkflowStructure(
   await writeFile(
     path.join(cwd, DIR_NAMES.WORKFLOW, ".gitignore"),
     gitignoreTemplate,
+  );
+
+  // Copy config.yaml from templates
+  await writeFile(
+    path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml"),
+    configYamlTemplate,
   );
 
   // Create workspace/ with index.md

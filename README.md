@@ -117,6 +117,7 @@ Create commands like `/trellis:before-frontend-dev` that load component guidelin
 ```
 .trellis/
 ├── workflow.md              # Workflow guide (auto-injected on start)
+├── config.yaml              # Project-level settings
 ├── worktree.yaml            # Multi-agent config (for /trellis:parallel)
 ├── spec/                    # Spec library
 │   ├── frontend/            #   Frontend specs

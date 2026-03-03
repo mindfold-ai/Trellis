@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 58
-- **Last Active**: 2026-03-02
+- **Total Sessions**: 60
+- **Last Active**: 2026-03-03
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1528 | Active |
+| `journal-2.md` | ~1597 | Active |
 | `journal-1.md` | ~1998 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 60 | 2026-03-03 | feat: record-session auto-commit + config.yaml | `d5ac365`, `8fa5771`, `7c4a829`, `f2370fe`, `1d5a84a` |
+| 59 | 2026-03-03 | feat: record-session auto-commit workspace changes | `d5ac365`, `8fa5771` |
 | 58 | 2026-03-02 | 0.3.1 manifest + create-manifest slash command | `de50b03`, `044d4c8` |
 | 57 | 2026-02-28 | fix: spec templates respect project type + dead code cleanup | `8f15f36` |
 | 56 | 2026-02-28 | 0.3.0 Release & Post-release Fixes | `e4b7227`, `c2e9118`, `d18137d`, `54798d7`, `be49762` |

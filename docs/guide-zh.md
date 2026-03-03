@@ -129,6 +129,7 @@ your-project/
 ├── AGENTS.md                    # 轻量级 AI 指令（兼容 agents.md 协议）
 ├── .trellis/                    # 工作流和规范中心
 │   ├── workflow.md              # 开发流程指南（核心文档，新会话首读）
+│   ├── config.yaml              # 项目级配置
 │   ├── worktree.yaml            # 多 Agent 流水线配置
 │   ├── .developer               # 开发者身份（git-ignored）
 │   ├── .gitignore               # .trellis 目录的 gitignore 规则

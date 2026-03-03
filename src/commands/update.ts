@@ -43,6 +43,7 @@ import {
   commonPhase,
   commonRegistry,
   commonCliAdapter,
+  commonConfig,
   // Python scripts - multi_agent
   multiAgentInit,
   multiAgentStart,
@@ -58,6 +59,7 @@ import {
   addSessionScript,
   createBootstrapScript,
   // Configuration
+  configYamlTemplate,
   worktreeYamlTemplate,
   workflowMdTemplate,
   gitignoreTemplate,
@@ -152,6 +154,7 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
   files.set(`${PATHS.SCRIPTS}/common/phase.py`, commonPhase);
   files.set(`${PATHS.SCRIPTS}/common/registry.py`, commonRegistry);
   files.set(`${PATHS.SCRIPTS}/common/cli_adapter.py`, commonCliAdapter);
+  files.set(`${PATHS.SCRIPTS}/common/config.py`, commonConfig);
 
   // Python scripts - multi_agent
   files.set(`${PATHS.SCRIPTS}/multi_agent/__init__.py`, multiAgentInit);
@@ -170,6 +173,7 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
   files.set(`${PATHS.SCRIPTS}/create_bootstrap.py`, createBootstrapScript);
 
   // Configuration
+  files.set(`${DIR_NAMES.WORKFLOW}/config.yaml`, configYamlTemplate);
   files.set(`${DIR_NAMES.WORKFLOW}/worktree.yaml`, worktreeYamlTemplate);
   files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
   files.set(PATHS.WORKFLOW_GUIDE_FILE, workflowMdTemplate);
