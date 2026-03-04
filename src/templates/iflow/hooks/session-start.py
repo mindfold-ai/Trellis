@@ -29,6 +29,7 @@ def should_skip_injection() -> bool:
     return (
         os.environ.get("CLAUDE_NON_INTERACTIVE") == "1"
         or os.environ.get("OPENCODE_NON_INTERACTIVE") == "1"
+        or os.environ.get("IFLOW_NON_INTERACTIVE") == "1"
     )
 
 
