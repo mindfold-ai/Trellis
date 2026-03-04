@@ -38,7 +38,6 @@ import {
 } from "../src/templates/iflow/index.js";
 import {
   commonInit,
-  commonGitContext,
   taskScript,
   addSessionScript,
   multiAgentPlan,

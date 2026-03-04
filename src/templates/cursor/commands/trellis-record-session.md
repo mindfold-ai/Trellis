@@ -4,12 +4,18 @@
 
 ---
 
-## Record Work Progress (Simplified - Only 2 Steps)
+## Record Work Progress
 
-### Step 1: Get Context
+### Step 1: Get Context & Check Tasks
 
 ```bash
-python3 ./.trellis/scripts/get_context.py
+python3 ./.trellis/scripts/get_context.py --mode record
+```
+
+[!] If MY ACTIVE TASKS shows any completed tasks, archive them FIRST:
+
+```bash
+python3 ./.trellis/scripts/task.py archive <task-name>
 ```
 
 ### Step 2: One-Click Add Session
@@ -38,16 +44,7 @@ EOF
 - [OK] Appends session to journal-N.md
 - [OK] Auto-detects line count, creates new file if >2000 lines
 - [OK] Updates index.md (Total Sessions +1, Last Active, line stats, history)
-
----
-
-## Archive Completed Task (if any)
-
-If a task was completed this session:
-
-```bash
-python3 ./.trellis/scripts/task.py archive <task-name>
-```
+- [OK] Auto-commits .trellis/workspace and .trellis/tasks changes
 
 ---
 
@@ -55,8 +52,7 @@ python3 ./.trellis/scripts/task.py archive <task-name>
 
 | Command | Purpose |
 |---------|---------|
-| `python3 ./.trellis/scripts/get_context.py` | Get all context info |
+| `python3 ./.trellis/scripts/get_context.py --mode record` | Get context for record-session |
 | `python3 ./.trellis/scripts/add_session.py --title "..." --commit "..."` | **One-click add session (recommended)** |
-| `python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>]` | Create new task directory |
-| `python3 ./.trellis/scripts/task.py archive <name>` | Archive completed task |
+| `python3 ./.trellis/scripts/task.py archive <name>` | Archive completed task (auto-commits) |
 | `python3 ./.trellis/scripts/task.py list` | List active tasks |
