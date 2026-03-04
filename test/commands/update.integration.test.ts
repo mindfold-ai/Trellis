@@ -32,6 +32,9 @@ import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, PATHS } from "../../src/constants/paths.js";
 import { computeHash } from "../../src/utils/template-hash.js";
 
+// A managed template file that update always handles (Python script)
+const MANAGED_FILE = `${PATHS.SCRIPTS}/get_context.py`;
+
 describe("update() integration", () => {
   let tmpDir: string;
 
@@ -114,7 +117,7 @@ describe("update() integration", () => {
     await setupProject();
 
     // Delete a file to create a "new file" change
-    const target = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const target = path.join(tmpDir, MANAGED_FILE);
     fs.unlinkSync(target);
 
     await update({ dryRun: true });
@@ -129,7 +132,7 @@ describe("update() integration", () => {
   it("#3 recreates deleted template file as new", async () => {
     await setupProject();
 
-    const target = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const target = path.join(tmpDir, MANAGED_FILE);
     const originalContent = fs.readFileSync(target, "utf-8");
     fs.unlinkSync(target);
 
@@ -142,12 +145,12 @@ describe("update() integration", () => {
   it("#4 auto-updates file when template changed but user did not modify", async () => {
     await setupProject();
 
-    const targetRelative = PATHS.WORKFLOW_GUIDE_FILE;
+    const targetRelative = MANAGED_FILE;
     const targetFull = path.join(tmpDir, targetRelative);
     const templateContent = fs.readFileSync(targetFull, "utf-8");
 
     // Simulate "old template version": change file + update hash to match
-    const oldContent = "# Old version of workflow\n";
+    const oldContent = "# Old version of script\n";
     fs.writeFileSync(targetFull, oldContent);
 
     const hashFile = path.join(tmpDir, DIR_NAMES.WORKFLOW, ".template-hashes.json");
@@ -164,7 +167,7 @@ describe("update() integration", () => {
   it("#5 force overwrites user-modified files", async () => {
     await setupProject();
 
-    const targetFull = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const targetFull = path.join(tmpDir, MANAGED_FILE);
     const templateContent = fs.readFileSync(targetFull, "utf-8");
 
     // User modifies file (hash won't match)
@@ -178,7 +181,7 @@ describe("update() integration", () => {
   it("#6 skipAll preserves user-modified files", async () => {
     await setupProject();
 
-    const targetFull = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const targetFull = path.join(tmpDir, MANAGED_FILE);
     fs.writeFileSync(targetFull, "user customized content");
 
     await update({ skipAll: true });
@@ -189,7 +192,7 @@ describe("update() integration", () => {
   it("#7 createNew creates .new copy without overwriting original", async () => {
     await setupProject();
 
-    const targetFull = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const targetFull = path.join(tmpDir, MANAGED_FILE);
     const templateContent = fs.readFileSync(targetFull, "utf-8");
     fs.writeFileSync(targetFull, "user customized content");
 
@@ -211,7 +214,7 @@ describe("update() integration", () => {
     fs.writeFileSync(versionPath, "0.0.1");
 
     // Delete a file so there is a change to trigger the full flow
-    fs.unlinkSync(path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE));
+    fs.unlinkSync(path.join(tmpDir, MANAGED_FILE));
 
     await update({ force: true });
 
@@ -222,7 +225,7 @@ describe("update() integration", () => {
     await setupProject();
 
     // Delete a file to trigger the full update flow
-    fs.unlinkSync(path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE));
+    fs.unlinkSync(path.join(tmpDir, MANAGED_FILE));
 
     await update({ force: true });
 
@@ -251,7 +254,7 @@ describe("update() integration", () => {
     fs.writeFileSync(versionPath, "99.99.99");
 
     // Delete a file so there is a change
-    const target = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const target = path.join(tmpDir, MANAGED_FILE);
     fs.unlinkSync(target);
 
     await update({ allowDowngrade: true, force: true });

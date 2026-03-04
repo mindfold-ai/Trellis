@@ -62,14 +62,8 @@ import {
   // Configuration
   configYamlTemplate,
   worktreeYamlTemplate,
-  workflowMdTemplate,
   gitignoreTemplate,
 } from "../templates/trellis/index.js";
-
-import {
-  // Workspace
-  workspaceIndexContent,
-} from "../templates/markdown/index.js";
 
 import {
   ALL_MANAGED_DIRS,
@@ -159,10 +153,7 @@ function collectTemplateFiles(cwd: string): Map<string, string> {
   files.set(`${DIR_NAMES.WORKFLOW}/config.yaml`, configYamlTemplate);
   files.set(`${DIR_NAMES.WORKFLOW}/worktree.yaml`, worktreeYamlTemplate);
   files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
-  files.set(PATHS.WORKFLOW_GUIDE_FILE, workflowMdTemplate);
-
-  // Workspace index (template file, not user data)
-  files.set(`${PATHS.WORKSPACE}/index.md`, workspaceIndexContent);
+  // workflow.md and workspace/index.md are user-customizable; only created during init
 
   // Platform-specific templates (only for configured platforms)
   for (const platformId of platforms) {
