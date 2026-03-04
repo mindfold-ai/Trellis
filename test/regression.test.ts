@@ -323,6 +323,8 @@ describe("regression: update only configured platforms (beta.16)", () => {
       "kiro",
       "gemini",
       "antigravity",
+      "trae",
+      "qoder",
     ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);
@@ -534,6 +536,16 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.antigravity.configDir).toBe(".agent/workflows");
   });
 
+  it("[trae] Trae platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("trae");
+    expect(AI_TOOLS.trae.configDir).toBe(".trae/skills");
+  });
+
+  it("[qoder] Qoder platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("qoder");
+    expect(AI_TOOLS.qoder.configDir).toBe(".qoder");
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -584,6 +596,16 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".agent");
   });
 
+  it("[trae] cli_adapter.py supports trae platform", () => {
+    expect(commonCliAdapter).toContain('"trae"');
+    expect(commonCliAdapter).toContain(".trae");
+  });
+
+  it("[qoder] cli_adapter.py supports qoder platform", () => {
+    expect(commonCliAdapter).toContain('"qoder"');
+    expect(commonCliAdapter).toContain(".qoder");
+  });
+
   it("[beta.9] cli_adapter.py has detect_platform function", () => {
     expect(commonCliAdapter).toContain("def detect_platform");
   });
@@ -604,6 +626,8 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".kiro");
     expect(commonCliAdapter).toContain(".gemini");
     expect(commonCliAdapter).toContain(".agent");
+    expect(commonCliAdapter).toContain(".trae");
+    expect(commonCliAdapter).toContain(".qoder");
   });
 });
 
@@ -750,7 +774,7 @@ describe("regression: collectTemplates paths match init directory structure (0.3
   });
 
   it("[0.3.1] all platforms with commands use consistent trellis/ subdirectory", () => {
-    const platformsWithCommands = ["claude-code", "iflow", "kilo", "gemini"] as const;
+    const platformsWithCommands = ["claude-code", "iflow", "kilo", "gemini", "qoder"] as const;
     for (const id of platformsWithCommands) {
       const templates = collectPlatformTemplates(id);
       if (!templates) continue;

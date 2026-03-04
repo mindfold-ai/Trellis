@@ -1,0 +1,19 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/backend/platform-integration.md", "reason": "Authoritative checklist for adding new platforms (10-step guide)"}
+{"file": "src/types/ai-tools.ts", "reason": "Central registry - must add AITool, TemplateDir, CliFlag union members and AI_TOOLS entries"}
+{"file": "src/configurators/index.ts", "reason": "PLATFORM_FUNCTIONS registry - must add configure/collectTemplates entries"}
+{"file": "src/configurators/codex.ts", "reason": "Reference pattern for Trae configurator (skills-based platform)"}
+{"file": "src/configurators/kilo.ts", "reason": "Reference pattern for Qoder configurator (commands-only platform)"}
+{"file": "src/configurators/gemini.ts", "reason": "Reference for EXCLUDE_PATTERNS with .js exclusion"}
+{"file": "src/configurators/shared.ts", "reason": "resolvePlaceholders utility"}
+{"file": "src/templates/codex/index.ts", "reason": "Reference template index for Trae (skills listing pattern)"}
+{"file": "src/templates/kilo/index.ts", "reason": "Reference template index for Qoder (commands listing pattern)"}
+{"file": "src/templates/extract.ts", "reason": "Must add getTraeTemplatePath() and getQoderTemplatePath()"}
+{"file": "src/cli/index.ts", "reason": "Must add --trae and --qoder CLI options"}
+{"file": "src/commands/init.ts", "reason": "Must add trae/qoder to InitOptions interface"}
+{"file": "src/templates/trellis/scripts/common/cli_adapter.py", "reason": "Must add trae/qoder to Platform literal and all method branches"}
+{"file": "src/templates/trellis/scripts/multi_agent/plan.py", "reason": "Must add trae/qoder to --platform choices"}
+{"file": "src/templates/trellis/scripts/multi_agent/start.py", "reason": "Must add trae/qoder to --platform choices"}
+{"file": "README.md", "reason": "Must add Trae and Qoder to supported tools list"}
+{"file": "README_CN.md", "reason": "Must add Trae and Qoder to supported tools list (Chinese)"}

@@ -22,6 +22,8 @@ import { configureKilo } from "./kilo.js";
 import { configureKiro } from "./kiro.js";
 import { configureGemini } from "./gemini.js";
 import { configureAntigravity } from "./antigravity.js";
+import { configureTrae } from "./trae.js";
+import { configureQoder } from "./qoder.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -45,6 +47,8 @@ import { getAllCommands as getKiloCommands } from "../templates/kilo/index.js";
 import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
 import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
 import { getAllWorkflows as getAntigravityWorkflows } from "../templates/antigravity/index.js";
+import { getAllSkills as getTraeSkills } from "../templates/trae/index.js";
+import { getAllCommands as getQoderCommands } from "../templates/qoder/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -173,6 +177,26 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       const files = new Map<string, string>();
       for (const workflow of getAntigravityWorkflows()) {
         files.set(`.agent/workflows/${workflow.name}.md`, workflow.content);
+      }
+      return files;
+    },
+  },
+  trae: {
+    configure: configureTrae,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const skill of getTraeSkills()) {
+        files.set(`.trae/skills/${skill.name}/SKILL.md`, skill.content);
+      }
+      return files;
+    },
+  },
+  qoder: {
+    configure: configureQoder,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const cmd of getQoderCommands()) {
+        files.set(`.qoder/commands/trellis/${cmd.name}.md`, cmd.content);
       }
       return files;
     },

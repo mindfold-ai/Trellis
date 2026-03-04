@@ -69,6 +69,8 @@ program
   .option("--kiro", "Include Kiro Code skills")
   .option("--gemini", "Include Gemini CLI commands")
   .option("--antigravity", "Include Antigravity workflows")
+  .option("--trae", "Include Trae skills")
+  .option("--qoder", "Include Qoder commands")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",

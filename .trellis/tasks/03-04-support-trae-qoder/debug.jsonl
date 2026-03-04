@@ -1,0 +1,6 @@
+{"file": ".opencode/commands/trellis/check-backend.md", "reason": "Backend check spec"}
+{"file": "src/configurators/index.ts", "reason": "Primary dispatch point - if platform not working, check PLATFORM_FUNCTIONS"}
+{"file": "src/types/ai-tools.ts", "reason": "If compile errors, check all 3 union types and AI_TOOLS record"}
+{"file": "src/commands/init.ts", "reason": "If init fails, check InitOptions interface and _AssertCliFlagsInOptions type check"}
+{"file": "src/templates/trellis/scripts/common/cli_adapter.py", "reason": "If Python scripts fail, check Platform literal and all method branches"}
+{"file": "src/templates/extract.ts", "reason": "If template loading fails, check getXxxTemplatePath() function exists"}

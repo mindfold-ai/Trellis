@@ -1,0 +1,41 @@
+{
+  "id": "support-trae-qoder",
+  "name": "support-trae-qoder",
+  "title": "支持 Trae、Qoder 平台接入",
+  "description": "",
+  "status": "planning",
+  "dev_type": "backend",
+  "scope": "platform",
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-03-04",
+  "completedAt": null,
+  "branch": "feature/support-trae-qoder",
+  "base_branch": "main",
+  "worktree_path": "/Users/taosu/workspace/company/mindfold/product/share-public/trellis-worktrees/feature/support-trae-qoder",
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

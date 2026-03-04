@@ -10,6 +10,8 @@ import {
   getKiroTemplatePath,
   getGeminiTemplatePath,
   getAntigravityTemplatePath,
+  getTraeTemplatePath,
+  getQoderTemplatePath,
   getTrellisSourcePath,
   getCursorSourcePath,
   getClaudeSourcePath,
@@ -84,6 +86,18 @@ describe("template path functions", () => {
 
   it("getAntigravityTemplatePath returns existing directory", () => {
     const p = getAntigravityTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
+
+  it("getTraeTemplatePath returns existing directory", () => {
+    const p = getTraeTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
+
+  it("getQoderTemplatePath returns existing directory", () => {
+    const p = getQoderTemplatePath();
     expect(fs.existsSync(p)).toBe(true);
     expect(fs.statSync(p).isDirectory()).toBe(true);
   });

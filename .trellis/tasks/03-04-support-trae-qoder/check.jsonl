@@ -1,0 +1,8 @@
+{"file": ".opencode/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".opencode/commands/trellis/check-backend.md", "reason": "Backend check spec"}
+{"file": "test/templates/kilo.test.ts", "reason": "Reference test pattern for Qoder template tests (commands-only)"}
+{"file": "test/templates/codex.test.ts", "reason": "Reference test pattern for Trae template tests (skills-based)"}
+{"file": "test/configurators/platforms.test.ts", "reason": "Must add detection and configurator tests for trae and qoder"}
+{"file": "test/commands/init.integration.test.ts", "reason": "Must add init integration tests for both platforms"}
+{"file": "test/templates/extract.test.ts", "reason": "Must add getTraeTemplatePath/getQoderTemplatePath tests"}
+{"file": "test/regression.test.ts", "reason": "Must add platform registration, cli_adapter, collectTemplates assertions"}

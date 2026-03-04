@@ -13,6 +13,8 @@ import { getAllSkills } from "../../src/templates/codex/index.js";
 import { getAllWorkflows as getAllAntigravityWorkflows } from "../../src/templates/antigravity/index.js";
 import { getAllSkills as getAllKiroSkills } from "../../src/templates/kiro/index.js";
 import { getAllCommands as getAllGeminiCommands } from "../../src/templates/gemini/index.js";
+import { getAllSkills as getAllTraeSkills } from "../../src/templates/trae/index.js";
+import { getAllCommands as getAllQoderCommands } from "../../src/templates/qoder/index.js";
 
 // =============================================================================
 // getConfiguredPlatforms — detects existing platform directories
@@ -82,6 +84,18 @@ describe("getConfiguredPlatforms", () => {
     fs.mkdirSync(path.join(tmpDir, ".gemini"), { recursive: true });
     const result = getConfiguredPlatforms(tmpDir);
     expect(result.has("gemini")).toBe(true);
+  });
+
+  it("detects .trae/skills directory as trae", () => {
+    fs.mkdirSync(path.join(tmpDir, ".trae", "skills"), { recursive: true });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("trae")).toBe(true);
+  });
+
+  it("detects .qoder directory as qoder", () => {
+    fs.mkdirSync(path.join(tmpDir, ".qoder"), { recursive: true });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("qoder")).toBe(true);
   });
 
   it("detects multiple platforms simultaneously", () => {
@@ -276,6 +290,82 @@ describe("configurePlatform", () => {
       const workflowPath = path.join(workflowsRoot, `${workflow.name}.md`);
       expect(fs.existsSync(workflowPath)).toBe(true);
       expect(fs.readFileSync(workflowPath, "utf-8")).toBe(workflow.content);
+    }
+  });
+
+  it("configurePlatform('trae') creates .trae/skills directory", async () => {
+    await configurePlatform("trae", tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, ".trae", "skills"))).toBe(true);
+  });
+
+  it("configurePlatform('trae') writes all skill templates", async () => {
+    await configurePlatform("trae", tmpDir);
+
+    const expectedSkills = getAllTraeSkills();
+    const expectedNames = expectedSkills.map((skill) => skill.name).sort();
+
+    const skillsRoot = path.join(tmpDir, ".trae", "skills");
+    const actualNames = fs
+      .readdirSync(skillsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    expect(actualNames).toEqual(expectedNames);
+    expect(actualNames).not.toContain("parallel");
+
+    for (const skill of expectedSkills) {
+      const skillPath = path.join(skillsRoot, skill.name, "SKILL.md");
+      expect(fs.existsSync(skillPath)).toBe(true);
+      expect(fs.readFileSync(skillPath, "utf-8")).toBe(skill.content);
+    }
+  });
+
+  it("configurePlatform('qoder') creates .qoder directory", async () => {
+    await configurePlatform("qoder", tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(true);
+  });
+
+  it("configurePlatform('qoder') writes all command templates", async () => {
+    await configurePlatform("qoder", tmpDir);
+
+    const expectedCommands = getAllQoderCommands();
+    const expectedNames = expectedCommands.map((cmd) => cmd.name).sort();
+
+    const commandsDir = path.join(tmpDir, ".qoder", "commands", "trellis");
+    expect(fs.existsSync(commandsDir)).toBe(true);
+
+    const actualFiles = fs.readdirSync(commandsDir).sort();
+    const actualNames = actualFiles.map((f) => f.replace(".md", "")).sort();
+
+    expect(actualNames).toEqual(expectedNames);
+
+    for (const cmd of expectedCommands) {
+      const filePath = path.join(commandsDir, `${cmd.name}.md`);
+      expect(fs.existsSync(filePath)).toBe(true);
+      expect(fs.readFileSync(filePath, "utf-8")).toBe(cmd.content);
+    }
+  });
+
+  it("configurePlatform('qoder') does not include compiled artifacts", async () => {
+    await configurePlatform("qoder", tmpDir);
+
+    const walk = (dir: string): string[] => {
+      const files: string[] = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) files.push(...walk(full));
+        else files.push(entry.name);
+      }
+      return files;
+    };
+
+    const allFiles = walk(path.join(tmpDir, ".qoder"));
+    for (const file of allFiles) {
+      expect(file).not.toMatch(/\.js$/);
+      expect(file).not.toMatch(/\.d\.ts$/);
+      expect(file).not.toMatch(/\.js\.map$/);
+      expect(file).not.toMatch(/\.d\.ts\.map$/);
     }
   });
 

@@ -16,7 +16,9 @@ export type AITool =
   | "kilo"
   | "kiro"
   | "gemini"
-  | "antigravity";
+  | "antigravity"
+  | "trae"
+  | "qoder";
 
 /**
  * Template directory categories
@@ -31,7 +33,9 @@ export type TemplateDir =
   | "kilo"
   | "kiro"
   | "gemini"
-  | "antigravity";
+  | "antigravity"
+  | "trae"
+  | "qoder";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -46,7 +50,9 @@ export type CliFlag =
   | "kilo"
   | "kiro"
   | "gemini"
-  | "antigravity";
+  | "antigravity"
+  | "trae"
+  | "qoder";
 
 /**
  * Configuration for an AI tool
@@ -147,6 +153,22 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "antigravity"],
     configDir: ".agent/workflows",
     cliFlag: "antigravity",
+    defaultChecked: false,
+    hasPythonHooks: false,
+  },
+  trae: {
+    name: "Trae",
+    templateDirs: ["common", "trae"],
+    configDir: ".trae/skills",
+    cliFlag: "trae",
+    defaultChecked: false,
+    hasPythonHooks: false,
+  },
+  qoder: {
+    name: "Qoder",
+    templateDirs: ["common", "qoder"],
+    configDir: ".qoder",
+    cliFlag: "qoder",
     defaultChecked: false,
     hasPythonHooks: false,
   },
