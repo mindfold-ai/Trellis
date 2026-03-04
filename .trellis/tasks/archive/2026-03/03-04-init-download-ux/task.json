@@ -1,0 +1,41 @@
+{
+  "id": "init-download-ux",
+  "name": "init-download-ux",
+  "title": "优化 trellis init/update 网络体验：代理支持 + 超时 + 进度提示 + 友好错误",
+  "description": "添加 undici ProxyAgent 代理支持、fetch/giget 超时、进度提示、错误分类、消除 double-fetch",
+  "status": "completed",
+  "dev_type": "backend",
+  "scope": null,
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-03-04",
+  "completedAt": "2026-03-04",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

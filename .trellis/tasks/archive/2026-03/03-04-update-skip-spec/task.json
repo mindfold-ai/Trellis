@@ -1,0 +1,41 @@
+{
+  "id": "update-skip-spec",
+  "name": "update-skip-spec",
+  "title": "trellis update 时跳过 .trellis/spec/ 目录下的所有文件，spec 是用户自定义内容不应被更新覆盖",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-03-04",
+  "completedAt": "2026-03-04",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}
