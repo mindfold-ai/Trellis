@@ -1595,3 +1595,51 @@ record-session 执行后自动提交 workspace 改动，解决脏目录问题。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 61: feat: update 跳过 spec 目录
+
+**Date**: 2026-03-04
+**Task**: feat: update 跳过 spec 目录
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 概要
+trellis update 不再触碰 .trellis/spec/ 下的任何文件，spec 是用户自定义内容，仅在 init 时创建。
+
+## 改动
+
+| 文件 | 变更 |
+|------|------|
+| `src/commands/update.ts` | 删除 16 个 spec import、移除 collectTemplateFiles 中 ~65 行 spec 收集逻辑、PROTECTED_PATHS 和 BACKUP_EXCLUDE_PATTERNS 各加 spec/ |
+| `src/utils/template-hash.ts` | EXCLUDE_FROM_HASH 合并 spec/frontend/ + spec/backend/ 为 spec/ |
+| `test/commands/update.integration.test.ts` | 重写 #13 #14 验证 spec 不被更新触碰 |
+| `test/utils/template-hash.test.ts` | 新增 spec 目录排除测试 |
+
+## 验证
+- 389 tests passed, lint + typecheck clean
+- Check Agent 复查 0 issues
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1beb64f` | (see git log) |
+| `a9ed34a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
