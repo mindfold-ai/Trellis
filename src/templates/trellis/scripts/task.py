@@ -659,11 +659,36 @@ def cmd_archive(args: argparse.Namespace) -> int:
         year_month = archive_dest.parent.name
         print(colored(f"Archived: {dir_name} -> archive/{year_month}/", Colors.GREEN), file=sys.stderr)
 
+        # Auto-commit unless --no-commit
+        if not getattr(args, "no_commit", False):
+            _auto_commit_archive(dir_name, repo_root)
+
         # Return the archive path
         print(f"{DIR_WORKFLOW}/{DIR_TASKS}/{DIR_ARCHIVE}/{year_month}/{dir_name}")
         return 0
 
     return 1
+
+
+def _auto_commit_archive(task_name: str, repo_root: Path) -> None:
+    """Stage .trellis/tasks/ changes and commit after archive."""
+    tasks_rel = f"{DIR_WORKFLOW}/{DIR_TASKS}"
+    _run_git_command(["add", "-A", tasks_rel], cwd=repo_root)
+
+    # Check if there are staged changes
+    rc, _, _ = _run_git_command(
+        ["diff", "--cached", "--quiet", "--", tasks_rel], cwd=repo_root
+    )
+    if rc == 0:
+        print("[OK] No task changes to commit.", file=sys.stderr)
+        return
+
+    commit_msg = f"chore(task): archive {task_name}"
+    rc, _, err = _run_git_command(["commit", "-m", commit_msg], cwd=repo_root)
+    if rc == 0:
+        print(f"[OK] Auto-committed: {commit_msg}", file=sys.stderr)
+    else:
+        print(f"[WARN] Auto-commit failed: {err.strip()}", file=sys.stderr)
 
 
 # =============================================================================
@@ -1005,6 +1030,7 @@ def main() -> int:
     # archive
     p_archive = subparsers.add_parser("archive", help="Archive task")
     p_archive.add_argument("name", help="Task name")
+    p_archive.add_argument("--no-commit", action="store_true", help="Skip auto git commit after archive")
 
     # list
     p_list = subparsers.add_parser("list", help="List tasks")
