@@ -29,8 +29,10 @@ import { initializeHashes } from "../utils/template-hash.js";
 import {
   fetchTemplateIndex,
   downloadTemplateById,
+  type SpecTemplate,
   type TemplateStrategy,
 } from "../utils/template-fetcher.js";
+import { setupProxy, maskProxyUrl } from "../utils/proxy.js";
 
 /**
  * Detect available Python command (python3 or python)
@@ -348,6 +350,12 @@ export async function init(options: InitOptions): Promise<void> {
     ),
   );
 
+  // Set up proxy before any network calls
+  const proxyUrl = setupProxy();
+  if (proxyUrl) {
+    console.log(chalk.gray(`   Using proxy: ${maskProxyUrl(proxyUrl)}\n`));
+  }
+
   // Set write mode based on options
   let writeMode: WriteMode = "ask";
   if (options.force) {
@@ -456,12 +464,26 @@ export async function init(options: InitOptions): Promise<void> {
     templateStrategy = "append";
   }
 
+  // Pre-fetched templates list (used to pass selected SpecTemplate to downloadTemplateById)
+  let fetchedTemplates: SpecTemplate[] = [];
+
   if (options.template) {
     // Template specified via --template flag
     selectedTemplate = options.template;
   } else if (!options.yes) {
     // Interactive mode: show template selection
+    console.log(chalk.gray("   Fetching available templates..."));
     const templates = await fetchTemplateIndex();
+    fetchedTemplates = templates;
+
+    if (templates.length === 0) {
+      console.log(
+        chalk.gray(
+          "   Could not fetch templates (offline or server unavailable).",
+        ),
+      );
+      console.log(chalk.gray("   Using blank templates.\n"));
+    }
 
     if (templates.length > 0) {
       // Build template choices with "blank" as first (default)
@@ -524,10 +546,16 @@ export async function init(options: InitOptions): Promise<void> {
 
   if (selectedTemplate) {
     console.log(chalk.blue(`📦 Downloading template "${selectedTemplate}"...`));
+    console.log(chalk.gray("   This may take a moment on slow connections."));
+
+    // Find pre-fetched SpecTemplate to avoid double-fetch
+    const prefetched = fetchedTemplates.find((t) => t.id === selectedTemplate);
+
     const result = await downloadTemplateById(
       cwd,
       selectedTemplate,
       templateStrategy,
+      prefetched,
     );
 
     if (result.success) {
@@ -540,6 +568,11 @@ export async function init(options: InitOptions): Promise<void> {
     } else {
       console.log(chalk.yellow(`   ${result.message}`));
       console.log(chalk.gray("   Falling back to blank templates..."));
+      console.log(
+        chalk.gray(
+          `   You can retry later: trellis init --template ${selectedTemplate}`,
+        ),
+      );
     }
   }
 

@@ -27,6 +27,7 @@ import {
   computeHash,
 } from "../utils/template-hash.js";
 import { compareVersions } from "../utils/compare-versions.js";
+import { setupProxy } from "../utils/proxy.js";
 
 // Import templates for comparison
 import {
@@ -1018,6 +1019,9 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   console.log(chalk.cyan("\nTrellis Update"));
   console.log(chalk.cyan("══════════════\n"));
+
+  // Set up proxy before any network calls (npm version check)
+  setupProxy();
 
   // Get versions
   const projectVersion = getInstalledVersion(cwd);
