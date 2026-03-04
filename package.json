@@ -56,7 +56,8 @@
     "commander": "^12.1.0",
     "figlet": "^1.9.4",
     "giget": "^3.1.1",
-    "inquirer": "^9.3.7"
+    "inquirer": "^9.3.7",
+    "undici": "^6.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
@@ -74,7 +75,7 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.17.0"
   },
   "files": [
     "dist",
