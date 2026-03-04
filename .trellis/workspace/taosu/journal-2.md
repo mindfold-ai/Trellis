@@ -1858,3 +1858,35 @@ workflow.md 和 workspace/index.md 从 update 模板收集中移除，只在 ini
 ### Next Steps
 
 - None - task complete
+
+
+## Session 67: Fix nested Claude Code session error in multi-agent pipeline
+
+**Date**: 2026-03-04
+**Task**: Fix nested Claude Code session error in multi-agent pipeline
+
+### Summary
+
+修复 CC v2.1.39+ 引入的嵌套会话检测导致 /trellis:parallel 报错 'Claude Code cannot be launched inside another Claude Code session'。在 start.py 和 plan.py 中清除 CLAUDECODE 环境变量。同时修复了 update 跳过 workflow.md 和 workspace/index.md 的问题。
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c220785` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
