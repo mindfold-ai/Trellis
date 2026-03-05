@@ -84,15 +84,25 @@ When adding a new platform `{platform}`, update the following:
 
 > Note: Codex/Kiro/Qoder use skills (not slash commands). Skill content should use `$<skill-name>` / `/skills` semantics, not `/trellis:*` syntax. Qoder skills use YAML frontmatter (`---\nname: ...\n---`) at the top of each SKILL.md.
 
-**Commands-only pattern** (Cursor, Kilo):
+**Commands-only pattern** (Cursor):
 
 | Directory | Contents |
 |-----------|----------|
 | `src/templates/{platform}/` | Root directory |
 | `src/templates/{platform}/index.ts` | Export `getAllCommands(): CommandTemplate[]` |
-| `src/templates/{platform}/commands/` or `commands/trellis/` | Slash commands (`.md` files) |
+| `src/templates/{platform}/commands/` | Slash commands (`.md` files) |
 
-> Note: Cursor uses flat prefix naming (`trellis-start.md` → `/trellis-start`). Kilo uses subdirectory namespacing (`commands/trellis/start.md` → `/trellis:start`). No hooks, no agents, no settings.
+> Note: Cursor uses flat prefix naming (`trellis-start.md` → `/trellis-start`). No hooks, no agents, no settings.
+
+**Workflows pattern** (Kilo):
+
+| Directory | Contents |
+|-----------|----------|
+| `src/templates/{platform}/` | Root directory |
+| `src/templates/{platform}/index.ts` | Export `getAllWorkflows(): WorkflowTemplate[]` |
+| `src/templates/{platform}/workflows/` | Workflow files (`.md` files) |
+
+> Note: Kilo uses flat workflow directory (`workflows/start.md` → `/start`). No hooks, no agents, no settings.
 
 **TOML commands pattern** (Gemini CLI):
 
@@ -242,7 +252,7 @@ These are now **automatically derived** from the registry:
 | OpenCode | `/trellis:xxx` | Markdown (`.md`) | `/trellis:start` |
 | iFlow | `/trellis:xxx` | Markdown (`.md`) | `/trellis:start` |
 | Gemini CLI | `/trellis:xxx` | TOML (`.toml`) | `/trellis:start` |
-| Kilo | `/trellis:xxx` | Markdown (`.md`) | `/trellis:start` |
+| Kilo | `/<workflow-name>` | Markdown (`.md`) | `/start` |
 | Codex | `$<skill-name>` / `/skills` | Markdown (`SKILL.md`) | `$start` |
 | Kiro | `$<skill-name>` / `/skills` | Markdown (`SKILL.md`) | `$start` |
 | Qoder | `$<skill-name>` / `/skills` | Markdown (`SKILL.md`) | `$start` |

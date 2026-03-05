@@ -2,7 +2,7 @@
  * Kilo CLI configurator
  *
  * Configures Kilo CLI by copying templates from src/templates/kilo/.
- * Kilo CLI does not support hooks, so only commands are copied.
+ * Kilo CLI does not support hooks, so only workflows are copied.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -13,6 +13,7 @@ import { ensureDir, writeFile } from "../utils/file-writer.js";
 const EXCLUDE_PATTERNS = [
   ".d.ts",
   ".d.ts.map",
+  ".js",
   ".js.map",
   "__pycache__",
   "node_modules",
