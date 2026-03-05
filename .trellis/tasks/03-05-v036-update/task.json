@@ -39,7 +39,6 @@
   "children": [
     "03-05-remote-spec-templates",
     "03-05-tmux-support",
-    "03-05-task-lifecycle-hooks",
     "03-05-hooks-docs"
   ],
   "parent": null,
