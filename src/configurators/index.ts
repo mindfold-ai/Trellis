@@ -42,7 +42,7 @@ import {
   getSettingsTemplate as getIflowSettings,
 } from "../templates/iflow/index.js";
 import { getAllSkills as getCodexSkills } from "../templates/codex/index.js";
-import { getAllCommands as getKiloCommands } from "../templates/kilo/index.js";
+import { getAllWorkflows as getKiloWorkflows } from "../templates/kilo/index.js";
 import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
 import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
 import { getAllWorkflows as getAntigravityWorkflows } from "../templates/antigravity/index.js";
@@ -143,8 +143,8 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
     configure: configureKilo,
     collectTemplates: () => {
       const files = new Map<string, string>();
-      for (const cmd of getKiloCommands()) {
-        files.set(`.kilocode/commands/trellis/${cmd.name}.md`, cmd.content);
+      for (const wf of getKiloWorkflows()) {
+        files.set(`.kilocode/workflows/${wf.name}.md`, wf.content);
       }
       return files;
     },

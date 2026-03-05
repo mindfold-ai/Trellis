@@ -149,7 +149,7 @@ class CLIAdapter:
             Antigravity uses workflow directory: .agent/workflows/<name>.md
             Claude/OpenCode use subdirectory: .claude/commands/trellis/<name>.md
         """
-        if self.platform == "antigravity":
+        if self.platform in ("antigravity", "kilo"):
             workflow_dir = self.get_config_dir(project_root) / "workflows"
             if not parts:
                 return workflow_dir
@@ -198,6 +198,8 @@ class CLIAdapter:
             return f".gemini/commands/trellis/{name}.toml"
         elif self.platform == "antigravity":
             return f".agent/workflows/{name}.md"
+        elif self.platform == "kilo":
+            return f".kilocode/workflows/{name}.md"
         else:
             return f"{self.config_dir_name}/commands/trellis/{name}.md"
 

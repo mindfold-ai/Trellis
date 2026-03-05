@@ -6,7 +6,7 @@
  *
  * Directory structure:
  *   kilo/
- *   └── commands/trellis/    # Slash commands
+ *   └── workflows/    # Workflow files
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -28,22 +28,22 @@ function listFiles(dir: string): string[] {
   }
 }
 
-export interface CommandTemplate {
+export interface WorkflowTemplate {
   name: string;
   content: string;
 }
 
-export function getAllCommands(): CommandTemplate[] {
-  const commands: CommandTemplate[] = [];
-  const files = listFiles("commands/trellis");
+export function getAllWorkflows(): WorkflowTemplate[] {
+  const workflows: WorkflowTemplate[] = [];
+  const files = listFiles("workflows");
 
   for (const file of files) {
     if (file.endsWith(".md")) {
       const name = file.replace(".md", "");
-      const content = readTemplate(`commands/trellis/${file}`);
-      commands.push({ name, content });
+      const content = readTemplate(`workflows/${file}`);
+      workflows.push({ name, content });
     }
   }
 
-  return commands;
+  return workflows;
 }

@@ -752,7 +752,7 @@ describe("regression: collectTemplates paths match init directory structure (0.3
   });
 
   it("[0.3.1] all platforms with commands use consistent trellis/ subdirectory", () => {
-    const platformsWithCommands = ["claude-code", "iflow", "kilo", "gemini"] as const;
+    const platformsWithCommands = ["claude-code", "iflow", "gemini"] as const;
     for (const id of platformsWithCommands) {
       const templates = collectPlatformTemplates(id);
       if (!templates) continue;
@@ -765,6 +765,21 @@ describe("regression: collectTemplates paths match init directory structure (0.3
           `${id} command path should include trellis/ subdirectory: ${key}`,
         ).toContain("/commands/trellis/");
       }
+    }
+  });
+
+  it("[0.3.4] kilo uses workflows/ instead of commands/trellis/", () => {
+    const templates = collectPlatformTemplates("kilo");
+    expect(templates).toBeInstanceOf(Map);
+    if (!templates) return;
+    const keys = [...templates.keys()];
+    for (const key of keys) {
+      expect(key, `kilo path should use workflows/: ${key}`).toContain(
+        ".kilocode/workflows/",
+      );
+      expect(key, `kilo should not use commands/: ${key}`).not.toContain(
+        "/commands/",
+      );
     }
   });
 });
