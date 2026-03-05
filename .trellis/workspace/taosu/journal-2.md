@@ -1890,3 +1890,74 @@ workflow.md 和 workspace/index.md 从 update 模板收集中移除，只在 ini
 ### Next Steps
 
 - None - task complete
+
+
+## Session 68: feat: task subtask support
+
+**Date**: 2026-03-05
+**Task**: feat: task subtask support
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Implemented parent-child subtask system for Trellis task management.
+
+## Changes
+
+| Commit | Description |
+|--------|-------------|
+| `d1b4929` | Core subtask logic: children/parent/meta fields, create --parent, add-subtask/remove-subtask commands, hierarchical list display, archive cleanup |
+| `526e9de` | get_context enhancement: hierarchical task display, --mode/--json combinable flags, record JSON mode |
+| `920cbaf` | All 9 platform prompts + 3 dogfooding copies updated with subtask decomposition content |
+| `d1768e1` | tasks.md documentation fixes (7 errors), v0.3.6 parent task with 4 children |
+
+## Key Decisions
+
+- Subtasks are full tasks with identical schema, only linked via `children[]`/`parent` fields
+- `meta: {}` added for extensible integration metadata (Linear, Jira)
+- `get_context.py` CLI: `--mode` controls content scope (default/record), `--json` controls output format — independently combinable
+- Skills-based platforms (codex/qoder/kiro) reference brainstorm Step 8 instead of `/trellis:brainstorm`
+
+## Files Modified (35 files across 4 commits)
+
+**Core logic (template + live copy pairs):**
+- `src/templates/trellis/scripts/task.py` + `.trellis/scripts/task.py`
+- `src/templates/trellis/scripts/create_bootstrap.py` + `.trellis/scripts/create_bootstrap.py`
+- `src/templates/trellis/scripts/common/git_context.py` + `.trellis/scripts/common/git_context.py`
+- `src/templates/trellis/scripts/common/task_queue.py` + `.trellis/scripts/common/task_queue.py`
+- `src/commands/init.ts`, `src/commands/update.ts`
+
+**Prompts (24 files):**
+- brainstorm + start for: claude, cursor, codex, qoder, kiro, gemini, iflow, opencode, kilo
+- Dogfooding: `.claude/`, `.agents/`, `.cursor/`
+
+**Docs:**
+- `.claude/skills/trellis-meta/references/core/tasks.md`
+- `.trellis/tasks/` (5 new task directories)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d1b4929` | (see git log) |
+| `526e9de` | (see git log) |
+| `920cbaf` | (see git log) |
+| `d1768e1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
