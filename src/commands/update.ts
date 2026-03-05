@@ -1533,6 +1533,9 @@ export async function update(options: UpdateOptions): Promise<void> {
           commit: null,
           pr_url: null,
           subtasks: [],
+          children: [],
+          parent: null,
+          meta: {},
         };
 
         // Write task.json

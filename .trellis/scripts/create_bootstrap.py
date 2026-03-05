@@ -228,8 +228,11 @@ def write_task_json(task_dir: Path, developer: str, project_type: str) -> None:
         "completedAt": None,
         "commit": None,
         "subtasks": subtasks,
+        "children": [],
+        "parent": None,
         "relatedFiles": related_files,
         "notes": f"First-time setup task created by trellis init ({project_type} project)",
+        "meta": {},
     }
 
     task_json = task_dir / "task.json"

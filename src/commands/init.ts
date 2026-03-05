@@ -212,8 +212,11 @@ interface TaskJson {
   completedAt: null;
   commit: null;
   subtasks: { name: string; status: string }[];
+  children: string[];
+  parent: string | null;
   relatedFiles: string[];
   notes: string;
+  meta: Record<string, unknown>;
 }
 
 function getBootstrapTaskJson(
@@ -260,8 +263,11 @@ function getBootstrapTaskJson(
     completedAt: null,
     commit: null,
     subtasks,
+    children: [],
+    parent: null,
     relatedFiles,
     notes: `First-time setup task created by trellis init (${projectType} project)`,
+    meta: {},
   };
 }
 

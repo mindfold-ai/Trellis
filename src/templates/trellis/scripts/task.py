@@ -4,7 +4,7 @@
 Task Management Script for Multi-Agent Pipeline.
 
 Usage:
-    python3 task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3]
+    python3 task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3] [--parent <dir>]
     python3 task.py init-context <dir> <type>   # Initialize jsonl files
     python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
     python3 task.py validate <dir>              # Validate jsonl files
@@ -18,6 +18,8 @@ Usage:
     python3 task.py archive <task-name>         # Archive completed task
     python3 task.py list                        # List active tasks
     python3 task.py list-archive [month]        # List archived tasks
+    python3 task.py add-subtask <parent-dir> <child-dir>     # Link child to parent
+    python3 task.py remove-subtask <parent-dir> <child-dir>  # Unlink child from parent
 """
 
 from __future__ import annotations
@@ -294,11 +296,36 @@ def cmd_create(args: argparse.Namespace) -> int:
         "commit": None,
         "pr_url": None,
         "subtasks": [],
+        "children": [],
+        "parent": None,
         "relatedFiles": [],
         "notes": "",
+        "meta": {},
     }
 
     _write_json_file(task_json_path, task_data)
+
+    # Handle --parent: establish bidirectional link
+    if args.parent:
+        parent_dir = _resolve_task_dir(args.parent, repo_root)
+        parent_json_path = parent_dir / FILE_TASK_JSON
+        if not parent_json_path.is_file():
+            print(colored(f"Warning: Parent task.json not found: {args.parent}", Colors.YELLOW), file=sys.stderr)
+        else:
+            parent_data = _read_json_file(parent_json_path)
+            if parent_data:
+                # Add child to parent's children list
+                parent_children = parent_data.get("children", [])
+                if dir_name not in parent_children:
+                    parent_children.append(dir_name)
+                    parent_data["children"] = parent_children
+                    _write_json_file(parent_json_path, parent_data)
+
+                # Set parent in child's task.json
+                task_data["parent"] = parent_dir.name
+                _write_json_file(task_json_path, task_data)
+
+                print(colored(f"Linked as child of: {parent_dir.name}", Colors.GREEN), file=sys.stderr)
 
     print(colored(f"Created task: {dir_name}", Colors.GREEN), file=sys.stderr)
     print("", file=sys.stderr)
@@ -647,6 +674,36 @@ def cmd_archive(args: argparse.Namespace) -> int:
             data["completedAt"] = today
             _write_json_file(task_json_path, data)
 
+            # Handle subtask relationships on archive
+            task_parent = data.get("parent")
+            task_children = data.get("children", [])
+
+            # If this is a child, remove from parent's children list
+            if task_parent:
+                parent_dir = find_task_by_name(task_parent, tasks_dir)
+                if parent_dir:
+                    parent_json = parent_dir / FILE_TASK_JSON
+                    if parent_json.is_file():
+                        parent_data = _read_json_file(parent_json)
+                        if parent_data:
+                            parent_children = parent_data.get("children", [])
+                            if dir_name in parent_children:
+                                parent_children.remove(dir_name)
+                                parent_data["children"] = parent_children
+                                _write_json_file(parent_json, parent_data)
+
+            # If this is a parent, clear parent field in all children
+            if task_children:
+                for child_name in task_children:
+                    child_dir_path = find_task_by_name(child_name, tasks_dir)
+                    if child_dir_path:
+                        child_json = child_dir_path / FILE_TASK_JSON
+                        if child_json.is_file():
+                            child_data = _read_json_file(child_json)
+                            if child_data:
+                                child_data["parent"] = None
+                                _write_json_file(child_json, child_data)
+
     # Clear if current task
     current = get_current_task(repo_root)
     if current and dir_name in current:
@@ -692,8 +749,126 @@ def _auto_commit_archive(task_name: str, repo_root: Path) -> None:
 
 
 # =============================================================================
+# Command: add-subtask
+# =============================================================================
+
+def cmd_add_subtask(args: argparse.Namespace) -> int:
+    """Link a child task to a parent task."""
+    repo_root = get_repo_root()
+
+    parent_dir = _resolve_task_dir(args.parent_dir, repo_root)
+    child_dir = _resolve_task_dir(args.child_dir, repo_root)
+
+    parent_json_path = parent_dir / FILE_TASK_JSON
+    child_json_path = child_dir / FILE_TASK_JSON
+
+    if not parent_json_path.is_file():
+        print(colored(f"Error: Parent task.json not found: {args.parent_dir}", Colors.RED), file=sys.stderr)
+        return 1
+
+    if not child_json_path.is_file():
+        print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
+        return 1
+
+    parent_data = _read_json_file(parent_json_path)
+    child_data = _read_json_file(child_json_path)
+
+    if not parent_data or not child_data:
+        print(colored("Error: Failed to read task.json", Colors.RED), file=sys.stderr)
+        return 1
+
+    # Check if child already has a parent
+    existing_parent = child_data.get("parent")
+    if existing_parent:
+        print(colored(f"Error: Child task already has a parent: {existing_parent}", Colors.RED), file=sys.stderr)
+        return 1
+
+    # Add child to parent's children list
+    parent_children = parent_data.get("children", [])
+    child_dir_name = child_dir.name
+    if child_dir_name not in parent_children:
+        parent_children.append(child_dir_name)
+        parent_data["children"] = parent_children
+
+    # Set parent in child's task.json
+    child_data["parent"] = parent_dir.name
+
+    # Write both
+    _write_json_file(parent_json_path, parent_data)
+    _write_json_file(child_json_path, child_data)
+
+    print(colored(f"Linked: {child_dir.name} -> {parent_dir.name}", Colors.GREEN), file=sys.stderr)
+    return 0
+
+
+# =============================================================================
+# Command: remove-subtask
+# =============================================================================
+
+def cmd_remove_subtask(args: argparse.Namespace) -> int:
+    """Unlink a child task from a parent task."""
+    repo_root = get_repo_root()
+
+    parent_dir = _resolve_task_dir(args.parent_dir, repo_root)
+    child_dir = _resolve_task_dir(args.child_dir, repo_root)
+
+    parent_json_path = parent_dir / FILE_TASK_JSON
+    child_json_path = child_dir / FILE_TASK_JSON
+
+    if not parent_json_path.is_file():
+        print(colored(f"Error: Parent task.json not found: {args.parent_dir}", Colors.RED), file=sys.stderr)
+        return 1
+
+    if not child_json_path.is_file():
+        print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
+        return 1
+
+    parent_data = _read_json_file(parent_json_path)
+    child_data = _read_json_file(child_json_path)
+
+    if not parent_data or not child_data:
+        print(colored("Error: Failed to read task.json", Colors.RED), file=sys.stderr)
+        return 1
+
+    # Remove child from parent's children list
+    parent_children = parent_data.get("children", [])
+    child_dir_name = child_dir.name
+    if child_dir_name in parent_children:
+        parent_children.remove(child_dir_name)
+        parent_data["children"] = parent_children
+
+    # Clear parent in child's task.json
+    child_data["parent"] = None
+
+    # Write both
+    _write_json_file(parent_json_path, parent_data)
+    _write_json_file(child_json_path, child_data)
+
+    print(colored(f"Unlinked: {child_dir.name} from {parent_dir.name}", Colors.GREEN), file=sys.stderr)
+    return 0
+
+
+# =============================================================================
 # Command: list
 # =============================================================================
+
+def _get_children_progress(children: list[str], tasks_dir: Path) -> str:
+    """Get children progress summary like '[2/3 done]'."""
+    if not children:
+        return ""
+    done_count = 0
+    total = len(children)
+    for child_name in children:
+        child_dir = tasks_dir / child_name
+        child_json = child_dir / FILE_TASK_JSON
+        if child_json.is_file():
+            data = _read_json_file(child_json)
+            if data:
+                status = data.get("status", "")
+                if status in ("completed", "done"):
+                    done_count += 1
+    return f" [{done_count}/{total} done]"
+
 
 def cmd_list(args: argparse.Namespace) -> int:
     """List active tasks."""
@@ -713,7 +888,8 @@ def cmd_list(args: argparse.Namespace) -> int:
         print(colored("All active tasks:", Colors.BLUE))
     print()
 
-    count = 0
+    # First pass: collect all task data and identify parent/child relationships
+    all_tasks: dict[str, dict] = {}
     if tasks_dir.is_dir():
         for d in sorted(tasks_dir.iterdir()):
             if not d.is_dir() or d.name == "archive":
@@ -723,31 +899,68 @@ def cmd_list(args: argparse.Namespace) -> int:
             task_json = d / FILE_TASK_JSON
             status = "unknown"
             assignee = "-"
-            relative_path = f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}"
+            children: list[str] = []
+            parent: str | None = None
 
             if task_json.is_file():
                 data = _read_json_file(task_json)
                 if data:
                     status = data.get("status", "unknown")
                     assignee = data.get("assignee", "-")
+                    children = data.get("children", [])
+                    parent = data.get("parent")
 
-            # Apply --mine filter
-            if filter_mine and assignee != developer:
-                continue
+            all_tasks[dir_name] = {
+                "status": status,
+                "assignee": assignee,
+                "children": children,
+                "parent": parent,
+            }
 
-            # Apply --status filter
-            if filter_status and status != filter_status:
-                continue
+    # Second pass: display tasks hierarchically
+    count = 0
 
-            marker = ""
-            if relative_path == current_task:
-                marker = f" {colored('<- current', Colors.GREEN)}"
+    def _print_task(dir_name: str, indent: int = 0) -> None:
+        nonlocal count
+        info = all_tasks[dir_name]
+        status = info["status"]
+        assignee = info["assignee"]
+        children = info["children"]
 
-            if filter_mine:
-                print(f"  - {dir_name}/ ({status}){marker}")
-            else:
-                print(f"  - {dir_name}/ ({status}) [{colored(assignee, Colors.CYAN)}]{marker}")
-            count += 1
+        # Apply --mine filter
+        if filter_mine and assignee != developer:
+            return
+
+        # Apply --status filter
+        if filter_status and status != filter_status:
+            return
+
+        relative_path = f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}"
+        marker = ""
+        if relative_path == current_task:
+            marker = f" {colored('<- current', Colors.GREEN)}"
+
+        # Children progress
+        progress = _get_children_progress(children, tasks_dir) if children else ""
+
+        prefix = "  " * indent + "  - "
+
+        if filter_mine:
+            print(f"{prefix}{dir_name}/ ({status}){progress}{marker}")
+        else:
+            print(f"{prefix}{dir_name}/ ({status}){progress} [{colored(assignee, Colors.CYAN)}]{marker}")
+        count += 1
+
+        # Print children indented
+        for child_name in children:
+            if child_name in all_tasks:
+                _print_task(child_name, indent + 1)
+
+    # Display only top-level tasks (those without a parent)
+    for dir_name in sorted(all_tasks.keys()):
+        info = all_tasks[dir_name]
+        if not info["parent"]:
+            _print_task(dir_name)
 
     if count == 0:
         if filter_mine:
@@ -924,6 +1137,7 @@ def show_usage() -> None:
 
 Usage:
   python3 task.py create <title>                     Create new task directory
+  python3 task.py create <title> --parent <dir>      Create task as child of parent
   python3 task.py init-context <dir> <dev_type>      Initialize jsonl files
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
@@ -934,6 +1148,8 @@ Usage:
   python3 task.py set-scope <dir> <scope>            Set scope for PR title
   python3 task.py create-pr [dir] [--dry-run]        Create PR from task
   python3 task.py archive <task-name>                Archive completed task
+  python3 task.py add-subtask <parent> <child>       Link child task to parent
+  python3 task.py remove-subtask <parent> <child>    Unlink child from parent
   python3 task.py list [--mine] [--status <status>]  List tasks
   python3 task.py list-archive [YYYY-MM]             List archived tasks
 
@@ -946,6 +1162,7 @@ List options:
 
 Examples:
   python3 task.py create "Add login feature" --slug add-login
+  python3 task.py create "Child task" --slug child --parent .trellis/tasks/01-21-parent
   python3 task.py init-context .trellis/tasks/01-21-add-login backend
   python3 task.py add-context <dir> implement .trellis/spec/backend/auth.md "Auth guidelines"
   python3 task.py set-branch <dir> task/add-login
@@ -954,6 +1171,8 @@ Examples:
   python3 task.py create-pr <dir> --dry-run          # Preview without changes
   python3 task.py finish
   python3 task.py archive add-login
+  python3 task.py add-subtask parent-task child-task  # Link existing tasks
+  python3 task.py remove-subtask parent-task child-task
   python3 task.py list                               # List all active tasks
   python3 task.py list --mine                        # List my tasks only
   python3 task.py list --mine --status in_progress   # List my in-progress tasks
@@ -979,6 +1198,7 @@ def main() -> int:
     p_create.add_argument("--assignee", "-a", help="Assignee developer")
     p_create.add_argument("--priority", "-p", default="P2", help="Priority (P0-P3)")
     p_create.add_argument("--description", "-d", help="Task description")
+    p_create.add_argument("--parent", help="Parent task directory (establishes subtask link)")
 
     # init-context
     p_init = subparsers.add_parser("init-context", help="Initialize context files")
@@ -1037,6 +1257,16 @@ def main() -> int:
     p_list.add_argument("--mine", "-m", action="store_true", help="My tasks only")
     p_list.add_argument("--status", "-s", help="Filter by status")
 
+    # add-subtask
+    p_addsub = subparsers.add_parser("add-subtask", help="Link child task to parent")
+    p_addsub.add_argument("parent_dir", help="Parent task directory")
+    p_addsub.add_argument("child_dir", help="Child task directory")
+
+    # remove-subtask
+    p_rmsub = subparsers.add_parser("remove-subtask", help="Unlink child task from parent")
+    p_rmsub.add_argument("parent_dir", help="Parent task directory")
+    p_rmsub.add_argument("child_dir", help="Child task directory")
+
     # list-archive
     p_listarch = subparsers.add_parser("list-archive", help="List archived tasks")
     p_listarch.add_argument("month", nargs="?", help="Month (YYYY-MM)")
@@ -1060,6 +1290,8 @@ def main() -> int:
         "set-scope": cmd_set_scope,
         "create-pr": cmd_create_pr,
         "archive": cmd_archive,
+        "add-subtask": cmd_add_subtask,
+        "remove-subtask": cmd_remove_subtask,
         "list": cmd_list,
         "list-archive": cmd_list_archive,
     }
