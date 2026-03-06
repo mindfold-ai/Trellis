@@ -100,6 +100,27 @@ In Trellis, command templates (e.g., `record-session.md`) exist in **multiple pl
 
 ---
 
+## Mode-Detection Probe Checklist
+
+When a CLI auto-detects a mode by probing a remote resource (e.g., checking if `index.json` exists to decide marketplace vs direct download):
+
+### Before implementing:
+- [ ] Probe runs in **ALL** code paths that use the result (interactive, `-y`, `--flag` combos)
+- [ ] 404 vs transient error are distinguished — don't treat both as "not found"
+- [ ] Transient errors **abort or retry**, never silently switch modes
+- [ ] Shared state (caches, prefetched data) is **reset** when context changes (e.g., user switches source)
+- [ ] **Shortcut paths** (e.g., `--template` skipping picker) must have the same error-handling quality as the probed path — check that downstream functions don't call catch-all wrappers
+
+### After implementing:
+- [ ] Trace every path from probe result to the mode-decision branch — no fallthrough
+- [ ] External format contracts (giget URI, raw URLs) are tested or at least documented as comments
+- [ ] When reconstructing a composite identifier from parsed parts, verify **all** fields are included and in the **correct position** (e.g., `provider:repo/path#ref` not `provider:repo#ref/path`)
+- [ ] Verify that **action functions** called after a shortcut don't internally use the old catch-all fetch — they must use the probe-quality variant when error distinction matters
+
+**Real-world example**: Custom registry flow had 8 bugs across 3 review rounds: (1) probe only ran in interactive mode, (2) transient errors fell through to wrong mode, (3) giget URI had `#ref` in wrong position, (4) prefetched templates leaked across source switches, (5) `--template` shortcut bypassed probe but `downloadTemplateById` internally used catch-all `fetchTemplateIndex`, turning timeouts into "Template not found".
+
+---
+
 ## When to Create Flow Documentation
 
 Create detailed flow docs when:

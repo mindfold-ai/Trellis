@@ -346,6 +346,93 @@ const TOOLS = [
 - Display name, flag key, and default are co-located
 - Less code duplication, fewer bugs
 
+### Auto-Detect Modes Must Probe in ALL Code Paths
+
+When a CLI auto-detects mode (e.g., marketplace vs direct download) by probing a resource, the probe must run in **every** code path that uses the result — including `-y` (non-interactive) mode:
+
+```typescript
+// Bad: Probe only runs in interactive mode
+let templates: Item[] = [];
+if (!options.yes) {
+  templates = await fetchIndex(url); // Only interactive probes
+}
+// -y mode: templates stays [], falls through to direct mode
+// Bug: marketplace registries silently downloaded as raw directory
+
+// Good: Probe in all paths that need the result
+if (options.template) {
+  selectedTemplate = options.template; // Explicit: no probe needed
+} else if (!options.yes) {
+  // Interactive: probe + show picker
+  const result = await probeIndex(url);
+  // ...
+} else if (registry) {
+  // -y mode with registry: still need to probe
+  const result = await probeIndex(url);
+  if (result.templates.length > 0) {
+    // Marketplace requires selection — can't auto-select in -y mode
+    console.error("Use --template to specify which template");
+    return;
+  }
+}
+```
+
+**Why**: The `-y` flag means "skip interactive prompts", not "skip network operations". If a mode decision depends on a remote resource, the probe must happen regardless of interactivity.
+
+### Don't Drop Fields When Reconstructing Composite Identifiers
+
+When a structured object is parsed into parts and later reassembled, include **all** parsed fields:
+
+```typescript
+// Bad: ref is parsed but dropped when rebuilding
+const registry = parseSource("gh:org/repo/path#develop");
+// registry = { provider: "gh", repo: "org/repo", ref: "develop", ... }
+const repoSource = `${registry.provider}:${registry.repo}`;
+// Result: "gh:org/repo" — ref "develop" is lost, defaults to "main"
+
+// Good: Include all relevant fields
+const repoSource = `${registry.provider}:${registry.repo}#${registry.ref}`;
+// Result: "gh:org/repo#develop"
+```
+
+**Prevention**: When building a string from a parsed object, review the object's fields and verify each one is either included or explicitly irrelevant.
+
+### Don't: "Warn and Continue" for Mode-Detection Logic
+
+When code decides which mode to run based on a probe result, a warning + continue is functionally equivalent to no fix at all:
+
+```typescript
+// Bad: Warning prints but code still falls through to wrong mode
+if (!probeResult.isNotFound) {
+  console.log(chalk.yellow("Warning: network issue, attempting direct download"));
+}
+// Falls through → downloads marketplace root as spec directory
+
+// Good: Abort or loop back — never silently switch modes
+if (!probeResult.isNotFound) {
+  console.log(chalk.red("Could not reach registry. Check connection and retry."));
+  return; // or: continue (loop back to picker)
+}
+```
+
+**Why**: "Warn and continue" is appropriate for **degraded functionality** (missing optional data). It is **not** appropriate for **mode decisions** — the wrong mode causes data corruption, not just degraded UX.
+
+### Convention: Reset Shared State on Branch Switch
+
+When user input or control flow changes context (e.g., switching from official marketplace to a custom source), reset any shared state that was populated by the previous context:
+
+```typescript
+// Bad: fetchedTemplates still has official marketplace results
+registry = parseRegistrySource(customSource);
+// fetchedTemplates.length > 0 → direct-download guard never fires!
+
+// Good: Reset before entering new context
+registry = parseRegistrySource(customSource);
+fetchedTemplates = []; // Clear stale data from previous source
+```
+
+**Why**: Shared mutable state across branches is a silent bug factory. The later guard (`registry && fetchedTemplates.length === 0`) depends on `fetchedTemplates` reflecting the *current* source, not a previous one.
+
 ---
 
 ## DO / DON'T

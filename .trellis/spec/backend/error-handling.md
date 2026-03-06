@@ -117,6 +117,49 @@ function checkPackageJson(cwd: string): { hasFrontend: boolean; hasBackend: bool
 }
 ```
 
+### Pattern 5: Probe-Based Error Distinction (404 vs Transient)
+
+When a function probes a remote resource to **decide a control flow branch** (e.g., marketplace vs direct download), returning a uniform empty result for all errors is a bug. Distinguish "resource doesn't exist" (404) from transient failures (timeout, auth, 5xx):
+
+```typescript
+// Good: Caller can distinguish "not found" from "network error"
+export async function probeRegistryIndex(indexUrl: string): Promise<{
+  templates: SpecTemplate[];
+  isNotFound: boolean;
+}> {
+  try {
+    const res = await fetch(indexUrl, {
+      signal: AbortSignal.timeout(TIMEOUTS.INDEX_FETCH_MS),
+    });
+    if (res.status === 404) {
+      return { templates: [], isNotFound: true };
+    }
+    if (!res.ok) {
+      return { templates: [], isNotFound: false };
+    }
+    const index = (await res.json()) as TemplateIndex;
+    return { templates: index.templates, isNotFound: false };
+  } catch {
+    return { templates: [], isNotFound: false };
+  }
+}
+
+// Bad: Caller cannot tell why templates is empty
+export async function fetchTemplateIndex(url: string): Promise<SpecTemplate[]> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()).templates;
+  } catch {
+    return []; // 404? Timeout? Auth error? No way to know
+  }
+}
+```
+
+**When to use**: Any function whose empty/error result triggers a **different code path** (not just a fallback). If the caller just falls back to a default, a uniform empty result is fine (like the official marketplace fetch). If the caller switches modes, it needs the distinction.
+
+**Real example**: `fetchTemplateIndex` returning `[]` for all errors caused a registry marketplace to be misclassified as a direct-download source when the network had a transient failure.
+
 ---
 
 ## Type Guard for Errors
@@ -211,7 +254,66 @@ function readConfig(path: string): Config {
 }
 ```
 
-### Mistake 3: Silent failure without comment
+### Mistake 3: Catch-all returning uniform empty result for mode-switching logic
+
+```typescript
+// Bad: All errors return [], caller uses length===0 to switch modes
+async function fetchIndex(url: string): Promise<Item[]> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()).items;
+  } catch {
+    return []; // 404 and timeout look identical to caller
+  }
+}
+// Caller: if (items.length === 0) switchToDirectMode();
+// Bug: timeout also triggers direct mode!
+
+// Good: Return structured result when caller needs to branch
+async function probeIndex(url: string): Promise<{ items: Item[]; isNotFound: boolean }> {
+  // ... see Pattern 5 above
+}
+```
+
+**Symptom**: Mode auto-detection works most of the time but randomly switches to the wrong mode under poor network conditions.
+
+**Prevention**: Ask "does the caller branch on empty vs error?" If yes, return a structured result. If no (just fallback to default), uniform empty is fine.
+
+### Mistake 4: Shortcut path inherits catch-all from downstream function
+
+When a CLI has a "skip probe" shortcut (e.g., `--template` skips the interactive picker), the downstream action function may still call a catch-all internally, silently swallowing the errors that the probe was designed to surface:
+
+```typescript
+// Setup: probeRegistryIndex correctly distinguishes 404 from timeout
+// But downloadTemplateById still calls findTemplate → fetchTemplateIndex (catch-all)
+
+// Bad: --template path skips probe, hits catch-all downstream
+if (options.template) {
+  selectedTemplate = options.template; // Skip probe ✓
+}
+// ... later:
+await downloadTemplateById(cwd, selectedTemplate, strategy, undefined, registry);
+// Inside: findTemplate() → fetchTemplateIndex() → catch { return [] }
+// Timeout becomes "Template not found" → falls back to blank
+
+// Good: Action function uses probe-quality error handling for registry path
+if (registry && indexUrl) {
+  const probeResult = await probeRegistryIndex(indexUrl);
+  if (!probeResult.isNotFound && probeResult.templates.length === 0) {
+    return { success: false, message: "Could not reach registry." };
+  }
+  resolved = probeResult.templates.find((t) => t.id === templateId);
+} else {
+  resolved = await findTemplate(templateId); // catch-all OK for official source
+}
+```
+
+**Symptom**: `--registry gh:org/repo/marketplace --template foo` silently falls back to blank templates when network fails, instead of reporting the real error.
+
+**Prevention**: When adding a "skip to action" shortcut, verify the action function's internal error handling matches the quality of the path being skipped. If the skipped path uses `probeRegistryIndex`, the action must too.
+
+### Mistake 5: Silent failure without comment
 
 ```typescript
 // Bad: Why is this ignored?
