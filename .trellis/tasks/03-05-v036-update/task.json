@@ -37,7 +37,6 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "03-05-remote-spec-templates",
     "03-05-tmux-support",
     "03-05-hooks-docs"
   ],
