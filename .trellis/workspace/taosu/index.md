@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 83
+- **Total Sessions**: 84
 - **Last Active**: 2026-03-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~889 | Active |
+| `journal-3.md` | ~941 | Active |
 | `journal-2.md` | ~1963 | Archived |
 | `journal-1.md` | ~1998 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
+| 84 | 2026-03-10 | Implement update.skip + user-deletion detection | `3ed892c`, `7f1769e` |
 | 83 | 2026-03-10 | Start Flow: Brainstorm Enforcement + Index Navigation + Guidelines Note | `0d29b70`, `7de2916`, `7c42d80` |
 | 82 | 2026-03-10 | Hook Start Equiv: ready tag fix + path resolution + dogfood sync | `be06afd`, `700f4b7`, `5a925e6` |
 | 81 | 2026-03-10 | 合并 monorepo 分支 + cross-layer check 修复 | `00a6614`, `a7d786f` |

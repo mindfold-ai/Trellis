@@ -887,3 +887,55 @@ Restructured Trellis repo as a monorepo: moved CLI code to `packages/cli/`, adde
 ### Next Steps
 
 - None - task complete
+
+
+## Session 84: Implement update.skip + user-deletion detection
+
+**Date**: 2026-03-10
+**Task**: Implement update.skip + user-deletion detection
+**Package**: cli
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Changes
+
+| Area | Description |
+|------|-------------|
+| R1: User deletion detection | `analyzeChanges()` checks stored hash — if file was previously installed but deleted by user, it's preserved instead of re-added |
+| R2: config.yaml skip | `loadUpdateSkipPaths()` parses `update.skip` list from config.yaml (no YAML dependency), filters templates in `collectTemplateFiles()` |
+| UX: Summary display | New "Deleted by you (preserved)" section in update output |
+| Tests | 3 new integration tests (#15-#17): truly new file added, user-deleted preserved, skip config works |
+| Dogfooding | Configured `.trellis/config.yaml` with `update.skip` for 12 type-specific commands across 3 platforms |
+
+## Smoke Test
+- Fresh `trellis init` → delete `get_context.py` → `trellis update --dry-run` → shows "Deleted by you (preserved)" ✓
+- Add `update.skip` to config.yaml → files excluded from update output entirely ✓
+
+**Updated Files**:
+- `packages/cli/src/commands/update.ts` (R1 + R2 implementation)
+- `packages/cli/test/commands/update.integration.test.ts` (+3 tests, updated existing)
+- `.trellis/config.yaml` (skip config for monorepo)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3ed892c` | (see git log) |
+| `7f1769e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
