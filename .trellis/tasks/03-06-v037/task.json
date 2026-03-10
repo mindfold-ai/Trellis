@@ -37,8 +37,7 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "03-07-learn-openspec-prd",
-    "03-10-dogfood-monorepo-compat"
+    "03-07-learn-openspec-prd"
   ],
   "parent": null,
   "relatedFiles": [],
