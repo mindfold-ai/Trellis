@@ -1090,3 +1090,65 @@ All files now byte-identical between template and dogfooded (verified via MD5).
 ### Next Steps
 
 - None - task complete
+
+
+## Session 88: S3 PRD: 6 rounds Codex review + cross-layer check
+
+**Date**: 2026-03-11
+**Task**: S3 PRD: 6 rounds Codex review + cross-layer check
+**Package**: cli
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## S3 PRD 完善
+
+6 轮 Codex cross-review（27 findings，26 incorporated，1 false positive）+ cross-layer check，PRD 从初始版本扩展到 30 条 acceptance criteria。
+
+### Codex Review 关键发现
+
+| Round | Findings | 关键问题 |
+|-------|----------|---------|
+| R3 | 7 | safe-file-delete hash 匹配、spec_scope 校验、guides 始终注入、部分迁移检测 |
+| R4 | 3 | 无版本项目策略、CLI/推断来源分拆校验 |
+| R5 | 3 | safe-file-delete 执行顺序、monorepo 禁 fallback 单仓路径、空 scope fallback |
+| R6 | 2 | allowed_hashes 字段、update.skip 交互 |
+
+### Cross-Layer Check 发现
+
+- `migration.ts` MigrationItem 类型需扩展 `safe-file-delete` + `allowed_hashes`
+- `config.py` 需新增 `validate_package()` + `get_spec_scope()` + `resolve_package()`
+- OpenCode `session-start.js` 需独立实现 config 读取（无法复用 Python）
+- `create_bootstrap.py` 硬编码 spec 路径遗漏
+- 41 个模板文件硬编码 `spec/backend/` → 单独 task
+
+### 新建 Tasks
+
+- `03-11-spec-path-dynamic` (P3) — 41 个模板硬编码 spec 路径动态化
+
+### OpenCode 遗漏修正
+
+- 3.4a 迁移提示 + 3.5 spec_scope 补充 OpenCode `session-start.js`（之前只覆盖 Claude + iFlow）
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `aff6b29` | (see git log) |
+| `eeea19f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
