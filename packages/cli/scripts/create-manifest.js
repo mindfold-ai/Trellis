@@ -7,6 +7,12 @@
  *   node scripts/create-manifest.js --breaking
  *   node scripts/create-manifest.js --version 0.3.0-rc.0
  *   node scripts/create-manifest.js -y --description "..." --changelog "..."  # non-interactive
+ *   echo '{"version":"0.3.9",...}' | node scripts/create-manifest.js         # JSON via stdin
+ *
+ * Stdin JSON mode (auto-detected when stdin is piped, or force with --stdin):
+ *   Reads a JSON object from stdin with fields: version, description, changelog
+ *   (required), plus optional: breaking, recommendMigrate, migrations, notes.
+ *   Best for AI/scripting — avoids shell escaping issues with multi-line text.
  *
  * Non-interactive mode (-y):
  *   When -y is passed, all values are taken from CLI flags (no prompts).
@@ -90,8 +96,22 @@ function askQuestion(rl, question, defaultValue = "") {
   });
 }
 
+/**
+ * Read all data from stdin as a string.
+ */
+function readStdin() {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    process.stdin.setEncoding("utf-8");
+    process.stdin.on("data", (chunk) => { data += chunk; });
+    process.stdin.on("end", () => resolve(data));
+    process.stdin.on("error", reject);
+  });
+}
+
 async function main() {
   const args = process.argv.slice(2);
+  const stdinMode = args.includes("--stdin") || !process.stdin.isTTY;
   const nonInteractive = args.includes("-y");
   const isBreaking = args.includes("--breaking");
   const versionArg = getArgValue(args, "--version");
@@ -102,7 +122,37 @@ async function main() {
   const currentVersion = readPackageVersion();
   const { suggested, hint } = getNextVersion(currentVersion);
 
-  // --- Non-interactive mode ---
+  // --- Stdin JSON mode (best for AI / scripting) ---
+  if (stdinMode) {
+    const input = await readStdin();
+    let data;
+    try {
+      data = JSON.parse(input);
+    } catch (e) {
+      console.error("Error: --stdin expects valid JSON on stdin");
+      process.exit(1);
+    }
+    if (!data.version || !data.description || !data.changelog) {
+      console.error("Error: --stdin JSON requires version, description, and changelog fields");
+      process.exit(1);
+    }
+    const manifestPath = path.join(MANIFESTS_DIR, `${data.version}.json`);
+    const manifest = {
+      version: data.version,
+      description: data.description,
+      breaking: data.breaking ?? false,
+      recommendMigrate: data.recommendMigrate ?? (data.breaking ?? false),
+      changelog: data.changelog,
+      migrations: data.migrations ?? [],
+      notes: data.notes ?? "No migration required.",
+    };
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+    console.log(`✅ Created: ${manifestPath}`);
+    console.log(JSON.stringify(manifest, null, 2));
+    return;
+  }
+
+  // --- Non-interactive mode (-y) ---
   if (nonInteractive) {
     if (!descriptionArg || !changelogArg) {
       console.error("Error: -y mode requires --description and --changelog");

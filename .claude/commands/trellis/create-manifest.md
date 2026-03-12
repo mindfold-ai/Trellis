@@ -57,24 +57,46 @@ Organize entries into sections:
 
 ### Step 6: Create Manifest
 
+Pipe JSON via heredoc (auto-detected when stdin is not a TTY):
+
 ```bash
-node scripts/create-manifest.js -y \
-  --version "<version>" \
-  --description "<short description>" \
-  --changelog "<changelog>" \
-  --notes "<notes>"
+cat <<'EOF' | node packages/cli/scripts/create-manifest.js
+{
+  "version": "<version>",
+  "description": "<short description>",
+  "breaking": false,
+  "changelog": "<changelog text with real newlines>",
+  "notes": "<notes>"
+}
+EOF
 ```
 
-**IMPORTANT**: The `-y` flag passes `\n` as literal backslash-n through the shell. After creation, **always read the file and fix double-escaped `\\n` → `\n`** if needed using the Edit tool.
+### Step 7: Create Docs-Site Changelogs
 
-### Step 7: Review and Confirm
+**IMPORTANT**: This step is mandatory for every release.
 
-1. Read the generated file: `src/migrations/manifests/<version>.json`
+Create changelog files for both English and Chinese:
+
+1. `docs-site/changelog/v<version>.mdx` — English changelog
+2. `docs-site/zh/changelog/v<version>.mdx` — Chinese changelog
+
+Use the format from previous changelog files (frontmatter with title + description date, then content).
+
+3. Update `docs-site/docs.json`:
+   - Add `"changelog/v<version>"` to the English changelog pages list (at the top)
+   - Add `"zh/changelog/v<version>"` to the Chinese changelog pages list (at the top)
+   - Update the navbar changelog link `href` to point to the new version
+
+### Step 8: Review and Confirm
+
+1. Read the generated manifest: `packages/cli/src/migrations/manifests/<version>.json`
 2. Verify the JSON is valid and `\n` renders as actual newlines
-3. Show the final manifest to the user for confirmation
+3. Verify both changelog MDX files exist and look correct
+4. Show the final manifest and changelog to the user for confirmation
 
 ## Notes
 
 - Patch versions (`X.Y.Z`) typically have `migrations: []` and `breaking: false`
 - Only add `migrationGuide` and `aiInstructions` for breaking changes
 - Changelog should cover ALL `src/` changes, not just the latest commit
+- Do NOT manually bump `package.json` version — `pnpm release` handles that automatically
