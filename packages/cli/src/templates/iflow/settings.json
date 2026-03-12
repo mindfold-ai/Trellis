@@ -22,7 +22,7 @@
                 ]
             },
             {
-                "matcher": "compact",
+                "matcher": "compress",
                 "hooks": [
                     {
                         "type": "command",
@@ -34,7 +34,7 @@
         ],
         "PreToolUse": [
             {
-                "matcher": "Task",
+                "matcher": "task",
                 "hooks": [
                     {
                         "type": "command",
