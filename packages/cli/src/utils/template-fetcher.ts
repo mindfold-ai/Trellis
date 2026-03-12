@@ -85,24 +85,60 @@ const RAW_URL_PATTERNS: Record<string, string> = {
 export const SUPPORTED_PROVIDERS = Object.keys(RAW_URL_PATTERNS);
 
 /**
+ * Convert an HTTPS URL to giget-style source format.
+ * e.g. "https://github.com/user/repo" → "gh:user/repo"
+ *      "https://github.com/user/repo/tree/branch/path" → "gh:user/repo/path#branch"
+ * Returns the original string if it's not a recognized HTTPS URL.
+ */
+export function normalizeRegistrySource(source: string): string {
+  const patterns: { re: RegExp; prefix: string }[] = [
+    { re: /^https?:\/\/github\.com\//, prefix: "gh:" },
+    { re: /^https?:\/\/gitlab\.com\//, prefix: "gitlab:" },
+    { re: /^https?:\/\/bitbucket\.org\//, prefix: "bitbucket:" },
+  ];
+
+  for (const { re, prefix } of patterns) {
+    if (!re.test(source)) continue;
+    const path = source.replace(re, "");
+    // Handle /tree/<branch>/<subdir> format (GitHub browse URLs)
+    const treeMatch = path.match(
+      /^([^/]+\/[^/]+)\/tree\/([^/]+)(?:\/(.+?))?(?:\.git)?\/?$/,
+    );
+    if (treeMatch) {
+      const [, repo, ref, subdir] = treeMatch;
+      return `${prefix}${repo}${subdir ? `/${subdir}` : ""}#${ref}`;
+    }
+    // Plain URL: strip trailing .git and /
+    const cleaned = path.replace(/\.git\/?$/, "").replace(/\/$/, "");
+    return `${prefix}${cleaned}`;
+  }
+
+  return source;
+}
+
+/**
  * Parse a giget-style registry source into its components.
  *
  * Supports: gh:user/repo/subdir#ref, gitlab:user/repo/subdir, bitbucket:user/repo/subdir
+ * Also accepts HTTPS URLs which are auto-converted (e.g. https://github.com/user/repo).
  * Ref defaults to "main" if not specified.
  *
  * @throws Error if provider is unsupported
  */
 export function parseRegistrySource(source: string): RegistrySource {
+  // Auto-convert HTTPS URLs to giget format
+  const normalized = normalizeRegistrySource(source);
+
   // Extract provider prefix
-  const colonIndex = source.indexOf(":");
+  const colonIndex = normalized.indexOf(":");
   if (colonIndex === -1) {
     throw new Error(
       `Invalid registry source "${source}". Expected format: gh:user/repo/path`,
     );
   }
 
-  const provider = source.slice(0, colonIndex);
-  const rest = source.slice(colonIndex + 1);
+  const provider = normalized.slice(0, colonIndex);
+  const rest = normalized.slice(colonIndex + 1);
 
   // Check supported provider
   const pattern = RAW_URL_PATTERNS[provider];
@@ -118,7 +154,7 @@ export function parseRegistrySource(source: string): RegistrySource {
   const refMatch = rest.match(/^([^#]+?)(?:#(.+))?$/);
   if (!refMatch) {
     throw new Error(
-      `Invalid registry source "${source}". Expected format: ${provider}:user/repo/path`,
+      `Invalid registry source "${normalized}". Expected format: ${provider}:user/repo/path`,
     );
   }
 
@@ -129,7 +165,7 @@ export function parseRegistrySource(source: string): RegistrySource {
   const segments = pathPart.split("/").filter(Boolean);
   if (segments.length < 2) {
     throw new Error(
-      `Invalid registry source "${source}". Must include user/repo at minimum.`,
+      `Invalid registry source "${normalized}". Must include user/repo at minimum.`,
     );
   }
 
@@ -142,8 +178,8 @@ export function parseRegistrySource(source: string): RegistrySource {
     .replace("{ref}", ref)
     .replace("{subdir}", subdir);
 
-  // Build giget source (preserve original format)
-  const gigetSource = source;
+  // Build giget source (use normalized format)
+  const gigetSource = normalized;
 
   return { provider, repo, subdir, ref, rawBaseUrl, gigetSource };
 }
