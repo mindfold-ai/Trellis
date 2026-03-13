@@ -1924,3 +1924,65 @@ Fixed two community-reported issues, released v0.3.10, and merged fixes into bet
 ### Next Steps
 
 - None - task complete
+
+
+## Session 101: fix update script sync + release beta.3 + marketplace skill
+
+**Date**: 2026-03-13
+**Task**: fix update script sync + release beta.3 + marketplace skill
+**Package**: cli
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 本次 Session 工作
+
+### 1. Bug Fix: `trellis update` 漏同步 Python 脚本
+- 用户报告 `trellis update` 跳过新增 Python 模块
+- Root cause: `collectTemplateFiles()` 手动维护文件列表，与 `getAllScripts()` 不同步（11 个文件）
+- **架构级修复**：重构 `collectTemplateFiles()` 使用 `getAllScripts()` 作为单一数据源
+- 添加回归测试：遍历 filesystem .py 文件验证注册完整性
+- 更新 code-reuse-thinking-guide spec
+
+### 2. Release v0.4.0-beta.3
+- 创建 migration manifest `0.4.0-beta.3.json`
+- 创建 docs-site changelog（EN/ZH）
+- `pnpm release:beta` → npm 发布成功，CI 通过
+
+### 3. Marketplace: cc-codex-spec-bootstrap skill
+- 新增 CC + Codex 并行流水线 skill（GitNexus + ABCoder MCP）
+- 创建 docs-site skill 详情页（EN/ZH）
+- 更新 skills marketplace index + docs.json 导航
+
+**Updated Files**:
+- `packages/cli/src/commands/update.ts`
+- `packages/cli/test/regression.test.ts`
+- `.trellis/spec/guides/code-reuse-thinking-guide.md`
+- `packages/cli/src/migrations/manifests/0.4.0-beta.3.json`
+- `marketplace/skills/cc-codex-spec-bootstrap/`
+- `docs-site/` (changelogs + skill pages + docs.json)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8e3e465` | (see git log) |
+| `ca06ab5` | (see git log) |
+| `8670adb` | (see git log) |
+| `618176d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
