@@ -15,30 +15,20 @@ session_commit_message: "chore: record journal"
 max_journal_lines: 2000
 
 #-------------------------------------------------------------------------------
-# Packages (Monorepo)
+# Packages (AOSP Adaptation)
 #-------------------------------------------------------------------------------
 
-# Declare packages in this project and their source code paths.
-# If omitted, Trellis assumes a single-repo layout (spec/backend/, spec/frontend/).
+# This project is an AOSP adaptation — a single repo layout.
+# Module differentiation (systemui/launcher/framework) is handled via
+# docs/memory/ and the AOSP task types in init-context, not package directories.
 #
 packages:
-  cli:
-    path: packages/cli
-  docs-site:
-    path: docs-site
-    type: submodule
+  aosp:
+    path: .
 
 # Default package used when --package is not specified.
-default_package: cli
+default_package: aosp
 
-#-------------------------------------------------------------------------------
-# Task Lifecycle Hooks
-#-------------------------------------------------------------------------------
-
-# Shell commands to run after task lifecycle events.
-# Each hook receives TASK_JSON_PATH environment variable pointing to task.json.
-# Hook failures print a warning but do not block the main operation.
-#
 #-------------------------------------------------------------------------------
 # Update Skip Paths
 #-------------------------------------------------------------------------------
@@ -48,6 +38,10 @@ default_package: cli
 #
 update:
   skip:
+    # Original Trellis cli/docs-site spec templates (removed for AOSP adaptation)
+    - .trellis/spec/cli/
+    - .trellis/spec/docs-site/
+    # Previously removed frontend/backend commands
     - .claude/commands/trellis/before-frontend-dev.md
     - .claude/commands/trellis/before-backend-dev.md
     - .claude/commands/trellis/check-frontend.md
@@ -65,6 +59,10 @@ update:
 # Task Lifecycle Hooks
 #-------------------------------------------------------------------------------
 
+# Shell commands to run after task lifecycle events.
+# Each hook receives TASK_JSON_PATH environment variable pointing to task.json.
+# Hook failures print a warning but do not block the main operation.
+#
 hooks:
   after_create:
     - "python3 .trellis/scripts/hooks/linear_sync.py create"

@@ -390,3 +390,68 @@ Following this workflow ensures:
 - [OK] Transparent team collaboration
 
 **Core Philosophy**: Read before write, follow standards, record promptly, capture learnings
+
+---
+
+## AOSP Context Loading
+
+This section extends the standard workflow for tasks involving AOSP modules (SystemUI, Launcher, Framework).
+
+### Context Loading Order
+
+Always load context in this order to avoid missing dependencies:
+
+**1. Always load (every AOSP task)**
+```
+docs/memory/codebase/CODEBASE_MAP.md
+.trellis/spec/architecture/index.md
+```
+
+**2. Module-specific (load for your target module)**
+```
+# SystemUI
+docs/memory/systemui/overview.md
+docs/memory/systemui/entrypoints.md
+
+# Launcher
+docs/memory/launcher/overview.md
+docs/memory/launcher/entrypoints.md
+
+# Framework
+docs/memory/framework/overview.md
+docs/memory/framework/services_map.md
+```
+
+**3. Cross-layer (load if task spans modules)**
+```
+docs/memory/cross_layer/<flow>.md
+# Available flows: gesture_home_flow, recents_flow, notification_flow, device_state_flow
+```
+
+### AOSP Task JSONL Pattern
+
+When creating tasks for AOSP work, use this pattern in `task.json`:
+
+```json
+{
+  "title": "Add ambient display hook to SystemUI",
+  "module": "systemui",
+  "layer": "overlay",
+  "spec": ".trellis/spec/architecture/low-intrusion-principles.md",
+  "memory": ["docs/memory/systemui/entrypoints.md"],
+  "cross_layer": [],
+  "attribution_owner": "team-systemui"
+}
+```
+
+### Frontmatter Confidence Rules
+
+All `docs/memory/` files have a `confidence` field. Apply these rules:
+
+| Confidence | Action |
+|-----------|--------|
+| `validated` | Trust the content — it has been verified against the actual codebase |
+| `inferred` | Use with caution — content was inferred but not directly verified |
+| `pending` | **Skip** — this is an unfilled template, content is placeholder only |
+
+When you validate content in a memory file, update `confidence` from `pending`/`inferred` to `validated` and set `last_updated` and `verified_by`.

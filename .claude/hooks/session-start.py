@@ -173,6 +173,26 @@ Read and follow all instructions below carefully.
 
     output.write("</guidelines>\n\n")
 
+    # AOSP memory block: always load codebase skeleton if not pending
+    output.write("<aosp-memory>\n")
+    output.write("**AOSP Codebase Memory** (files with `confidence: pending` are unfilled templates — skip them)\n\n")
+    memory_files = [
+        project_dir / "docs" / "memory" / "codebase" / "CODEBASE_MAP.md",
+        project_dir / "docs" / "memory" / "codebase" / "MODULE_OWNERSHIP.md",
+    ]
+    any_loaded = False
+    for mem_path in memory_files:
+        content = read_file(mem_path)
+        if content and "confidence: pending" not in content[:300]:
+            output.write(f"### {mem_path.name}\n")
+            output.write(content)
+            output.write("\n\n")
+            any_loaded = True
+    if not any_loaded:
+        output.write("Memory not yet populated (all files have `confidence: pending`).\n")
+        output.write("Run `/trellis:load-module codebase` after filling in the codebase map.\n")
+    output.write("</aosp-memory>\n\n")
+
     output.write("<instructions>\n")
     start_md = read_file(
         claude_dir / "commands" / "trellis" / "start.md", "No start.md found"

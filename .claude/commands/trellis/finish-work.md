@@ -1,6 +1,6 @@
-# Finish Work - Pre-Commit Checklist
+# Finish Work - AOSP Pre-Commit Checklist
 
-Before submitting or committing, use this checklist to ensure work completeness.
+Before committing AOSP module changes, use this checklist to ensure work completeness.
 
 **Timing**: After code is written and tested, before commit
 
@@ -8,107 +8,94 @@ Before submitting or committing, use this checklist to ensure work completeness.
 
 ## Checklist
 
-### 1. Code Quality
+### 1. Build & Test
 
 ```bash
-# Must pass
-pnpm lint
-pnpm type-check
-pnpm test
+# Incremental build for your module
+m <module> -j8             # e.g., m SystemUI -j8
+
+# Run module tests
+atest <module>Tests        # e.g., atest SystemUITests
+
+# Framework changes require full flash — no incremental push
 ```
 
-- [ ] `pnpm lint` passes with 0 errors?
-- [ ] `pnpm type-check` passes with no type errors?
-- [ ] Tests pass?
-- [ ] No `console.log` statements (use logger)?
-- [ ] No non-null assertions (the `x!` operator)?
-- [ ] No `any` types?
+- [ ] Module builds cleanly (exit code 0, no new errors)?
+- [ ] Existing unit tests pass?
+- [ ] New behavior has a test? (see `docs/memory/<module>/debug_playbook.md`)
+- [ ] Bug fix has a regression test?
 
-### 1.5. Test Coverage
+### 2. AOSP Attribution
 
-Check if your change needs new or updated tests (see `.trellis/spec/cli/unit-test/conventions.md`):
+Every change to an AOSP base file (not owned by us) must have an attribution tag:
 
-- [ ] New pure function → unit test added?
-- [ ] Bug fix → regression test added in `test/regression.test.ts`?
-- [ ] Changed init/update behavior → integration test added/updated?
-- [ ] No logic change (text/data only) → no test needed
+```java
+// [AOSP-CUSTOM] <module>/<owner>: <one-line reason>
+// Added: YYYY-MM-DD
+```
 
-### 2. Code-Spec Sync
+- [ ] All AOSP base file edits have `[AOSP-CUSTOM]` tag?
+- [ ] Tag includes correct module and owner (see `docs/memory/codebase/MODULE_OWNERSHIP.md`)?
+- [ ] Owner is registered in `.trellis/spec/module_ownership/ownership-rules.md`?
 
-**Code-Spec Docs**:
-- [ ] Does `.trellis/spec/cli/backend/` need updates?
-  - New patterns, new modules, new conventions
-- [ ] Does `.trellis/spec/cli/frontend/` need updates?
-  - New components, new hooks, new patterns
-- [ ] Does `.trellis/spec/guides/` need updates?
-  - New cross-layer flows, lessons from bugs
+### 3. Architecture Boundaries
 
-**Key Question**: 
-> "If I fixed a bug or discovered something non-obvious, should I document it so future me (or others) won't hit the same issue?"
+- [ ] No upward layer dependency introduced (Framework ← SystemUI ← Launcher is forbidden)?
+- [ ] Change uses lowest-intrusion pattern available:
+  - `[1]` Overlay resource (preferred)
+  - `[2]` Existing hook/listener registration
+  - `[3]` Subclass extension
+  - `[4]` Minimal base-file edit (last resort, must have attribution tag)
+- [ ] Cross-layer impact assessed? If yes, run `/trellis:aosp-check`
 
-If YES -> Update the relevant code-spec doc.
+### 4. Security & Permissions
 
-### 2.5. Code-Spec Hard Block (Infra/Cross-Layer)
+If the change touches permissions, SELinux, or binder interfaces:
 
-If this change touches infra or cross-layer contracts, this is a blocking checklist:
+- [ ] No new `android.permission.DANGEROUS` without justification?
+- [ ] SELinux policy change is minimal?
+- [ ] Binder calls verify caller UID before granting access?
+- [ ] See `.trellis/spec/security/permission-boundaries.md` for full checklist
 
-- [ ] Spec content is executable (real signatures/contracts), not principle-only text
-- [ ] Includes file path + command/API name + payload field names
-- [ ] Includes validation and error matrix
-- [ ] Includes Good/Base/Bad cases
-- [ ] Includes required tests and assertion points
+### 5. Spec & Memory Sync
 
-**Block Rule**:
-In pipeline mode, the finish agent will automatically detect and execute spec updates when gaps are found.
-If running this checklist manually, ensure spec sync is complete before committing — run `/trellis:update-spec` if needed.
+- [ ] Does `.trellis/spec/architecture/` need updates? (new boundary discovered)
+- [ ] Does `.trellis/spec/module_ownership/` need updates? (new module added)
+- [ ] Does `docs/memory/<module>/known_pitfalls.md` need a new entry? (bug fixed or gotcha hit)
+- [ ] Does `docs/memory/<module>/entrypoints.md` need updates? (new entry point found)
+- [ ] Should any memory file `confidence` be upgraded from `inferred` → `validated`?
 
-### 3. API Changes
+**Key question**: "If I fixed a bug or discovered something non-obvious about AOSP internals, should I document it so future sessions won't repeat the investigation?"
 
-If you modified API endpoints:
+If YES → update the relevant memory doc.
 
-- [ ] Input schema updated?
-- [ ] Output schema updated?
-- [ ] API documentation updated?
-- [ ] Client code updated to match?
+### 6. Cross-Layer Verification
 
-### 4. Database Changes
-
-If you modified database schema:
-
-- [ ] Migration file created?
-- [ ] Schema file updated?
-- [ ] Related queries updated?
-- [ ] Seed data updated (if applicable)?
-
-### 5. Cross-Layer Verification
-
-If the change spans multiple layers:
+If the change spans SystemUI + Launcher, or Framework + UI layer:
 
 - [ ] Data flows correctly through all layers?
-- [ ] Error handling works at each boundary?
-- [ ] Types are consistent across layers?
-- [ ] Loading states handled?
-
-### 6. Manual Testing
-
-- [ ] Feature works in browser/app?
-- [ ] Edge cases tested?
-- [ ] Error states tested?
-- [ ] Works after page refresh?
+- [ ] No state ownership conflict introduced?
+- [ ] See `docs/memory/cross_layer/<flow>.md` for the relevant flow doc
 
 ---
 
 ## Quick Check Flow
 
 ```bash
-# 1. Code checks
-pnpm lint && pnpm type-check
+# 1. Build
+m <module> -j8
 
-# 2. View changes
+# 2. Test
+atest <module>Tests
+
+# 3. View changes
 git status
 git diff --name-only
 
-# 3. Based on changed files, check relevant items above
+# 4. Attribution check (search for base-file edits without tag)
+git diff --unified=0 | grep "^+" | grep -v "[AOSP-CUSTOM]" | grep -v "^+++"
+
+# 5. Check relevant spec sections above based on changed files
 ```
 
 ---
@@ -117,12 +104,11 @@ git diff --name-only
 
 | Oversight | Consequence | Check |
 |-----------|-------------|-------|
-| Code-spec docs not updated | Others don't know the change | Check .trellis/spec/ |
-| Spec text is abstract only | Easy regressions in infra/cross-layer changes | Require signature/contract/matrix/cases/tests |
-| Migration not created | Schema out of sync | Check db/migrations/ |
-| Types not synced | Runtime errors | Check shared types |
-| Tests not updated | False confidence | Run full test suite |
-| Console.log left in | Noisy production logs | Search for console.log |
+| Missing `[AOSP-CUSTOM]` tag | Lost patch on next AOSP merge | `git diff` and search |
+| Unregistered module owner | Attribution breaks at merge time | `MODULE_OWNERSHIP.md` |
+| Upward layer dependency | Build failure in downstream modules | `grep -r "import.*<upper-layer>"` |
+| Known pitfall not documented | Next session repeats same bug | `known_pitfalls.md` |
+| Memory doc outdated | Session context diverges from reality | `/trellis:validate-memory` |
 
 ---
 
@@ -130,24 +116,20 @@ git diff --name-only
 
 ```
 Development Flow:
-  Write code -> Test -> /trellis:finish-work -> git commit -> /trellis:record-session
-                          |                              |
-                   Ensure completeness              Record progress
-                   
+  Write code -> Test -> /trellis:aosp-check -> /trellis:finish-work -> git commit -> /trellis:record-session
+                           |                        |
+                    AOSP gates check          Full checklist
+
 Debug Flow:
-  Hit bug -> Fix -> /trellis:break-loop -> Knowledge capture
-                       |
-                  Deep analysis
+  Hit bug -> Fix -> /trellis:break-loop -> Update known_pitfalls.md
 ```
 
-- `/trellis:finish-work` - Check work completeness (this command)
-- `/trellis:record-session` - Record session and commits
-- `/trellis:break-loop` - Deep analysis after debugging
+- `/trellis:aosp-check` — Focused AOSP quality gates (attribution, boundaries, low-intrusion)
+- `/trellis:finish-work` — Full pre-commit checklist (this command)
+- `/trellis:validate-memory` — Check memory doc freshness
 
 ---
 
 ## Core Principle
 
-> **Delivery includes not just code, but also documentation, verification, and knowledge capture.**
-
-Complete work = Code + Docs + Tests + Verification
+> **AOSP delivery = Code + Attribution tags + Memory updates + Boundary verification**

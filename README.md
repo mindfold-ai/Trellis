@@ -7,163 +7,148 @@
 </p>
 
 <p align="center">
-<strong>A multi-platform AI coding framework that rules</strong><br/>
-<sub>Supports Claude Code, Cursor, OpenCode, iFlow, Codex, Kilo, Kiro, Gemini CLI, Antigravity, and Qoder.</sub>
+<strong>Trellis for AOSP — Layered memory and task execution for large-repo Android customization</strong><br/>
+<sub>Extends Trellis with AOSP-specific spec, module memory, and cross-layer context for Claude Code and Codex.</sub>
 </p>
 
 <p align="center">
 <a href="./README_CN.md">简体中文</a> •
-<a href="https://docs.trytrellis.app/">Docs</a> •
-<a href="https://docs.trytrellis.app/guide/ch02-quick-start">Quick Start</a> •
-<a href="https://docs.trytrellis.app/guide/ch13-multi-platform">Supported Platforms</a> •
-<a href="https://docs.trytrellis.app/guide/ch08-real-world">Use Cases</a>
+<a href="./CLAUDE.md">Session Start</a> •
+<a href="./.trellis/workflow.md">Workflow</a> •
+<a href="./docs/memory/">Memory Store</a> •
+<a href="./.trellis/spec/">Spec Docs</a>
 </p>
 
-<p align="center">
-<a href="https://www.npmjs.com/package/@mindfoldhq/trellis"><img src="https://img.shields.io/npm/v/@mindfoldhq/trellis.svg?style=flat-square&color=2563eb" alt="npm version" /></a>
-<a href="https://github.com/mindfold-ai/Trellis/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-16a34a.svg?style=flat-square" alt="license" /></a>
-<a href="https://github.com/mindfold-ai/Trellis/stargazers"><img src="https://img.shields.io/github/stars/mindfold-ai/Trellis?style=flat-square&color=eab308" alt="stars" /></a>
-<a href="https://docs.trytrellis.app/"><img src="https://img.shields.io/badge/docs-trytrellis.app-0f766e?style=flat-square" alt="docs" /></a>
-<a href="https://discord.com/invite/tWcCZ3aRHc"><img src="https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord" /></a>
-</p>
+---
 
-## Why Trellis?
+## What This Is
 
-| Capability | What it changes |
-| --- | --- |
-| **Auto-injected specs** | Write conventions once in `.trellis/spec/`, then let Trellis inject the relevant context into each session instead of repeating yourself. |
-| **Task-centered workflow** | Keep PRDs, implementation context, review context, and task status in `.trellis/tasks/` so AI work stays structured. |
-| **Parallel agent execution** | Run multiple AI tasks side by side with git worktrees instead of turning one branch into a traffic jam. |
-| **Project memory** | Journals in `.trellis/workspace/` preserve what happened last time, so each new session starts with real context. |
-| **Team-shared standards** | Specs live in the repo, so one person’s hard-won workflow or rule can benefit the whole team. |
-| **Multi-platform setup** | Bring the same Trellis structure to 10 AI coding platforms instead of rebuilding your workflow per tool. |
+This repo adapts [Trellis](https://github.com/mindfold-ai/Trellis) — an AI workflow harness — for AOSP large-repo development. The goal is to give Claude Code and Codex stable, reusable context across sessions without rebuilding the codebase from scratch each time.
 
-## Quick Start
+**Target modules**: SystemUI · Launcher · Framework
 
-```bash
-# 1. Install Trellis
-npm install -g @mindfoldhq/trellis@latest
+**Core problem solved**: In a multi-million-line AOSP repo, AI assistants lose context between sessions, can't reliably determine module ownership, and produce changes that are hard to track across AOSP upgrades. This project builds a persistent memory and spec layer on top of Trellis to address that.
 
-# 2. Initialize in your repo
-trellis init -u your-name
+---
 
-# 3. Or initialize with the platforms you actually use
-trellis init --cursor --opencode --codex -u your-name
-```
+## What's Different From Upstream Trellis
 
-- `-u your-name` creates `.trellis/workspace/your-name/` for personal journals and session continuity.
-- Platform flags can be mixed and matched. Current options include `--cursor`, `--opencode`, `--iflow`, `--codex`, `--kilo`, `--kiro`, `--gemini`, `--antigravity`, and `--qoder`.
-- For platform-specific setup, entry commands, and upgrade paths, use the docs:
-  [Quick Start](https://docs.trytrellis.app/guide/ch02-quick-start) •
-  [Supported Platforms](https://docs.trytrellis.app/guide/ch13-multi-platform) •
-  [Real-World Scenarios](https://docs.trytrellis.app/guide/ch08-real-world)
+| Capability | Upstream Trellis | This Project |
+|-----------|-----------------|--------------|
+| Spec layer | General software engineering | AOSP-specific: architecture, ownership, quality gates, security, build/debug |
+| Memory layer | Workspace journals | `docs/memory/` — module-scoped, confidence-tagged, baseline-anchored |
+| Context loading | Single spec read | Module-scoped load order: codebase → module → cross-layer |
+| Cross-layer support | Cross-layer thinking guide | Dedicated flow docs: gesture, recents, notification, device state |
+| Attribution | None | `[AOSP-CUSTOM]` tags + ownership decision tree |
+| Confidence model | None | `validated / inferred / pending` per document |
 
-## Use Cases
+---
 
-### Teach AI your project once
-
-Put coding standards, file structure rules, review habits, and workflow preferences into Markdown specs. Trellis loads the relevant pieces automatically so you do not have to re-explain the repo every time.
-
-### Run multiple AI tasks in parallel
-
-Use git worktrees and Trellis task structure to split work cleanly across agents. Different tasks can move forward at the same time without stepping on each other’s branches or local state.
-
-### Turn project history into usable memory
-
-Task PRDs, checklists, and workspace journals make previous decisions available to the next session. Instead of starting from blank context, the next agent can pick up where the last one left off.
-
-### Keep one workflow across tools
-
-If your team uses more than one AI coding tool, Trellis gives you one shared structure for specs, tasks, and process. The platform-specific wiring changes, but the workflow stays recognizable.
-
-## How It Works
-
-Trellis keeps the core workflow in `.trellis/` and generates the platform-specific entry points you need around it.
+## Repository Structure
 
 ```text
 .trellis/
-├── spec/                    # Project standards, patterns, and guides
-├── tasks/                   # Task PRDs, context files, and status
-├── workspace/               # Journals and developer-specific continuity
-├── workflow.md              # Shared workflow rules
-└── scripts/                 # Utilities that power the workflow
+  spec/
+    project/            # Goals, team, timeline
+    architecture/       # Layer boundaries, low-intrusion rules
+    quality/            # Build / test / review / merge gates
+    security/           # Permission model, audit checklist
+    module_ownership/   # Attribution decision tree
+    build_debug/        # Build targets, debug workflow
+  tasks/                # Active task tracking
+  workspace/            # Per-developer session journals
+  workflow.md           # Trellis + AOSP context loading rules
+
+docs/
+  memory/
+    codebase/           # Codebase map, ownership, build targets, debug entrypoints, branch baseline
+    systemui/           # Overview, entrypoints, state owners, debug playbook, pitfalls
+    launcher/           # Overview, entrypoints, state owners, debug playbook, pitfalls
+    framework/          # Overview, entrypoints, state owners, services map, debug playbook, pitfalls
+    cross_layer/        # Gesture-home, recents, notification, device-state flows
+
+CLAUDE.md               # AI session entry point — read this first
+AGENTS.md               # Trellis + AOSP agent instructions
 ```
 
-Depending on the platforms you enable, Trellis also creates tool-specific integration files such as `.claude/`, `.cursor/`, `AGENTS.md`, `.agents/`, `.kilocode/`, and `.kiro/`.
+---
 
-At a high level, the workflow is simple:
+## Core Design Principles
 
-1. Define standards in specs.
-2. Start or refine work from a task PRD.
-3. Let Trellis inject the right context for the current task.
-4. Use checks, journals, and worktrees to keep quality and continuity intact.
+1. **Repo as memory** — context lives in version-controlled files, not chat windows
+2. **Prioritize judgments over summaries** — specs capture boundaries and decisions, not full text
+3. **Layered organization** — by module, by flow, by task; not flat
+4. **Load order discipline** — stable skeleton first, task delta second, raw code last
+5. **Baseline anchoring** — every long-lived doc carries a `confidence` field and branch/manifest anchor to prevent stale memory
+6. **Low intrusion** — prefer overlays, hooks, and extension points over modifying AOSP base files; every base-file edit gets an `[AOSP-CUSTOM]` attribution tag
 
-## Spec Templates & Marketplace
+---
 
-Specs ship as empty templates by default — they are meant to be customized for your project's stack and conventions. You can fill them from scratch, or start from a community template:
+## Session Start
 
 ```bash
-# Fetch templates from a custom registry
-trellis init --registry https://github.com/your-org/your-spec-templates
+# 1. Read the entry point
+cat CLAUDE.md
+
+# 2. Get current task context
+python3 ./.trellis/scripts/get_context.py
+
+# 3. Load module memory based on your task
+cat docs/memory/codebase/CODEBASE_MAP.md
+cat docs/memory/<module>/overview.md          # systemui | launcher | framework
+
+# 4. For cross-layer tasks, load the relevant flow doc
+cat docs/memory/cross_layer/<flow>.md         # gesture_home_flow | recents_flow | ...
+
+# 5. Read the relevant spec before writing code
+cat .trellis/spec/architecture/index.md
 ```
 
-Browse available templates and learn how to publish your own on the [Spec Templates page](https://docs.trytrellis.app/templates/specs-index).
+> Skip files with `confidence: pending` — they are unfilled templates.
 
-## What's New
+---
 
-- **v0.3.6**: task lifecycle hooks, custom template registries (`--registry`), parent-child subtasks, fix PreToolUse hook for CC v2.1.63+.
-- **v0.3.5**: hotfix for delete migration manifest field name (Kilo workflows).
-- **v0.3.4**: Qoder platform support, Kilo workflows migration, record-session task awareness.
-- **v0.3.1**: background watch mode for `trellis update`, improved `.gitignore` handling, docs refresh.
-- **v0.3.0**: platform support expanded from 2 to 10, Windows compatibility, remote spec templates, `/trellis:brainstorm`.
+## Memory Confidence Model
 
-## FAQ
+All `docs/memory/` files carry a `confidence` field:
 
-<details>
-<summary><strong>How is this different from <code>CLAUDE.md</code>, <code>AGENTS.md</code>, or <code>.cursorrules</code>?</strong></summary>
+| Value | Meaning | Action |
+|-------|---------|--------|
+| `validated` | Verified against actual codebase | Trust and use |
+| `inferred` | Inferred but not directly confirmed | Use with caution |
+| `pending` | Unfilled template | Skip |
 
-Those files are useful, but they tend to become monolithic. Trellis adds structure around them: layered specs, task context, workspace memory, and platform-aware workflow wiring.
+When you validate a file, update `confidence`, `last_updated`, and `verified_by`.
 
-</details>
+---
 
-<details>
-<summary><strong>Is Trellis only for Claude Code?</strong></summary>
+## Development Phases
 
-No. Trellis currently supports Claude Code, Cursor, OpenCode, iFlow, Codex, Kilo, Kiro, Gemini CLI, and Antigravity. The detailed setup and entry command for each tool lives in the supported platforms guide.
+| Phase | Goal | Status |
+|-------|------|--------|
+| 1 — Skeleton | Directory structure, spec templates, memory templates, AGENTS.md, workflow | **Complete** |
+| 2 — Codebase memory | Fill `CODEBASE_MAP`, `MODULE_OWNERSHIP`, branch baseline | Pending |
+| 3 — Module memory | Fill SystemUI / Launcher / Framework memory docs | Pending |
+| 4 — Task Pack | Upgrade Trellis task to AOSP Task Pack (prd, touchpoints, validation, rollback) | Pending |
+| 5 — Context selector | Auto-infer which spec/memory to load per task | Pending |
+| 6 — Verify profiles | Per-module build/smoke/debug/rollback profiles | Pending |
+| 7 — Codex + startup | Unified startup guide for Claude Code and Codex | Pending |
 
-</details>
+---
 
-<details>
-<summary><strong>Do I have to write every spec file manually?</strong></summary>
+## Attribution Format
 
-No. Many teams start by letting AI draft specs from existing code and then tighten the important parts by hand. Trellis works best when you keep the high-signal rules explicit and versioned.
+Every AOSP base file modification must carry:
 
-</details>
+```java
+// [AOSP-CUSTOM] <module>/<owner>: <one-line reason>
+// Added: YYYY-MM-DD
+```
 
-<details>
-<summary><strong>Can teams use this without constant conflicts?</strong></summary>
+This tag is the primary mechanism for identifying our patches during AOSP version upgrades.
 
-Yes. Personal workspace journals stay separate per developer, while shared specs and tasks stay in the repo where they can be reviewed and improved like any other project artifact.
+---
 
-</details>
+## Based On
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=mindfold-ai/Trellis&type=Date)](https://star-history.com/#mindfold-ai/Trellis&Date)
-
-## Community & Resources
-
-- [Official Docs](https://docs.trytrellis.app/) - Product docs, setup guides, and architecture
-- [Quick Start](https://docs.trytrellis.app/guide/ch02-quick-start) - Get Trellis running in a repo fast
-- [Supported Platforms](https://docs.trytrellis.app/guide/ch13-multi-platform) - Platform-specific setup and command details
-- [Real-World Scenarios](https://docs.trytrellis.app/guide/ch08-real-world) - See how the workflow plays out in practice
-- [Changelog](https://docs.trytrellis.app/changelog/v0.3.6) - Track current releases and updates
-- [Tech Blog](https://docs.trytrellis.app/blog) - Product thinking and technical writeups
-- [GitHub Issues](https://github.com/mindfold-ai/Trellis/issues) - Report bugs or request features
-- [Discord](https://discord.com/invite/tWcCZ3aRHc) - Join the community
-
-<p align="center">
-<a href="https://github.com/mindfold-ai/Trellis">Official Repository</a> •
-<a href="https://github.com/mindfold-ai/Trellis/blob/main/LICENSE">AGPL-3.0 License</a> •
-Built by <a href="https://github.com/mindfold-ai">Mindfold</a>
-</p>
+This project extends [Trellis](https://github.com/mindfold-ai/Trellis) — the open-source AI workflow harness by [Mindfold](https://github.com/mindfold-ai). The upstream Trellis workflow, spec structure, task system, and script utilities are preserved unchanged. AOSP-specific layers are additive.

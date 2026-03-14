@@ -37,6 +37,36 @@ python3 ./.trellis/scripts/get_context.py
 
 This shows: developer identity, git status, current task (if any), active tasks.
 
+### Step 2.5: Load AOSP Module Context
+
+Always load the codebase skeleton first:
+
+```bash
+cat docs/memory/codebase/CODEBASE_MAP.md
+```
+
+Then, based on your task's module scope, load the relevant module memory (skip files where `confidence: pending`):
+
+```bash
+# SystemUI task
+cat docs/memory/systemui/overview.md
+cat docs/memory/systemui/entrypoints.md
+
+# Launcher task
+cat docs/memory/launcher/overview.md
+cat docs/memory/launcher/entrypoints.md
+
+# Framework task
+cat docs/memory/framework/overview.md
+cat docs/memory/framework/services_map.md
+
+# Cross-layer task (add the relevant flow)
+cat docs/memory/cross_layer/<flow>.md
+# flows: gesture_home_flow | recents_flow | notification_flow | device_state_flow
+```
+
+> Use `/trellis:load-module <module>` to load all memory files for a module at once.
+
 ### Step 3: Read Guidelines Index
 
 ```bash
@@ -176,7 +206,7 @@ PRD and task directory already exist from brainstorm. Skip directly to Phase 2.
 
 Quick confirm:
 - What is the goal?
-- What type of development? (frontend / backend / fullstack)
+- What AOSP module is in scope? (systemui / launcher / framework / cross-layer)
 - Any specific requirements or constraints?
 
 **Step 2: Create Task Directory** `[AI]`
@@ -265,7 +295,7 @@ Initialize default context:
 
 ```bash
 python3 ./.trellis/scripts/task.py init-context "$TASK_DIR" <type>
-# type: backend | frontend | fullstack
+# AOSP types: systemui | launcher | framework | cross-layer
 ```
 
 Add code-spec files found by Research Agent:

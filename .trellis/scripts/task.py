@@ -214,6 +214,29 @@ def get_implement_frontend(package: str = "cli") -> list[dict]:
     ]
 
 
+def get_implement_aosp(module: str) -> list[dict]:
+    """Get AOSP module implement context entries (systemui | launcher | framework)."""
+    entries = [
+        {"file": f"{DIR_WORKFLOW}/{DIR_SPEC}/architecture/index.md", "reason": "Architecture boundaries"},
+        {"file": f"{DIR_WORKFLOW}/{DIR_SPEC}/module_ownership/ownership-rules.md", "reason": "Attribution rules"},
+        {"file": f"docs/memory/{module}/overview.md", "reason": f"{module} overview"},
+        {"file": f"docs/memory/{module}/entrypoints.md", "reason": f"{module} entry points"},
+        {"file": "docs/memory/codebase/BUILD_TARGET_MAP.md", "reason": "Build targets"},
+    ]
+    if module == "framework":
+        entries.append({"file": "docs/memory/framework/services_map.md", "reason": "Framework services map"})
+    return entries
+
+
+def get_implement_cross_layer() -> list[dict]:
+    """Get cross-layer implement context entries."""
+    return [
+        {"file": f"{DIR_WORKFLOW}/{DIR_SPEC}/architecture/boundaries.md", "reason": "Layer boundary rules"},
+        {"file": "docs/memory/cross_layer/", "type": "directory", "reason": "Cross-layer flow docs"},
+        {"file": "docs/memory/codebase/CODEBASE_MAP.md", "reason": "Codebase skeleton"},
+    ]
+
+
 def get_check_context(repo_root: Path) -> list[dict]:
     """Get check context entries."""
     adapter = get_cli_adapter_auto(repo_root)
@@ -221,6 +244,7 @@ def get_check_context(repo_root: Path) -> list[dict]:
     entries = [
         {"file": adapter.get_trellis_command_path("finish-work"), "reason": "Finish work checklist"},
         {"file": adapter.get_trellis_command_path("check"), "reason": "Code quality check spec"},
+        {"file": adapter.get_trellis_command_path("aosp-check"), "reason": "AOSP quality gates"},
     ]
 
     return entries
@@ -232,6 +256,7 @@ def get_debug_context(repo_root: Path) -> list[dict]:
 
     entries: list[dict] = [
         {"file": adapter.get_trellis_command_path("check"), "reason": "Code quality check spec"},
+        {"file": adapter.get_trellis_command_path("aosp-check"), "reason": "AOSP quality gates"},
     ]
 
     return entries
@@ -399,7 +424,8 @@ def cmd_init_context(args: argparse.Namespace) -> int:
         print(colored("Error: Missing arguments", Colors.RED))
         print("Usage: python3 task.py init-context <task-dir> <dev_type> [--package <name>]")
         print("  dev_type: backend | frontend | fullstack | test | docs")
-        print("  package:  spec package name (default: cli)")
+        print("  AOSP types: systemui | launcher | framework | cross-layer")
+        print("  package:  spec package name (default: aosp)")
         return 1
 
     if not target_dir.is_dir():
@@ -422,6 +448,10 @@ def cmd_init_context(args: argparse.Namespace) -> int:
     elif dev_type == "fullstack":
         implement_entries.extend(get_implement_backend(package))
         implement_entries.extend(get_implement_frontend(package))
+    elif dev_type in ("systemui", "launcher", "framework"):
+        implement_entries.extend(get_implement_aosp(dev_type))
+    elif dev_type == "cross-layer":
+        implement_entries.extend(get_implement_cross_layer())
 
     implement_file = target_dir / "implement.jsonl"
     _write_jsonl(implement_file, implement_entries)

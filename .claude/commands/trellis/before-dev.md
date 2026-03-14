@@ -8,8 +8,8 @@ Execute these steps:
    ```
 
 2. **Identify which specs apply** to your task based on:
-   - Which package you're modifying (e.g., `cli/`, `docs-site/`)
-   - What type of work (backend, frontend, unit-test, docs, etc.)
+   - Which AOSP module you're modifying (e.g., `systemui`, `launcher`, `framework`)
+   - What type of work (architecture, quality, security, build/debug, etc.)
 
 3. **Read the spec index** for each relevant module:
    ```bash
