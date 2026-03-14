@@ -21,6 +21,15 @@ DEFAULT_MAX_JOURNAL_LINES = 2000
 CONFIG_FILE = "config.yaml"
 
 
+def _is_true_config_value(value: object) -> bool:
+    """Return True when a config value represents an enabled flag."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return False
+
+
 def _get_config_path(repo_root: Path | None = None) -> Path:
     """Get path to config.yaml."""
     root = repo_root or get_repo_root()
@@ -157,7 +166,7 @@ def get_git_packages(repo_root: Path | None = None) -> dict[str, str]:
     return {
         name: cfg.get("path", name)
         for name, cfg in packages.items()
-        if cfg.get("git") in (True, "true")
+        if _is_true_config_value(cfg.get("git"))
     }
 
 

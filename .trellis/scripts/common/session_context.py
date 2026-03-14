@@ -87,6 +87,27 @@ def _collect_package_git_info(repo_root: Path) -> list[dict]:
     return result
 
 
+def _append_package_git_context(lines: list[str], package_git_info: list[dict]) -> None:
+    """Append Git status and recent commits for package repositories."""
+    for pkg in package_git_info:
+        lines.append(f"## GIT STATUS ({pkg['name']}: {pkg['path']})")
+        lines.append(f"Branch: {pkg['branch']}")
+        if pkg["isClean"]:
+            lines.append("Working directory: Clean")
+        else:
+            lines.append(
+                f"Working directory: {pkg['uncommittedChanges']} uncommitted change(s)"
+            )
+        lines.append("")
+        lines.append(f"## RECENT COMMITS ({pkg['name']}: {pkg['path']})")
+        if pkg["recentCommits"]:
+            for commit in pkg["recentCommits"]:
+                lines.append(f"{commit['hash']} {commit['message']}")
+        else:
+            lines.append("(no commits)")
+        lines.append("")
+
+
 # =============================================================================
 # JSON Output
 # =============================================================================
@@ -251,21 +272,7 @@ def get_context_text(repo_root: Path | None = None) -> str:
     lines.append("")
 
     # Package git repos — independent sub-repositories
-    for pkg in _collect_package_git_info(repo_root):
-        lines.append(f"## GIT STATUS ({pkg['name']}: {pkg['path']})")
-        lines.append(f"Branch: {pkg['branch']}")
-        if pkg["isClean"]:
-            lines.append("Working directory: Clean")
-        else:
-            lines.append(f"Working directory: {pkg['uncommittedChanges']} uncommitted change(s)")
-        lines.append("")
-        lines.append(f"## RECENT COMMITS ({pkg['name']}: {pkg['path']})")
-        if pkg["recentCommits"]:
-            for c in pkg["recentCommits"]:
-                lines.append(f"{c['hash']} {c['message']}")
-        else:
-            lines.append("(no commits)")
-        lines.append("")
+    _append_package_git_context(lines, _collect_package_git_info(repo_root))
 
     # Current task
     lines.append("## CURRENT TASK")
@@ -526,21 +533,7 @@ def get_context_text_record(repo_root: Path | None = None) -> str:
     lines.append("")
 
     # Package git repos — independent sub-repositories
-    for pkg in _collect_package_git_info(repo_root):
-        lines.append(f"## GIT STATUS ({pkg['name']}: {pkg['path']})")
-        lines.append(f"Branch: {pkg['branch']}")
-        if pkg["isClean"]:
-            lines.append("Working directory: Clean")
-        else:
-            lines.append(f"Working directory: {pkg['uncommittedChanges']} uncommitted change(s)")
-        lines.append("")
-        lines.append(f"## RECENT COMMITS ({pkg['name']}: {pkg['path']})")
-        if pkg["recentCommits"]:
-            for c in pkg["recentCommits"]:
-                lines.append(f"{c['hash']} {c['message']}")
-        else:
-            lines.append("(no commits)")
-        lines.append("")
+    _append_package_git_context(lines, _collect_package_git_info(repo_root))
 
     # CURRENT TASK
     lines.append("## CURRENT TASK")

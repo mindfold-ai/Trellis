@@ -165,6 +165,25 @@ class TestGetGitPackages:
         result = get_git_packages(config_repo)
         assert result == {}
 
+    def test_git_true_is_case_insensitive(self, config_repo: Path) -> None:
+        _write_config(
+            config_repo,
+            """\
+            packages:
+              backend:
+                path: iqs
+                git: True
+              frontend:
+                path: iqs-front
+                git: "TRUE"
+              docs:
+                path: docs
+                git: false
+            """,
+        )
+        result = get_git_packages(config_repo)
+        assert result == {"backend": "iqs", "frontend": "iqs-front"}
+
     def test_no_packages_config(self, config_repo: Path) -> None:
         _write_config(config_repo, "session_commit_message: test\n")
         result = get_git_packages(config_repo)
