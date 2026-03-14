@@ -91,7 +91,8 @@ def _resolve_scope_set(
 def get_packages_info(repo_root: Path) -> list[dict]:
     """Get structured package info for monorepo projects.
 
-    Returns list of dicts with keys: name, path, type, default, specLayers, isSubmodule.
+    Returns list of dicts with keys: name, path, type, default, specLayers,
+    isSubmodule, isGitRepo.
     Returns empty list for single-repo projects.
     """
     packages = get_packages(repo_root)
@@ -105,6 +106,7 @@ def get_packages_info(repo_root: Path) -> list[dict]:
     for pkg_name, pkg_config in packages.items():
         pkg_path = pkg_config.get("path", pkg_name) if isinstance(pkg_config, dict) else str(pkg_config)
         pkg_type = pkg_config.get("type", "local") if isinstance(pkg_config, dict) else "local"
+        pkg_git = pkg_config.get("git", False) if isinstance(pkg_config, dict) else False
         layers = _scan_spec_layers(spec_dir, pkg_name)
 
         result.append({
@@ -114,6 +116,7 @@ def get_packages_info(repo_root: Path) -> list[dict]:
             "default": pkg_name == default_pkg,
             "specLayers": layers,
             "isSubmodule": pkg_type == "submodule",
+            "isGitRepo": pkg_git in (True, "true"),
         })
 
     return result
@@ -139,9 +142,10 @@ def get_packages_section(repo_root: Path) -> str:
     for pkg in pkg_info:
         layers_str = f"  [{', '.join(pkg['specLayers'])}]" if pkg["specLayers"] else ""
         submodule_tag = "  (submodule)" if pkg["isSubmodule"] else ""
+        git_repo_tag = "  (git repo)" if pkg["isGitRepo"] else ""
         default_tag = "  *" if pkg["default"] else ""
         lines.append(
-            f"- {pkg['name']:<16} {pkg['path']:<20}{layers_str}{submodule_tag}{default_tag}"
+            f"- {pkg['name']:<16} {pkg['path']:<20}{layers_str}{submodule_tag}{git_repo_tag}{default_tag}"
         )
 
     if default_pkg:
@@ -179,13 +183,14 @@ def get_context_packages_text(repo_root: Path | None = None) -> str:
     for pkg in pkg_info:
         default_tag = " (default)" if pkg["default"] else ""
         type_tag = f" [{pkg['type']}]" if pkg["type"] != "local" else ""
+        git_tag = " [git repo]" if pkg["isGitRepo"] else ""
 
         # Scope annotation
         scope_tag = ""
         if scope_set is not None and pkg["name"] not in scope_set:
             scope_tag = " (out of scope)"
 
-        lines.append(f"### {pkg['name']}{default_tag}{type_tag}{scope_tag}")
+        lines.append(f"### {pkg['name']}{default_tag}{type_tag}{git_tag}{scope_tag}")
         lines.append(f"Path: {pkg['path']}")
         if pkg["specLayers"]:
             lines.append(f"Spec layers: {', '.join(pkg['specLayers'])}")

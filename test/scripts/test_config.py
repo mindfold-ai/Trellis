@@ -1,4 +1,4 @@
-"""Unit tests for .trellis/scripts/common/config.py — submodule functions."""
+"""Unit tests for .trellis/scripts/common/config.py — submodule & git-repo functions."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import pytest
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent / ".trellis" / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from common.config import get_default_package, get_packages, get_submodule_packages
+from common.config import get_default_package, get_git_packages, get_packages, get_submodule_packages
 
 
 @pytest.fixture
@@ -113,3 +113,85 @@ class TestGetDefaultPackage:
     def test_returns_none_when_not_configured(self, config_repo: Path) -> None:
         _write_config(config_repo, "")
         assert get_default_package(config_repo) is None
+
+
+class TestGetGitPackages:
+    """Tests for get_git_packages() — packages with independent git repos."""
+
+    def test_with_git_packages(self, config_repo: Path) -> None:
+        _write_config(
+            config_repo,
+            """\
+            packages:
+              frontend:
+                path: iqs-front
+                git: true
+              backend:
+                path: iqs
+                git: true
+              docs:
+                path: docs-site
+                type: submodule
+            """,
+        )
+        result = get_git_packages(config_repo)
+        assert result == {"frontend": "iqs-front", "backend": "iqs"}
+
+    def test_no_git_packages(self, config_repo: Path) -> None:
+        _write_config(
+            config_repo,
+            """\
+            packages:
+              cli:
+                path: packages/cli
+              docs:
+                path: docs-site
+                type: submodule
+            """,
+        )
+        result = get_git_packages(config_repo)
+        assert result == {}
+
+    def test_git_false_ignored(self, config_repo: Path) -> None:
+        _write_config(
+            config_repo,
+            """\
+            packages:
+              backend:
+                path: iqs
+                git: false
+            """,
+        )
+        result = get_git_packages(config_repo)
+        assert result == {}
+
+    def test_no_packages_config(self, config_repo: Path) -> None:
+        _write_config(config_repo, "session_commit_message: test\n")
+        result = get_git_packages(config_repo)
+        assert result == {}
+
+    def test_empty_config(self, config_repo: Path) -> None:
+        _write_config(config_repo, "")
+        result = get_git_packages(config_repo)
+        assert result == {}
+
+    def test_mixed_submodule_and_git(self, config_repo: Path) -> None:
+        """Submodule and git repo flags are independent."""
+        _write_config(
+            config_repo,
+            """\
+            packages:
+              api:
+                path: api
+                git: true
+              docs:
+                path: docs
+                type: submodule
+              web:
+                path: web
+            """,
+        )
+        git_pkgs = get_git_packages(config_repo)
+        sub_pkgs = get_submodule_packages(config_repo)
+        assert git_pkgs == {"api": "api"}
+        assert sub_pkgs == {"docs": "docs"}

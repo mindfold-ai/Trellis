@@ -130,6 +130,37 @@ def get_submodule_packages(repo_root: Path | None = None) -> dict[str, str]:
     }
 
 
+def get_git_packages(repo_root: Path | None = None) -> dict[str, str]:
+    """Get packages that have their own independent git repository.
+
+    These are sub-directories with their own .git (not submodules),
+    marked with ``git: true`` in config.yaml.
+
+    Returns:
+        Dict mapping package name to its path for git-repo packages.
+        Empty dict if none configured.
+
+    Example config::
+
+        packages:
+          backend:
+            path: iqs
+            git: true
+
+    Example return::
+
+        {"backend": "iqs"}
+    """
+    packages = get_packages(repo_root)
+    if packages is None:
+        return {}
+    return {
+        name: cfg.get("path", name)
+        for name, cfg in packages.items()
+        if cfg.get("git") in (True, "true")
+    }
+
+
 def is_monorepo(repo_root: Path | None = None) -> bool:
     """Check if the project is configured as a monorepo (has packages in config)."""
     return get_packages(repo_root) is not None
