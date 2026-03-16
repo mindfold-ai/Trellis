@@ -419,7 +419,35 @@ find src/templates/*/commands/trellis/ -name "record-session.*"
 - Command invocation syntax (e.g., `/trellis:xxx` vs `$skill-name`)
 - Config directory references (e.g., `.claude/` vs `.qoder/`)
 
+### iFlow CLI agent invocation uses wrong syntax
 
+**Symptom**: Multi-agent pipeline fails with "iflow: unrecognized option '--agent'" error.
+
+**Cause**: iFlow CLI does NOT support the `--agent` flag (unlike Claude Code, OpenCode). It uses skill-based invocation with `$agent_name` prefix syntax (similar to Codex/Kiro). The `cli_adapter.py` was incorrectly generating `iflow -p --agent plan` instead of `iflow -y -p "$plan prompt"`.
+
+**Fix**: Update `cli_adapter.py` `build_run_command()` for iFlow:
+```python
+# Wrong:
+cmd = ["iflow", "-p"]
+cmd.extend(["-y", "--agent", mapped_agent])
+cmd.append(prompt)
+
+# Correct:
+cmd = ["iflow", "-y", "-p"]
+cmd.append(f"${mapped_agent} {prompt}")
+```
+
+**Key points**:
+- iFlow does NOT support `--agent` flag
+- iFlow does NOT support `--verbose` flag
+- Agent name and prompt must be combined: `"$agent_name prompt"`
+- Non-interactive flag is `-y` (before `-p`)
+
+**Prevention**: When adding a new platform, always verify the actual CLI syntax from official docs or by testing. Do NOT assume all platforms follow the same pattern as Claude Code/OpenCode.
+
+---
+
+### iFlow collectTemplates missing trellis/ subdirectory (FIXED)
 
 **Symptom**: `trellis update` creates iFlow commands at `.iflow/commands/{name}.md` (flat) instead of `.iflow/commands/trellis/{name}.md` (correct).
 

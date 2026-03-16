@@ -278,12 +278,8 @@ class CLIAdapter:
             cmd.append(prompt)
 
         elif self.platform == "iflow":
-            cmd = ["iflow", "-p"]
-            cmd.extend(["-y", "--agent", mapped_agent])
-            # iFlow doesn't support --session-id on creation
-            if verbose:
-                cmd.append("--verbose")
-            cmd.append(prompt)
+            cmd = ["iflow", "-y", "-p"]
+            cmd.append(f"${mapped_agent} {prompt}")
         elif self.platform == "codex":
             cmd = ["codex", "exec"]
             cmd.append(prompt)

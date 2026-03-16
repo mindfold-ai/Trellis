@@ -610,6 +610,17 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".agent");
     expect(commonCliAdapter).toContain(".qoder");
   });
+
+  it("[0.3.10] iFlow CLI uses correct agent invocation syntax", () => {
+    // iFlow does NOT support --agent flag, uses $agent_name prefix instead
+    // Verify the correct command format exists
+    expect(commonCliAdapter).toContain('cmd = ["iflow", "-y", "-p"]');
+    expect(commonCliAdapter).toContain('f"${mapped_agent} {prompt}"');
+
+    // Verify that the old incorrect format does NOT exist
+    // The bug was: cmd.extend(["-y", "--agent", mapped_agent])
+    expect(commonCliAdapter).not.toContain('cmd.extend(["-y", "--agent", mapped_agent])');
+  });
 });
 
 // =============================================================================
