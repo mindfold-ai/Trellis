@@ -1,6 +1,6 @@
 ---
 name: integrate-skill
-description: "Integrate Skill into Project Guidelines"
+description: "Adapts an external skill into project-specific development guidelines in .trellis/spec/. Creates guideline sections, code example templates with .template suffix, and updates spec indexes. Use when integrating an external skill, adding a new skill's patterns to project conventions, or incorporating third-party skill best practices into .trellis/spec/ documentation."
 ---
 
 # Integrate Skill into Project Guidelines

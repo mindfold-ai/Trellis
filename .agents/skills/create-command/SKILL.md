@@ -1,6 +1,6 @@
 ---
 name: create-command
-description: "Create New Slash Command"
+description: "Scaffolds a new slash command in both .cursor/commands/ and .claude/commands/ directories with proper naming conventions and structure. Analyzes requirements to determine command type and generates appropriate content. Use when adding a new developer workflow command, creating a custom slash command, or extending the Trellis command set."
 ---
 
 # Create New Slash Command

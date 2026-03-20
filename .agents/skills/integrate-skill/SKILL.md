@@ -1,6 +1,6 @@
 ---
 name: integrate-skill
-description: "Integrate Claude Skill into Project Guidelines"
+description: "Adapts a Claude global skill into project-specific development guidelines in .trellis/spec/. Creates guideline sections, code example templates with .template suffix, and updates spec indexes. Use when integrating an external Claude skill, adding a new skill's patterns to project conventions, or incorporating third-party skill best practices into .trellis/spec/ documentation."
 ---
 
 # Integrate Claude Skill into Project Guidelines

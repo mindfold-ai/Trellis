@@ -1,6 +1,6 @@
 ---
 name: improve-ut
-description: "Improve Unit Test Coverage for New Changes"
+description: "Analyzes changed files and improves unit test coverage using project-specific testing conventions from .trellis/spec/ unit-test specs. Determines test scope (unit vs integration vs regression), adds or updates tests following existing patterns, and runs validation. Use when code changes need test coverage, after implementing a feature, after fixing a bug, or when test gaps are identified."
 ---
 
 # Improve Unit Tests (UT)

@@ -1,11 +1,6 @@
 ---
 name: python-design
-description: >
-  Python design patterns for CLI scripts and utilities — type-first development,
-  deep modules, complexity management, and red flags. Use this skill whenever
-  reading, writing, reviewing, or refactoring Python files, especially in
-  .trellis/scripts/ or any CLI/scripting context. Also activate when planning
-  module structure, deciding where to put new code, or doing code review.
+description: "Python design patterns for CLI scripts and utilities — type-first development, deep modules, complexity management, and red flags. Use when reading, writing, reviewing, or refactoring Python files, especially in .trellis/scripts/ or any CLI/scripting context. Also activate when planning module structure, deciding where to put new code, or doing code review."
 ---
 
 # Python Design for CLI Scripts

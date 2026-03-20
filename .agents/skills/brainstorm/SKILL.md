@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: "Brainstorm - Requirements Discovery (AI Coding Enhanced)"
+description: "Collaborative requirements discovery session optimized for AI coding workflows. Creates task directories, seeds PRDs, runs codebase research, proposes concrete implementation approaches with trade-offs, and converges on MVP scope through structured Q&A. Use when requirements are unclear, multiple implementation paths exist, trade-offs need evaluation, or a complex feature needs scoping before development."
 ---
 
 # Brainstorm - Requirements Discovery (AI Coding Enhanced)

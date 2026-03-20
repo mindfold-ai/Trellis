@@ -1,6 +1,6 @@
 ---
 name: parallel
-description: "Multi-Agent Pipeline Orchestrator"
+description: "Multi-agent pipeline orchestrator that plans and dispatches parallel development tasks to worktree agents. Reads project context, configures task directories with PRDs and jsonl context files, and launches isolated coding agents. Use when multiple independent features need parallel development, orchestrating worktree agents, or managing multi-agent coding pipelines."
 ---
 
 # Multi-Agent Pipeline Orchestrator

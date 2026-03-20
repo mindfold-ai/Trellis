@@ -1,6 +1,6 @@
 ---
 name: create-command
-description: "Create New Skill"
+description: "Scaffolds a new skill file with proper naming conventions and structure. Analyzes requirements to determine skill type and generates appropriate content. Use when adding a new developer workflow skill, creating a custom skill, or extending the Trellis skill set."
 ---
 
 # Create New Skill

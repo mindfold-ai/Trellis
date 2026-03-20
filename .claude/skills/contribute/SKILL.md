@@ -1,11 +1,6 @@
 ---
 name: contribute
-description: |
-  Guide for contributing to Trellis documentation. Use when someone wants to:
-  - Add a new spec template
-  - Add a new skill to the marketplace
-  - Add or update documentation pages
-  - Submit a PR to this project
+description: "Guide for contributing to Trellis documentation and marketplace. Covers adding spec templates, marketplace skills, documentation pages, and submitting PRs across both the Trellis main repo and docs repo. Use when someone wants to add a new spec template, add a new skill to the marketplace, add or update documentation pages, or submit a PR to this project."
 ---
 
 # Contributing to Trellis

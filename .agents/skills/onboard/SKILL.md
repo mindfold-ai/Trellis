@@ -1,6 +1,6 @@
 ---
 name: onboard
-description: "You are a senior developer onboarding a new team member to this project's AI-assisted workflow system."
+description: "Interactive three-part onboarding for new team members to the Trellis AI-assisted workflow system. Covers core philosophy (AI memory, project-specific knowledge, context drift), system structure and command deep-dives, real-world workflow examples, and guideline customization. Use when a new developer joins the project, someone needs to understand the Trellis workflow, or project guidelines need initial setup."
 ---
 
 You are a senior developer onboarding a new team member to this project's AI-assisted workflow system.

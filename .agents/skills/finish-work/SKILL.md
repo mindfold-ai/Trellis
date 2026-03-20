@@ -1,6 +1,6 @@
 ---
 name: finish-work
-description: "Finish Work - Pre-Commit Checklist"
+description: "Pre-commit quality checklist covering lint, typecheck, tests, code-spec sync, API changes, database migrations, cross-layer verification, and manual testing. Blocks commit if infra or cross-layer specs lack executable depth. Use when code is written and tested but not yet committed, before submitting changes, or as a final review before git commit."
 ---
 
 # Finish Work - Pre-Commit Checklist

@@ -1,7 +1,6 @@
 ---
 name: trellis-meta
-description: |
-  Meta-skill for understanding and customizing Mindfold Trellis - the all-in-one AI workflow system for 9 AI coding platforms (Claude Code, Cursor, OpenCode, iFlow, Codex, Kilo, Kiro, Gemini CLI, Antigravity). This skill documents the ORIGINAL Trellis system design. When users customize their Trellis installation, modifications should be recorded in a project-local `trellis-local` skill, NOT in this meta-skill. Use this skill when: (1) understanding Trellis architecture, (2) customizing Trellis workflows, (3) adding commands/agents/hooks, (4) troubleshooting issues, or (5) adapting Trellis to specific projects.
+description: "Meta-skill for understanding and customizing Mindfold Trellis — the all-in-one AI workflow system for 9 AI coding platforms (Claude Code, Cursor, OpenCode, iFlow, Codex, Kilo, Kiro, Gemini CLI, Antigravity). Documents the original Trellis system design including architecture, commands, hooks, and multi-agent pipelines. Use when understanding Trellis architecture, customizing workflows, adding commands or agents, troubleshooting issues, or adapting Trellis to specific projects. Modifications should be recorded in a project-local trellis-local skill, not here."
 ---
 
 # Trellis Meta-Skill
