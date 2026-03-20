@@ -67,7 +67,7 @@ async function copyDirFiltered(src: string, dest: string): Promise<void> {
  * The opencode templates include:
  * - commands/ - Slash commands
  * - agents/ - Multi-agent pipeline configurations
- * - plugin/ - Context injection plugins
+ * - plugins/ - Context injection plugins
  * - lib/ - Shared JavaScript utilities
  * - package.json - Plugin dependencies
  */
