@@ -1,30 +1,30 @@
 ---
 name: integrate-skill
-description: "Adapts a Claude global skill into project-specific development guidelines in .trellis/spec/. Creates guideline sections, code example templates with .template suffix, and updates spec indexes. Use when integrating an external Claude skill, adding a new skill's patterns to project conventions, or incorporating third-party skill best practices into .trellis/spec/ documentation."
+description: "Adapts an external skill into project-specific development guidelines in .trellis/spec/. Creates guideline sections, code example templates with .template suffix, and updates spec indexes. Use when integrating an external skill, adding a new skill's patterns to project conventions, or incorporating third-party skill best practices into .trellis/spec/ documentation."
 ---
 
-# Integrate Claude Skill into Project Guidelines
+# Integrate Skill into Project Guidelines
 
-Adapt and integrate a Claude global skill into your project's development guidelines (not directly into project code).
+Adapt and integrate a reusable skill into your project's development guidelines (not directly into project code).
 
 ## Usage
 
 ```
-/trellis:integrate-skill <skill-name>
+$integrate-skill <skill-name>
 ```
 
 **Examples**:
 ```
-/trellis:integrate-skill frontend-design
-/trellis:integrate-skill mcp-builder
+$integrate-skill frontend-design
+$integrate-skill mcp-builder
 ```
 
 ## Core Principle
 
 > [!] **Important**: The goal of skill integration is to update **development guidelines**, not to generate project code directly.
 >
-> - Guidelines content -> Write to `.trellis/spec/cli/{target}/doc.md`
-> - Code examples -> Place in `.trellis/spec/cli/{target}/examples/skills/<skill-name>/`
+> - Guidelines content -> Write to `.trellis/spec/{target}/doc.md`
+> - Code examples -> Place in `.trellis/spec/{target}/examples/skills/<skill-name>/`
 > - Example files -> Use `.template` suffix (e.g., `component.tsx.template`) to avoid IDE errors
 >
 > Where `{target}` is `frontend` or `backend`, determined by skill type.
@@ -33,14 +33,11 @@ Adapt and integrate a Claude global skill into your project's development guidel
 
 ### 1. Read Skill Content
 
-```bash
-openskills read <skill-name>
-```
+Locate and read the skill instructions:
+- `.agents/skills/<skill-name>/SKILL.md` in the repository
+- Skill list in `AGENTS.md` (when available in current context)
 
-If the skill doesn't exist, prompt user to check available skills:
-```bash
-# Available skills are listed in AGENTS.md under <available_skills>
-```
+If the skill cannot be found, ask the user for the source path or repository.
 
 ### 2. Determine Integration Target
 
@@ -48,10 +45,10 @@ Based on skill type, determine which guidelines to update:
 
 | Skill Category | Integration Target |
 |----------------|-------------------|
-| UI/Frontend (`frontend-design`, `web-artifacts-builder`) | `.trellis/spec/cli/frontend/` |
-| Backend/API (`mcp-builder`) | `.trellis/spec/cli/backend/` |
+| UI/Frontend (`frontend-design`, `web-artifacts-builder`) | `.trellis/spec/frontend/` |
+| Backend/API (`mcp-builder`) | `.trellis/spec/backend/` |
 | Documentation (`doc-coauthoring`, `docx`, `pdf`) | `.trellis/` or create dedicated guidelines |
-| Testing (`webapp-testing`) | `.trellis/spec/cli/frontend/` (E2E) |
+| Testing (`webapp-testing`) | `.trellis/spec/frontend/` (E2E) |
 
 ### 3. Analyze Skill Content
 
@@ -95,7 +92,7 @@ See `examples/skills/<skill-name>/`
 
 ```bash
 # Directory structure ({target} = frontend or backend)
-.trellis/spec/cli/{target}/
+.trellis/spec/{target}/
 |-- doc.md                      # Add skill-related section
 |-- index.md                    # Update index
 +-- examples/
@@ -127,7 +124,7 @@ Add to the Quick Navigation table in `index.md`:
 
 ### # Overview
 - **Skill description**: [Functionality description]
-- **Integration target**: `.trellis/spec/cli/{target}/`
+- **Integration target**: `.trellis/spec/{target}/`
 
 ### # Tech Stack Compatibility
 
@@ -139,9 +136,9 @@ Add to the Quick Navigation table in `index.md`:
 
 | Type | Path |
 |------|------|
-| Guidelines doc | `.trellis/spec/cli/{target}/doc.md` (section: `skill-<name>`) |
-| Code examples | `.trellis/spec/cli/{target}/examples/skills/<name>/` |
-| Index update | `.trellis/spec/cli/{target}/index.md` |
+| Guidelines doc | `.trellis/spec/{target}/doc.md` (section: `skill-<name>`) |
+| Code examples | `.trellis/spec/{target}/examples/skills/<name>/` |
+| Index update | `.trellis/spec/{target}/index.md` |
 
 > `{target}` = `frontend` or `backend`
 
@@ -169,21 +166,21 @@ yarn add <package>
 
 ---
 
-## 6. Optional: Create Usage Command
+## 6. Optional: Create Usage Skill
 
-If this skill is frequently used, create a shortcut command:
+If this skill is frequently used, create a shortcut skill:
 
 ```bash
-/trellis:create-command use-<skill-name> Use <skill-name> skill following project guidelines
+$create-command use-<skill-name> Use <skill-name> skill following project guidelines
 ```
 
 ## Common Skill Integration Reference
 
 | Skill | Integration Target | Examples Directory |
 |-------|-------------------|-------------------|
-| `frontend-design` | `cli/frontend` | `examples/skills/frontend-design/` |
-| `mcp-builder` | `cli/backend` | `examples/skills/mcp-builder/` |
-| `webapp-testing` | `cli/frontend` | `examples/skills/webapp-testing/` |
+| `frontend-design` | `frontend` | `examples/skills/frontend-design/` |
+| `mcp-builder` | `backend` | `examples/skills/mcp-builder/` |
+| `webapp-testing` | `frontend` | `examples/skills/webapp-testing/` |
 | `doc-coauthoring` | `.trellis/` | N/A (documentation workflow only) |
 
 ## Example: Integrating `mcp-builder` Skill
@@ -191,7 +188,7 @@ If this skill is frequently used, create a shortcut command:
 ### Directory Structure
 
 ```
-.trellis/spec/cli/backend/
+.trellis/spec/backend/
 |-- doc.md                           # Add MCP section
 |-- index.md                         # Add index entry
 +-- examples/

@@ -63,62 +63,6 @@ Run project's lint and typecheck commands to verify changes.
 
 If failed, fix issues and re-run.
 
-### Step 5: Codex Cross-Review
-
-**After all self-checks pass (lint, typecheck, code review)**, run a Codex cross-review as a second pair of eyes.
-
-This step catches logic bugs, edge cases, and security issues that static analysis and spec-compliance checks miss.
-
-Use stdin (`-`) to dynamically inject project specs into the review prompt:
-
-```bash
-cat <<REVIEW_PROMPT | codex review -
-Review all uncommitted changes (staged, unstaged, and untracked files).
-
-You are a cross-reviewer. Another AI agent has already checked this code for spec compliance, lint, and type errors — all passed.
-
-Your job is to catch what linters and typecheckers CANNOT catch.
-
-## Project Specs (for context)
-
-### Package Specs
-$(python3 ./.trellis/scripts/get_context.py --mode packages)
-
-### Thinking Guides
-$(cat .trellis/spec/guides/index.md)
-
-## Review Focus
-
-Only report issues in these categories:
-1. Logic bugs — wrong conditions, off-by-one, missed branches, unreachable code
-2. Edge cases — empty input, undefined/null sneaking through, race conditions in async
-3. Error handling — swallowed errors, missing error paths, incorrect error messages
-4. Security — command injection, path traversal, unvalidated user input
-5. API contract — function signatures match callers, return values used correctly
-
-Do NOT report:
-- Style, formatting, naming — already enforced by ESLint
-- Missing types or type errors — already enforced by TypeScript strict mode
-- Import order, unused imports — already enforced by linter
-- Anything already caught by lint/typecheck
-
-## Output Format
-
-- If no issues: "LGTM — no logic or security issues detected."
-- If issues found, list each as:
-  [CRITICAL|WARNING|NITPICK] file:line — description
-REVIEW_PROMPT
-```
-
-> **Note**: The heredoc uses `$(cat ...)` to inline spec contents at runtime, so the review prompt always reflects the latest specs.
-
-**Handling Codex review results:**
-
-1. **LGTM** → Proceed to completion
-2. **CRITICAL issues** → Fix them yourself, then re-run Step 4 verification
-3. **WARNING issues** → Fix if clearly correct, otherwise note in report as "Codex flagged, needs human review"
-4. **NITPICK issues** → Ignore, note in report if relevant
-
 ---
 
 ## Completion Markers (Ralph Loop)
@@ -170,14 +114,6 @@ If check.jsonl doesn't exist or has no reasons, output: `ALL_CHECKS_FINISH`
 
 - TypeCheck: Passed TYPECHECK_FINISH
 - Lint: Passed LINT_FINISH
-
-### Codex Cross-Review
-
-- Result: LGTM / N issues found
-- Critical fixes applied: (list if any)
-- Flagged for human review: (list if any)
-
-CODEX_REVIEW_FINISH
 
 ### Summary
 

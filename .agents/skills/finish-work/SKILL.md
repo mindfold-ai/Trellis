@@ -32,9 +32,9 @@ pnpm test
 ### 2. Code-Spec Sync
 
 **Code-Spec Docs**:
-- [ ] Does `.trellis/spec/cli/backend/` need updates?
+- [ ] Does `.trellis/spec/backend/` need updates?
   - New patterns, new modules, new conventions
-- [ ] Does `.trellis/spec/cli/frontend/` need updates?
+- [ ] Does `.trellis/spec/frontend/` need updates?
   - New components, new hooks, new patterns
 - [ ] Does `.trellis/spec/guides/` need updates?
   - New cross-layer flows, lessons from bugs
@@ -55,7 +55,7 @@ If this change touches infra or cross-layer contracts, this is a blocking checkl
 - [ ] Includes required tests and assertion points
 
 **Block Rule**:
-If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Run `/trellis:update-spec` manually first.
+If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Run `$update-spec` manually first.
 
 ### 3. API Changes
 
@@ -125,19 +125,19 @@ git diff --name-only
 
 ```
 Development Flow:
-  Write code -> Test -> /trellis:finish-work -> git commit -> /trellis:record-session
+  Write code -> Test -> $finish-work -> git commit -> $record-session
                           |                              |
                    Ensure completeness              Record progress
                    
 Debug Flow:
-  Hit bug -> Fix -> /trellis:break-loop -> Knowledge capture
+  Hit bug -> Fix -> $break-loop -> Knowledge capture
                        |
                   Deep analysis
 ```
 
-- `/trellis:finish-work` - Check work completeness (this command)
-- `/trellis:record-session` - Record session and commits
-- `/trellis:break-loop` - Deep analysis after debugging
+- `$finish-work` - Check work completeness (this skill)
+- `$record-session` - Record session and commits
+- `$break-loop` - Deep analysis after debugging
 
 ---
 

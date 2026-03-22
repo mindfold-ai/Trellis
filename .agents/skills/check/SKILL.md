@@ -23,7 +23,7 @@ Execute these steps:
    ```
    Follow the **"Quality Check"** section in the index.
 
-4. **Review your code** against each relevant guideline listed in the index.
+4. **Read the specific guideline files** referenced in the Quality Check section (e.g., `quality-guidelines.md`, `conventions.md`). The index is NOT the goal — it points you to the actual guideline files. Read those files and review your code against them.
 
 5. **Run lint and typecheck** for the affected package.
 

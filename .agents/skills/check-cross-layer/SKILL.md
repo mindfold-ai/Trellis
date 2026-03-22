@@ -17,7 +17,7 @@ Check if your changes considered all dimensions. Most bugs come from "didn't thi
 |----------|---------|--------|
 | [Pre-Implementation Checklist](.trellis/spec/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
 | [Code Reuse Thinking Guide](.trellis/spec/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
-| **`/trellis:check-cross-layer`** (this) | Verification check | **After** implementation |
+| **`$check-cross-layer`** (this skill) | Verification check | **After** implementation |
 
 ---
 

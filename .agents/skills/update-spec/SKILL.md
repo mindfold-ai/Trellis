@@ -5,7 +5,7 @@ description: "Captures executable contracts and coding knowledge into .trellis/s
 
 # Update Code-Spec - Capture Executable Contracts
 
-When you learn something valuable (from debugging, implementing, or discussion), use this command to update the relevant code-spec documents.
+When you learn something valuable (from debugging, implementing, or discussion), use this skill to update the relevant code-spec documents.
 
 **Timing**: After completing a task, fixing a bug, or discovering a new pattern
 
@@ -20,17 +20,7 @@ In this project, "spec" for implementation work means **code-spec**:
 
 If the change touches infra or cross-layer contracts, code-spec depth is mandatory.
 
-### Mandatory Triggers
-
-Apply code-spec depth when the change includes any of:
-- New/changed command or API signature
-- Cross-layer request/response contract change
-- Database schema/migration change
-- Infra integration (storage, queue, cache, secrets, env wiring)
-
-### Mandatory Output (7 Sections)
-
-For triggered tasks, include all sections below:
+Required sections for infra/cross-layer specs:
 1. Scope / Trigger
 2. Signatures (command/API/DB)
 3. Contracts (request/response/env)
@@ -155,24 +145,10 @@ If you added a new section or the code-spec status changed, update the category'
 - Trigger: <why this requires code-spec depth>
 
 ### 2. Signatures
-- Backend command/API/DB signature(s)
-
 ### 3. Contracts
-- Request fields (name, type, constraints)
-- Response fields (name, type, constraints)
-- Environment keys (required/optional)
-
 ### 4. Validation & Error Matrix
-- <condition> -> <error>
-
 ### 5. Good/Base/Bad Cases
-- Good: ...
-- Base: ...
-- Bad: ...
-
 ### 6. Tests Required
-- Unit/Integration/E2E with assertion points
-
 ### 7. Wrong vs Correct
 #### Wrong
 ...
@@ -337,15 +313,15 @@ Before finishing your code-spec update:
 
 ```
 Development Flow:
-  Learn something → /trellis:update-spec → Knowledge captured
+  Learn something → $update-spec → Knowledge captured
        ↑                                  ↓
-  /trellis:break-loop ←──────────────────── Future sessions benefit
+  $break-loop ←──────────────────── Future sessions benefit
   (deep bug analysis)
 ```
 
-- `/trellis:break-loop` - Analyzes bugs deeply, often reveals spec updates needed
-- `/trellis:update-spec` - Actually makes the updates (this command)
-- `/trellis:finish-work` - Reminds you to check if specs need updates
+- `$break-loop` - Analyzes bugs deeply, often reveals spec updates needed
+- `$update-spec` - Actually makes the updates (this skill)
+- `$finish-work` - Reminds you to check if specs need updates
 
 ---
 

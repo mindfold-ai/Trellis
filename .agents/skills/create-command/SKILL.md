@@ -1,21 +1,21 @@
 ---
 name: create-command
-description: "Scaffolds a new slash command in both .cursor/commands/ and .claude/commands/ directories with proper naming conventions and structure. Analyzes requirements to determine command type and generates appropriate content. Use when adding a new developer workflow command, creating a custom slash command, or extending the Trellis command set."
+description: "Scaffolds a new skill file with proper naming conventions and structure. Analyzes requirements to determine skill type and generates appropriate content. Use when adding a new developer workflow skill, creating a custom skill, or extending the Trellis skill set."
 ---
 
-# Create New Slash Command
+# Create New Skill
 
-Create a new slash command in both `.cursor/commands/` (with `trellis-` prefix) and `.claude/commands/trellis/` directories based on user requirements.
+Create a new Codex skill in `.agents/skills/<skill-name>/SKILL.md` based on user requirements.
 
 ## Usage
 
-```
-/trellis:create-command <command-name> <description>
+```bash
+$create-command <skill-name> <description>
 ```
 
 **Example**:
-```
-/trellis:create-command review-pr Check PR code changes against project guidelines
+```bash
+$create-command review-pr Check PR code changes against project guidelines
 ```
 
 ## Execution Steps
@@ -23,72 +23,59 @@ Create a new slash command in both `.cursor/commands/` (with `trellis-` prefix) 
 ### 1. Parse Input
 
 Extract from user input:
-- **Command name**: Use kebab-case (e.g., `review-pr`)
-- **Description**: What the command should accomplish
+- **Skill name**: Use kebab-case (e.g., `review-pr`)
+- **Description**: What the skill should accomplish
 
 ### 2. Analyze Requirements
 
-Determine command type based on description:
+Determine skill type based on description:
 - **Initialization**: Read docs, establish context
 - **Pre-development**: Read guidelines, check dependencies
 - **Code check**: Validate code quality and guideline compliance
 - **Recording**: Record progress, questions, structure changes
-- **Generation**: Generate docs, code templates
+- **Generation**: Generate docs or code templates
 
-### 3. Generate Command Content
+### 3. Generate Skill Content
 
-Based on command type, generate appropriate content:
+Minimum `SKILL.md` structure:
 
-**Simple command** (1-3 lines):
 ```markdown
-Concise instruction describing what to do
-```
+---
+name: <skill-name>
+description: "<description>"
+---
 
-**Complex command** (with steps):
-```markdown
-# Command Title
+# <Skill Title>
 
-Command description
-
-## Steps
-
-### 1. First Step
-Specific action
-
-### 2. Second Step
-Specific action
-
-## Output Format (if needed)
-
-Template
+<Instructions for when and how to use this skill>
 ```
 
 ### 4. Create Files
 
-Create in both directories:
-- `.cursor/commands/trellis-<command-name>.md`
-- `.claude/commands/trellis/<command-name>.md`
+Create:
+- `.agents/skills/<skill-name>/SKILL.md`
 
 ### 5. Confirm Creation
 
 Output result:
-```
-[OK] Created Slash Command: /<command-name>
 
-File paths:
-- .cursor/commands/trellis-<command-name>.md
-- .claude/commands/trellis/<command-name>.md
+```text
+[OK] Created Skill: <skill-name>
+
+File path:
+- .agents/skills/<skill-name>/SKILL.md
 
 Usage:
-/trellis:<command-name>
+- Trigger directly with $<skill-name>
+- Or open /skills and select it
 
 Description:
 <description>
 ```
 
-## Command Content Guidelines
+## Skill Content Guidelines
 
-### [OK] Good command content
+### [OK] Good skill content
 
 1. **Clear and concise**: Immediately understandable
 2. **Executable**: AI can follow steps directly
@@ -98,62 +85,17 @@ Description:
 ### [X] Avoid
 
 1. **Too vague**: e.g., "optimize code"
-2. **Too complex**: Single command should not exceed 100 lines
-3. **Duplicate functionality**: Check if similar command exists first
+2. **Too complex**: Single skill should not exceed 100 lines
+3. **Duplicate functionality**: Check if similar skill exists first
 
 ## Naming Conventions
 
-| Command Type | Prefix | Example |
-|--------------|--------|---------|
+| Skill Type | Prefix | Example |
+|------------|--------|---------|
 | Session Start | `start` | `start` |
 | Pre-development | `before-` | `before-dev` |
-| Check | `check-` | `check`, `check-cross-layer` |
+| Check | `check-` | `check` |
 | Record | `record-` | `record-session` |
 | Generate | `generate-` | `generate-api-doc` |
 | Update | `update-` | `update-changelog` |
 | Other | Verb-first | `review-code`, `sync-data` |
-
-## Example
-
-### Input
-```
-/trellis:create-command review-pr Check PR code changes against project guidelines
-```
-
-### Generated Command Content
-```markdown
-# PR Code Review
-
-Check current PR code changes against project guidelines.
-
-## Steps
-
-### 1. Get Changed Files
-```bash
-git diff main...HEAD --name-only
-```
-
-### 2. Categorized Review
-
-**Frontend files** (`apps/web/`):
-- Reference `.trellis/spec/cli/frontend/index.md`
-
-**Backend files** (`packages/api/`):
-- Reference `.trellis/spec/cli/backend/index.md`
-
-### 3. Output Review Report
-
-Format:
-
-## PR Review Report
-
-### Changed Files
-- [file list]
-
-### Check Results
-- [OK] Passed items
-- [X] Issues found
-
-### Suggestions
-- [improvement suggestions]
-```

@@ -29,15 +29,7 @@ You are a documenter, not a reviewer. Your job is to help get the information ne
 
 ### 2. External Search (Tech Solutions)
 
-| Search Type | Goal | Tools |
-|-------------|------|-------|
-| **WEB** | Search for docs, blog posts, best practices | mcp__exa__web_search_exa |
-| **CODE** | Find code examples, SDK usage, library APIs | mcp__exa__get_code_context_exa |
-
-Use these tools when the query involves:
-- External libraries, frameworks, or tools not in this repo
-- Best practices, conventions, or industry standards
-- Official documentation or API references
+Use web search for best practices and code examples.
 
 ---
 

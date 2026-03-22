@@ -392,14 +392,6 @@ Here's my understanding of the complete requirements:
 Does this look correct? If yes, I'll proceed with implementation.
 ```
 
-### Sync PRD to External Tracker
-
-If lifecycle hooks are configured with a sync action, sync the finalized PRD:
-
-```bash
-TASK_JSON_PATH="$TASK_DIR/task.json" python3 .trellis/scripts/hooks/linear_sync.py sync
-```
-
 ### Subtask Decomposition (Complex Tasks)
 
 For complex tasks with multiple independent work items, create subtasks:
