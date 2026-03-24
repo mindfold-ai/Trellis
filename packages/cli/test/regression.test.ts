@@ -888,6 +888,7 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
   it("[codex] Codex platform is registered", () => {
     expect(AI_TOOLS).toHaveProperty("codex");
     expect(AI_TOOLS.codex.configDir).toBe(".agents/skills");
+    expect(AI_TOOLS.codex.extraManagedPaths).toEqual([".codex"]);
   });
 
   it("[kiro] Kiro platform is registered", () => {
@@ -943,6 +944,12 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
   it("[codex] cli_adapter.py supports codex platform", () => {
     expect(commonCliAdapter).toContain('"codex"');
     expect(commonCliAdapter).toContain(".agents");
+    expect(commonCliAdapter).toContain(".codex");
+  });
+
+  it("[codex] multi_agent plan/start scripts allow codex platform", () => {
+    expect(multiAgentPlan).toContain('"codex"');
+    expect(multiAgentStart).toContain('"codex"');
   });
 
   it("[kiro] cli_adapter.py supports kiro platform", () => {
@@ -989,14 +996,9 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
   });
 
   it("[0.3.10] iFlow CLI uses correct agent invocation syntax", () => {
-    // iFlow does NOT support --agent flag, uses $agent_name prefix instead
-    // Verify the correct command format exists
-    expect(commonCliAdapter).toContain('cmd = ["iflow", "-y", "-p"]');
-    expect(commonCliAdapter).toContain('f"${mapped_agent} {prompt}"');
-
-    // Verify that the old incorrect format does NOT exist
-    // The bug was: cmd.extend(["-y", "--agent", mapped_agent])
-    expect(commonCliAdapter).not.toContain('cmd.extend(["-y", "--agent", mapped_agent])');
+    expect(commonCliAdapter).toContain('cmd = ["iflow", "-p"]');
+    expect(commonCliAdapter).toContain('cmd.extend(["-y", "--agent", mapped_agent])');
+    expect(commonCliAdapter).toContain("cmd.append(prompt)");
   });
 });
 
@@ -1172,6 +1174,17 @@ describe("regression: collectTemplates paths match init directory structure (0.3
         "/commands/",
       );
     }
+  });
+
+  it("[codex] collectTemplates tracks both .agents skills and .codex assets", () => {
+    const templates = collectPlatformTemplates("codex");
+    expect(templates).toBeInstanceOf(Map);
+    if (!templates) return;
+
+    const keys = [...templates.keys()];
+    expect(keys.some((key) => key.startsWith(".agents/skills/"))).toBe(true);
+    expect(keys.some((key) => key.startsWith(".codex/agents/"))).toBe(true);
+    expect(keys).toContain(".codex/config.toml");
   });
 });
 

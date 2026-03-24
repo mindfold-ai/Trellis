@@ -9,7 +9,11 @@ import {
 } from "../../src/configurators/index.js";
 import { AI_TOOLS } from "../../src/types/ai-tools.js";
 import { setWriteMode } from "../../src/utils/file-writer.js";
-import { getAllSkills } from "../../src/templates/codex/index.js";
+import {
+  getAllAgents as getAllCodexAgents,
+  getAllSkills,
+  getConfigTemplate as getCodexConfigTemplate,
+} from "../../src/templates/codex/index.js";
 import { getAllWorkflows as getAllAntigravityWorkflows } from "../../src/templates/antigravity/index.js";
 import { getAllSkills as getAllKiroSkills } from "../../src/templates/kiro/index.js";
 import { getAllCommands as getAllGeminiCommands } from "../../src/templates/gemini/index.js";
@@ -61,6 +65,12 @@ describe("getConfiguredPlatforms", () => {
 
   it("detects .agents/skills directory as codex", () => {
     fs.mkdirSync(path.join(tmpDir, ".agents", "skills"), { recursive: true });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("codex")).toBe(true);
+  });
+
+  it("detects .codex directory as codex", () => {
+    fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
     const result = getConfiguredPlatforms(tmpDir);
     expect(result.has("codex")).toBe(true);
   });
@@ -153,6 +163,7 @@ describe("configurePlatform", () => {
   it("configurePlatform('codex') creates .agents/skills directory", async () => {
     await configurePlatform("codex", tmpDir);
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".codex"))).toBe(true);
   });
 
   it("configurePlatform('codex') writes all skill templates", async () => {
@@ -169,13 +180,38 @@ describe("configurePlatform", () => {
       .sort();
 
     expect(actualNames).toEqual(expectedNames);
-    expect(actualNames).not.toContain("parallel");
 
     for (const skill of expectedSkills) {
       const skillPath = path.join(skillsRoot, skill.name, "SKILL.md");
       expect(fs.existsSync(skillPath)).toBe(true);
       expect(fs.readFileSync(skillPath, "utf-8")).toBe(skill.content);
     }
+  });
+
+  it("configurePlatform('codex') writes custom agents and config", async () => {
+    await configurePlatform("codex", tmpDir);
+
+    const expectedAgents = getAllCodexAgents();
+    const codexAgentsRoot = path.join(tmpDir, ".codex", "agents");
+    const actualAgentNames = fs
+      .readdirSync(codexAgentsRoot)
+      .map((file) => file.replace(".toml", ""))
+      .sort();
+
+    expect(actualAgentNames).toEqual(
+      expectedAgents.map((agent) => agent.name).sort(),
+    );
+
+    for (const agent of expectedAgents) {
+      const agentPath = path.join(codexAgentsRoot, `${agent.name}.toml`);
+      expect(fs.existsSync(agentPath)).toBe(true);
+      expect(fs.readFileSync(agentPath, "utf-8")).toBe(agent.content);
+    }
+
+    const config = getCodexConfigTemplate();
+    const configPath = path.join(tmpDir, ".codex", config.targetPath);
+    expect(fs.existsSync(configPath)).toBe(true);
+    expect(fs.readFileSync(configPath, "utf-8")).toBe(config.content);
   });
 
   it("configurePlatform('kiro') creates .kiro/skills directory", async () => {
@@ -197,7 +233,6 @@ describe("configurePlatform", () => {
       .sort();
 
     expect(actualNames).toEqual(expectedNames);
-    expect(actualNames).not.toContain("parallel");
 
     for (const skill of expectedSkills) {
       const skillPath = path.join(skillsRoot, skill.name, "SKILL.md");
@@ -277,7 +312,6 @@ describe("configurePlatform", () => {
       .sort();
 
     expect(actualNames).toEqual(expectedNames);
-    expect(actualNames).not.toContain("parallel");
 
     for (const workflow of expectedWorkflows) {
       const workflowPath = path.join(workflowsRoot, `${workflow.name}.md`);

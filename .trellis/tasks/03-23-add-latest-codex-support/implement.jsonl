@@ -1,0 +1,7 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Codex platform integration rules and required touch points"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Keep CLI/configurator error handling patterns consistent"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Avoid duplicating template registry logic"}
+{"file": "packages/cli/src/configurators/index.ts", "reason": "Registry pattern for managed platform assets"}
+{"file": "packages/cli/src/templates/codex/index.ts", "reason": "Codex template loading pattern"}

@@ -1,0 +1,5 @@
+# Project-scoped Codex defaults for Trellis workflows.
+# Codex loads this after ~/.codex/config.toml when you work in this project.
+
+# Keep AGENTS.md as the primary project instruction file.
+project_doc_fallback_filenames = ["AGENTS.md"]

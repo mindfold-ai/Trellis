@@ -53,7 +53,7 @@ def main() -> int:
     parser.add_argument("--requirement", "-r", required=True, help="Requirement description")
     parser.add_argument(
         "--platform", "-p",
-        choices=["claude", "cursor", "iflow", "opencode", "qoder"],
+        choices=["claude", "cursor", "iflow", "opencode", "codex", "qoder"],
         default=DEFAULT_PLATFORM,
         help="Platform to use (default: claude)"
     )

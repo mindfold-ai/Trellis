@@ -124,6 +124,30 @@ export function getIflowSourcePath(): string {
 }
 
 /**
+ * Get the path to the Codex templates directory.
+ *
+ * This reads from src/templates/codex/ (development) or dist/templates/codex/ (production).
+ * These are GENERIC templates, not the Trellis project's own .agents/.codex configuration.
+ */
+export function getCodexTemplatePath(): string {
+  const templatePath = path.join(__dirname, "codex");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find codex templates directory. Expected at templates/codex/",
+  );
+}
+
+/**
+ * @deprecated Use getCodexTemplatePath() instead.
+ */
+export function getCodexSourcePath(): string {
+  return getCodexTemplatePath();
+}
+
+/**
  * Get the path to the kilo templates directory.
  *
  * This reads from src/templates/kilo/ (development) or dist/templates/kilo/ (production).

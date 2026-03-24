@@ -9,15 +9,17 @@ const EXPECTED_SKILL_NAMES = [
   "check-cross-layer",
   "create-command",
   "finish-work",
+  "improve-ut",
   "integrate-skill",
   "onboard",
+  "parallel",
   "record-session",
   "start",
   "update-spec",
 ];
 
 describe("antigravity getAllWorkflows", () => {
-  it("returns the expected workflow set (without parallel)", () => {
+  it("returns the expected workflow set", () => {
     const workflows = getAllWorkflows();
     const names = workflows.map((workflow) => workflow.name);
     expect(names).toEqual(EXPECTED_SKILL_NAMES);

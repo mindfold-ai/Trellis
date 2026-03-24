@@ -44,6 +44,14 @@ describe("registry internal consistency", () => {
     }
   });
 
+  it("all extraManagedPaths values start with dot", () => {
+    for (const id of PLATFORM_IDS) {
+      for (const extraPath of AI_TOOLS[id].extraManagedPaths ?? []) {
+        expect(extraPath.startsWith(".")).toBe(true);
+      }
+    }
+  });
+
   it("no configDir collides with .trellis", () => {
     for (const id of PLATFORM_IDS) {
       expect(AI_TOOLS[id].configDir).not.toBe(".trellis");

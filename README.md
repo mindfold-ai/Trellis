@@ -98,7 +98,7 @@ Trellis keeps the core workflow in `.trellis/` and generates the platform-specif
 └── scripts/                 # Utilities that power the workflow
 ```
 
-Depending on the platforms you enable, Trellis also creates tool-specific integration files such as `.claude/`, `.cursor/`, `AGENTS.md`, `.agents/`, `.kilocode/`, and `.kiro/`.
+Depending on the platforms you enable, Trellis also creates tool-specific integration files such as `.claude/`, `.cursor/`, `AGENTS.md`, `.agents/`, `.codex/`, `.kilocode/`, and `.kiro/`. For Codex, Trellis now installs both project skills under `.agents/skills/` and project-scoped config/custom agents under `.codex/`.
 
 At a high level, the workflow is simple:
 

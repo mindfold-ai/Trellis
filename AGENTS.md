@@ -13,6 +13,10 @@ Use `@/.trellis/` to learn:
 - Project structure guidelines (`structure/`)
 - Session traces (`agent-traces/`)
 
+If you're using Codex, project-scoped helpers may also live in:
+- `.agents/skills/` for reusable Trellis skills
+- `.codex/agents/` for optional custom subagents
+
 Keep this managed block so 'trellis update' can refresh the instructions.
 
 <!-- TRELLIS:END -->

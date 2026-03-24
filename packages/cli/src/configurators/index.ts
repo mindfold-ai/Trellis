@@ -10,7 +10,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { AI_TOOLS, type AITool, type CliFlag } from "../types/ai-tools.js";
+import {
+  AI_TOOLS,
+  getManagedPaths,
+  type AITool,
+  type CliFlag,
+} from "../types/ai-tools.js";
 
 // Platform configurators
 import { configureClaude } from "./claude.js";
@@ -41,7 +46,11 @@ import {
   getAllHooks as getIflowHooks,
   getSettingsTemplate as getIflowSettings,
 } from "../templates/iflow/index.js";
-import { getAllSkills as getCodexSkills } from "../templates/codex/index.js";
+import {
+  getAllAgents as getCodexAgents,
+  getAllSkills as getCodexSkills,
+  getConfigTemplate as getCodexConfigTemplate,
+} from "../templates/codex/index.js";
 import { getAllWorkflows as getKiloWorkflows } from "../templates/kilo/index.js";
 import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
 import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
@@ -136,6 +145,11 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       for (const skill of getCodexSkills()) {
         files.set(`.agents/skills/${skill.name}/SKILL.md`, skill.content);
       }
+      for (const agent of getCodexAgents()) {
+        files.set(`.codex/agents/${agent.name}.toml`, agent.content);
+      }
+      const config = getCodexConfigTemplate();
+      files.set(`.codex/${config.targetPath}`, config.content);
       return files;
     },
   },
@@ -201,8 +215,13 @@ export const PLATFORM_IDS = Object.keys(AI_TOOLS) as AITool[];
 /** All platform config directory names (e.g., [".claude", ".cursor", ".iflow", ".opencode"]) */
 export const CONFIG_DIRS = PLATFORM_IDS.map((id) => AI_TOOLS[id].configDir);
 
+/** All managed paths for every platform (primary configDir + extra managed paths). */
+export const PLATFORM_MANAGED_DIRS = PLATFORM_IDS.flatMap((id) =>
+  getManagedPaths(id),
+);
+
 /** All directories managed by Trellis (including .trellis itself) */
-export const ALL_MANAGED_DIRS = [".trellis", ...CONFIG_DIRS];
+export const ALL_MANAGED_DIRS = [".trellis", ...new Set(PLATFORM_MANAGED_DIRS)];
 
 /**
  * Detect which platforms are configured by checking for directory existence
@@ -210,7 +229,11 @@ export const ALL_MANAGED_DIRS = [".trellis", ...CONFIG_DIRS];
 export function getConfiguredPlatforms(cwd: string): Set<AITool> {
   const platforms = new Set<AITool>();
   for (const id of PLATFORM_IDS) {
-    if (fs.existsSync(path.join(cwd, AI_TOOLS[id].configDir))) {
+    if (
+      getManagedPaths(id).some((managedPath) =>
+        fs.existsSync(path.join(cwd, managedPath)),
+      )
+    ) {
       platforms.add(id);
     }
   }
@@ -240,6 +263,13 @@ export function isManagedPath(dirPath: string): boolean {
  */
 export function isManagedRootDir(dirName: string): boolean {
   return ALL_MANAGED_DIRS.includes(dirName);
+}
+
+/**
+ * Get all managed paths for a platform.
+ */
+export function getPlatformManagedPaths(platformId: AITool): string[] {
+  return getManagedPaths(platformId);
 }
 
 /**

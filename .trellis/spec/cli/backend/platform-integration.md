@@ -83,6 +83,15 @@ When adding a new platform `{platform}`, update the following:
 | `src/templates/{platform}/skills/<skill-name>/SKILL.md` | Skill definitions |
 
 > Note: Codex/Kiro/Qoder use skills (not slash commands). Skill content should use `$<skill-name>` / `/skills` semantics, not `/trellis:*` syntax. Qoder skills use YAML frontmatter (`---\nname: ...\n---`) at the top of each SKILL.md.
+>
+> Codex also supports **project-scoped config and custom agents**:
+>
+> | Directory / File | Contents |
+> |------------------|----------|
+> | `src/templates/codex/config.toml` | Project-scoped Codex settings |
+> | `src/templates/codex/agents/*.toml` | Custom Codex subagents |
+>
+> When updating Codex integration, remember that `trellis init --codex` owns **both** `.agents/skills/` and `.codex/`.
 
 **Commands-only pattern** (Cursor):
 
@@ -177,7 +186,7 @@ When adding a new platform `{platform}`, update the following:
 
 > Note: Python scripts run in user projects at runtime — they cannot import from the TS registry and maintain their own registry in `cli_adapter.py`.
 >
-> Current scope for Codex integration: common scripts + `task.py` context path mapping. Multi-agent runtime (`multi_agent/*.py`) is intentionally out of scope.
+> Codex integration now includes `multi_agent/plan.py` and `multi_agent/start.py` platform choices in addition to common scripts and task path mapping. If Codex-managed directories change, update those argparse choices and detection logic together.
 
 ### Step 7: Documentation
 

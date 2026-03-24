@@ -278,8 +278,12 @@ class CLIAdapter:
             cmd.append(prompt)
 
         elif self.platform == "iflow":
-            cmd = ["iflow", "-y", "-p"]
-            cmd.append(f"${mapped_agent} {prompt}")
+            cmd = ["iflow", "-p"]
+            cmd.extend(["-y", "--agent", mapped_agent])
+            # iFlow doesn't support --session-id on creation
+            if verbose:
+                cmd.append("--verbose")
+            cmd.append(prompt)
         elif self.platform == "codex":
             cmd = ["codex", "exec"]
             cmd.append(prompt)
@@ -494,10 +498,12 @@ _ALL_PLATFORM_CONFIG_DIRS = (
     ".iflow",
     ".opencode",
     ".agents",
+    ".codex",
     ".kilocode",
     ".kiro",
     ".gemini",
     ".agent",
+    ".qoder",
 )
 """All platform config directory names (used by detect_platform exclusion checks)."""
 
@@ -519,7 +525,7 @@ def detect_platform(project_root: Path) -> Platform:
     2. .opencode directory exists → opencode
     3. .iflow directory exists → iflow
     4. .cursor directory exists (without .claude) → cursor
-    5. .agents/skills exists and no other platform dirs → codex
+    5. .agents/skills or .codex exists and no other platform dirs → codex
     6. .kilocode directory exists → kilo
     7. .kiro/skills exists and no other platform dirs → kiro
     8. .gemini directory exists → gemini
@@ -568,10 +574,11 @@ def detect_platform(project_root: Path) -> Platform:
     if (project_root / ".gemini").is_dir():
         return "gemini"
 
-    # Check for Codex skills directory only when no other platform config exists
-    if (project_root / ".agents" / "skills").is_dir() and not _has_other_platform_dir(
-        project_root, {".agents"}
-    ):
+    # Check for Codex skills/config only when no other platform config exists
+    if (
+        (project_root / ".agents" / "skills").is_dir()
+        or (project_root / ".codex").is_dir()
+    ) and not _has_other_platform_dir(project_root, {".agents", ".codex"}):
         return "codex"
 
     # Check for .kilocode directory (Kilo-specific)

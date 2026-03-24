@@ -61,6 +61,13 @@ export interface AIToolConfig {
   templateDirs: TemplateDir[];
   /** Config directory name in the project root (e.g., ".claude") */
   configDir: string;
+  /**
+   * Additional managed paths owned by the platform.
+   *
+   * Example: Codex uses both `.agents/skills/` for skills and `.codex/` for
+   * project config + custom agents.
+   */
+  extraManagedPaths?: string[];
   /** CLI flag name for --flag options (e.g., "claude" for --claude) */
   cliFlag: CliFlag;
   /** Whether this tool is checked by default in interactive init prompt */
@@ -117,6 +124,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Codex",
     templateDirs: ["common", "codex"],
     configDir: ".agents/skills",
+    extraManagedPaths: [".codex"],
     cliFlag: "codex",
     defaultChecked: false,
     hasPythonHooks: false,
@@ -168,6 +176,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
  */
 export function getToolConfig(tool: AITool): AIToolConfig {
   return AI_TOOLS[tool];
+}
+
+/**
+ * Get all managed paths for a specific tool.
+ */
+export function getManagedPaths(tool: AITool): string[] {
+  const config = AI_TOOLS[tool];
+  return [config.configDir, ...(config.extraManagedPaths ?? [])];
 }
 
 /**

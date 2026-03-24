@@ -136,7 +136,7 @@ Many projects already have coding conventions documented. **Check these first** 
 | File / Directory | Tool |
 |------|------|
 | \`CLAUDE.md\` / \`CLAUDE.local.md\` | Claude Code |
-| \`AGENTS.md\` | Claude Code |
+| \`AGENTS.md\` | Codex / Claude Code / agent-compatible tools |
 | \`.cursorrules\` | Cursor |
 | \`.cursor/rules/*.mdc\` | Cursor (rules directory) |
 | \`.windsurfrules\` | Windsurf |

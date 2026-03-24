@@ -17,6 +17,9 @@ describe("AI_TOOLS registry", () => {
       const config = AI_TOOLS[id];
       expect(config.name.length).toBeGreaterThan(0);
       expect(config.configDir.startsWith(".")).toBe(true);
+      for (const extraPath of config.extraManagedPaths ?? []) {
+        expect(extraPath.startsWith(".")).toBe(true);
+      }
       expect(config.cliFlag.length).toBeGreaterThan(0);
       expect(config.templateDirs).toContain("common");
     }

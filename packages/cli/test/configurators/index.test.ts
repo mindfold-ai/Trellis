@@ -3,8 +3,10 @@ import {
   ALL_MANAGED_DIRS,
   CONFIG_DIRS,
   PLATFORM_IDS,
+  PLATFORM_MANAGED_DIRS,
   collectPlatformTemplates,
   getInitToolChoices,
+  getPlatformManagedPaths,
   getPlatformsWithPythonHooks,
   isManagedPath,
   isManagedRootDir,
@@ -41,8 +43,8 @@ describe("ALL_MANAGED_DIRS", () => {
     expect(ALL_MANAGED_DIRS[0]).toBe(".trellis");
   });
 
-  it("contains .trellis plus all config dirs", () => {
-    expect(ALL_MANAGED_DIRS).toEqual([".trellis", ...CONFIG_DIRS]);
+  it("contains .trellis plus all managed dirs", () => {
+    expect(ALL_MANAGED_DIRS).toEqual([".trellis", ...new Set(PLATFORM_MANAGED_DIRS)]);
   });
 
   it("has no duplicates", () => {
@@ -63,6 +65,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".iflow/hooks/test.py")).toBe(true);
     expect(isManagedPath(".opencode/config.json")).toBe(true);
     expect(isManagedPath(".agents/skills/start/SKILL.md")).toBe(true);
+    expect(isManagedPath(".codex/agents/trellis-reviewer.toml")).toBe(true);
     expect(isManagedPath(".agent/workflows/start.md")).toBe(true);
     expect(isManagedPath(".kiro/skills/start/SKILL.md")).toBe(true);
   });
@@ -74,6 +77,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".iflow")).toBe(true);
     expect(isManagedPath(".opencode")).toBe(true);
     expect(isManagedPath(".agents/skills")).toBe(true);
+    expect(isManagedPath(".codex")).toBe(true);
     expect(isManagedPath(".agent/workflows")).toBe(true);
     expect(isManagedPath(".kiro/skills")).toBe(true);
     expect(isManagedPath(".trellis")).toBe(true);
@@ -92,6 +96,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".cursorignore")).toBe(false);
     expect(isManagedPath(".opencode-v2")).toBe(false);
     expect(isManagedPath(".agents/skills-backup")).toBe(false);
+    expect(isManagedPath(".codex-backup")).toBe(false);
     expect(isManagedPath(".agent/workflows-backup")).toBe(false);
     expect(isManagedPath(".kiro/skills-backup")).toBe(false);
   });
@@ -121,6 +126,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".trellis\\spec\\backend")).toBe(true);
     expect(isManagedPath(".iflow\\hooks\\test.py")).toBe(true);
     expect(isManagedPath(".agents\\skills\\start\\SKILL.md")).toBe(true);
+    expect(isManagedPath(".codex\\agents\\trellis-reviewer.toml")).toBe(true);
     expect(isManagedPath(".agent\\workflows\\start.md")).toBe(true);
     expect(isManagedPath(".kiro\\skills\\start\\SKILL.md")).toBe(true);
   });
@@ -144,6 +150,10 @@ describe("isManagedRootDir", () => {
 
   it("matches .trellis", () => {
     expect(isManagedRootDir(".trellis")).toBe(true);
+  });
+
+  it("matches extra managed root dirs", () => {
+    expect(isManagedRootDir(".codex")).toBe(true);
   });
 
   it("rejects sub-paths (not a root dir)", () => {
@@ -279,9 +289,14 @@ describe("collectPlatformTemplates", () => {
     for (const id of PLATFORM_IDS) {
       const result = collectPlatformTemplates(id);
       if (result) {
-        const configDir = AI_TOOLS[id].configDir;
+        const managedPaths = getPlatformManagedPaths(id);
         for (const [filePath] of result) {
-          expect(filePath.startsWith(configDir + "/")).toBe(true);
+          expect(
+            managedPaths.some(
+              (managedPath) =>
+                filePath === managedPath || filePath.startsWith(managedPath + "/"),
+            ),
+          ).toBe(true);
         }
       }
     }
