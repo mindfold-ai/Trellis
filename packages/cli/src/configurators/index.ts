@@ -28,6 +28,7 @@ import { configureKiro } from "./kiro.js";
 import { configureGemini } from "./gemini.js";
 import { configureAntigravity } from "./antigravity.js";
 import { configureQoder } from "./qoder.js";
+import { configureCodebuddy } from "./codebuddy.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -56,6 +57,7 @@ import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
 import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
 import { getAllWorkflows as getAntigravityWorkflows } from "../templates/antigravity/index.js";
 import { getAllSkills as getQoderSkills } from "../templates/qoder/index.js";
+import { getAllCommands as getCodebuddyCommands } from "../templates/codebuddy/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -199,6 +201,17 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       const files = new Map<string, string>();
       for (const skill of getQoderSkills()) {
         files.set(`.qoder/skills/${skill.name}/SKILL.md`, skill.content);
+      }
+      return files;
+    },
+  },
+  codebuddy: {
+    configure: configureCodebuddy,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      // Commands in trellis/ subdirectory (CodeBuddy supports nested dirs)
+      for (const cmd of getCodebuddyCommands()) {
+        files.set(`.codebuddy/commands/trellis/${cmd.name}.md`, cmd.content);
       }
       return files;
     },

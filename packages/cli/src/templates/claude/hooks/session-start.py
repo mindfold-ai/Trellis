@@ -130,8 +130,8 @@ def _load_trellis_config(trellis_dir: Path) -> tuple:
         sys.path.insert(0, str(scripts_dir))
 
     try:
-        from common.config import get_default_package, get_packages, get_spec_scope, is_monorepo
-        from common.paths import get_current_task
+        from common.config import get_default_package, get_packages, get_spec_scope, is_monorepo  # type: ignore[import-not-found]
+        from common.paths import get_current_task  # type: ignore[import-not-found]
 
         repo_root = trellis_dir.parent
         is_mono = is_monorepo(repo_root)

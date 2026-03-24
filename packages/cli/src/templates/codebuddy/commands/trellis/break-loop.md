@@ -1,11 +1,6 @@
----
-name: break-loop
-description: "Deep post-fix bug analysis across five dimensions: root cause categorization, fix failure analysis, prevention mechanisms, systematic expansion, and knowledge capture. Updates .trellis/spec/ guides with lessons learned to prevent recurring bugs. Use when a debugging session completes, after fixing a tricky bug, when the same class of bug keeps recurring, or when you want to capture debugging insights into project documentation."
----
-
 # Break the Loop - Deep Bug Analysis
 
-When debug is complete, use this skill for deep analysis to break the "fix bug -> forget -> repeat" cycle.
+When debug is complete, use this command for deep analysis to break the "fix bug -> forget -> repeat" cycle.
 
 ---
 
@@ -64,7 +59,7 @@ Solidify insights into the system:
 - [ ] Update `.trellis/spec/backend/` or `frontend/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
-- [ ] Update check skills if needed
+- [ ] Update check commands if needed
 
 ---
 
@@ -110,21 +105,3 @@ Three levels of insight:
 3. **Philosophical**: How to expand thinking patterns
 
 30 minutes of analysis saves 30 hours of future debugging.
-
----
-
-## After Analysis: Immediate Actions
-
-**IMPORTANT**: After completing the analysis above, you MUST immediately:
-
-1. **Update spec/guides** - Don't just list TODOs, actually update the relevant files:
-   - If it's a cross-platform issue → update `cross-platform-thinking-guide.md`
-   - If it's a cross-layer issue → update `cross-layer-thinking-guide.md`
-   - If it's a code reuse issue → update `code-reuse-thinking-guide.md`
-   - If it's domain-specific → update `backend/*.md` or `frontend/*.md`
-
-2. **Sync templates** - After updating `.trellis/spec/`, sync to `src/templates/markdown/spec/`
-
-3. **Commit the spec updates** - This is the primary output, not just the analysis text
-
-> **The analysis is worthless if it stays in chat. The value is in the updated specs.**

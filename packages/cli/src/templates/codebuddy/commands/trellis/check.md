@@ -1,8 +1,3 @@
----
-name: check
-description: "Validates recently written code against project-specific development guidelines from .trellis/spec/. Identifies changed files via git diff, discovers applicable spec modules, runs lint and typecheck, and reports guideline violations. Use when code is written and needs quality verification, to catch context drift during long sessions, or before committing changes."
----
-
 Check if the code you just wrote follows the development guidelines.
 
 Execute these steps:

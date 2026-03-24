@@ -1,0 +1,9 @@
+{
+  "version": "0.4.0-beta.7",
+  "description": "Fix Pyright import warnings in session-start hooks",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(hooks): suppress Pyright/Pylance import warnings in session-start.py — added `type: ignore[import-not-found]` to dynamic imports from `common.*` that are resolved at runtime via sys.path",
+  "migrations": [],
+  "notes": "Run `trellis update` to sync. No migration required."
+}

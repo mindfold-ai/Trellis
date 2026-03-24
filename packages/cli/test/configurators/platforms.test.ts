@@ -18,6 +18,7 @@ import { getAllWorkflows as getAllAntigravityWorkflows } from "../../src/templat
 import { getAllSkills as getAllKiroSkills } from "../../src/templates/kiro/index.js";
 import { getAllCommands as getAllGeminiCommands } from "../../src/templates/gemini/index.js";
 import { getAllSkills as getAllQoderSkills } from "../../src/templates/qoder/index.js";
+import { getAllCommands as getAllCodebuddyCommands } from "../../src/templates/codebuddy/index.js";
 
 // =============================================================================
 // getConfiguredPlatforms — detects existing platform directories
@@ -99,6 +100,12 @@ describe("getConfiguredPlatforms", () => {
     fs.mkdirSync(path.join(tmpDir, ".qoder"), { recursive: true });
     const result = getConfiguredPlatforms(tmpDir);
     expect(result.has("qoder")).toBe(true);
+  });
+
+  it("detects .codebuddy directory as codebuddy", () => {
+    fs.mkdirSync(path.join(tmpDir, ".codebuddy"), { recursive: true });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("codebuddy")).toBe(true);
   });
 
   it("detects multiple platforms simultaneously", () => {
@@ -363,6 +370,59 @@ describe("configurePlatform", () => {
     };
 
     const allFiles = walk(path.join(tmpDir, ".qoder"));
+    for (const file of allFiles) {
+      expect(file).not.toMatch(/\.js$/);
+      expect(file).not.toMatch(/\.d\.ts$/);
+      expect(file).not.toMatch(/\.js\.map$/);
+      expect(file).not.toMatch(/\.d\.ts\.map$/);
+    }
+  });
+
+  it("configurePlatform('codebuddy') creates .codebuddy directory", async () => {
+    await configurePlatform("codebuddy", tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(true);
+  });
+
+  it("configurePlatform('codebuddy') writes all command templates in trellis/ subdirectory", async () => {
+    await configurePlatform("codebuddy", tmpDir);
+
+    const expectedCommands = getAllCodebuddyCommands();
+    const expectedNames = expectedCommands.map((c) => c.name).sort();
+
+    const commandsDir = path.join(tmpDir, ".codebuddy", "commands", "trellis");
+    expect(fs.existsSync(commandsDir)).toBe(true);
+
+    const actualFiles = fs
+      .readdirSync(commandsDir)
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => f.replace(".md", ""))
+      .sort();
+
+    expect(actualFiles).toEqual(expectedNames);
+
+    for (const cmd of expectedCommands) {
+      const content = fs.readFileSync(
+        path.join(commandsDir, `${cmd.name}.md`),
+        "utf-8",
+      );
+      expect(content.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("configurePlatform('codebuddy') does not include compiled artifacts", async () => {
+    await configurePlatform("codebuddy", tmpDir);
+
+    const walk = (dir: string): string[] => {
+      const files: string[] = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) files.push(...walk(full));
+        else files.push(entry.name);
+      }
+      return files;
+    };
+
+    const allFiles = walk(path.join(tmpDir, ".codebuddy"));
     for (const file of allFiles) {
       expect(file).not.toMatch(/\.js$/);
       expect(file).not.toMatch(/\.d\.ts$/);

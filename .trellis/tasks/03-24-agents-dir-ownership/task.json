@@ -1,0 +1,47 @@
+{
+  "id": "agents-dir-ownership",
+  "name": "agents-dir-ownership",
+  "title": "brainstorm: .agents 共享目录归属与多 Agent CLI 适配",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-03-24",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "feat/v0.4.0-beta",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "linear_issue": "MIN-414"
+  }
+}

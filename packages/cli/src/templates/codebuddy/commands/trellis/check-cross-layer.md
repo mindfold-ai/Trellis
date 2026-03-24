@@ -1,8 +1,3 @@
----
-name: check-cross-layer
-description: "Post-implementation verification across multiple code dimensions: cross-layer data flow, code reuse analysis, import path validation, and same-layer consistency checks. Identifies missed update sites, type mismatches, and duplicated constants. Use when changes span 3+ architectural layers, after modifying shared constants or configs, after batch file modifications, or when creating new utility functions."
----
-
 # Cross-Layer Check
 
 Check if your changes considered all dimensions. Most bugs come from "didn't think of it", not lack of technical skill.
@@ -17,7 +12,7 @@ Check if your changes considered all dimensions. Most bugs come from "didn't thi
 |----------|---------|--------|
 | [Pre-Implementation Checklist](.trellis/spec/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
 | [Code Reuse Thinking Guide](.trellis/spec/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
-| **`$check-cross-layer`** (this skill) | Verification check | **After** implementation |
+| **`/trellis:check-cross-layer`** (this) | Verification check | **After** implementation |
 
 ---
 

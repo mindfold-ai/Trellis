@@ -1,8 +1,3 @@
----
-name: start
-description: "Initializes an AI development session by reading workflow guides, developer identity, git status, active tasks, and project guidelines from .trellis/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context."
----
-
 # Start Session
 
 Initialize your AI development session and begin working on tasks.
@@ -11,38 +6,39 @@ Initialize your AI development session and begin working on tasks.
 
 ## Operation Types
 
+Operations in this document are categorized as:
+
 | Marker | Meaning | Executor |
 |--------|---------|----------|
-| `[AI]` | Bash scripts or tool calls executed by AI | You (AI) |
-| `[USER]` | Skills executed by user | User |
+| `[AI]` | Bash scripts or file reads executed by AI | You (AI) |
+| `[USER]` | Slash commands executed by user | User |
 
 ---
 
-## Initialization `[AI]`
+## Initialization
 
-### Step 1: Understand Development Workflow
+### Step 1: Understand Trellis Workflow `[AI]`
 
 First, read the workflow guide to understand the development process:
 
 ```bash
-cat .trellis/workflow.md
+cat .trellis/workflow.md  # Development process, conventions, and quick start guide
 ```
 
-**Follow the instructions in workflow.md** - it contains:
-- Core principles (Read Before Write, Follow Standards, etc.)
-- File system structure
-- Development process
-- Best practices
-
-### Step 2: Get Current Context
+### Step 2: Get Current Status `[AI]`
 
 ```bash
 python3 ./.trellis/scripts/get_context.py
 ```
 
-This shows: developer identity, git status, current task (if any), active tasks.
+This returns:
+- Developer identity
+- Git status (branch, uncommitted changes)
+- Recent commits
+- Active tasks
+- Journal file status
 
-### Step 3: Read Guidelines Index
+### Step 3: Read Guidelines Index `[AI]`
 
 ```bash
 python3 ./.trellis/scripts/get_context.py --mode packages
@@ -59,9 +55,31 @@ cat .trellis/spec/guides/index.md              # Thinking guides (always read)
 > At this step, just read the indexes to understand what's available.
 > When you start actual development, you MUST go back and read the specific guideline files relevant to your task, as listed in the index's Pre-Development Checklist.
 
-### Step 4: Report and Ask
+### Step 4: Check Active Tasks `[AI]`
 
-Report what you learned and ask: "What would you like to work on?"
+```bash
+python3 ./.trellis/scripts/task.py list
+```
+
+If continuing previous work, review the task file.
+
+### Step 5: Report Ready Status and Ask for Tasks
+
+Output a summary:
+
+```markdown
+## Session Initialized
+
+| Item | Status |
+|------|--------|
+| Developer | {name} |
+| Branch | {branch} |
+| Uncommitted | {count} file(s) |
+| Journal | {file} ({lines}/2000 lines) |
+| Active Tasks | {count} |
+
+Ready for your task. What would you like to work on?
+```
 
 ---
 
@@ -85,7 +103,7 @@ When user describes a task, classify it:
 
 > **Subtask Decomposition**: If brainstorm reveals multiple independent work items,
 > consider creating subtasks using `--parent` flag or `add-subtask` command.
-> See the brainstorm skill's Step 8 for details.
+> See `/trellis:brainstorm` Step 8 for details.
 
 ---
 
@@ -94,7 +112,7 @@ When user describes a task, classify it:
 For questions or trivial fixes, work directly:
 
 1. Answer question or make the fix
-2. If code was changed, remind user to run `$finish-work`
+2. If code was changed, remind user to run `/trellis:finish-work`
 
 ---
 
@@ -118,9 +136,9 @@ For simple, well-defined tasks:
 
 ## Complex Task - Brainstorm First
 
-For complex or vague tasks, **automatically start the brainstorm process** — do NOT skip directly to implementation.
+For complex or vague tasks, **automatically start the brainstorm process** — do NOT skip directly to implementation. Use `/trellis:brainstorm`.
 
-See `$brainstorm` for the full process. Summary:
+Summary:
 
 1. **Acknowledge and classify** - State your understanding
 2. **Create task directory** - Track evolving requirements in `prd.md`
@@ -294,58 +312,62 @@ Run a quality pass against check context:
 3. Remind user to:
    - Test the changes
    - Commit when ready
-   - Run `$record-session` to record this session
+   - Run `/trellis:record-session` to record this session
 
 ---
 
-## Continuing Existing Task
+## User Available Commands `[USER]`
 
-If `get_context.py` shows a current task:
+The following slash commands are for users (not AI):
 
-1. Read the task's `prd.md` to understand the goal
-2. Check `task.json` for current status and phase
-3. Ask user: "Continue working on <task-name>?"
-
-If yes, resume from the appropriate step (usually Step 7 or 8).
-
----
-
-## Skills Reference
-
-### User Skills `[USER]`
-
-| Skill | When to Use |
+| Command | Description |
 |---------|-------------|
-| `$start` | Begin a session (this skill) |
-| `$finish-work` | Before committing changes |
-| `$record-session` | After completing a task |
+| `/trellis:start` | Start development session (this command) |
+| `/trellis:brainstorm` | Clarify vague requirements before implementation |
+| `/trellis:before-dev` | Read development guidelines |
+| `/trellis:check` | Check code quality |
+| `/trellis:check-cross-layer` | Cross-layer verification |
+| `/trellis:finish-work` | Pre-commit checklist |
+| `/trellis:record-session` | Record session progress |
 
-### AI Scripts `[AI]`
+---
+
+## AI Executed Scripts `[AI]`
 
 | Script | Purpose |
 |--------|---------|
+| `python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>]` | Create task directory |
+| `python3 ./.trellis/scripts/task.py list` | List active tasks |
+| `python3 ./.trellis/scripts/task.py archive <name>` | Archive task |
 | `python3 ./.trellis/scripts/get_context.py` | Get session context |
-| `python3 ./.trellis/scripts/task.py create` | Create task directory |
-| `python3 ./.trellis/scripts/task.py init-context` | Initialize jsonl files |
-| `python3 ./.trellis/scripts/task.py add-context` | Add spec to jsonl |
-| `python3 ./.trellis/scripts/task.py start` | Set current task |
-| `python3 ./.trellis/scripts/task.py finish` | Clear current task |
-| `python3 ./.trellis/scripts/task.py archive` | Archive completed task |
-
-### Workflow Phases `[AI]`
-
-| Phase | Purpose | Context Source |
-|-------|---------|----------------|
-| research | Analyze codebase | direct repo inspection |
-| implement | Write code | `implement.jsonl` |
-| check | Review & fix | `check.jsonl` |
-| debug | Fix specific issues | `debug.jsonl` |
 
 ---
 
-## Key Principle
+## Platform Detection
 
-> **Code-spec context is injected, not remembered.**
->
-> The Task Workflow ensures agents receive relevant code-spec context automatically.
-> This is more reliable than hoping the AI "remembers" conventions.
+Trellis auto-detects your platform based on config directories. For CodeBuddy users, ensure detection works correctly:
+
+| Condition | Detected Platform |
+|-----------|-------------------|
+| Only `.codebuddy/` exists | `codebuddy` ✅ |
+| Both `.codebuddy/` and `.claude/` exist | `claude` (default) |
+
+If auto-detection fails, set manually:
+
+```bash
+export TRELLIS_PLATFORM=codebuddy
+```
+
+Or prefix commands:
+
+```bash
+TRELLIS_PLATFORM=codebuddy python3 ./.trellis/scripts/task.py list
+```
+
+---
+
+## Session End Reminder
+
+**IMPORTANT**: When a task or session is completed, remind the user:
+
+> Before ending this session, please run `/trellis:record-session` to record what we accomplished.

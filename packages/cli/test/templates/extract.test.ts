@@ -12,6 +12,7 @@ import {
   getGeminiTemplatePath,
   getAntigravityTemplatePath,
   getQoderTemplatePath,
+  getCodebuddyTemplatePath,
   getTrellisSourcePath,
   getCursorSourcePath,
   getClaudeSourcePath,
@@ -99,6 +100,12 @@ describe("template path functions", () => {
 
   it("getQoderTemplatePath returns existing directory", () => {
     const p = getQoderTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
+
+  it("getCodebuddyTemplatePath returns existing directory", () => {
+    const p = getCodebuddyTemplatePath();
     expect(fs.existsSync(p)).toBe(true);
     expect(fs.statSync(p).isDirectory()).toBe(true);
   });

@@ -659,6 +659,7 @@ describe("regression: update only configured platforms (beta.16)", () => {
       "gemini",
       "antigravity",
       "qoder",
+      "codebuddy",
     ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);
@@ -911,6 +912,11 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.qoder.configDir).toBe(".qoder");
   });
 
+  it("[codebuddy] CodeBuddy platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("codebuddy");
+    expect(AI_TOOLS.codebuddy.configDir).toBe(".codebuddy");
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -972,6 +978,11 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".qoder");
   });
 
+  it("[codebuddy] cli_adapter.py supports codebuddy platform", () => {
+    expect(commonCliAdapter).toContain('"codebuddy"');
+    expect(commonCliAdapter).toContain(".codebuddy");
+  });
+
   it("[beta.9] cli_adapter.py has detect_platform function", () => {
     expect(commonCliAdapter).toContain("def detect_platform");
   });
@@ -993,6 +1004,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".gemini");
     expect(commonCliAdapter).toContain(".agent");
     expect(commonCliAdapter).toContain(".qoder");
+    expect(commonCliAdapter).toContain(".codebuddy");
   });
 
   it("[0.3.10] iFlow CLI uses correct agent invocation syntax", () => {

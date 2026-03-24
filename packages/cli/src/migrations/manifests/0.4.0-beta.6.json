@@ -1,0 +1,9 @@
+{
+  "version": "0.4.0-beta.6",
+  "description": "CodeBuddy platform support, OpenCode plugin fix, improved skill descriptions",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(platform): add CodeBuddy (Tencent) platform support with nested slash commands (.codebuddy/commands/trellis/)\n- feat(skills): improve skill descriptions across Codex, Kiro, and Qoder for better AI triggering accuracy\n\n**Bug Fixes:**\n- fix(opencode): correct plugin directory name from plugin/ to plugins/ in configurator",
+  "migrations": [],
+  "notes": "Run `trellis update` to sync. No migration required."
+}

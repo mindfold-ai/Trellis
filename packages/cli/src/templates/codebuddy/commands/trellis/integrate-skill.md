@@ -1,22 +1,17 @@
----
-name: integrate-skill
-description: "Adapts an external skill into project-specific development guidelines in .trellis/spec/. Creates guideline sections, code example templates with .template suffix, and updates spec indexes. Use when integrating an external skill, adding a new skill's patterns to project conventions, or incorporating third-party skill best practices into .trellis/spec/ documentation."
----
+# Integrate Claude Skill into Project Guidelines
 
-# Integrate Skill into Project Guidelines
-
-Adapt and integrate a reusable skill into your project's development guidelines (not directly into project code).
+Adapt and integrate a Claude global skill into your project's development guidelines (not directly into project code).
 
 ## Usage
 
 ```
-$integrate-skill <skill-name>
+/trellis:integrate-skill <skill-name>
 ```
 
 **Examples**:
 ```
-$integrate-skill frontend-design
-$integrate-skill mcp-builder
+/trellis:integrate-skill frontend-design
+/trellis:integrate-skill mcp-builder
 ```
 
 ## Core Principle
@@ -33,11 +28,14 @@ $integrate-skill mcp-builder
 
 ### 1. Read Skill Content
 
-Locate and read the skill instructions:
-- `.agents/skills/<skill-name>/SKILL.md` in the repository
-- Skill list in `AGENTS.md` (when available in current context)
+```bash
+openskills read <skill-name>
+```
 
-If the skill cannot be found, ask the user for the source path or repository.
+If the skill doesn't exist, prompt user to check available skills:
+```bash
+# Available skills are listed in AGENTS.md under <available_skills>
+```
 
 ### 2. Determine Integration Target
 
@@ -166,12 +164,12 @@ yarn add <package>
 
 ---
 
-## 6. Optional: Create Usage Skill
+## 6. Optional: Create Usage Command
 
-If this skill is frequently used, create a shortcut skill:
+If this skill is frequently used, create a shortcut command:
 
 ```bash
-$create-command use-<skill-name> Use <skill-name> skill following project guidelines
+/trellis:create-command use-<skill-name> Use <skill-name> skill following project guidelines
 ```
 
 ## Common Skill Integration Reference

@@ -59,7 +59,7 @@ def write_prd_header() -> str:
 Welcome to Trellis! This is your first task.
 
 AI agents use `.trellis/spec/` to understand YOUR project's coding conventions.
-**Empty templates = AI writes generic code that doesn't match your project style.**
+**Starting from scratch = AI writes generic code that doesn't match your project style.**
 
 Filling these guidelines is a one-time setup that pays off for every future AI session.
 

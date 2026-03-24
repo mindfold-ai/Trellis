@@ -230,6 +230,23 @@ export function getQoderTemplatePath(): string {
 }
 
 /**
+ * Get the path to the codebuddy templates directory.
+ *
+ * This reads from src/templates/codebuddy/ (development) or dist/templates/codebuddy/ (production).
+ * These are GENERIC templates, not the Trellis project's own .codebuddy/ configuration.
+ */
+export function getCodebuddyTemplatePath(): string {
+  const templatePath = path.join(__dirname, "codebuddy");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find codebuddy templates directory. Expected at templates/codebuddy/",
+  );
+}
+
+/**
  * Read a file from the .trellis directory
  * @param relativePath - Path relative to .trellis/ (e.g., 'scripts/task.py')
  * @returns File content as string

@@ -48,18 +48,9 @@ default_package: cli
 #
 update:
   skip:
-    - .claude/commands/trellis/before-frontend-dev.md
-    - .claude/commands/trellis/before-backend-dev.md
-    - .claude/commands/trellis/check-frontend.md
-    - .claude/commands/trellis/check-backend.md
-    - .cursor/commands/trellis-before-frontend-dev.md
-    - .cursor/commands/trellis-before-backend-dev.md
-    - .cursor/commands/trellis-check-frontend.md
-    - .cursor/commands/trellis-check-backend.md
-    - .agents/skills/before-frontend-dev/
-    - .agents/skills/before-backend-dev/
-    - .agents/skills/check-frontend/
-    - .agents/skills/check-backend/
+    - .claude/commands/
+    - .agents/skills/
+    - .cursor/
 
 #-------------------------------------------------------------------------------
 # Task Lifecycle Hooks

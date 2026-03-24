@@ -360,6 +360,7 @@ interface InitOptions {
   gemini?: boolean;
   antigravity?: boolean;
   qoder?: boolean;
+  codebuddy?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

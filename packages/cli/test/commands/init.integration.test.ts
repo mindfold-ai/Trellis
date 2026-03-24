@@ -70,6 +70,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(false);
 
     // Root files
     expect(fs.existsSync(path.join(tmpDir, "AGENTS.md"))).toBe(true);
@@ -89,6 +90,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(false);
   });
 
   it("#3 multi platform creates all selected platform directories", async () => {
@@ -105,6 +107,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(false);
   });
 
   it("#3b codex platform creates skills plus .codex assets", async () => {
@@ -170,6 +173,21 @@ describe("init() integration", () => {
     expect(
       fs.existsSync(
         path.join(tmpDir, ".qoder", "skills", "start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
+  });
+
+  it("#3h codebuddy platform creates .codebuddy/commands/trellis", async () => {
+    await init({ yes: true, codebuddy: true });
+
+    expect(
+      fs.existsSync(path.join(tmpDir, ".codebuddy", "commands", "trellis")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".codebuddy", "commands", "trellis", "start.md"),
       ),
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);

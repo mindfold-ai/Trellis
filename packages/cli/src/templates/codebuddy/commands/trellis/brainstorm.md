@@ -1,8 +1,3 @@
----
-name: brainstorm
-description: "Collaborative requirements discovery session optimized for AI coding workflows. Creates task directories, seeds PRDs, runs codebase research, proposes concrete implementation approaches with trade-offs, and converges on MVP scope through structured Q&A. Use when requirements are unclear, multiple implementation paths exist, trade-offs need evaluation, or a complex feature needs scoping before development."
----
-
 # Brainstorm - Requirements Discovery (AI Coding Enhanced)
 
 Guide AI through collaborative requirements discovery **before implementation**, optimized for AI coding workflows:
@@ -16,7 +11,7 @@ Guide AI through collaborative requirements discovery **before implementation**,
 
 ## When to Use
 
-Triggered from `$start` when the user describes a development task, especially when:
+Triggered from `/trellis:start` when the user describes a development task, especially when:
 
 * requirements are unclear or evolving
 * there are multiple valid implementation paths
@@ -487,6 +482,6 @@ The task directory and PRD already exist from brainstorm, so Phase 1 of the Task
 
 | Command | When to Use |
 |---------|-------------|
-| `$start` | Entry point that triggers brainstorm |
-| `$finish-work` | After implementation is complete |
-| `$update-spec` | If new patterns emerge during work |
+| `/trellis:start` | Entry point that triggers brainstorm |
+| `/trellis:finish-work` | After implementation is complete |
+| `/trellis:update-spec` | If new patterns emerge during work |

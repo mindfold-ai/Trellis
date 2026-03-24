@@ -17,7 +17,8 @@ export type AITool =
   | "kiro"
   | "gemini"
   | "antigravity"
-  | "qoder";
+  | "qoder"
+  | "codebuddy";
 
 /**
  * Template directory categories
@@ -33,7 +34,8 @@ export type TemplateDir =
   | "kiro"
   | "gemini"
   | "antigravity"
-  | "qoder";
+  | "qoder"
+  | "codebuddy";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -49,7 +51,8 @@ export type CliFlag =
   | "kiro"
   | "gemini"
   | "antigravity"
-  | "qoder";
+  | "qoder"
+  | "codebuddy";
 
 /**
  * Configuration for an AI tool
@@ -166,6 +169,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "qoder"],
     configDir: ".qoder",
     cliFlag: "qoder",
+    defaultChecked: false,
+    hasPythonHooks: false,
+  },
+  codebuddy: {
+    name: "CodeBuddy",
+    templateDirs: ["common", "codebuddy"],
+    configDir: ".codebuddy",
+    cliFlag: "codebuddy",
     defaultChecked: false,
     hasPythonHooks: false,
   },

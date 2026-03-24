@@ -70,6 +70,7 @@ program
   .option("--gemini", "Include Gemini CLI commands")
   .option("--antigravity", "Include Antigravity workflows")
   .option("--qoder", "Include Qoder commands")
+  .option("--codebuddy", "Include CodeBuddy commands")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",

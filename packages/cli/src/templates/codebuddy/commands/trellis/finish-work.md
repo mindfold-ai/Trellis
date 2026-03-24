@@ -1,8 +1,3 @@
----
-name: finish-work
-description: "Pre-commit quality checklist covering lint, typecheck, tests, code-spec sync, API changes, database migrations, cross-layer verification, and manual testing. Blocks commit if infra or cross-layer specs lack executable depth. Use when code is written and tested but not yet committed, before submitting changes, or as a final review before git commit."
----
-
 # Finish Work - Pre-Commit Checklist
 
 Before submitting or committing, use this checklist to ensure work completeness.
@@ -55,7 +50,7 @@ If this change touches infra or cross-layer contracts, this is a blocking checkl
 - [ ] Includes required tests and assertion points
 
 **Block Rule**:
-If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Run `$update-spec` manually first.
+If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Run `/trellis:update-spec` manually first.
 
 ### 3. API Changes
 
@@ -125,19 +120,19 @@ git diff --name-only
 
 ```
 Development Flow:
-  Write code -> Test -> $finish-work -> git commit -> $record-session
+  Write code -> Test -> /trellis:finish-work -> git commit -> /trellis:record-session
                           |                              |
                    Ensure completeness              Record progress
                    
 Debug Flow:
-  Hit bug -> Fix -> $break-loop -> Knowledge capture
+  Hit bug -> Fix -> /trellis:break-loop -> Knowledge capture
                        |
                   Deep analysis
 ```
 
-- `$finish-work` - Check work completeness (this skill)
-- `$record-session` - Record session and commits
-- `$break-loop` - Deep analysis after debugging
+- `/trellis:finish-work` - Check work completeness (this command)
+- `/trellis:record-session` - Record session and commits
+- `/trellis:break-loop` - Deep analysis after debugging
 
 ---
 

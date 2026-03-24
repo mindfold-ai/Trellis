@@ -8,7 +8,7 @@
 
 <p align="center">
 <strong>给 AI 立规矩的开源框架</strong><br/>
-<sub>支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity 和 Qoder。</sub>
+<sub>支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity、Qoder 和 CodeBuddy。</sub>
 </p>
 
 <p align="center">
@@ -66,7 +66,7 @@ trellis init --cursor --opencode --codex -u your-name
 ```
 
 - `-u your-name` 会创建 `.trellis/workspace/your-name/`，用来保存个人 journal 和会话连续性。
-- 平台参数可以自由组合。当前可选项包括 `--cursor`、`--opencode`、`--iflow`、`--codex`、`--kilo`、`--kiro`、`--gemini`、`--antigravity` 和 `--qoder`。
+- 平台参数可以自由组合。当前可选项包括 `--cursor`、`--opencode`、`--iflow`、`--codex`、`--kilo`、`--kiro`、`--gemini`、`--antigravity`、`--qoder` 和 `--codebuddy`。
 - 更完整的安装步骤、各平台入口命令和升级方式放在文档站：
   [快速开始](https://docs.trytrellis.app/zh/guide/ch02-quick-start) •
   [支持平台](https://docs.trytrellis.app/zh/guide/ch13-multi-platform) •
