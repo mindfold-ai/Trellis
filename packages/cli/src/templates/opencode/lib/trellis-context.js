@@ -11,7 +11,7 @@
  */
 
 import { existsSync, readFileSync, appendFileSync, readdirSync } from "fs"
-import { join } from "path"
+import { isAbsolute, join } from "path"
 import { homedir, platform } from "os"
 import { execSync } from "child_process"
 
@@ -191,10 +191,50 @@ export class TrellisContext {
       if (!existsSync(currentTaskPath)) {
         return null
       }
-      return readFileSync(currentTaskPath, "utf-8").trim()
+      const taskRef = readFileSync(currentTaskPath, "utf-8").trim()
+      const normalized = this.normalizeTaskRef(taskRef)
+      return normalized || null
     } catch {
       return null
     }
+  }
+
+  normalizeTaskRef(taskRef) {
+    if (!taskRef) {
+      return ""
+    }
+
+    if (isAbsolute(taskRef)) {
+      return taskRef.trim()
+    }
+
+    let normalized = taskRef.trim().replace(/\\/g, "/")
+    while (normalized.startsWith("./")) {
+      normalized = normalized.slice(2)
+    }
+
+    if (normalized.startsWith("tasks/")) {
+      return `.trellis/${normalized}`
+    }
+
+    return normalized
+  }
+
+  resolveTaskDir(taskRef) {
+    const normalized = this.normalizeTaskRef(taskRef)
+    if (!normalized) {
+      return null
+    }
+
+    if (isAbsolute(normalized)) {
+      return normalized
+    }
+
+    if (normalized.startsWith(".trellis/")) {
+      return join(this.directory, normalized)
+    }
+
+    return join(this.directory, ".trellis", "tasks", normalized)
   }
 
   // ============================================================

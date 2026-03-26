@@ -38,6 +38,7 @@ import {
   settingsTemplate as iflowSettingsTemplate,
   getAllHooks as getIflowHooks,
 } from "../src/templates/iflow/index.js";
+import { getAllHooks as getCodexHooks } from "../src/templates/codex/index.js";
 import {
   commonInit,
   taskScript,
@@ -58,6 +59,7 @@ import {
 } from "../src/configurators/index.js";
 import { guidesIndexContent, workspaceIndexContent } from "../src/templates/markdown/index.js";
 import * as markdownExports from "../src/templates/markdown/index.js";
+import { TrellisContext } from "../src/templates/opencode/lib/trellis-context.js";
 
 afterEach(() => {
   clearManifestCache();
@@ -516,9 +518,8 @@ describe("regression: resolve_task_dir path handling", () => {
     expect(commonTaskUtils).toContain('.startswith(".trellis")');
   });
 
-  it("[potential] resolve_task_dir path check includes '/' separator check", () => {
-    // resolve_task_dir should detect relative paths containing '/'
-    expect(commonTaskUtils).toContain('"/" in target_dir');
+  it("[current-task] resolve_task_dir normalizes backslash separators before path classification", () => {
+    expect(commonTaskUtils).toContain('target_dir.replace("\\\\", "/")');
   });
 });
 
@@ -829,6 +830,164 @@ describe("regression: SessionStart reinject on clear/compact (MIN-231)", () => {
         ).toContain("session-start.py");
       }
     }
+  });
+});
+
+describe("regression: current-task path normalization", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+  const claudeSessionStart = getClaudeHooks().find(
+    (hook) => hook.targetPath === "hooks/session-start.py",
+  )?.content;
+  const iflowSessionStart = getIflowHooks().find(
+    (hook) => hook.targetPath === "hooks/session-start.py",
+  )?.content;
+  const codexSessionStart = getCodexHooks().find(
+    (hook) => hook.name === "session-start.py",
+  )?.content;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-current-task-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeTrellisScripts(): void {
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+  }
+
+  function writeProjectFile(relativePath: string, content: string): void {
+    const absPath = path.join(tmpDir, relativePath);
+    fs.mkdirSync(path.dirname(absPath), { recursive: true });
+    fs.writeFileSync(absPath, content, "utf-8");
+  }
+
+  function setupTaskRepo(taskRef = ".trellis\\tasks\\issue-106"): void {
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
+    );
+    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    writeProjectFile(
+      path.join(".trellis", "spec", "guides", "index.md"),
+      "# Guides\n",
+    );
+    writeProjectFile(path.join(".trellis", ".current-task"), `${taskRef}\n`);
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "task.json"),
+      JSON.stringify(
+        {
+          title: "Issue 106 task",
+          status: "in_progress",
+          package: null,
+        },
+        null,
+        2,
+      ),
+    );
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "prd.md"),
+      "# PRD\n",
+    );
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "implement.jsonl"),
+      '{"file":"src/example.ts","reason":"runtime regression"}\n',
+    );
+  }
+
+  function runPython(relativeScriptPath: string, input?: string): string {
+    const scriptPath = path.join(tmpDir, relativeScriptPath);
+    return execSync(`${pythonCmd} ${JSON.stringify(scriptPath)}`, {
+      cwd: tmpDir,
+      input,
+      encoding: "utf-8",
+    });
+  }
+
+  function expectTemplateContent(
+    content: string | undefined,
+    label: string,
+  ): string {
+    expect(content, `${label} template should exist`).toBeTruthy();
+    return content ?? "";
+  }
+
+  it("[current-task] task.py start canonicalizes Windows-style task refs before writing", () => {
+    setupTaskRepo("");
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(".trellis\\\\tasks\\\\issue-106")}`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+      },
+    );
+
+    expect(output).toContain(".trellis/tasks/issue-106");
+    expect(
+      fs.readFileSync(path.join(tmpDir, ".trellis", ".current-task"), "utf-8").trim(),
+    ).toBe(".trellis/tasks/issue-106");
+  });
+
+  it("[current-task] Python session-start hooks resolve legacy backslash refs without stale pointer", () => {
+    setupTaskRepo();
+
+    writeProjectFile(
+      path.join(".claude", "hooks", "session-start.py"),
+      expectTemplateContent(claudeSessionStart, "claude session-start"),
+    );
+    writeProjectFile(
+      path.join(".iflow", "hooks", "session-start.py"),
+      expectTemplateContent(iflowSessionStart, "iflow session-start"),
+    );
+    writeProjectFile(
+      path.join(".codex", "hooks", "session-start.py"),
+      expectTemplateContent(codexSessionStart, "codex session-start"),
+    );
+
+    const claudeOutput = runPython(path.join(".claude", "hooks", "session-start.py"));
+    const iflowOutput = runPython(path.join(".iflow", "hooks", "session-start.py"));
+    const codexOutput = runPython(
+      path.join(".codex", "hooks", "session-start.py"),
+      JSON.stringify({ cwd: tmpDir }),
+    );
+
+    for (const output of [claudeOutput, iflowOutput]) {
+      expect(output).toContain("Status: READY");
+      expect(output).not.toContain("STALE POINTER");
+    }
+
+    const codexPayload = JSON.parse(codexOutput) as {
+      hookSpecificOutput: { additionalContext: string };
+    };
+    expect(codexPayload.hookSpecificOutput.additionalContext).toContain(
+      "Status: READY",
+    );
+    expect(codexPayload.hookSpecificOutput.additionalContext).not.toContain(
+      "STALE POINTER",
+    );
+  });
+
+  it("[current-task] OpenCode context layer normalizes backslash refs for downstream plugins", () => {
+    setupTaskRepo();
+
+    const ctx = new TrellisContext(tmpDir) as TrellisContext & {
+      resolveTaskDir: (taskRef: string) => string | null;
+    };
+
+    expect(ctx.getCurrentTask()).toBe(".trellis/tasks/issue-106");
+    expect(ctx.resolveTaskDir(".trellis\\tasks\\issue-106")).toBe(
+      path.join(tmpDir, ".trellis", "tasks", "issue-106"),
+    );
   });
 });
 

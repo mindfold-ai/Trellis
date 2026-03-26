@@ -221,6 +221,50 @@ def _get_current_task_file(repo_root: Path | None = None) -> Path:
     return repo_root / DIR_WORKFLOW / FILE_CURRENT_TASK
 
 
+def normalize_task_ref(task_ref: str) -> str:
+    """Normalize a task ref for stable storage in .current-task.
+
+    Stored refs should prefer repo-relative POSIX paths like
+    `.trellis/tasks/03-27-my-task`, even on Windows. Absolute paths are preserved
+    unless they can later be converted back to repo-relative form by callers.
+    """
+    normalized = task_ref.strip()
+    if not normalized:
+        return ""
+
+    path_obj = Path(normalized)
+    if path_obj.is_absolute():
+        return str(path_obj)
+
+    normalized = normalized.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+
+    if normalized.startswith(f"{DIR_TASKS}/"):
+        return f"{DIR_WORKFLOW}/{normalized}"
+
+    return normalized
+
+
+def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | None:
+    """Resolve a task ref from .current-task to an absolute task directory path."""
+    if repo_root is None:
+        repo_root = get_repo_root()
+
+    normalized = normalize_task_ref(task_ref)
+    if not normalized:
+        return None
+
+    path_obj = Path(normalized)
+    if path_obj.is_absolute():
+        return path_obj
+
+    if normalized.startswith(f"{DIR_WORKFLOW}/"):
+        return repo_root / path_obj
+
+    return repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
+
+
 def get_current_task(repo_root: Path | None = None) -> str | None:
     """Get current task directory path (relative to repo_root).
 
@@ -236,7 +280,8 @@ def get_current_task(repo_root: Path | None = None) -> str | None:
         return None
 
     try:
-        return current_file.read_text(encoding="utf-8").strip()
+        content = current_file.read_text(encoding="utf-8").strip()
+        return normalize_task_ref(content) if content else None
     except (OSError, IOError):
         return None
 
@@ -255,7 +300,7 @@ def get_current_task_abs(repo_root: Path | None = None) -> Path | None:
 
     relative = get_current_task(repo_root)
     if relative:
-        return repo_root / relative
+        return resolve_task_ref(relative, repo_root)
     return None
 
 
@@ -272,18 +317,24 @@ def set_current_task(task_path: str, repo_root: Path | None = None) -> bool:
     if repo_root is None:
         repo_root = get_repo_root()
 
-    if not task_path:
+    normalized = normalize_task_ref(task_path)
+    if not normalized:
         return False
 
     # Verify task directory exists
-    full_path = repo_root / task_path
-    if not full_path.is_dir():
+    full_path = resolve_task_ref(normalized, repo_root)
+    if full_path is None or not full_path.is_dir():
         return False
+
+    try:
+        normalized = full_path.relative_to(repo_root).as_posix()
+    except ValueError:
+        normalized = str(full_path)
 
     current_file = _get_current_task_file(repo_root)
 
     try:
-        current_file.write_text(task_path, encoding="utf-8")
+        current_file.write_text(normalized, encoding="utf-8")
         return True
     except (OSError, IOError):
         return False

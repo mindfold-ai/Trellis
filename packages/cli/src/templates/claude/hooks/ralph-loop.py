@@ -72,7 +72,14 @@ def get_current_task(repo_root: str) -> str | None:
     try:
         with open(current_task_file, "r", encoding="utf-8") as f:
             content = f.read().strip()
-            return content if content else None
+            if not content:
+                return None
+            normalized = content.replace("\\", "/")
+            while normalized.startswith("./"):
+                normalized = normalized[2:]
+            if normalized.startswith("tasks/"):
+                normalized = f".trellis/{normalized}"
+            return normalized
     except Exception:
         return None
 

@@ -75,6 +75,8 @@ from .paths import (
     count_lines,
     get_current_task,
     get_current_task_abs,
+    normalize_task_ref,
+    resolve_task_ref,
     set_current_task,
     clear_current_task,
     has_current_task,

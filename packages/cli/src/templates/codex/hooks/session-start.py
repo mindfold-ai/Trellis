@@ -51,21 +51,45 @@ def run_script(script_path: Path) -> str:
         return "No context available"
 
 
+def _normalize_task_ref(task_ref: str) -> str:
+    normalized = task_ref.strip()
+    if not normalized:
+        return ""
+
+    path_obj = Path(normalized)
+    if path_obj.is_absolute():
+        return str(path_obj)
+
+    normalized = normalized.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+
+    if normalized.startswith("tasks/"):
+        return f".trellis/{normalized}"
+
+    return normalized
+
+
+def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
+    normalized = _normalize_task_ref(task_ref)
+    path_obj = Path(normalized)
+    if path_obj.is_absolute():
+        return path_obj
+    if normalized.startswith(".trellis/"):
+        return trellis_dir.parent / path_obj
+    return trellis_dir / "tasks" / path_obj
+
+
 def _get_task_status(trellis_dir: Path) -> str:
     current_task_file = trellis_dir / ".current-task"
     if not current_task_file.is_file():
         return "Status: NO ACTIVE TASK\nNext: Describe what you want to work on"
 
-    task_ref = current_task_file.read_text(encoding="utf-8").strip()
+    task_ref = _normalize_task_ref(current_task_file.read_text(encoding="utf-8").strip())
     if not task_ref:
         return "Status: NO ACTIVE TASK\nNext: Describe what you want to work on"
 
-    if Path(task_ref).is_absolute():
-        task_dir = Path(task_ref)
-    elif task_ref.startswith(".trellis/"):
-        task_dir = trellis_dir.parent / task_ref
-    else:
-        task_dir = trellis_dir / "tasks" / task_ref
+    task_dir = _resolve_task_dir(trellis_dir, task_ref)
     if not task_dir.is_dir():
         return f"Status: STALE POINTER\nTask: {task_ref}\nNext: Task directory not found. Run: python3 ./.trellis/scripts/task.py finish"
 

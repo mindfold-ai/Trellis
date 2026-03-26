@@ -35,6 +35,35 @@ def _read_json(path: Path) -> dict:
         return {}
 
 
+def _normalize_task_ref(task_ref: str) -> str:
+    normalized = task_ref.strip()
+    if not normalized:
+        return ""
+
+    path_obj = Path(normalized)
+    if path_obj.is_absolute():
+        return str(path_obj)
+
+    normalized = normalized.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+
+    if normalized.startswith("tasks/"):
+        return f".trellis/{normalized}"
+
+    return normalized
+
+
+def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
+    normalized = _normalize_task_ref(task_ref)
+    path_obj = Path(normalized)
+    if path_obj.is_absolute():
+        return path_obj
+    if normalized.startswith(".trellis/"):
+        return trellis_dir.parent / path_obj
+    return trellis_dir / "tasks" / path_obj
+
+
 def _find_trellis_dir() -> Path | None:
     """Walk up from cwd to find .trellis/ directory."""
     current = Path.cwd()
@@ -47,12 +76,12 @@ def _find_trellis_dir() -> Path | None:
 
 def _get_current_task(trellis_dir: Path) -> dict | None:
     """Load current task info. Returns dict with title/status/priority or None."""
-    task_ref = _read_text(trellis_dir / ".current-task")
+    task_ref = _normalize_task_ref(_read_text(trellis_dir / ".current-task"))
     if not task_ref:
         return None
 
     # Resolve task directory
-    task_path = Path(task_ref) if Path(task_ref).is_absolute() else trellis_dir.parent / task_ref
+    task_path = _resolve_task_dir(trellis_dir, task_ref)
     task_data = _read_json(task_path / "task.json")
     if not task_data:
         return None

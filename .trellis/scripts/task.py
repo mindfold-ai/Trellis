@@ -84,7 +84,7 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     # Convert to relative path for storage
     try:
-        task_dir = str(full_path.relative_to(repo_root))
+        task_dir = full_path.relative_to(repo_root).as_posix()
     except ValueError:
         task_dir = str(full_path)
 

@@ -37,23 +37,25 @@ def is_safe_task_path(task_path: str, repo_root: Path | None = None) -> bool:
     if repo_root is None:
         repo_root = get_repo_root()
 
+    normalized = task_path.replace("\\", "/")
+
     # Check empty or null
-    if not task_path or task_path == "null":
+    if not normalized or normalized == "null":
         print("Error: empty or null task path", file=sys.stderr)
         return False
 
     # Reject absolute paths
-    if task_path.startswith("/"):
+    if Path(task_path).is_absolute():
         print(f"Error: absolute path not allowed: {task_path}", file=sys.stderr)
         return False
 
     # Reject ".", "..", paths starting with "./" or "../", or containing ".."
-    if task_path in (".", "..") or task_path.startswith("./") or task_path.startswith("../") or ".." in task_path:
+    if normalized in (".", "..") or normalized.startswith("./") or normalized.startswith("../") or ".." in normalized:
         print(f"Error: path traversal not allowed: {task_path}", file=sys.stderr)
         return False
 
     # Final check: ensure resolved path is not the repo root
-    abs_path = repo_root / task_path
+    abs_path = repo_root / Path(normalized)
     if abs_path.exists():
         try:
             resolved = abs_path.resolve()
@@ -187,13 +189,17 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path:
     if not target_dir:
         return Path()
 
+    normalized = target_dir.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+
     # Absolute path
-    if target_dir.startswith("/"):
+    if Path(target_dir).is_absolute():
         return Path(target_dir)
 
     # Relative path (contains path separator or starts with .trellis)
-    if "/" in target_dir or target_dir.startswith(".trellis"):
-        return repo_root / target_dir
+    if "/" in normalized or normalized.startswith(".trellis"):
+        return repo_root / Path(normalized)
 
     # Task name - try to find in tasks directory
     tasks_dir = get_tasks_dir(repo_root)
@@ -202,7 +208,7 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path:
         return found
 
     # Fallback to treating as relative path
-    return repo_root / target_dir
+    return repo_root / Path(normalized)
 
 
 # =============================================================================

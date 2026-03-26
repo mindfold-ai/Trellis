@@ -11,7 +11,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
-import { join } from "path"
+import { basename, join } from "path"
 import { execFileSync } from "child_process"
 import { platform } from "os"
 import { TrellisContext, contextCollector, debugLog } from "../lib/trellis-context.js"
@@ -23,36 +23,16 @@ const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
  * Check current task status and return structured status string.
  * JavaScript equivalent of _get_task_status in Claude's session-start.py.
  */
-function getTaskStatus(directory) {
-  const trellisDir = join(directory, ".trellis")
-  const currentTaskFile = join(trellisDir, ".current-task")
-
-  if (!existsSync(currentTaskFile)) {
-    return "Status: NO ACTIVE TASK\nNext: Describe what you want to work on"
-  }
-
-  let taskRef
-  try {
-    taskRef = readFileSync(currentTaskFile, "utf-8").trim()
-  } catch {
-    return "Status: NO ACTIVE TASK\nNext: Describe what you want to work on"
-  }
-
+function getTaskStatus(ctx) {
+  const taskRef = ctx.getCurrentTask()
   if (!taskRef) {
     return "Status: NO ACTIVE TASK\nNext: Describe what you want to work on"
   }
 
   // Resolve task directory
-  let taskDir
-  if (taskRef.startsWith("/")) {
-    taskDir = taskRef
-  } else if (taskRef.startsWith(".trellis/")) {
-    taskDir = join(directory, taskRef)
-  } else {
-    taskDir = join(trellisDir, "tasks", taskRef)
-  }
+  const taskDir = ctx.resolveTaskDir(taskRef)
 
-  if (!existsSync(taskDir)) {
+  if (!taskDir || !existsSync(taskDir)) {
     return `Status: STALE POINTER\nTask: ${taskRef}\nNext: Task directory not found. Run: python3 ./.trellis/scripts/task.py finish`
   }
 
@@ -71,7 +51,7 @@ function getTaskStatus(directory) {
   const taskStatus = taskData.status || "unknown"
 
   if (taskStatus === "completed") {
-    const dirName = taskDir.split("/").pop()
+    const dirName = basename(taskDir)
     return `Status: COMPLETED\nTask: ${taskTitle}\nNext: Archive with \`python3 ./.trellis/scripts/task.py archive ${dirName}\` or start a new task`
   }
 
@@ -354,7 +334,7 @@ Read and follow all instructions below carefully.
   }
 
   // 6. Task status (R2: check task state for session resume)
-  const taskStatus = getTaskStatus(directory)
+  const taskStatus = getTaskStatus(ctx)
   parts.push(`<task-status>\n${taskStatus}\n</task-status>`)
 
   // 7. Final directive (R3: active, not passive)

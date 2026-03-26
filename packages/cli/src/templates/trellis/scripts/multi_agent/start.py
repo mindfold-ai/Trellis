@@ -202,12 +202,16 @@ def main() -> int:
     project_root = get_repo_root()
 
     # Normalize paths
-    if task_dir_arg.startswith("/"):
-        task_dir_relative = task_dir_arg[len(str(project_root)) + 1 :]
-        task_dir_abs = Path(task_dir_arg)
+    task_dir_path = Path(task_dir_arg)
+    if task_dir_path.is_absolute():
+        task_dir_abs = task_dir_path
     else:
-        task_dir_relative = task_dir_arg
-        task_dir_abs = project_root / task_dir_arg
+        task_dir_abs = project_root / task_dir_path
+
+    try:
+        task_dir_relative = task_dir_abs.relative_to(project_root).as_posix()
+    except ValueError:
+        task_dir_relative = str(task_dir_abs)
 
     task_json_path = task_dir_abs / FILE_TASK_JSON
 
