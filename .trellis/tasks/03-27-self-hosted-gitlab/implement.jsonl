@@ -1,0 +1,4 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Code quality standards"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test conventions"}

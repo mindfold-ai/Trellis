@@ -474,6 +474,44 @@ const value = match[1].trim().replace(/^['"]|['"]$/g, "");
 
 ---
 
+## User Input Parsing: Exhaustive Format Enumeration
+
+When writing functions that parse user-provided URLs, paths, or identifiers with multiple valid formats, **enumerate all input forms BEFORE writing code**.
+
+### The Pattern
+
+Create a format table covering every combination of:
+- Protocol variants (HTTPS, SSH `git@`, `ssh://`)
+- Known vs unknown domains
+- Optional suffixes (`.git`, trailing `/`)
+- Optional components (port, subdir, ref/branch, subgroup)
+
+```markdown
+| # | Format | Example | Expected Behavior |
+|---|--------|---------|-------------------|
+| 1 | giget prefix | `gh:org/repo` | Native provider |
+| 2 | Public HTTPS | `https://github.com/org/repo` | Auto-convert to gh: |
+| 3 | Public SSH | `git@github.com:org/repo` | Auto-convert to gh: |
+| 4 | Self-hosted HTTPS | `https://git.corp.com/org/repo` | Detect host, map to gitlab: |
+| 5 | Self-hosted SSH | `git@git.corp.com:org/repo` | Detect host, map to gitlab: |
+| 6 | ssh:// protocol | `ssh://git@host:port/org/repo` | Extract host (strip port) |
+| 7 | HTTPS with port | `https://host:8443/org/repo` | Include port in host |
+| ... | ... | ... | ... |
+```
+
+### Why This Matters
+
+**Lesson from Issue #87 → self-hosted GitLab fix**: The initial fix for HTTPS URLs assumed "only 3 public domains exist". The self-hosted fix then assumed "all SSH URLs are self-hosted" — breaking `git@github.com:org/repo`. Each fix was correct for its target scenario but introduced a new blind spot. Exhaustive enumeration prevents this.
+
+### Rules
+
+1. **List ALL valid input forms** before implementing — not just the ones reported in the issue
+2. **Test each form explicitly** — don't assume "if HTTPS works, SSH works too"
+3. **Public vs self-hosted must be an explicit branch** — never assume one category covers all inputs
+4. **Write the format table in a code comment** at the top of the parsing function
+
+---
+
 ## DO / DON'T
 
 ### DO

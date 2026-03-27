@@ -1,0 +1,4 @@
+{"file": ".opencode/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".opencode/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Quality check"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test conventions"}
