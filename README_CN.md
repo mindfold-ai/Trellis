@@ -17,7 +17,7 @@
 <a href="https://docs.trytrellis.app/zh/guide/ch02-quick-start">快速开始</a> •
 <a href="https://docs.trytrellis.app/zh/guide/ch13-multi-platform">支持平台</a> •
 <a href="https://docs.trytrellis.app/zh/guide/ch08-real-world">使用场景</a> •
-<a href="#wechat-group">微信群</a>
+<a href="#contact-us">联系我们</a>
 </p>
 
 <p align="center">
@@ -176,12 +176,16 @@ trellis init --registry https://github.com/your-org/your-spec-templates
 - [GitHub Issues](https://github.com/mindfold-ai/Trellis/issues) - 提 Bug 或功能建议
 - [Discord](https://discord.com/invite/tWcCZ3aRHc) - 加入社区讨论
 
-<a id="wechat-group"></a>
+<a id="contact-us"></a>
 
-### 微信群
+### 联系我们
 
 <p align="center">
-<img src="assets/wx_link4.jpg" alt="Trellis AI 框架中文社群二维码" width="260" />
+<img src="assets/wx_link4.jpg" alt="微信群" width="260" />
+&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="assets/wecom-group-qr.png" alt="企微话题群" width="260" />
+&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="assets/qq-group-qr.jpg" alt="QQ群" width="260" />
 </p>
 
 <p align="center">
