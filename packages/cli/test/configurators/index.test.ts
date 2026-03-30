@@ -68,6 +68,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".codex/agents/check.toml")).toBe(true);
     expect(isManagedPath(".agent/workflows/start.md")).toBe(true);
     expect(isManagedPath(".kiro/skills/start/SKILL.md")).toBe(true);
+    expect(isManagedPath(".windsurf/workflows/trellis-start.md")).toBe(true);
   });
 
   // Positive: exact match (startsWith(d + "/") = false, === d = true)
@@ -80,6 +81,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".codex")).toBe(true);
     expect(isManagedPath(".agent/workflows")).toBe(true);
     expect(isManagedPath(".kiro/skills")).toBe(true);
+    expect(isManagedPath(".windsurf/workflows")).toBe(true);
     expect(isManagedPath(".trellis")).toBe(true);
   });
 
@@ -99,6 +101,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".codex-backup")).toBe(false);
     expect(isManagedPath(".agent/workflows-backup")).toBe(false);
     expect(isManagedPath(".kiro/skills-backup")).toBe(false);
+    expect(isManagedPath(".windsurf/workflows-backup")).toBe(false);
   });
 
   // Boundary: empty string
@@ -129,6 +132,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".codex\\agents\\check.toml")).toBe(true);
     expect(isManagedPath(".agent\\workflows\\start.md")).toBe(true);
     expect(isManagedPath(".kiro\\skills\\start\\SKILL.md")).toBe(true);
+    expect(isManagedPath(".windsurf\\workflows\\trellis-start.md")).toBe(true);
   });
 
   // Mixed separators

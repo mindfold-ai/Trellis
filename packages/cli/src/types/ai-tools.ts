@@ -17,6 +17,7 @@ export type AITool =
   | "kiro"
   | "gemini"
   | "antigravity"
+  | "windsurf"
   | "qoder"
   | "codebuddy";
 
@@ -34,6 +35,7 @@ export type TemplateDir =
   | "kiro"
   | "gemini"
   | "antigravity"
+  | "windsurf"
   | "qoder"
   | "codebuddy";
 
@@ -51,6 +53,7 @@ export type CliFlag =
   | "kiro"
   | "gemini"
   | "antigravity"
+  | "windsurf"
   | "qoder"
   | "codebuddy";
 
@@ -160,6 +163,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "antigravity"],
     configDir: ".agent/workflows",
     cliFlag: "antigravity",
+    defaultChecked: false,
+    hasPythonHooks: false,
+  },
+  windsurf: {
+    name: "Windsurf",
+    templateDirs: ["common", "windsurf"],
+    configDir: ".windsurf/workflows",
+    cliFlag: "windsurf",
     defaultChecked: false,
     hasPythonHooks: false,
   },

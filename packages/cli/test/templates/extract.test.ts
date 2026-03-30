@@ -11,6 +11,7 @@ import {
   getKiroTemplatePath,
   getGeminiTemplatePath,
   getAntigravityTemplatePath,
+  getWindsurfTemplatePath,
   getQoderTemplatePath,
   getCodebuddyTemplatePath,
   getTrellisSourcePath,
@@ -22,6 +23,7 @@ import {
   getKiroSourcePath,
   getGeminiSourcePath,
   getAntigravitySourcePath,
+  getWindsurfSourcePath,
   readTrellisFile,
   readTemplate,
   readScript,
@@ -98,6 +100,12 @@ describe("template path functions", () => {
     expect(fs.statSync(p).isDirectory()).toBe(true);
   });
 
+  it("getWindsurfTemplatePath returns existing directory", () => {
+    const p = getWindsurfTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
+
   it("getQoderTemplatePath returns existing directory", () => {
     const p = getQoderTemplatePath();
     expect(fs.existsSync(p)).toBe(true);
@@ -150,6 +158,10 @@ describe("deprecated source path aliases", () => {
 
   it("getAntigravitySourcePath equals getAntigravityTemplatePath", () => {
     expect(getAntigravitySourcePath()).toBe(getAntigravityTemplatePath());
+  });
+
+  it("getWindsurfSourcePath equals getWindsurfTemplatePath", () => {
+    expect(getWindsurfSourcePath()).toBe(getWindsurfTemplatePath());
   });
 });
 

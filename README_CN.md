@@ -8,7 +8,7 @@
 
 <p align="center">
 <strong>给 AI 立规矩的开源框架</strong><br/>
-<sub>支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity、Qoder 和 CodeBuddy。</sub>
+<sub>支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity、Windsurf、Qoder 和 CodeBuddy。</sub>
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@
 | **并行 Agent 执行** | 用 git worktree 同时推进多个 AI 任务，不需要把一个分支挤成大杂烩。 |
 | **项目记忆** | `.trellis/workspace/` 里的 journal 会保留上一次工作的脉络，让新会话不是从空白开始。 |
 | **团队共享标准** | Spec 跟着仓库一起版本化，一个人总结出来的规则和流程，可以直接变成整个团队的基础设施。 |
-| **多平台复用** | 同一套 Trellis 结构可以带到 10 个 AI coding 平台上，而不是每换一个工具就重搭一次工作流。 |
+| **多平台复用** | 同一套 Trellis 结构可以带到 11 个 AI coding 平台上，而不是每换一个工具就重搭一次工作流。 |
 
 ## 快速开始
 
@@ -66,7 +66,7 @@ trellis init --cursor --opencode --codex -u your-name
 ```
 
 - `-u your-name` 会创建 `.trellis/workspace/your-name/`，用来保存个人 journal 和会话连续性。
-- 平台参数可以自由组合。当前可选项包括 `--cursor`、`--opencode`、`--iflow`、`--codex`、`--kilo`、`--kiro`、`--gemini`、`--antigravity`、`--qoder` 和 `--codebuddy`。
+- 平台参数可以自由组合。当前可选项包括 `--cursor`、`--opencode`、`--iflow`、`--codex`、`--kilo`、`--kiro`、`--gemini`、`--antigravity`、`--windsurf`、`--qoder` 和 `--codebuddy`。
 - 更完整的安装步骤、各平台入口命令和升级方式放在文档站：
   [快速开始](https://docs.trytrellis.app/zh/guide/ch02-quick-start) •
   [支持平台](https://docs.trytrellis.app/zh/guide/ch13-multi-platform) •
@@ -143,7 +143,7 @@ trellis init --registry https://github.com/your-org/your-spec-templates
 <details>
 <summary><strong>Trellis 只适合 Claude Code 吗？</strong></summary>
 
-不是。Trellis 目前支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI 和 Antigravity。每个平台的具体接入方式和入口命令，文档站都有单独说明。
+不是。Trellis 目前支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity 和 Windsurf。每个平台的具体接入方式和入口命令，文档站都有单独说明。
 
 </details>
 

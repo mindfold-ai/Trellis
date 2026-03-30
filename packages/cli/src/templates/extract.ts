@@ -213,6 +213,30 @@ export function getAntigravitySourcePath(): string {
 }
 
 /**
+ * Get the path to the windsurf templates directory.
+ *
+ * This reads from src/templates/windsurf/ (development) or dist/templates/windsurf/ (production).
+ * These are GENERIC templates, not the Trellis project's own .windsurf/workflows configuration.
+ */
+export function getWindsurfTemplatePath(): string {
+  const templatePath = path.join(__dirname, "windsurf");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find windsurf templates directory. Expected at templates/windsurf/",
+  );
+}
+
+/**
+ * @deprecated Use getWindsurfTemplatePath() instead.
+ */
+export function getWindsurfSourcePath(): string {
+  return getWindsurfTemplatePath();
+}
+
+/**
  * Get the path to the qoder templates directory.
  *
  * This reads from src/templates/qoder/ (development) or dist/templates/qoder/ (production).

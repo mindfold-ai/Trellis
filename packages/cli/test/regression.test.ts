@@ -1066,6 +1066,11 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.antigravity.configDir).toBe(".agent/workflows");
   });
 
+  it("[windsurf] Windsurf platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("windsurf");
+    expect(AI_TOOLS.windsurf.configDir).toBe(".windsurf/workflows");
+  });
+
   it("[qoder] Qoder platform is registered", () => {
     expect(AI_TOOLS).toHaveProperty("qoder");
     expect(AI_TOOLS.qoder.configDir).toBe(".qoder");
@@ -1132,6 +1137,11 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".agent");
   });
 
+  it("[windsurf] cli_adapter.py supports windsurf platform", () => {
+    expect(commonCliAdapter).toContain('"windsurf"');
+    expect(commonCliAdapter).toContain(".windsurf");
+  });
+
   it("[qoder] cli_adapter.py supports qoder platform", () => {
     expect(commonCliAdapter).toContain('"qoder"');
     expect(commonCliAdapter).toContain(".qoder");
@@ -1162,6 +1172,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".kiro");
     expect(commonCliAdapter).toContain(".gemini");
     expect(commonCliAdapter).toContain(".agent");
+    expect(commonCliAdapter).toContain(".windsurf");
     expect(commonCliAdapter).toContain(".qoder");
     expect(commonCliAdapter).toContain(".codebuddy");
   });
@@ -1347,6 +1358,24 @@ describe("regression: collectTemplates paths match init directory structure (0.3
         ".kilocode/workflows/",
       );
       expect(key, `kilo should not use commands/: ${key}`).not.toContain(
+        "/commands/",
+      );
+    }
+  });
+
+  it("[windsurf] windsurf uses workflows/ instead of commands/trellis/", () => {
+    const templates = collectPlatformTemplates("windsurf");
+    expect(templates).toBeInstanceOf(Map);
+    if (!templates) return;
+    const keys = [...templates.keys()];
+    for (const key of keys) {
+      expect(key, `windsurf path should use workflows/: ${key}`).toContain(
+        ".windsurf/workflows/",
+      );
+      expect(key, `windsurf file should use trellis- prefix: ${key}`).toContain(
+        ".windsurf/workflows/trellis-",
+      );
+      expect(key, `windsurf should not use commands/: ${key}`).not.toContain(
         "/commands/",
       );
     }

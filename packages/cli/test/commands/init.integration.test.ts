@@ -72,6 +72,9 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".windsurf", "workflows"))).toBe(
+      false,
+    );
 
     // Root files
     expect(fs.existsSync(path.join(tmpDir, "AGENTS.md"))).toBe(true);
@@ -93,6 +96,9 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".windsurf", "workflows"))).toBe(
+      false,
+    );
   });
 
   it("#3 multi platform creates all selected platform directories", async () => {
@@ -111,6 +117,9 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".qoder"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".codebuddy"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".windsurf", "workflows"))).toBe(
+      false,
+    );
   });
 
   it("#3b codex platform creates skills plus .codex assets", async () => {
@@ -172,6 +181,21 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".gemini"))).toBe(false);
+  });
+
+  it("#3f windsurf platform creates .windsurf/workflows", async () => {
+    await init({ yes: true, windsurf: true });
+
+    expect(
+      fs.existsSync(path.join(tmpDir, ".windsurf", "workflows")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".windsurf", "workflows", "trellis-start.md"),
+      ),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
   });
 
   it("#3g qoder platform creates .qoder/skills", async () => {

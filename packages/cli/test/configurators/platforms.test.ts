@@ -17,6 +17,7 @@ import {
   getHooksConfig as getCodexHooksConfig,
 } from "../../src/templates/codex/index.js";
 import { getAllWorkflows as getAllAntigravityWorkflows } from "../../src/templates/antigravity/index.js";
+import { getAllWorkflows as getAllWindsurfWorkflows } from "../../src/templates/windsurf/index.js";
 import { getAllSkills as getAllKiroSkills } from "../../src/templates/kiro/index.js";
 import { getAllCommands as getAllGeminiCommands } from "../../src/templates/gemini/index.js";
 import { getAllSkills as getAllQoderSkills } from "../../src/templates/qoder/index.js";
@@ -85,6 +86,14 @@ describe("getConfiguredPlatforms", () => {
     });
     const result = getConfiguredPlatforms(tmpDir);
     expect(result.has("antigravity")).toBe(true);
+  });
+
+  it("detects .windsurf/workflows directory as windsurf", () => {
+    fs.mkdirSync(path.join(tmpDir, ".windsurf", "workflows"), {
+      recursive: true,
+    });
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("windsurf")).toBe(true);
   });
 
   it("detects .kiro/skills directory as kiro", () => {
@@ -326,6 +335,35 @@ describe("configurePlatform", () => {
       .sort();
 
     const workflowsRoot = path.join(tmpDir, ".agent", "workflows");
+    const actualNames = fs
+      .readdirSync(workflowsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name.replace(/\.md$/, ""))
+      .sort();
+
+    expect(actualNames).toEqual(expectedNames);
+
+    for (const workflow of expectedWorkflows) {
+      const workflowPath = path.join(workflowsRoot, `${workflow.name}.md`);
+      expect(fs.existsSync(workflowPath)).toBe(true);
+      expect(fs.readFileSync(workflowPath, "utf-8")).toBe(workflow.content);
+    }
+  });
+
+  it("configurePlatform('windsurf') creates .windsurf/workflows directory", async () => {
+    await configurePlatform("windsurf", tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, ".windsurf", "workflows"))).toBe(
+      true,
+    );
+  });
+
+  it("configurePlatform('windsurf') writes all workflow templates", async () => {
+    await configurePlatform("windsurf", tmpDir);
+
+    const expectedWorkflows = getAllWindsurfWorkflows();
+    const expectedNames = expectedWorkflows.map((workflow) => workflow.name).sort();
+
+    const workflowsRoot = path.join(tmpDir, ".windsurf", "workflows");
     const actualNames = fs
       .readdirSync(workflowsRoot, { withFileTypes: true })
       .filter((entry) => entry.isFile())

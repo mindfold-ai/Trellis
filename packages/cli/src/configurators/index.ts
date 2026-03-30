@@ -27,6 +27,7 @@ import { configureKilo } from "./kilo.js";
 import { configureKiro } from "./kiro.js";
 import { configureGemini } from "./gemini.js";
 import { configureAntigravity } from "./antigravity.js";
+import { configureWindsurf } from "./windsurf.js";
 import { configureQoder } from "./qoder.js";
 import { configureCodebuddy } from "./codebuddy.js";
 
@@ -59,6 +60,7 @@ import { getAllWorkflows as getKiloWorkflows } from "../templates/kilo/index.js"
 import { getAllSkills as getKiroSkills } from "../templates/kiro/index.js";
 import { getAllCommands as getGeminiCommands } from "../templates/gemini/index.js";
 import { getAllWorkflows as getAntigravityWorkflows } from "../templates/antigravity/index.js";
+import { getAllWorkflows as getAllWindsurfWorkflows } from "../templates/windsurf/index.js";
 import { getAllSkills as getQoderSkills } from "../templates/qoder/index.js";
 import { getAllCommands as getCodebuddyCommands } from "../templates/codebuddy/index.js";
 
@@ -204,6 +206,16 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       const files = new Map<string, string>();
       for (const workflow of getAntigravityWorkflows()) {
         files.set(`.agent/workflows/${workflow.name}.md`, workflow.content);
+      }
+      return files;
+    },
+  },
+  windsurf: {
+    configure: configureWindsurf,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const workflow of getAllWindsurfWorkflows()) {
+        files.set(`.windsurf/workflows/${workflow.name}.md`, workflow.content);
       }
       return files;
     },

@@ -359,6 +359,7 @@ interface InitOptions {
   kiro?: boolean;
   gemini?: boolean;
   antigravity?: boolean;
+  windsurf?: boolean;
   qoder?: boolean;
   codebuddy?: boolean;
   yes?: boolean;
