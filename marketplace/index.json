@@ -32,6 +32,14 @@
       "description": "Meta-skill for understanding and customizing Trellis workflows",
       "path": "marketplace/skills/trellis-meta",
       "tags": ["trellis", "meta", "workflow", "customization"]
+    },
+    {
+      "id": "frontend-fullchain-optimization",
+      "type": "skill",
+      "name": "Frontend Full-Chain Optimization",
+      "description": "Web Vitals-driven frontend performance diagnosis and optimization workflow",
+      "path": "marketplace/skills/frontend-fullchain-optimization",
+      "tags": ["frontend", "performance", "web-vitals", "lighthouse", "optimization"]
     }
   ]
 }
