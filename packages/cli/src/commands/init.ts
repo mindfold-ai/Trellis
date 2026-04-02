@@ -362,6 +362,7 @@ interface InitOptions {
   windsurf?: boolean;
   qoder?: boolean;
   codebuddy?: boolean;
+  copilot?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

@@ -30,6 +30,7 @@ import { configureAntigravity } from "./antigravity.js";
 import { configureWindsurf } from "./windsurf.js";
 import { configureQoder } from "./qoder.js";
 import { configureCodebuddy } from "./codebuddy.js";
+import { configureCopilot } from "./copilot.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -63,6 +64,10 @@ import { getAllWorkflows as getAntigravityWorkflows } from "../templates/antigra
 import { getAllWorkflows as getAllWindsurfWorkflows } from "../templates/windsurf/index.js";
 import { getAllSkills as getQoderSkills } from "../templates/qoder/index.js";
 import { getAllCommands as getCodebuddyCommands } from "../templates/codebuddy/index.js";
+import {
+  getAllHooks as getCopilotHooks,
+  getHooksConfig as getCopilotHooksConfig,
+} from "../templates/copilot/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -238,6 +243,22 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       for (const cmd of getCodebuddyCommands()) {
         files.set(`.codebuddy/commands/trellis/${cmd.name}.md`, cmd.content);
       }
+      return files;
+    },
+  },
+  copilot: {
+    configure: configureCopilot,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      for (const hook of getCopilotHooks()) {
+        files.set(`.github/copilot/hooks/${hook.name}`, hook.content);
+      }
+      // Note: .github/hooks/trellis.json is also written by configureCopilot
+      // for VS Code Copilot discovery, but tracked here under configDir
+      files.set(
+        ".github/copilot/hooks.json",
+        resolvePlaceholders(getCopilotHooksConfig()),
+      );
       return files;
     },
   },

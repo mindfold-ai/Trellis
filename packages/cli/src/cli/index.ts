@@ -72,6 +72,7 @@ program
   .option("--windsurf", "Include Windsurf workflows")
   .option("--qoder", "Include Qoder commands")
   .option("--codebuddy", "Include CodeBuddy commands")
+  .option("--copilot", "Include GitHub Copilot hooks")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",

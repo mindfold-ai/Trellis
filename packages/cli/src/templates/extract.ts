@@ -271,6 +271,23 @@ export function getCodebuddyTemplatePath(): string {
 }
 
 /**
+ * Get the path to the copilot templates directory.
+ *
+ * This reads from src/templates/copilot/ (development) or dist/templates/copilot/ (production).
+ * These are GENERIC templates, not the Trellis project's own .github/copilot/ configuration.
+ */
+export function getCopilotTemplatePath(): string {
+  const templatePath = path.join(__dirname, "copilot");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find copilot templates directory. Expected at templates/copilot/",
+  );
+}
+
+/**
  * Read a file from the .trellis directory
  * @param relativePath - Path relative to .trellis/ (e.g., 'scripts/task.py')
  * @returns File content as string

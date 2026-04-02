@@ -1,7 +1,7 @@
 """
 CLI Adapter for Multi-Platform Support.
 
-Abstracts differences between Claude Code, OpenCode, Cursor, iFlow, Codex, Kilo, Kiro Code, Gemini CLI, Antigravity, Windsurf, Qoder, and CodeBuddy interfaces.
+Abstracts differences between Claude Code, OpenCode, Cursor, iFlow, Codex, Kilo, Kiro Code, Gemini CLI, Antigravity, Windsurf, Qoder, CodeBuddy, and GitHub Copilot interfaces.
 
 Supported platforms:
 - claude: Claude Code (default)
@@ -16,6 +16,7 @@ Supported platforms:
 - windsurf: Windsurf (workflow-based)
 - qoder: Qoder
 - codebuddy: CodeBuddy
+- copilot: GitHub Copilot (VS Code)
 
 Usage:
     from common.cli_adapter import CLIAdapter
@@ -47,6 +48,7 @@ Platform = Literal[
     "windsurf",
     "qoder",
     "codebuddy",
+    "copilot",
 ]
 
 
@@ -115,6 +117,8 @@ class CLIAdapter:
             return ".qoder"
         elif self.platform == "codebuddy":
             return ".codebuddy"
+        elif self.platform == "copilot":
+            return ".github/copilot"
         else:
             return ".claude"
 
@@ -538,9 +542,10 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
         "windsurf",
         "qoder",
         "codebuddy",
+        "copilot",
     ):
         raise ValueError(
-            f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', 'codex', 'kilo', 'kiro', 'gemini', 'antigravity', 'windsurf', 'qoder', or 'codebuddy')"
+            f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', 'codex', 'kilo', 'kiro', 'gemini', 'antigravity', 'windsurf', 'qoder', 'codebuddy', or 'copilot')"
         )
 
     return CLIAdapter(platform=platform)  # type: ignore
@@ -560,6 +565,7 @@ _ALL_PLATFORM_CONFIG_DIRS = (
     ".windsurf",
     ".qoder",
     ".codebuddy",
+    ".github/copilot",
 )
 """All platform config directory names (used by detect_platform exclusion checks)."""
 
@@ -614,6 +620,7 @@ def detect_platform(project_root: Path) -> Platform:
         "windsurf",
         "qoder",
         "codebuddy",
+        "copilot",
     ):
         return env_platform  # type: ignore
 
@@ -674,6 +681,10 @@ def detect_platform(project_root: Path) -> Platform:
     # Check for .qoder directory (Qoder-specific)
     if (project_root / ".qoder").is_dir():
         return "qoder"
+
+    # Check for .github/copilot directory (GitHub Copilot-specific)
+    if (project_root / ".github" / "copilot").is_dir():
+        return "copilot"
 
     return "claude"
 

@@ -19,7 +19,8 @@ export type AITool =
   | "antigravity"
   | "windsurf"
   | "qoder"
-  | "codebuddy";
+  | "codebuddy"
+  | "copilot";
 
 /**
  * Template directory categories
@@ -37,7 +38,8 @@ export type TemplateDir =
   | "antigravity"
   | "windsurf"
   | "qoder"
-  | "codebuddy";
+  | "codebuddy"
+  | "copilot";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -55,7 +57,8 @@ export type CliFlag =
   | "antigravity"
   | "windsurf"
   | "qoder"
-  | "codebuddy";
+  | "codebuddy"
+  | "copilot";
 
 /**
  * Configuration for an AI tool
@@ -189,6 +192,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     cliFlag: "codebuddy",
     defaultChecked: false,
     hasPythonHooks: false,
+  },
+  copilot: {
+    name: "GitHub Copilot",
+    templateDirs: ["common", "copilot"],
+    configDir: ".github/copilot",
+    cliFlag: "copilot",
+    defaultChecked: false,
+    hasPythonHooks: true,
   },
 };
 
