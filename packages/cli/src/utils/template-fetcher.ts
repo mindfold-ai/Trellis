@@ -2,7 +2,7 @@
  * Remote template fetcher for Trellis CLI
  *
  * Fetches spec templates from the official marketplace:
- * https://github.com/mindfold-ai/Trellis/tree/main/marketplace
+ * https://github.com/mindfold-ai/marketplace
  */
 
 import fs from "node:fs";
@@ -15,9 +15,9 @@ import { downloadTemplate } from "giget";
 // =============================================================================
 
 export const TEMPLATE_INDEX_URL =
-  "https://raw.githubusercontent.com/mindfold-ai/Trellis/main/marketplace/index.json";
+  "https://raw.githubusercontent.com/mindfold-ai/marketplace/main/index.json";
 
-const TEMPLATE_REPO = "gh:mindfold-ai/Trellis";
+const TEMPLATE_REPO = "gh:mindfold-ai/marketplace";
 
 /** Map template type to installation path */
 const INSTALL_PATHS: Record<string, string> = {

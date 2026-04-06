@@ -1,3 +1,6 @@
 [submodule "docs-site"]
 	path = docs-site
 	url = https://github.com/mindfold-ai/docs.git
+[submodule "marketplace"]
+	path = marketplace
+	url = https://github.com/mindfold-ai/marketplace.git
