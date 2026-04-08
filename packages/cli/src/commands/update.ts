@@ -1802,11 +1802,23 @@ export async function update(options: UpdateOptions): Promise<void> {
       if (!fs.existsSync(taskDir)) {
         fs.mkdirSync(taskDir, { recursive: true });
 
-        // Get current developer for assignee
+        // Get current developer for assignee.
+        // `.developer` is a key=value file (written by init_developer.py):
+        //   name=<developer-name>
+        //   initialized_at=<iso8601>
+        // Reading it raw and .trim()-ing embeds the entire file contents
+        // (including the `name=` prefix and the `initialized_at` line) into
+        // the assignee field, producing bogus assignees like
+        // "name=suyuan\ninitialized_at=2026-04-07T23:41:21.978312" that
+        // later break session-start task rendering.
         const developerFile = path.join(cwd, DIR_NAMES.WORKFLOW, ".developer");
         let currentDeveloper = "unknown";
         if (fs.existsSync(developerFile)) {
-          currentDeveloper = fs.readFileSync(developerFile, "utf-8").trim();
+          const raw = fs.readFileSync(developerFile, "utf-8");
+          const nameMatch = raw.match(/^\s*name\s*=\s*(.+?)\s*$/m);
+          if (nameMatch) {
+            currentDeveloper = nameMatch[1];
+          }
         }
 
         // Build task.json
