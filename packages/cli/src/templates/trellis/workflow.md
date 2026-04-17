@@ -323,13 +323,34 @@ tasks/
 
 **Commands**:
 ```bash
-python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>]   # Create task directory
+# Task lifecycle
+python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>] [--parent <dir>]   # Create task directory
 python3 ./.trellis/scripts/task.py start <name>    # Set as current task (writes .current-task, triggers after_start hooks)
 python3 ./.trellis/scripts/task.py finish          # Clear current task (triggers after_finish hooks)
 python3 ./.trellis/scripts/task.py archive <name>  # Archive to archive/{year-month}/
-python3 ./.trellis/scripts/task.py list            # List active tasks
+python3 ./.trellis/scripts/task.py list [--mine] [--status <s>]   # List active tasks
 python3 ./.trellis/scripts/task.py list-archive    # List archived tasks
+
+# Code-spec context (injected into implement/check/debug agents via JSONL)
+python3 ./.trellis/scripts/task.py init-context <name> <type>     # Initialize jsonl files (type: backend|frontend|fullstack|test|docs)
+python3 ./.trellis/scripts/task.py add-context <name> <action> <file> <reason>   # Add entry to <action>.jsonl
+python3 ./.trellis/scripts/task.py list-context <name> [action]   # Show configured context files
+python3 ./.trellis/scripts/task.py validate <name>                # Validate jsonl references exist
+
+# Task metadata
+python3 ./.trellis/scripts/task.py set-branch <name> <branch>     # Set git branch for the task
+python3 ./.trellis/scripts/task.py set-base-branch <name> <branch>  # Set PR target branch
+python3 ./.trellis/scripts/task.py set-scope <name> <scope>       # Set task scope
+
+# Hierarchy (parent/child tasks)
+python3 ./.trellis/scripts/task.py add-subtask <parent> <child>   # Link child task to parent
+python3 ./.trellis/scripts/task.py remove-subtask <parent> <child>  # Unlink child from parent
+
+# PR creation
+python3 ./.trellis/scripts/task.py create-pr [name] [--dry-run]   # Create PR for current or specified task
 ```
+
+> Run `python3 ./.trellis/scripts/task.py --help` to see the complete up-to-date list.
 
 **Current task mechanism**: `task.py start <name>` writes the selected task path to `.trellis/.current-task`. The SessionStart hook reads this file to inject `## CURRENT TASK` into every new session's context, so the AI immediately knows what you're working on without being told. Run `task.py finish` when you're done — subsequent sessions will show `(none)` until you start another task.
 

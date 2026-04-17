@@ -358,12 +358,29 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 | Script | Purpose |
 |--------|---------|
 | `python3 ./.trellis/scripts/get_context.py` | Get session context |
+| **Task lifecycle** | |
 | `python3 ./.trellis/scripts/task.py create` | Create task directory |
-| `python3 ./.trellis/scripts/task.py init-context` | Initialize jsonl files |
-| `python3 ./.trellis/scripts/task.py add-context` | Add code-spec/context file to jsonl |
-| `python3 ./.trellis/scripts/task.py start` | Set current task |
-| `python3 ./.trellis/scripts/task.py finish` | Clear current task |
+| `python3 ./.trellis/scripts/task.py start` | Set current task (writes `.current-task`, triggers `after_start` hooks) |
+| `python3 ./.trellis/scripts/task.py finish` | Clear current task (triggers `after_finish` hooks) |
 | `python3 ./.trellis/scripts/task.py archive` | Archive completed task |
+| `python3 ./.trellis/scripts/task.py list` | List active tasks (supports `--mine`, `--status`) |
+| `python3 ./.trellis/scripts/task.py list-archive` | List archived tasks |
+| **Code-spec context (jsonl injection)** | |
+| `python3 ./.trellis/scripts/task.py init-context` | Initialize implement/check/debug jsonl files |
+| `python3 ./.trellis/scripts/task.py add-context` | Add code-spec/context file to a jsonl |
+| `python3 ./.trellis/scripts/task.py list-context` | Show configured context files |
+| `python3 ./.trellis/scripts/task.py validate` | Validate jsonl references exist |
+| **Task metadata** | |
+| `python3 ./.trellis/scripts/task.py set-branch` | Set git branch for the task |
+| `python3 ./.trellis/scripts/task.py set-base-branch` | Set PR target branch |
+| `python3 ./.trellis/scripts/task.py set-scope` | Set task scope |
+| **Hierarchy** | |
+| `python3 ./.trellis/scripts/task.py add-subtask` | Link child task to parent |
+| `python3 ./.trellis/scripts/task.py remove-subtask` | Unlink child from parent |
+| **PR creation** | |
+| `python3 ./.trellis/scripts/task.py create-pr` | Create PR for current or specified task |
+
+> Run `python3 ./.trellis/scripts/task.py --help` to see the complete up-to-date list of subcommands and their arguments.
 
 ### Sub Agents `[AI]`
 
