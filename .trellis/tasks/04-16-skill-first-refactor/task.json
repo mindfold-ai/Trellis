@@ -14,7 +14,6 @@
     "04-17-workflow-enforcement-v2",
     "04-17-subagent-injection-per-platform",
     "04-17-claude-hooks-migrate-to-shared",
-    "04-17-hook-path-robustness",
-    "04-17-update-cleanup-deleted-templates"
+    "04-17-hook-path-robustness"
   ]
 }
