@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0-beta.7",
+  "description": "Fix opencode plugin loader incompatibility with OpenCode 1.2.x. Plugins shipped `export default { id, server: async (...) => hooks }` object shape; OpenCode iterates `Object.entries(mod)` and calls each export as a function (`packages/opencode/src/plugin/index.ts:90 — for ([_, fn] of Object.entries(mod)) await fn(input)`), which crashes with `TypeError: fn is not a function`. Fixed by changing all 3 plugins to the current factory-function shape: `export default async (input) => hooks`.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(opencode): plugins now use the factory-function export shape (`export default async ({ directory, client }) => hooks`) that OpenCode 1.2.x requires. The previous `{ id, server }` object shape crashed OpenCode on startup with `TypeError: fn3 is not a function. (In 'fn3(input)', 'fn3' is an instance of Object)` at `src/plugin/index.ts:90:28`, because OpenCode 1.2.x iterates every module export with `Object.entries(mod)` and calls each one as a function (`for ([_, fn] of Object.entries(mod)) await fn(input)`). The `server:` field was never unwrapped by the runtime. Affects all 3 plugins: `inject-subagent-context.js`, `inject-workflow-state.js`, `session-start.js`.\n  Users on any trellis version that configured opencode — including 0.4.x stable — were affected as soon as they updated opencode to 1.2.x. Upgrade to this version to restore opencode startup.",
+  "migrations": [],
+  "notes": "Pure template-content fix for opencode users. No path migrations. `trellis update` auto-updates the 3 plugin files (unmodified copies) or prompts for confirm with diff (if you customized them)."
+}

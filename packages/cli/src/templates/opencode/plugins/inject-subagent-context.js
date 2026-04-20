@@ -255,13 +255,16 @@ ${originalPrompt}
   return templates[agentType] || originalPrompt
 }
 
-export default {
-  id: "trellis.inject-subagent-context",
-  server: async ({ directory }) => {
-    const ctx = new TrellisContext(directory)
-    debugLog("inject", "Plugin loaded, directory:", directory)
+// OpenCode plugin factory: `export default async (input) => hooks`.
+// OpenCode 1.2.x iterates every module export and invokes it as a function
+// (packages/opencode/src/plugin/index.ts — `for ([_, fn] of Object.entries(mod)) await fn(input)`);
+// the previous `{ id, server }` object shape failed with
+// `TypeError: fn is not a function` in 1.2.x.
+export default async ({ directory }) => {
+  const ctx = new TrellisContext(directory)
+  debugLog("inject", "Plugin loaded, directory:", directory)
 
-    return {
+  return {
       "tool.execute.before": async (input, output) => {
         try {
           debugLog("inject", "tool.execute.before called, tool:", input?.tool)
@@ -337,5 +340,4 @@ export default {
         }
       }
     }
-  }
 }

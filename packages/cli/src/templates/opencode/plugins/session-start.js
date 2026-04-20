@@ -432,13 +432,12 @@ async function hasPersistedInjectedContext(client, directory, sessionID) {
   }
 }
 
-export default {
-  id: "trellis.session-start",
-  server: async ({ directory, client }) => {
-    const ctx = new TrellisContext(directory)
-    debugLog("session", "Plugin loaded, directory:", directory)
+// OpenCode 1.2.x expects plugins to be factory functions (see inject-subagent-context.js comment).
+export default async ({ directory, client }) => {
+  const ctx = new TrellisContext(directory)
+  debugLog("session", "Plugin loaded, directory:", directory)
 
-    return {
+  return {
       // Clear in-memory dedupe after compaction so context can be re-injected.
       event: ({ event }) => {
         try {
@@ -511,6 +510,5 @@ export default {
           debugLog("session", "Error in chat.message:", error.message, error.stack)
         }
       }
-    }
   }
 }

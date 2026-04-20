@@ -107,13 +107,12 @@ function buildBreadcrumb(id, status, templates) {
   return `<workflow-state>\n${header}\n${body}\n</workflow-state>`
 }
 
-export default {
-  id: "trellis.inject-workflow-state",
-  server: async ({ directory }) => {
-    const ctx = new TrellisContext(directory)
-    debugLog("workflow-state", "Plugin loaded, directory:", directory)
+// OpenCode 1.2.x expects plugins to be factory functions (see inject-subagent-context.js comment).
+export default async ({ directory }) => {
+  const ctx = new TrellisContext(directory)
+  debugLog("workflow-state", "Plugin loaded, directory:", directory)
 
-    return {
+  return {
       // chat.message fires on every user message. Inject breadcrumb in-place
       // so it persists in conversation history.
       "chat.message": async (input, output) => {
@@ -155,6 +154,5 @@ export default {
           )
         }
       },
-    }
-  },
+  }
 }
