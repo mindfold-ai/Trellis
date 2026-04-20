@@ -146,7 +146,7 @@ trellis init --registry https://github.com/your-org/your-spec-templates
 <details>
 <summary><strong>它和 <code>CLAUDE.md</code>、<code>AGENTS.md</code>、<code>.cursorrules</code> 有什么区别？</strong></summary>
 
-这些文件当然有用，但它们很容易越写越大、越写越散。Trellis 在它们之外补上了结构：分层 Spec、任务上下文、workspace 记忆，以及按平台接入的工作流。
+这些文件当然有用，但它们很容易越写越大、越写越散。Trellis 在它们之外补上了结构：分层 Spec、任务上下文、workspace 记忆，以及按平台接入的工作流。Trellis 不一次性加载全部规范，而是将 spec 索引作为紧凑的目录表注入——完整的指南在你需要时通过 `Read` 工具按需读取。
 
 </details>
 

@@ -164,6 +164,11 @@ def main() -> None:
 
     trellis_dir = project_dir / ".trellis"
 
+    scripts_dir = trellis_dir / "scripts"
+    if scripts_dir.is_dir() and str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.spec_index_toc import build_spec_index_toc
+
     output = StringIO()
 
     output.write("""<session-context>
@@ -183,8 +188,11 @@ Read and follow all instructions below carefully.
     output.write("\n</workflow>\n\n")
 
     output.write("<guidelines>\n")
-    output.write("**Note**: The guidelines below are index files — they list available guideline documents and their locations.\n")
-    output.write("During actual development, you MUST read the specific guideline files listed in each index's Pre-Development Checklist.\n\n")
+    output.write(
+        "**Note**: Each block below is a **condensed** spec index: the primary `Guide` table (when present), "
+        "a short **Pre-Development Checklist** excerpt (when present), and all `##` section headings. "
+        "Before coding, use the Read tool on the `Full index:` path and on any linked guideline files you need.\n\n"
+    )
 
     spec_dir = trellis_dir / "spec"
     if spec_dir.is_dir():
@@ -196,14 +204,14 @@ Read and follow all instructions below carefully.
                 index_file = sub / "index.md"
                 if index_file.is_file():
                     output.write(f"## {sub.name}\n")
-                    output.write(read_file(index_file))
+                    output.write(build_spec_index_toc(index_file, project_dir))
                     output.write("\n\n")
                 continue
 
             index_file = sub / "index.md"
             if index_file.is_file():
                 output.write(f"## {sub.name}\n")
-                output.write(read_file(index_file))
+                output.write(build_spec_index_toc(index_file, project_dir))
                 output.write("\n\n")
             else:
                 for nested in sorted(sub.iterdir()):
@@ -212,7 +220,7 @@ Read and follow all instructions below carefully.
                     nested_index = nested / "index.md"
                     if nested_index.is_file():
                         output.write(f"## {sub.name}/{nested.name}\n")
-                        output.write(read_file(nested_index))
+                        output.write(build_spec_index_toc(nested_index, project_dir))
                         output.write("\n\n")
 
     output.write("</guidelines>\n\n")
@@ -221,8 +229,11 @@ Read and follow all instructions below carefully.
     output.write(f"<task-status>\n{task_status}\n</task-status>\n\n")
 
     output.write("""<ready>
-Context loaded. Workflow index, project state, and guidelines are already injected above — do NOT re-read them.
-Wait for the user's first message, then handle it following the workflow guide.
+Context loaded: workflow section index, current project state, and condensed spec indexes are injected above.
+
+Full `.trellis/workflow.md` and spec `index.md` files are not fully inlined. When you need details, use the Read tool on `.trellis/workflow.md` or on the `Full index:` paths shown under `.trellis/spec/`.
+
+Wait for the user's first message, then follow the workflow guide.
 If there is an active task, ask whether to continue it.
 </ready>""")
 

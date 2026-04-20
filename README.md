@@ -145,7 +145,7 @@ Browse available templates and learn how to publish your own on the [Spec Templa
 <details>
 <summary><strong>How is this different from <code>CLAUDE.md</code>, <code>AGENTS.md</code>, or <code>.cursorrules</code>?</strong></summary>
 
-Those files are useful, but they tend to become monolithic. Trellis adds structure around them: layered specs, task context, workspace memory, and platform-aware workflow wiring.
+Those files are useful, but they tend to become monolithic. Trellis adds structure around them: layered specs, task context, workspace memory, and platform-aware workflow wiring. Rather than loading all specs at once, Trellis injects spec indexes as compact tables of contents — the full guidelines are accessible on demand via the `Read` tool when you need them.
 
 </details>
 
