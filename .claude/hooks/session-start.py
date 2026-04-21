@@ -324,7 +324,11 @@ def main():
     scripts_dir = trellis_dir / "scripts"
     if scripts_dir.is_dir() and str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
-    from common.spec_index_toc import build_spec_index_toc
+    try:
+        from common.spec_index_toc import build_spec_index_toc
+    except ImportError:
+        def build_spec_index_toc(path, project_dir):  # type: ignore[misc]
+            return read_file(path)
 
     # Load config for scope filtering and legacy detection
     is_mono, packages, scope_config, task_pkg, default_pkg = _load_trellis_config(trellis_dir)

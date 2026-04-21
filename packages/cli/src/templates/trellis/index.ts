@@ -57,6 +57,9 @@ export const commonSessionContext = readTemplate(
 export const commonPackagesContext = readTemplate(
   "scripts/common/packages_context.py",
 );
+export const commonSpecIndexToc = readTemplate(
+  "scripts/common/spec_index_toc.py",
+);
 
 // Python scripts - multi_agent
 export const multiAgentInit = readTemplate("scripts/multi_agent/__init__.py");
@@ -120,6 +123,7 @@ export function getAllScripts(): Map<string, string> {
   scripts.set("common/task_store.py", commonTaskStore);
   scripts.set("common/session_context.py", commonSessionContext);
   scripts.set("common/packages_context.py", commonPackagesContext);
+  scripts.set("common/spec_index_toc.py", commonSpecIndexToc);
 
   // Multi-agent
   scripts.set("multi_agent/__init__.py", multiAgentInit);
