@@ -47,6 +47,20 @@ def read_file(path: Path, fallback: str = "") -> str:
     except (FileNotFoundError, PermissionError):
         return fallback
 
+def get_git_root() -> Path | None:
+    """Get the git repository root directory."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return Path(result.stdout.strip()).resolve()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return None
 
 def run_script(script_path: Path) -> str:
     try:
@@ -405,7 +419,9 @@ def main():
             project_dir = Path(val).resolve()
             break
     if project_dir is None:
-        project_dir = Path(".").resolve()
+        project_dir = get_git_root()
+    if project_dir is None:
+        project_dir = Path.cwd().parent.parent.resolve()
 
     trellis_dir = project_dir / ".trellis"
 
