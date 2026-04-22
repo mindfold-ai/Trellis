@@ -615,14 +615,52 @@ describe("init() integration", () => {
 
     await init({ yes: true, monorepo: true });
 
-    // Should log error about missing monorepo config
+    // Should log error about missing multi-package layout
     const errorCall = logSpy.mock.calls.find(
-      ([msg]) => typeof msg === "string" && msg.includes("no monorepo"),
+      ([msg]) =>
+        typeof msg === "string" &&
+        msg.includes("no multi-package layout detected"),
     );
     expect(errorCall).toBeDefined();
 
+    // Should also print the manual config.yaml example as guidance
+    const guideCall = logSpy.mock.calls.find(
+      ([msg]) => typeof msg === "string" && msg.includes("git: true"),
+    );
+    expect(guideCall).toBeDefined();
+
     // Should NOT create .trellis/ (early return)
     expect(fs.existsSync(path.join(tmpDir, DIR_NAMES.WORKFLOW))).toBe(false);
+  });
+
+  it("#19 polyrepo: writes git: true for sibling .git packages", async () => {
+    // Two sibling .git directories — polyrepo fallback should pick them up
+    fs.mkdirSync(path.join(tmpDir, "frontend", ".git"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, "backend", ".git"), { recursive: true });
+
+    await init({ yes: true });
+
+    const configPath = path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml");
+    expect(fs.existsSync(configPath)).toBe(true);
+
+    const configContent = fs.readFileSync(configPath, "utf-8");
+    // Slice off only the auto-generated section so commented-out template
+    // examples (which legitimately mention `type: submodule`) do not pollute
+    // the assertion.
+    const generatedIdx = configContent.indexOf(
+      "# Auto-detected monorepo packages",
+    );
+    expect(generatedIdx).toBeGreaterThanOrEqual(0);
+    const generated = configContent.slice(generatedIdx);
+
+    expect(generated).toContain("packages:");
+    expect(generated).toContain("frontend:");
+    expect(generated).toContain("backend:");
+    expect(generated).toContain("path: frontend");
+    expect(generated).toContain("path: backend");
+    // Polyrepo packages should be marked git: true, NOT type: submodule
+    expect(generated).toContain("git: true");
+    expect(generated).not.toContain("type: submodule");
   });
 
   it("#18 monorepo: re-init does not duplicate packages in config.yaml", async () => {

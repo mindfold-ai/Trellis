@@ -226,6 +226,8 @@ export interface DetectedPackage {
   type: ProjectType;
   /** Whether this package is a git submodule */
   isSubmodule: boolean;
+  /** Whether this package has its own .git (independent repo, e.g. polyrepo sibling) */
+  isGitRepo: boolean;
 }
 
 /**
@@ -515,6 +517,87 @@ function parseUvWorkspace(cwd: string): string[] | null {
   }
 }
 
+/**
+ * Scan for sibling/grandchild directories that contain their own `.git`
+ * (polyrepo / meta-repo layout: independent clones placed under one parent).
+ *
+ * Rules:
+ * - Scans up to 2 levels deep (immediate children + grandchildren).
+ * - When a `.git` is found at a path, that path is a candidate and we DO NOT
+ *   descend into it (a package is atomic).
+ * - Filters out hidden dirs (starting with `.`) and common build/vendor dirs.
+ * - `.git` may be a directory OR a file (worktree gitlink form) — uses
+ *   `fs.existsSync` without `isDirectory()` check.
+ * - Skips paths in `submodulePaths` to avoid double-counting.
+ * - Returns `null` if fewer than 2 candidates (a single sibling repo is just
+ *   a misclick, not a polyrepo).
+ */
+const POLYREPO_IGNORED_DIRS = new Set([
+  "node_modules",
+  "target",
+  "dist",
+  "build",
+  "out",
+  "bin",
+  "obj",
+  "vendor",
+  "coverage",
+  "tmp",
+  "__pycache__",
+]);
+
+function parsePolyrepo(
+  cwd: string,
+  submodulePaths: Set<string>,
+): string[] | null {
+  const MAX_DEPTH = 2;
+  const found: string[] = [];
+
+  function isCandidateDir(name: string): boolean {
+    if (name.startsWith(".")) return false;
+    if (POLYREPO_IGNORED_DIRS.has(name)) return false;
+    return true;
+  }
+
+  function scan(relDir: string, depth: number): void {
+    if (depth >= MAX_DEPTH) return;
+    const absDir = relDir ? path.join(cwd, relDir) : cwd;
+
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(absDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (!isCandidateDir(entry.name)) continue;
+
+      const childRel = relDir ? `${relDir}/${entry.name}` : entry.name;
+      const childAbs = path.join(cwd, childRel);
+
+      // `.git` may be a file (worktree gitlink) or a directory — accept either.
+      const hasGit = fs.existsSync(path.join(childAbs, ".git"));
+
+      if (hasGit) {
+        // Skip if already covered by a submodule entry (avoid double-counting).
+        if (!submodulePaths.has(childRel)) {
+          found.push(childRel);
+        }
+        // Do NOT descend into a repo directory — package is atomic.
+        continue;
+      }
+
+      scan(childRel, depth + 1);
+    }
+  }
+
+  scan("", 0);
+
+  return found.length >= 2 ? found : null;
+}
+
 /** Parse .gitmodules for submodule names and paths */
 function parseGitmodules(cwd: string): { name: string; path: string }[] | null {
   try {
@@ -569,41 +652,54 @@ export function detectMonorepo(cwd: string): DetectedPackage[] | null {
     }
   }
 
-  // 2. Try workspace managers in priority order
-  const workspaceParsers: (() => string[] | null)[] = [
+  // 2. Try workspace managers in priority order. The polyrepo parser is
+  // appended last and only fires if all 6 prior parsers miss.
+  type ParserResult = { dirs: string[]; isGitRepo: boolean } | null;
+  const workspaceParsers: (() => ParserResult)[] = [
     () => {
       const p = parsePnpmWorkspace(cwd);
-      return p ? expandWorkspaceGlobs(cwd, p) : null;
+      return p
+        ? { dirs: expandWorkspaceGlobs(cwd, p), isGitRepo: false }
+        : null;
     },
     () => {
       const p = parseNpmWorkspaces(cwd);
-      return p ? expandWorkspaceGlobs(cwd, p) : null;
+      return p
+        ? { dirs: expandWorkspaceGlobs(cwd, p), isGitRepo: false }
+        : null;
     },
     () => {
       const r = parseCargoWorkspace(cwd);
       if (!r) return null;
       const inc = expandWorkspaceGlobs(cwd, r.members);
       const exc = new Set(expandWorkspaceGlobs(cwd, r.exclude));
-      return inc.filter((p) => !exc.has(p));
+      return { dirs: inc.filter((p) => !exc.has(p)), isGitRepo: false };
     },
     () => {
       const p = parseGoWork(cwd);
       if (!p) return null;
-      return p
-        .map(normalizePkgPath)
-        .filter((d) => d && d !== "." && dirExists(cwd, d));
+      return {
+        dirs: p
+          .map(normalizePkgPath)
+          .filter((d) => d && d !== "." && dirExists(cwd, d)),
+        isGitRepo: false,
+      };
     },
     () => {
       const p = parseUvWorkspace(cwd);
-      return p ? expandWorkspaceGlobs(cwd, p) : null;
+      return p
+        ? { dirs: expandWorkspaceGlobs(cwd, p), isGitRepo: false }
+        : null;
     },
   ];
 
+  let workspaceMatched = false;
   for (const parse of workspaceParsers) {
-    const dirs = parse();
-    if (!dirs) continue;
+    const result = parse();
+    if (!result) continue;
+    workspaceMatched = true;
     detected = true;
-    for (const dir of dirs) {
+    for (const dir of result.dirs) {
       const np = normalizePkgPath(dir);
       if (!np || np === ".") continue;
       if (packages.has(np)) continue;
@@ -615,6 +711,7 @@ export function detectMonorepo(cwd: string): DetectedPackage[] | null {
           ? detectProjectType(path.join(cwd, np))
           : "unknown",
         isSubmodule: submodulePaths.has(np),
+        isGitRepo: result.isGitRepo,
       });
     }
   }
@@ -629,7 +726,32 @@ export function detectMonorepo(cwd: string): DetectedPackage[] | null {
         ? detectProjectType(path.join(cwd, np))
         : "unknown",
       isSubmodule: true,
+      isGitRepo: false,
     });
+  }
+
+  // 4. Polyrepo fallback: only fires if NO workspace parser matched AND no
+  // submodules were found. Sibling/grandchild .git directories indicate
+  // independent repos placed under one parent (meta-repo / polyrepo layout).
+  if (!workspaceMatched && submodulePaths.size === 0) {
+    const polyDirs = parsePolyrepo(cwd, new Set(submodulePaths.keys()));
+    if (polyDirs) {
+      detected = true;
+      for (const dir of polyDirs) {
+        const np = normalizePkgPath(dir);
+        if (!np || np === ".") continue;
+        if (packages.has(np)) continue;
+        packages.set(np, {
+          name: readPackageName(cwd, np),
+          path: np,
+          type: dirExists(cwd, np)
+            ? detectProjectType(path.join(cwd, np))
+            : "unknown",
+          isSubmodule: false,
+          isGitRepo: true,
+        });
+      }
+    }
   }
 
   if (!detected) return null;

@@ -593,6 +593,8 @@ function writeMonorepoConfig(cwd: string, packages: DetectedPackage[]): void {
     lines.push(`    path: ${pkg.path}`);
     if (pkg.isSubmodule) {
       lines.push("    type: submodule");
+    } else if (pkg.isGitRepo) {
+      lines.push("    git: true");
     }
   }
 
@@ -734,9 +736,28 @@ export async function init(options: InitOptions): Promise<void> {
     if (options.monorepo === true && !detected) {
       console.log(
         chalk.red(
-          "Error: --monorepo specified but no monorepo configuration found.",
+          "Error: --monorepo specified but no multi-package layout detected.",
         ),
       );
+      console.log("");
+      console.log(chalk.gray("Checked:"));
+      console.log(chalk.gray("  ✗ pnpm-workspace.yaml"));
+      console.log(chalk.gray("  ✗ package.json workspaces"));
+      console.log(chalk.gray("  ✗ Cargo.toml [workspace]"));
+      console.log(chalk.gray("  ✗ go.work"));
+      console.log(chalk.gray("  ✗ pyproject.toml [tool.uv.workspace]"));
+      console.log(chalk.gray("  ✗ .gitmodules"));
+      console.log(chalk.gray("  ✗ sibling .git directories (need ≥ 2)"));
+      console.log("");
+      console.log("To configure manually, add to .trellis/config.yaml:");
+      console.log("");
+      console.log(chalk.cyan("  packages:"));
+      console.log(chalk.cyan("    frontend:"));
+      console.log(chalk.cyan("      path: ./frontend"));
+      console.log(chalk.cyan("      git: true       # if it has its own .git"));
+      console.log(chalk.cyan("    backend:"));
+      console.log(chalk.cyan("      path: ./backend"));
+      console.log(chalk.cyan("      git: true"));
       return;
     }
 
@@ -749,12 +770,16 @@ export async function init(options: InitOptions): Promise<void> {
         // Show detected packages and ask
         console.log(chalk.blue("\n🔍 Detected monorepo packages:"));
         for (const pkg of detected) {
-          const sub = pkg.isSubmodule ? chalk.gray(" (submodule)") : "";
+          const tag = pkg.isSubmodule
+            ? chalk.gray(" (submodule)")
+            : pkg.isGitRepo
+              ? chalk.gray(" (git repo)")
+              : "";
           console.log(
             chalk.gray(`   - ${pkg.name}`) +
               chalk.gray(` (${pkg.path})`) +
               chalk.gray(` [${pkg.type}]`) +
-              sub,
+              tag,
           );
         }
         console.log("");

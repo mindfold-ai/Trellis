@@ -233,6 +233,7 @@ describe("detectMonorepo", () => {
       ["@scope/bar", "@scope/foo"],
     );
     expect(result.every((p) => !p.isSubmodule)).toBe(true);
+    expect(result.every((p) => !p.isGitRepo)).toBe(true);
   });
 
   it("returns empty array when pnpm workspace glob matches nothing", () => {
@@ -461,6 +462,143 @@ describe("detectMonorepo", () => {
     const result = assertPackages(detectMonorepo(tmpDir));
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("nameless");
+  });
+});
+
+// =============================================================================
+// detectMonorepo — polyrepo fallback (sibling .git scan)
+// =============================================================================
+
+describe("detectMonorepo polyrepo fallback", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-poly-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** Create a directory and place a `.git` directory inside it (real repo form). */
+  function mkRepoDir(relPath: string): void {
+    const dir = path.join(tmpDir, relPath);
+    fs.mkdirSync(path.join(dir, ".git"), { recursive: true });
+  }
+
+  /** Create a directory and place a `.git` FILE inside (worktree gitlink form). */
+  function mkWorktreeDir(relPath: string): void {
+    const dir = path.join(tmpDir, relPath);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, ".git"),
+      "gitdir: /tmp/somewhere/.git/worktrees/wt\n",
+    );
+  }
+
+  it("detects 2 sibling .git directories at depth 1", () => {
+    mkRepoDir("frontend");
+    mkRepoDir("backend");
+
+    const result = assertPackages(detectMonorepo(tmpDir));
+    expect(result).toHaveLength(2);
+    expect(result.map((p) => p.path).sort()).toEqual(["backend", "frontend"]);
+    expect(result.every((p) => p.isGitRepo)).toBe(true);
+    expect(result.every((p) => !p.isSubmodule)).toBe(true);
+  });
+
+  it("detects grandchild .git directories at depth 2", () => {
+    mkRepoDir("apps/web");
+    mkRepoDir("apps/api");
+
+    const result = assertPackages(detectMonorepo(tmpDir));
+    expect(result).toHaveLength(2);
+    expect(result.map((p) => p.path).sort()).toEqual([
+      "apps/api",
+      "apps/web",
+    ]);
+    expect(result.every((p) => p.isGitRepo)).toBe(true);
+  });
+
+  it("returns null when only 1 sibling .git is present (not a polyrepo)", () => {
+    mkRepoDir("only-one");
+    expect(detectMonorepo(tmpDir)).toBeNull();
+  });
+
+  it("treats .git file (worktree gitlink) as a repo marker", () => {
+    mkWorktreeDir("wt-a");
+    mkWorktreeDir("wt-b");
+
+    const result = assertPackages(detectMonorepo(tmpDir));
+    expect(result).toHaveLength(2);
+    expect(result.every((p) => p.isGitRepo)).toBe(true);
+  });
+
+  it("ignores common build/vendor dirs (node_modules, dist, etc.)", () => {
+    mkRepoDir("node_modules/foo");
+    mkRepoDir("dist/bundle");
+    mkRepoDir("real-app");
+
+    // Only one valid candidate (real-app), polyrepo needs >= 2
+    expect(detectMonorepo(tmpDir)).toBeNull();
+  });
+
+  it("ignores hidden directories (starting with .)", () => {
+    mkRepoDir(".hidden-thing");
+    mkRepoDir("real-app");
+
+    expect(detectMonorepo(tmpDir)).toBeNull();
+  });
+
+  it("does NOT descend into a directory that is itself a repo", () => {
+    // outer/.git exists; outer/inner/.git also exists. We should pick `outer`
+    // and NOT descend into it to find `outer/inner` as a separate package.
+    mkRepoDir("outer");
+    mkRepoDir("outer/inner");
+    mkRepoDir("sibling");
+
+    const result = assertPackages(detectMonorepo(tmpDir));
+    expect(result.map((p) => p.path).sort()).toEqual(["outer", "sibling"]);
+  });
+
+  it("does not fire when a workspace parser already matched", () => {
+    // pnpm workspace present + sibling .git in unrelated dirs.
+    // Polyrepo must NOT activate because pnpm parser matched.
+    fs.writeFileSync(
+      path.join(tmpDir, "pnpm-workspace.yaml"),
+      "packages:\n  - 'packages/*'\n",
+    );
+    const pkgDir = path.join(tmpDir, "packages", "lib");
+    fs.mkdirSync(pkgDir, { recursive: true });
+    fs.writeFileSync(path.join(pkgDir, "package.json"), JSON.stringify({ name: "lib" }));
+
+    // Sibling .git that polyrepo would otherwise pick up
+    mkRepoDir("standalone-a");
+    mkRepoDir("standalone-b");
+
+    const result = assertPackages(detectMonorepo(tmpDir));
+    // Only the workspace package, not the standalone-* dirs
+    expect(result).toHaveLength(1);
+    expect(result[0].path).toBe("packages/lib");
+    expect(result[0].isGitRepo).toBe(false);
+  });
+
+  it("does not fire when .gitmodules is present", () => {
+    fs.writeFileSync(
+      path.join(tmpDir, ".gitmodules"),
+      '[submodule "docs"]\n\tpath = docs\n\turl = https://example.com\n',
+    );
+    fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    // Plus sibling .git that would otherwise trigger polyrepo
+    mkRepoDir("standalone-a");
+    mkRepoDir("standalone-b");
+
+    const result = assertPackages(detectMonorepo(tmpDir));
+    // Only the submodule, not standalone-*
+    expect(result).toHaveLength(1);
+    expect(result[0].path).toBe("docs");
+    expect(result[0].isSubmodule).toBe(true);
+    expect(result[0].isGitRepo).toBe(false);
   });
 });
 
