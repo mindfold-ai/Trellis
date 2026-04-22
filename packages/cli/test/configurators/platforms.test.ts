@@ -131,6 +131,12 @@ describe("getConfiguredPlatforms", () => {
     expect(result.has("copilot")).toBe(true);
   });
 
+  it("detects .factory directory as droid", () => {
+    fs.mkdirSync(path.join(tmpDir, ".factory"));
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("droid")).toBe(true);
+  });
+
   it("detects multiple platforms simultaneously", () => {
     for (const id of PLATFORM_IDS) {
       fs.mkdirSync(path.join(tmpDir, AI_TOOLS[id].configDir), {
@@ -552,6 +558,37 @@ describe("configurePlatform", () => {
   it("cursor configuration includes commands directory", async () => {
     await configurePlatform("cursor", tmpDir);
     expect(fs.existsSync(path.join(tmpDir, ".cursor", "commands"))).toBe(true);
+  });
+
+  it("configurePlatform('droid') creates .factory/commands/trellis directory", async () => {
+    await configurePlatform("droid", tmpDir);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".factory", "commands", "trellis")),
+    ).toBe(true);
+  });
+
+  it("droid configuration writes namespaced command files", async () => {
+    await configurePlatform("droid", tmpDir);
+    const startPath = path.join(
+      tmpDir,
+      ".factory",
+      "commands",
+      "trellis",
+      "start.md",
+    );
+    expect(fs.existsSync(startPath)).toBe(true);
+    const content = fs.readFileSync(startPath, "utf-8");
+    expect(content.startsWith("---\n")).toBe(true);
+    expect(content).toMatch(/\ndescription:/);
+  });
+
+  it("collectPlatformTemplates('droid') maps commands under .factory/commands/trellis/", () => {
+    const templates = collectPlatformTemplates("droid");
+    expect(templates).toBeInstanceOf(Map);
+    expect(templates?.get(".factory/commands/trellis/start.md")).toBeDefined();
+    expect(
+      templates?.get(".factory/commands/trellis/finish-work.md"),
+    ).toBeDefined();
   });
 
   it("does not throw for any platform", async () => {

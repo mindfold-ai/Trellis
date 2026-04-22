@@ -1,7 +1,7 @@
 """
 CLI Adapter for Multi-Platform Support.
 
-Abstracts differences between Claude Code, OpenCode, Cursor, iFlow, Codex, Kilo, Kiro Code, Gemini CLI, Antigravity, Windsurf, Qoder, CodeBuddy, and GitHub Copilot interfaces.
+Abstracts differences between Claude Code, OpenCode, Cursor, iFlow, Codex, Kilo, Kiro Code, Gemini CLI, Antigravity, Windsurf, Qoder, CodeBuddy, GitHub Copilot, and Factory Droid interfaces.
 
 Supported platforms:
 - claude: Claude Code (default)
@@ -17,6 +17,7 @@ Supported platforms:
 - qoder: Qoder
 - codebuddy: CodeBuddy
 - copilot: GitHub Copilot (VS Code)
+- droid: Factory Droid (commands-based)
 
 Usage:
     from common.cli_adapter import CLIAdapter
@@ -49,6 +50,7 @@ Platform = Literal[
     "qoder",
     "codebuddy",
     "copilot",
+    "droid",
 ]
 
 
@@ -119,6 +121,8 @@ class CLIAdapter:
             return ".codebuddy"
         elif self.platform == "copilot":
             return ".github/copilot"
+        elif self.platform == "droid":
+            return ".factory"
         else:
             return ".claude"
 
@@ -241,6 +245,8 @@ class CLIAdapter:
             return f".kilocode/workflows/{name}.md"
         elif self.platform == "copilot":
             return f".github/prompts/{name}.prompt.md"
+        elif self.platform == "droid":
+            return f".factory/commands/trellis/{name}.md"
         else:
             return f"{self.config_dir_name}/commands/trellis/{name}.md"
 
@@ -273,6 +279,8 @@ class CLIAdapter:
         elif self.platform == "codebuddy":
             return {}
         elif self.platform == "copilot":
+            return {}
+        elif self.platform == "droid":
             return {}
         else:
             return {"CLAUDE_NON_INTERACTIVE": "1"}
@@ -353,6 +361,10 @@ class CLIAdapter:
             raise ValueError(
                 "GitHub Copilot is IDE-only; CLI agent run is not supported."
             )
+        elif self.platform == "droid":
+            raise ValueError(
+                "Factory Droid CLI agent run is not yet integrated with Trellis multi-agent."
+            )
 
         else:  # claude
             cmd = ["claude", "-p"]
@@ -412,6 +424,10 @@ class CLIAdapter:
         elif self.platform == "copilot":
             raise ValueError(
                 "GitHub Copilot is IDE-only; CLI resume is not supported."
+            )
+        elif self.platform == "droid":
+            raise ValueError(
+                "Factory Droid CLI resume is not yet integrated with Trellis multi-agent."
             )
         else:
             return ["claude", "--resume", session_id]
@@ -483,6 +499,8 @@ class CLIAdapter:
             return "codebuddy"
         elif self.platform == "copilot":
             return "copilot"
+        elif self.platform == "droid":
+            return "droid"
         else:
             return "claude"
 
@@ -569,9 +587,10 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
         "qoder",
         "codebuddy",
         "copilot",
+        "droid",
     ):
         raise ValueError(
-            f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', 'codex', 'kilo', 'kiro', 'gemini', 'antigravity', 'windsurf', 'qoder', 'codebuddy', or 'copilot')"
+            f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', 'codex', 'kilo', 'kiro', 'gemini', 'antigravity', 'windsurf', 'qoder', 'codebuddy', 'copilot', or 'droid')"
         )
 
     return CLIAdapter(platform=platform)  # type: ignore
@@ -592,6 +611,7 @@ _ALL_PLATFORM_CONFIG_DIRS = (
     ".qoder",
     ".codebuddy",
     ".github/copilot",
+    ".factory",
 )
 """All platform config directory names (used by detect_platform exclusion checks)."""
 
@@ -647,6 +667,7 @@ def detect_platform(project_root: Path) -> Platform:
         "qoder",
         "codebuddy",
         "copilot",
+        "droid",
     ):
         return env_platform  # type: ignore
 
@@ -711,6 +732,10 @@ def detect_platform(project_root: Path) -> Platform:
     # Check for .github/copilot directory (GitHub Copilot-specific)
     if (project_root / ".github" / "copilot").is_dir():
         return "copilot"
+
+    # Check for .factory directory (Factory Droid-specific)
+    if (project_root / ".factory").is_dir():
+        return "droid"
 
     return "claude"
 

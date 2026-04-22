@@ -1,0 +1,9 @@
+{
+  "version": "0.4.0-rc.1",
+  "description": "Factory Droid platform support + Codex shared-layer hint",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Late-RC additive feature.** Two pure-additive changes — no migrations, no behavior change for existing platforms. Safe to update mid-RC.\n\n**Features:**\n- feat(platform): add Factory Droid (`droid`) support — Cursor-level commands-only integration. New `--droid` CLI flag, `.factory/commands/trellis/<name>.md` layout, full `cli_adapter.py` integration so Trellis Python scripts detect `.factory/` projects correctly. 12 generic command templates with optional YAML frontmatter (`description` field) for Droid's `/commands` autocomplete. Multi-agent CLI run/resume currently raises ValueError (same pattern as Copilot/Windsurf) — can be extended later.\n- feat(init): hint at .agents/skills shared layer in Codex option — Codex prompt entry now reads `Codex (also writes .agents/skills/ — read by Cursor, Gemini CLI, GitHub Copilot, Amp, Kimi Code)`. Surfaces the spillover benefit so users picking Codex understand it isn't Codex-specific. Verified each client's official docs explicitly list `.agents/skills/`.",
+  "migrations": [],
+  "notes": "Pure-additive update. RC users can `trellis update` safely — no file renames, no behavior changes, no migrations. Run `trellis init --droid` to try the new platform."
+}

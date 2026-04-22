@@ -31,6 +31,7 @@ import { configureWindsurf } from "./windsurf.js";
 import { configureQoder } from "./qoder.js";
 import { configureCodebuddy } from "./codebuddy.js";
 import { configureCopilot } from "./copilot.js";
+import { configureDroid } from "./droid.js";
 
 // Shared utilities
 import { resolvePlaceholders } from "./shared.js";
@@ -69,6 +70,7 @@ import {
   getAllPrompts as getCopilotPrompts,
   getHooksConfig as getCopilotHooksConfig,
 } from "../templates/copilot/index.js";
+import { getAllCommands as getDroidCommands } from "../templates/droid/index.js";
 
 // =============================================================================
 // Platform Functions Registry
@@ -267,6 +269,17 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
         ".github/hooks/trellis.json",
         resolvePlaceholders(getCopilotHooksConfig()),
       );
+      return files;
+    },
+  },
+  droid: {
+    configure: configureDroid,
+    collectTemplates: () => {
+      const files = new Map<string, string>();
+      // Commands live under .factory/commands/trellis/ (nested namespace, like Claude)
+      for (const cmd of getDroidCommands()) {
+        files.set(`.factory/commands/trellis/${cmd.name}.md`, cmd.content);
+      }
       return files;
     },
   },

@@ -11,11 +11,18 @@ Info line: model · ctx% · branch · duration · developer · tasks · rate lim
 """
 from __future__ import annotations
 
+import io
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+# Fix: Windows Python defaults to GBK encoding, which corrupts UTF-8
+# characters like the middle dot (·). Wrap stdout/stderr with UTF-8.
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding="utf-8")
 
 
 def _read_text(path: Path) -> str:

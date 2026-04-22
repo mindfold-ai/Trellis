@@ -177,3 +177,6 @@ third/
 
 doc/
 smoke_test/
+
+# Claude Code scheduled tasks session lock
+.claude/scheduled_tasks.lock

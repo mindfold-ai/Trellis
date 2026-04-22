@@ -15,6 +15,8 @@ import {
   getQoderTemplatePath,
   getCodebuddyTemplatePath,
   getCopilotTemplatePath,
+  getDroidTemplatePath,
+  getDroidSourcePath,
   getTrellisSourcePath,
   getCursorSourcePath,
   getClaudeSourcePath,
@@ -124,6 +126,12 @@ describe("template path functions", () => {
     expect(fs.existsSync(p)).toBe(true);
     expect(fs.statSync(p).isDirectory()).toBe(true);
   });
+
+  it("getDroidTemplatePath returns existing directory", () => {
+    const p = getDroidTemplatePath();
+    expect(fs.existsSync(p)).toBe(true);
+    expect(fs.statSync(p).isDirectory()).toBe(true);
+  });
 });
 
 // =============================================================================
@@ -169,6 +177,10 @@ describe("deprecated source path aliases", () => {
 
   it("getWindsurfSourcePath equals getWindsurfTemplatePath", () => {
     expect(getWindsurfSourcePath()).toBe(getWindsurfTemplatePath());
+  });
+
+  it("getDroidSourcePath equals getDroidTemplatePath", () => {
+    expect(getDroidSourcePath()).toBe(getDroidTemplatePath());
   });
 });
 

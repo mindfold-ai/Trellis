@@ -78,6 +78,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".github", "copilot"))).toBe(
       false,
     );
+    expect(fs.existsSync(path.join(tmpDir, ".factory"))).toBe(false);
 
     // Root files
     expect(fs.existsSync(path.join(tmpDir, "AGENTS.md"))).toBe(true);
@@ -105,6 +106,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".github", "copilot"))).toBe(
       false,
     );
+    expect(fs.existsSync(path.join(tmpDir, ".factory"))).toBe(false);
   });
 
   it("#3 multi platform creates all selected platform directories", async () => {
@@ -281,6 +283,27 @@ describe("init() integration", () => {
     await init({ yes: true, gemini: true });
     expect(fs.existsSync(path.join(tmpDir, ".gemini", "commands", "trellis"))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".gemini", "commands", "trellis", "start.toml"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
+  });
+
+  it("#3j droid platform creates .factory/commands/trellis", async () => {
+    await init({ yes: true, droid: true });
+    expect(
+      fs.existsSync(path.join(tmpDir, ".factory", "commands", "trellis")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".factory", "commands", "trellis", "start.md"),
+      ),
+    ).toBe(true);
+    // Frontmatter with description should be present
+    const startContent = fs.readFileSync(
+      path.join(tmpDir, ".factory", "commands", "trellis", "start.md"),
+      "utf-8",
+    );
+    expect(startContent.startsWith("---\n")).toBe(true);
+    expect(startContent).toMatch(/\ndescription:/);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
   });

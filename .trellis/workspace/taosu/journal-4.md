@@ -572,3 +572,72 @@ User rejected the "dynamic TOC" approach (Approach A from issue #154) because AI
 ### Next Steps
 
 - None - task complete
+
+
+## Session 112: Factory Droid platform support + Codex shared-layer hint
+
+**Date**: 2026-04-14
+**Task**: Factory Droid platform support + Codex shared-layer hint
+**Package**: cli
+**Branch**: `feat/v0.4.0-beta`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Change |
+|---|---|
+| New platform | Added Factory Droid (`droid`) at Cursor-level scope: commands-only, no hooks/agents |
+| Registry | New entry in `AI_TOOLS` — `configDir: .factory`, `cliFlag: droid`, `defaultChecked: false`, plus AITool/CliFlag/TemplateDir union extensions |
+| Templates | 12 generic command md files under `src/templates/droid/commands/trellis/`, each with optional `description` YAML frontmatter (Droid auto-completion shows it). Sourced by stripping `trellis-` prefix from cursor templates and renaming. Files use nested `trellis/` subdirectory like Claude — Droid's docs say nesting is unsupported but actual binary picks them up |
+| Configurator | `configureDroid()` mirrors Cursor's filtered copy with `.js` exclusion. New `getDroidTemplatePath()` + deprecated `getDroidSourcePath()` alias in `extract.ts` |
+| CLI / init | `--droid` flag in `cli/index.ts`, `droid?: boolean` in `InitOptions` |
+| Python runtime | Full `cli_adapter.py` integration (template + live `.trellis/scripts/` byte-identical): Platform literal, `config_dir_name`, `get_trellis_command_path`, `get_non_interactive_env`, `cli_name`, `_ALL_PLATFORM_CONFIG_DIRS`, `detect_platform`, `get_cli_adapter` validation, `TRELLIS_PLATFORM` env list, module docstring. `build_run_command` / `build_resume_command` raise ValueError ("not yet integrated with multi-agent") — same pattern as Copilot/Windsurf |
+| Tests | +8 tests across 5 files: dedicated `droid.test.ts` (5), `extract.test.ts` (path + alias), `init.integration.test.ts` (`#3j` + negative assertions in `#1`/`#2`), `platforms.test.ts` (detection + configure + collectTemplates), `regression.test.ts` (registry + cli_adapter branch coverage). All 603 tests pass |
+| Docs | `README.md` and `README_CN.md` — added Factory Droid to platform list, flag list, and FAQ |
+| Codex UX | Codex option `name` field gains parenthetical: `Codex (also writes .agents/skills/ — read by Cursor, Gemini CLI, GitHub Copilot, Amp, Kimi Code)`. Verified each client's official docs explicitly list `.agents/skills/`. Claude Code intentionally omitted — its docs only list `.claude/skills/` |
+
+**Background — Amp Code investigation**: Originally planned to add Amp as a separate platform but research found Amp uses skills (`.agents/skills/`), not commands. Since Codex already writes `.agents/skills/` and Amp reads from there, no new platform was needed. Surfaced this fact via the Codex name hint instead.
+
+**Discarded approach — standalone `agentskills` platform**: Briefly implemented a separate "Shared Skills (.agents/)" pseudo-platform that would write `.agents/skills/` independent of Codex. Reverted after verifying Claude Code does NOT actually read `.agents/skills/` (contrary to several third-party blog claims), making the standalone option misleading. The simpler Codex parenthetical proved sufficient.
+
+**Updated Files**:
+- `packages/cli/src/types/ai-tools.ts`
+- `packages/cli/src/configurators/droid.ts` (new)
+- `packages/cli/src/configurators/index.ts`
+- `packages/cli/src/templates/droid/index.ts` (new)
+- `packages/cli/src/templates/droid/commands/trellis/*.md` (12 new)
+- `packages/cli/src/templates/extract.ts`
+- `packages/cli/src/templates/trellis/scripts/common/cli_adapter.py`
+- `.trellis/scripts/common/cli_adapter.py` (live sync)
+- `packages/cli/src/cli/index.ts`
+- `packages/cli/src/commands/init.ts`
+- `packages/cli/test/templates/droid.test.ts` (new)
+- `packages/cli/test/templates/extract.test.ts`
+- `packages/cli/test/configurators/platforms.test.ts`
+- `packages/cli/test/commands/init.integration.test.ts`
+- `packages/cli/test/regression.test.ts`
+- `README.md`
+- `README_CN.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0015246` | (see git log) |
+| `d7e9b13` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

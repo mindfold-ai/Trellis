@@ -271,6 +271,30 @@ export function getCodebuddyTemplatePath(): string {
 }
 
 /**
+ * Get the path to the droid templates directory.
+ *
+ * This reads from src/templates/droid/ (development) or dist/templates/droid/ (production).
+ * These are GENERIC templates, not the Trellis project's own .factory/ configuration.
+ */
+export function getDroidTemplatePath(): string {
+  const templatePath = path.join(__dirname, "droid");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find droid templates directory. Expected at templates/droid/",
+  );
+}
+
+/**
+ * @deprecated Use getDroidTemplatePath() instead.
+ */
+export function getDroidSourcePath(): string {
+  return getDroidTemplatePath();
+}
+
+/**
  * Get the path to the copilot templates directory.
  *
  * This reads from src/templates/copilot/ (development) or dist/templates/copilot/ (production).

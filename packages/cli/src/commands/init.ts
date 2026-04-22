@@ -546,6 +546,7 @@ interface InitOptions {
   qoder?: boolean;
   codebuddy?: boolean;
   copilot?: boolean;
+  droid?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

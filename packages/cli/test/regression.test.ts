@@ -1119,6 +1119,12 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.copilot.configDir).toBe(".github/copilot");
   });
 
+  it("[droid] Factory Droid platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("droid");
+    expect(AI_TOOLS.droid.configDir).toBe(".factory");
+    expect(AI_TOOLS.droid.cliFlag).toBe("droid");
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -1195,6 +1201,50 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".github/copilot");
   });
 
+  it("[droid] cli_adapter.py supports droid platform", () => {
+    expect(commonCliAdapter).toContain('"droid"');
+    expect(commonCliAdapter).toContain(".factory");
+  });
+
+  it("[droid] cli_adapter.py treats droid as commands-only (no CLI run/resume yet)", () => {
+    expect(commonCliAdapter).toContain(
+      "Factory Droid CLI agent run is not yet integrated with Trellis multi-agent.",
+    );
+    expect(commonCliAdapter).toContain(
+      "Factory Droid CLI resume is not yet integrated with Trellis multi-agent.",
+    );
+    expect(commonCliAdapter).toContain('elif self.platform == "droid":');
+    expect(commonCliAdapter).toContain('return "droid"');
+    expect(commonCliAdapter).toContain(
+      'return f".factory/commands/trellis/{name}.md"',
+    );
+  });
+
+  it("[droid] cli_adapter.py has explicit droid branches in all key methods", () => {
+    expect(commonCliAdapter).toMatch(
+      /def get_trellis_command_path[\s\S]*?elif self\.platform == "droid":[\s\S]*?\.factory\/commands\/trellis\//,
+    );
+    expect(commonCliAdapter).toMatch(
+      /def get_non_interactive_env[\s\S]*?elif self\.platform == "droid":[\s\S]*?return \{\}/,
+    );
+    expect(commonCliAdapter).toMatch(
+      /def build_run_command[\s\S]*?elif self\.platform == "droid":[\s\S]*?CLI agent run is not yet integrated/,
+    );
+    expect(commonCliAdapter).toMatch(
+      /def build_resume_command[\s\S]*?elif self\.platform == "droid":[\s\S]*?CLI resume is not yet integrated/,
+    );
+    expect(commonCliAdapter).toMatch(
+      /def cli_name[\s\S]*?elif self\.platform == "droid":[\s\S]*?return "droid"/,
+    );
+  });
+
+  it("[droid] cli_adapter.py detect_platform handles .factory directory", () => {
+    expect(commonCliAdapter).toContain('return "droid"');
+    expect(commonCliAdapter).toMatch(
+      /detect_platform[\s\S]*?\.factory[\s\S]*?return "droid"/,
+    );
+  });
+
   it("[beta.9] cli_adapter.py has detect_platform function", () => {
     expect(commonCliAdapter).toContain("def detect_platform");
   });
@@ -1219,6 +1269,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".qoder");
     expect(commonCliAdapter).toContain(".codebuddy");
     expect(commonCliAdapter).toContain(".github/copilot");
+    expect(commonCliAdapter).toContain(".factory");
   });
 
   it("[copilot] cli_adapter.py treats copilot as IDE-only (no CLI run/resume)", () => {

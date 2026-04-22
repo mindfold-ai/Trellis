@@ -73,6 +73,7 @@ program
   .option("--qoder", "Include Qoder commands")
   .option("--codebuddy", "Include CodeBuddy commands")
   .option("--copilot", "Include GitHub Copilot hooks")
+  .option("--droid", "Include Factory Droid commands")
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",
