@@ -1422,3 +1422,40 @@ Added joiner onboarding task auto-generated on fresh clones (detected via gitign
 ### Next Steps
 
 - None - task complete
+
+
+## Session 125: Migrate-flow-bugs + beta.10 hotfix + release docs guard
+
+**Date**: 2026-04-22
+**Task**: Migrate-flow-bugs + beta.10 hotfix + release docs guard
+**Branch**: `feat/v0.5.0-beta`
+
+### Summary
+
+Fixed three orthogonal bugs in trellis update --migrate + init-context surfaced right after beta.9 shipped. Bug A: codex/kiro get_trellis_command_path missed the trellis- prefix introduced by 0.5.0-beta.0. Bug B: .agents/skills/ (shared cross-platform layer) was listed as a platform config dir, blocking Kiro/Antigravity/Windsurf detection and falling through to claude. Bug C: 0.5.0-beta.0 and 0.5.0-beta.5 (both breaking) shipped without migrationGuide fields, so upgrade migration task PRDs concatenated only 0.3/0.4 historical guides. Fixes: trellis- prefix + detect_platform fallback + removed .agents from _ALL_PLATFORM_CONFIG_DIRS + --platform arg on init-context + {{CLI_FLAG}} template substitution + back-filled both missing migrationGuides + create-manifest.js enforcement when breaking+recommendMigrate lack a guide. Released as 0.5.0-beta.10 and published to npm. Follow-up: added check-docs-changelog.js pre-release guard that prevents release:beta/rc/promote from shipping without matching docs-site MDX + docs.json wiring (motivated by beta.10 itself shipping without one initially). docs-site changelog rewritten per style-guide 'Changelog / Release Notes Voice' after initial draft was too narrative.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a5e3285` | (see git log) |
+| `8667520` | (see git log) |
+| `f4df699` | (see git log) |
+| `cd0c9f6` | (see git log) |
+| `57651e8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
