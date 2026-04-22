@@ -1,0 +1,6 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "bootstrap task creation is part of init platform flow"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "fixing silent try/catch around bootstrap creation"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "init_developer.py semantics + potential slug helpers"}
+{"file": ".trellis/spec/cli/backend/directory-structure.md", "reason": ".trellis/ layout + FILE_NAMES.DEVELOPER location"}

@@ -57,7 +57,7 @@ beta 版本删除后，这个能力**没有迁移到任何地方**：
 ## 任务目标
 
 1. **修复 init 分支**：已有 Trellis 项目 + 新开发者加入 → 生成 **joiner-onboarding** 引导任务（不是 bootstrap-guidelines，是不同内容）
-2. **扩展 Bootstrap PRD**：承接被删除的 `/onboard` 命令的职责，加"了解项目"步骤
+2. **扩展 Bootstrap PRD**：承接被删除的 `/onboard` 命令的职责，加"了解 Trellis 工作流"步骤（注意：onboard 是带用户熟悉 Trellis 流程，不是带用户熟悉自己的业务代码）
 3. **区分两种 bootstrap**：
    - **Creator Bootstrap**（项目第一次 init）：填 spec、导入已有约定
    - **Joiner Onboarding**（新开发者加入已有项目）：读 spec、了解架构、熟悉 workflow
@@ -68,45 +68,58 @@ beta 版本删除后，这个能力**没有迁移到任何地方**：
 
 ### 分支逻辑重构
 
-`init.ts:1347` 改为：
+`init.ts:1347` 改为三分支判定，信号源统一到 `.trellis/.developer` 文件（gitignored，天然 per-checkout）：
 
 ```ts
-if (isFirstInit) {
+const hasWorkflow = fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW));
+const hasDeveloperFile = fs.existsSync(
+  path.join(cwd, DIR_NAMES.WORKFLOW, FILE_NAMES.DEVELOPER),
+);
+
+if (!hasWorkflow) {
   // 项目首次 init：创建 creator bootstrap（填 spec）
   createBootstrapTask(cwd, developerName, projectType, monorepoPackages);
-} else if (isNewDeveloperForProject(cwd, developerName)) {
-  // 已有项目 + 新开发者：创建 joiner onboarding
+} else if (!hasDeveloperFile) {
+  // 已有项目 + 当前 checkout 还没有 .developer：新 joiner（fresh clone / 换机器）
   createJoinerOnboardingTask(cwd, developerName);
 }
+// 否则：同人 re-init（`.developer` 已存在），不重复生成任务
 ```
 
-**"新开发者"判断依据**：
-- `.trellis/workspace/<developer>/` 目录不存在 → 是新开发者
-- 或 `.trellis/.developers` 注册表里没有该 name
+**为什么用 `.developer` 文件而不是 workspace 目录**：
+- `.trellis/.developer` 是 gitignored → 不会随 clone 带过来，每个 checkout 独立
+- `.trellis/workspace/<name>/` 会进 git → 新人 clone 下来就存在，不能作为"是否新人"的信号
+- 三态干净：无 `.trellis/` = creator，有 `.trellis/` 无 `.developer` = joiner，都有 = 同人 re-init
+
+**已接受的行为**（非 bug）：
+- 同一人换机器也会收到一份 joiner task — 视作"再熟悉一次当前项目约定"的机会，嫌多可直接 archive
+- 共享 checkout（多人共用同一工作目录）只有第一位会收到 joiner — 这是 Trellis "一人一 checkout" 的前提
 
 ### Creator Bootstrap PRD 扩展
 
-在现有 PRD 的开头插入 "Step -1: Understand Your Project"（给项目创建者自己梳理）：
+在现有 PRD 的开头插入 "Step 0: Learn the Trellis Workflow"（带用户熟悉 Trellis 本身，不是熟悉他自己的业务代码）：
 
 ```markdown
-### Step -1: Understand Your Project (for AI)
+### Step 0: Learn the Trellis Workflow (for you + AI)
 
-Before filling spec files, let AI read the codebase to understand:
-- What's this project for? (domain, users, key workflows)
-- What's the architecture? (layers, modules, data flow)
-- What are the core entities / concepts?
+Before filling spec files, get familiar with how Trellis works:
+
+- Read `.trellis/workflow.md` end-to-end — this is the contract between you and AI.
+- Understand the task lifecycle: planning → in_progress → done → archive.
+- Know the three directories: `.trellis/spec/` (conventions), `.trellis/tasks/` (active + archive), `.trellis/workspace/<you>/` (your journal).
+- Know the core slash commands: `/trellis:start`, `/trellis:continue`, `/trellis:finish-work`, `/trellis:brainstorm`.
 
 Ask AI:
-- "Read README.md, AGENTS.md, and key entry files, then summarize the project"
-- "Map the directory structure and explain the role of each top-level dir"
-- "Identify the 3-5 most important modules and why"
+- "Read .trellis/workflow.md and summarize the 3 phases and what I do in each."
+- "When should I use /trellis:continue vs /trellis:finish-work?"
+- "What's the difference between spec/ and tasks/?"
 
-Output goes to: `.trellis/spec/_project-overview.md` (or similar).
+Goal: when you start filling spec files, you already know why and where they fit into the workflow.
 ```
 
 ### Joiner Onboarding Task（新任务类型）
 
-**task name**：`00-join-<developer>`（类似 `00-bootstrap-guidelines`，带 developer 名字避免碰撞）
+**task name**：`00-join-<developer-slug>`（带 developer 名字避免碰撞；slug 规范化复用 creator bootstrap 同一套逻辑，保证空格 / Unicode / 特殊字符被安全处理）
 
 **PRD 内容大纲**：
 
@@ -116,23 +129,25 @@ Output goes to: `.trellis/spec/_project-overview.md` (or similar).
 Welcome! You're joining an existing Trellis project.
 Here's a guided path to get productive fast.
 
-## Step 1: Read the Project Overview
+## Step 1: Learn the Trellis Workflow
 
-- `.trellis/spec/` — coding conventions (start here)
-- `.trellis/workflow.md` — how this team works with AI
-- `.trellis/tasks/` — active work, recent archive
-- `AGENTS.md` / `README.md` — high-level orientation
+Read `.trellis/workflow.md` end-to-end — this is how you and AI collaborate here.
 
 Ask AI:
-- "Summarize .trellis/spec/ — what coding conventions do I need to know?"
-- "Look at the last 5 archived tasks — what patterns of work do people do?"
+- "Summarize .trellis/workflow.md — the 3 phases and what I do in each."
+- "What does the task lifecycle look like (planning → in_progress → done → archive)?"
+- "When should I use /trellis:continue vs /trellis:finish-work vs /trellis:start?"
 
-## Step 2: Understand Architecture
+## Step 2: Learn This Project's Conventions (via spec)
+
+- `.trellis/spec/` — coding conventions this team has agreed on (start here)
+- `.trellis/tasks/` — active work + recent archive (how people actually work)
 
 Ask AI:
-- "Map the directory structure"
-- "What are the 5 most important modules?"
-- "What data flows through the system?"
+- "Summarize .trellis/spec/ — what conventions do I need to follow?"
+- "Look at the last 5 archived tasks — what's the typical rhythm of work?" (skip this if `.trellis/tasks/archive/` is empty — the project may just be starting)
+
+(Learning the business code itself is NOT the goal of this task — your teammates or project README handle that separately.)
 
 ## Step 3: Identify Your Assigned Work
 
@@ -153,20 +168,92 @@ python3 ./.trellis/scripts/task.py archive 00-join-<you>
 ```
 ```
 
-### 触发逻辑
+### 触发逻辑 + 可复用 helper
 
-新建辅助函数：
+实地扫过 `init.ts:100-384` 后确认 creator / joiner 写文件流程高度同构，值得抽两个 helper，再让两个分支各自调用：
+
+**Helper 1 — `writeTaskSkeleton`**（抽自 `createBootstrapTask` 的身体）
 
 ```ts
-function isNewDeveloperForProject(cwd: string, developer: string): boolean {
-  const workspacePath = path.join(cwd, ".trellis/workspace", developer);
-  return !fs.existsSync(workspacePath);
+function writeTaskSkeleton(
+  cwd: string,
+  taskName: string,
+  taskJson: TaskJson,
+  prdContent: string,
+): boolean {
+  const taskDir = path.join(cwd, PATHS.TASKS, taskName);
+  if (fs.existsSync(taskDir)) return true; // idempotent
+
+  try {
+    fs.mkdirSync(taskDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(taskDir, FILE_NAMES.TASK_JSON),
+      JSON.stringify(taskJson, null, 2),
+      "utf-8",
+    );
+    fs.writeFileSync(path.join(taskDir, FILE_NAMES.PRD), prdContent, "utf-8");
+    fs.writeFileSync(
+      path.join(cwd, PATHS.CURRENT_TASK_FILE),
+      `${PATHS.TASKS}/${taskName}`,
+      "utf-8",
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+```
+
+`createBootstrapTask` 改造成调用 `writeTaskSkeleton`（行为不变），`createJoinerOnboardingTask` 同款用法。
+
+**Helper 2 — `slugifyDeveloperName`**（新）
+
+```ts
+function slugifyDeveloperName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    || "user"; // fallback 防止纯符号名 slug 成空串
+}
+```
+
+为什么不复用 `sanitizePkgName`：后者只剥 `@scope/` 前缀，不处理空格 / Unicode / `/`。developer name 不受约束，得独立处理。
+
+**调用端**
+
+```ts
+function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
+  const slug = slugifyDeveloperName(developer);
+  const taskName = `00-join-${slug}`;
+  const taskJson = getJoinerTaskJson(developer, taskName);
+  const prdContent = getJoinerPrdContent(developer);
+  return writeTaskSkeleton(cwd, taskName, taskJson, prdContent);
 }
 
-function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
-  // 类似 createBootstrapTask，但 task name 带 developer，内容用 joiner PRD
-  ...
+// 外层调用（独立 try/catch，不被 init_developer.py 的 pipe 吞）
+if (!hasWorkflow) {
+  createBootstrapTask(cwd, developerName, projectType, monorepoPackages);
+} else if (!hasDeveloperFile) {
+  try {
+    if (!createJoinerOnboardingTask(cwd, developerName)) {
+      console.warn(chalk.yellow("⚠ Failed to create joiner onboarding task"));
+    }
+  } catch (err) {
+    console.warn(chalk.yellow(`⚠ Joiner onboarding setup failed: ${err}`));
+  }
 }
+```
+
+**current-task 语义**：joiner 分支同样写 `.current-task`（与 creator 保持一致）。多窗口污染问题由 `04-21-session-scoped-task-state` 统一解。
+
+**⚠️ 两处 joiner 创建点**（实现时漏一处会导致默认用户路径静默失败）：
+
+1. **主 dispatch**（init 末尾，`!hasWorkflow` / `!hadDeveloperFileAtStart` 判定）—— 覆盖首次 init 和 `--force` / `--skip-existing` 走的完整 init
+2. **`handleReinit` 的 `doAddDeveloper` 分支**（init.ts:651 附近）—— 默认 `trellis init --user bob` 在 `.trellis/` 已存在时走 re-init fast path 并 early-return，**根本到不了主 dispatch**。这条路径必须在 `init_developer.py` 执行前后独立捕获 `.developer` 存在状态，然后在 "原先没有" 时调用 `createJoinerOnboardingTask`
+
+测试必须同时覆盖 **`force: true`**（走主 dispatch）和 **无 `force`**（走 handleReinit）两条路径，否则 re-init fast path 的 bug 会逃过 CI。
 ```
 
 ---
@@ -175,8 +262,13 @@ function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
 
 ### 1. 分支逻辑
 
-- [ ] `init.ts` 加 `isNewDeveloperForProject()` 判断
-- [ ] 在 `isFirstInit = false` 且新开发者时调用 `createJoinerOnboardingTask()`
+- [ ] 抽 `writeTaskSkeleton()` helper（mkdir + task.json + prd.md + `.current-task` + try/catch bool）
+- [ ] `createBootstrapTask()` 改造成调用 `writeTaskSkeleton()`，行为不变
+- [ ] 新增 `slugifyDeveloperName()`（小写 + NFKD + 非字母数字→`-` + trim + 空串 fallback）
+- [ ] `init.ts` 把判定改成 `hasWorkflow` / `hasDeveloperFile` 两个 flag 组合出三分支（creator / joiner / no-op）
+- [ ] 新增 `createJoinerOnboardingTask()`，用 `writeTaskSkeleton` + `slugifyDeveloperName`
+- [ ] 外层调用：joiner 分支移出 `init_developer.py` 的 `try/catch`，独立 try + `console.warn`（修 `init.ts:1373` 静默吞错）
+- [ ] `handleReinit` 的 `doAddDeveloper` 分支（init.ts:651）也调用 `createJoinerOnboardingTask`，先捕获 `.developer` 预存在状态，仅 "原先没有" 时触发
 - [ ] ~~Single source of truth 写 JSON + PRD 内容（避免 init.ts / create_bootstrap.py 双份）~~ —— **已解决**：`04-21-task-schema-unify` 删除了 `create_bootstrap.py`，task.json 现在统一走 `utils/task-json.ts:emptyTaskJson` 工厂
 
 ### 2. Creator Bootstrap PRD 扩展
@@ -186,8 +278,9 @@ function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
 
 ### 3. Joiner Onboarding Task 新建
 
-- [ ] 新 task.json 模板（`00-join-<developer>`，priority P1，dev_type "docs"）
-- [ ] 新 PRD 模板（对应上面大纲）
+- [ ] `getJoinerTaskJson(developer, taskName)` 工厂（P1 / dev_type "docs" / creator=assignee=developer，复用 `emptyTaskJson`）
+- [ ] `getJoinerPrdContent(developer)` 工厂（对应上面大纲）
+- [ ] PRD "看 archived tasks" 段带 fallback 文案，空 archive 时不误导
 - [ ] Monorepo / 单 repo 分支（joiner 可能只碰一个 package）
 
 ### 4. Skills / Commands 集成（可选）
@@ -198,16 +291,18 @@ function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
 
 ### 5. 文档
 
-- [ ] README 补"新开发者加入已有项目"场景
 - [ ] `spec/cli/backend/*` 记录两种 bootstrap 的语义
 - [ ] Changelog 注明修复了新开发者 init 体验的空白
 
 ### 6. 测试
 
 - [ ] 空目录 `trellis init` → creator bootstrap
-- [ ] 已有 `.trellis/` 的项目，新开发者 `trellis init --developer new-user` → joiner onboarding
-- [ ] 已有 `.trellis/` + 已注册开发者（重复 init）→ 不生成重复 task
-- [ ] joiner onboarding task 的 archive 后，再次 init 不再生成
+- [ ] 有 `.trellis/` 但无 `.trellis/.developer`（fresh clone）→ joiner onboarding
+- [ ] 有 `.trellis/` + `.trellis/.developer` 已存在（同人 re-init）→ 不生成任何 task
+- [ ] joiner archive 后 `.developer` 仍在 → 再次 init 依旧 no-op（不生成重复 task）
+- [ ] developer name 含空格 / Unicode → slug 后目录名安全、task 可正常 archive
+- [ ] `createJoinerOnboardingTask` 抛错时 stderr 出现 warning，init 本身不中断
+- [ ] 覆盖 **handleReinit 路径**（不加 `force: true`）：fresh checkout 应生成 joiner、同人 re-init 应 no-op — 避免 re-init fast path 被漏测
 
 ---
 
@@ -217,6 +312,9 @@ function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
 - **不恢复** `/onboard` 命令本身（命令删除的决定已做）
 - **不改** marketplace 的 `onboard` skill（独立的 skill 生态）
 - **不自动**探测"这个 developer 是不是项目维护者"—— 第一个 init 的人是 creator，其他都是 joiner
+- **不针对 CI 环境特化**（`--no-onboard` flag、`CI=true` 探测均不做）：`trellis init` 是一次性本地 setup，CI 里跑 init 非预期场景
+- **不处理 creator bootstrap 未完成时 joiner 加入的文案降级**（E8）：spec 为空时 joiner 的指令会空转，但由 AI 对话现场处理即可
+- **不做 joiner task 去重检查**（E7）：`.developer` 已存在就 no-op，删掉 `.developer` 后重复生成是用户自己的选择
 
 ---
 
@@ -226,7 +324,7 @@ function createJoinerOnboardingTask(cwd: string, developer: string): boolean {
 
 ## 风险
 
-- **两种 bootstrap 的边界模糊**：单人项目里"加新开发者"和"同一人换机器"区分不开。Mitigation：检查 `.trellis/workspace/<name>/`，存在即视为"不是新人"，哪怕是换机器也不重复打扰
+- **同一人换机器也会触发 joiner**：`.trellis/.developer` gitignore，所以换机器 = 无 `.developer` = 判定为 joiner。**已接受**：视作再熟悉一次当前项目的机会，不需要则直接 archive，成本低于误判成"不是新人"后零引导的体验事故
 - **PRD 内容膨胀**：往 PRD 里堆太多指引会让人没耐心读。Mitigation：joiner PRD 控制在 80 行内，深度指引放 skill / docs site
 - **和 `04-21-session-scoped-task-state` 的交互**：joiner onboarding 创建后会 set 为 current-task，如果同时有别的窗口在跑会污染。依赖后者完成后再发布最终体验
 
