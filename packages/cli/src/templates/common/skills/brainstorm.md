@@ -184,18 +184,61 @@ Examples:
 * The user asks for "best practice", "how others do it", "recommendation"
 * The user can't reasonably enumerate options
 
-### Research steps
+### Delegate to `trellis-research` sub-agent (don't research inline)
 
-1. Identify 2–4 comparable tools/patterns
+For each research topic, **spawn a `trellis-research` sub-agent via the Task tool** — don't do WebFetch / WebSearch / `gh api` inline in the main conversation.
+
+Why:
+- The sub-agent has its own context window → doesn't pollute brainstorm context with raw tool output
+- It persists findings to `{TASK_DIR}/research/<topic>.md` (the contract — see `workflow.md` Phase 1.2)
+- It returns only `{file path, one-line summary}` to the main agent
+- Independent topics can be **parallelized** — spawn multiple sub-agents in one tool call
+
+Agent type: `trellis-research`
+Task description template: "Research <specific question>; persist findings to `{TASK_DIR}/research/<topic-slug>.md`."
+
+❌ Bad (what you must NOT do):
+```
+Main agent: WebFetch(url-A) → WebFetch(url-B) → Bash(gh api ...)
+          → WebSearch(q1) → WebSearch(q2) → ... (10+ inline calls)
+          → Write(research/topic.md)
+```
+→ Pollutes main context with raw HTML/JSON, burns tokens.
+
+✅ Good:
+```
+Main agent: Task(subagent_type="trellis-research",
+                 prompt="Research topic A; persist to research/topic-a.md")
+          + Task(subagent_type="trellis-research",
+                 prompt="Research topic B; persist to research/topic-b.md")
+          + Task(subagent_type="trellis-research",
+                 prompt="Research topic C; persist to research/topic-c.md")
+→ Reads research/topic-{a,b,c}.md after they finish.
+```
+
+### Research steps (to pass into each sub-agent prompt)
+
+Each `trellis-research` sub-agent should:
+
+1. Identify 2–4 comparable tools/patterns for its topic
 2. Summarize common conventions and why they exist
 3. Map conventions onto our repo constraints
-4. Produce **2–3 feasible approaches** for our project
+4. Write findings to `{TASK_DIR}/research/<topic>.md`
+
+Main agent then reads the persisted files and produces **2–3 feasible approaches** in PRD.
 
 ### Research output format (PRD)
 
-Add a section in PRD (either within Technical Notes or as its own):
+The PRD itself should only reference the persisted research files, not duplicate their content. Add a `## Research References` section pointing at `research/*.md`.
+
+Optionally, add a convergence section with feasible approaches derived from the research:
 
 ```markdown
+## Research References
+
+* [`research/<topic-a>.md`](research/<topic-a>.md) — <one-line takeaway>
+* [`research/<topic-b>.md`](research/<topic-b>.md) — <one-line takeaway>
+
 ## Research Notes
 
 ### What similar tools do

@@ -129,19 +129,32 @@ _TAG_RE = re.compile(
 # the Next-Action reminder flowing per-turn even without an active task.
 _FALLBACK_BREADCRUMBS = {
     "no_task": (
-        "No active task. If the user describes multi-step work, load "
-        "trellis-brainstorm skill to clarify requirements and create a task "
-        "via `python3 ./.trellis/scripts/task.py create`. Simple one-off "
-        "questions or trivial edits don't need a task — just answer directly."
+        "No active task.\n"
+        "Trigger words in the user message that REQUIRE creating a task "
+        "(non-negotiable, do NOT self-exempt): 重构 / 抽成 / 独立 / 分发 / "
+        "拆出来 / 搞一个 / 做成 / 接入 / 集成 / refactor / rewrite / extract / "
+        "productize / publish / build X / design Y.\n"
+        "Task is NOT required ONLY if ALL three hold: (a) zero file writes "
+        "this turn, (b) answer fits in one reply with no multi-round plan, "
+        "(c) no research beyond reading 1-2 repo files.\n"
+        "When in doubt: create task. Over-tasking is cheap; under-tasking "
+        "leaks plans and research into main context.\n"
+        "Flow: load `trellis-brainstorm` skill → it creates the task via "
+        "`python3 ./.trellis/scripts/task.py create` and drives requirements Q&A. "
+        "For research-heavy work (tool comparison, docs, cross-platform survey), "
+        "spawn `trellis-research` sub-agents via Task tool — NEVER do 3+ inline "
+        "WebFetch/WebSearch/`gh api` calls in the main conversation."
     ),
     "planning": (
-        "Complete prd.md via trellis-brainstorm skill; "
-        "then run task.py start."
+        "Complete prd.md via trellis-brainstorm skill; then run task.py start.\n"
+        "Research belongs in `{task_dir}/research/*.md`, written by "
+        "`trellis-research` sub-agents. Do NOT inline WebFetch/WebSearch in "
+        "main session — PRD only links to research files."
     ),
     "in_progress": (
-        "Flow: implement → check → update-spec → finish\n"
+        "Flow: trellis-implement → trellis-check → trellis-update-spec → finish\n"
         "Check conversation history + git status to determine current step; "
-        "do NOT skip check."
+        "do NOT skip trellis-check."
     ),
     "completed": (
         "User commits changes; then run task.py archive."

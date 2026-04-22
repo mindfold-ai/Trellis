@@ -118,7 +118,11 @@ def _get_task_status(trellis_dir: Path) -> str:
         return (
             "Status: NO ACTIVE TASK\n"
             "Next-Action: After the user describes their intent, load skill `trellis-brainstorm` "
-            "to clarify requirements and create a task via `python3 ./.trellis/scripts/task.py create`."
+            "to clarify requirements and create a task via `python3 ./.trellis/scripts/task.py create`.\n"
+            "Research reminder: for research-heavy tasks (comparing tools, reading external docs, "
+            "cross-platform surveys), spawn `trellis-research` sub-agents via the Task tool — "
+            "they persist findings to `{TASK_DIR}/research/*.md` and keep main context clean. "
+            "Do NOT do 10+ inline WebFetch/WebSearch in the main conversation."
         )
 
     task_ref = _normalize_task_ref(current_task_file.read_text(encoding="utf-8").strip())
@@ -159,15 +163,21 @@ def _get_task_status(trellis_dir: Path) -> str:
         return (
             f"Status: PLANNING\nTask: {task_title}\n"
             "Next-Action: Load skill `trellis-brainstorm` to clarify requirements with the user "
-            "and produce prd.md in the task directory."
+            "and produce prd.md in the task directory.\n"
+            "Research reminder: when the task needs external research (tool comparison, docs, "
+            "conventions survey), spawn `trellis-research` sub-agents — don't WebFetch/WebSearch "
+            "inline in the main session. Findings go to `{task_dir}/research/*.md`; PRD only links to them."
         )
 
     # Case 5: PRD ready — enter Execute phase
     return (
         f"Status: READY\nTask: {task_title}\n"
         "Next-Action: Load skill `trellis-before-dev` to read relevant specs, "
-        "then spawn `implement` sub-agent via the Task tool. "
-        "After implementation, spawn `check` sub-agent for quality verification."
+        "then spawn `trellis-implement` sub-agent via the Task tool. "
+        "After implementation, spawn `trellis-check` sub-agent for quality verification.\n"
+        "Sub-agent roster: `trellis-implement` (writes code), `trellis-check` (verifies + self-fixes), "
+        "`trellis-research` (persists findings to `research/*.md` — use when you'd otherwise do "
+        "multiple WebFetch/WebSearch inline)."
     )
 
 

@@ -376,16 +376,21 @@ After the above, remind the user they can run `/finish-work` to wrap up (archive
      a status has no tag block. -->
 
 [workflow-state:no_task]
-No active task. If the user describes multi-step work, load trellis-brainstorm skill to clarify requirements and create a task via `python3 ./.trellis/scripts/task.py create`. Simple one-off questions or trivial edits don't need a task — just answer directly.
+No active task.
+Trigger words in the user message that REQUIRE creating a task (non-negotiable, do NOT self-exempt): 重构 / 抽成 / 独立 / 分发 / 拆出来 / 搞一个 / 做成 / 接入 / 集成 / refactor / rewrite / extract / productize / publish / build X / design Y.
+Task is NOT required ONLY if ALL three hold: (a) zero file writes this turn, (b) answer fits in one reply with no multi-round plan, (c) no research beyond reading 1-2 repo files.
+When in doubt: create task. Over-tasking is cheap; under-tasking leaks plans and research into main context.
+Flow: load `trellis-brainstorm` skill → it creates the task via `python3 ./.trellis/scripts/task.py create` and drives requirements Q&A. For research-heavy work (tool comparison, docs, cross-platform survey), spawn `trellis-research` sub-agents via Task tool — NEVER do 3+ inline WebFetch/WebSearch/`gh api` calls in the main conversation.
 [/workflow-state:no_task]
 
 [workflow-state:planning]
 Complete prd.md via trellis-brainstorm skill; then run task.py start.
+Research belongs in `{task_dir}/research/*.md`, written by `trellis-research` sub-agents. Do NOT inline WebFetch/WebSearch in main session — PRD only links to research files.
 [/workflow-state:planning]
 
 [workflow-state:in_progress]
-Flow: implement → check → update-spec → finish
-Check conversation history + git status to determine current step; do NOT skip check.
+Flow: trellis-implement → trellis-check → trellis-update-spec → finish
+Check conversation history + git status to determine current step; do NOT skip trellis-check.
 [/workflow-state:in_progress]
 
 [workflow-state:completed]
