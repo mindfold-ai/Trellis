@@ -382,6 +382,26 @@ When 0.5 reaches GA:
 5. Delete pre-release changelog files from `release/changelog/` that shouldn't be in the stable-only whitelist
 6. Beta track continues evolving toward the next major (0.6)
 
+### Common Mistake: Documenting Release track from current templates
+
+**Symptom**: You write Release-track docs (documenting 0.4.0 GA) and grab details from the current tree — e.g. `cat packages/cli/src/configurators/qoder.ts` or `ls packages/cli/src/templates/qoder/`. Result: the docs claim 0.4.0 generates paths that only exist on 0.5 betas (`.qoder/rules/`, `.qoder/hooks/`), or platforms that are 0.5-only get documented as 0.4. User tries to `trellis init --qoder` on 0.4.0 and sees a completely different layout.
+
+**Cause**: The current tree is always beta-current. Release track docs must reflect the tagged stable version, which is what users on `@stable` actually get.
+
+**Fix**: Always query the tagged version when writing Release docs. Every inline reference to a file path, config shape, or platform capability in the Release track should trace to `git show v<stable-version>:...` or `git ls-tree v<stable-version> ...`, never to the working tree.
+
+**Prevention**: When you open a file to document a Release-track behavior, the first keystroke should be `git show v<version>:` not `cat`. If that feels like friction, keep a terminal tab pinned to `git log --oneline v<stable-version>^..v<stable-version>` so the tag is always in scope.
+
+### Common Mistake: Counting platforms from existing docs
+
+**Symptom**: Docs say Trellis supports N platforms, but the real count is different. Worst case: you inherit a wrong count from prior docs, propagate it, then spend a session re-fixing every mention. (Seen in 0.4.0 Release audit: prior docs claimed 6 platforms, next pass got to 12, actual was 14 — CodeBuddy and Antigravity were quietly shipped and never documented.)
+
+**Cause**: Docs drift silently. When a platform is added to the CLI, documentation updates are manual and easy to forget. Counting from docs compounds every prior miss.
+
+**Fix**: The canonical count is `git ls-tree v<version> packages/cli/src/configurators/ | grep '\.ts$' | grep -vE 'index|shared|workflow' | wc -l`.
+
+**Prevention**: When a platform count appears in docs (tables, taglines, architecture diagrams, FAQs), cross-check it against the configurator directory for the target version before trusting prior docs. Treat every platform-count claim as unverified until you've run the count yourself.
+
 ---
 
 ## Quality Checklist
