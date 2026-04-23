@@ -21,7 +21,10 @@ vi.mock("inquirer", () => ({
 }));
 
 vi.mock("node:child_process", () => ({
-  execSync: vi.fn().mockReturnValue(""),
+  execSync: vi.fn().mockImplementation((cmd: string) => {
+    const py = process.platform === "win32" ? "python" : "python3";
+    return cmd === `${py} --version` ? "Python 3.11.12" : "";
+  }),
 }));
 
 // === Imports ===
@@ -634,5 +637,41 @@ describe("update() integration", () => {
     // No inline .backup — the full-project snapshot under .trellis/.backup-*
     // is the single source of recovery for this mode.
     expect(fs.existsSync(newPath + ".backup")).toBe(false);
+  });
+
+  it("#27 backup skips managed node_modules dependency trees", async () => {
+    await setupProject();
+
+    const opencodeRoot = path.join(tmpDir, ".opencode");
+    fs.mkdirSync(path.join(opencodeRoot, "node_modules", "zod"), {
+      recursive: true,
+    });
+    fs.writeFileSync(path.join(opencodeRoot, "package.json"), "{}\n");
+    fs.writeFileSync(
+      path.join(opencodeRoot, "node_modules", "zod", "index.js"),
+      "module.exports = {};\n",
+    );
+
+    // Trigger an update that creates a backup.
+    const targetFull = path.join(tmpDir, MANAGED_FILE);
+    fs.writeFileSync(targetFull, "user customized content");
+
+    await update({ force: true });
+
+    const entries = fs.readdirSync(path.join(tmpDir, DIR_NAMES.WORKFLOW));
+    const backupDirs = entries.filter((e) => e.startsWith(".backup-"));
+    expect(backupDirs.length).toBe(1);
+
+    const backupDir = path.join(
+      tmpDir,
+      DIR_NAMES.WORKFLOW,
+      backupDirs[0] as string,
+    );
+    expect(fs.existsSync(path.join(backupDir, ".opencode", "package.json"))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(backupDir, ".opencode", "node_modules"))).toBe(
+      false,
+    );
   });
 });

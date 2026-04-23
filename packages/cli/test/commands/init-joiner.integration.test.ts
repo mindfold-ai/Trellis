@@ -25,7 +25,10 @@ vi.mock("inquirer", () => ({
 }));
 
 vi.mock("node:child_process", () => ({
-  execSync: vi.fn().mockReturnValue(""),
+  execSync: vi.fn().mockImplementation((cmd: string) => {
+    const py = process.platform === "win32" ? "python" : "python3";
+    return cmd === `${py} --version` ? "Python 3.11.12" : "";
+  }),
 }));
 
 // === Imports ===
@@ -47,7 +50,10 @@ describe("init() joiner onboarding", () => {
     vi.spyOn(console, "warn").mockImplementation(noop);
     vi.spyOn(console, "error").mockImplementation(noop);
     vi.mocked(execSync).mockClear();
-    vi.mocked(execSync).mockReturnValue("");
+    vi.mocked(execSync).mockImplementation(((cmd: string) => {
+      const py = process.platform === "win32" ? "python" : "python3";
+      return cmd === `${py} --version` ? "Python 3.11.12" : "";
+    }) as typeof execSync);
   });
 
   afterEach(() => {
@@ -119,6 +125,14 @@ describe("init() joiner onboarding", () => {
     expect(prd).toContain("00-join-bob");
     // Fallback text for empty archive
     expect(prd).toContain("archive is empty");
+    const expectedPythonCmd = process.platform === "win32" ? "python" : "python3";
+    expect(prd).toContain(
+      `${expectedPythonCmd} ./.trellis/scripts/task.py list --assignee bob`,
+    );
+    expect(prd).toContain(`${expectedPythonCmd} ./.trellis/scripts/task.py finish`);
+    expect(prd).toContain(
+      `${expectedPythonCmd} ./.trellis/scripts/task.py archive 00-join-bob`,
+    );
 
     // .current-task points at the joiner
     const currentTask = fs.readFileSync(

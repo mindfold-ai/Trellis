@@ -227,6 +227,13 @@ describe("shouldExcludeFromBackup", () => {
   });
 
   it.each([
+    ".opencode/node_modules/@opencode-ai/sdk/package.json",
+    ".trellis/.backup-2026-04-22T10-24-27/.opencode/node_modules/zod/index.js",
+  ])("excludes dependency tree %s", (p) => {
+    expect(shouldExcludeFromBackup(p)).toBe(true);
+  });
+
+  it.each([
     ".trellis/workspace/developer/journal-1.md",
     ".trellis/tasks/04-17-foo/prd.md",
     ".trellis/spec/cli/backend/index.md",
@@ -256,5 +263,20 @@ describe("shouldExcludeFromBackup", () => {
     // Files that happen to have "worktree" in their name but aren't inside a
     // worktree dir should still be backed up.
     expect(shouldExcludeFromBackup(".claude/worktree-notes.md")).toBe(false);
+  });
+
+  // Windows `path.relative` returns backslash paths. The slash-prefixed
+  // exclude patterns (/worktrees/, /tasks/, /spec/, ...) must still match
+  // after normalization, otherwise Trellis's native worktree protection
+  // silently fails on Windows and `collectAllFiles` descends into nested
+  // full project copies (observed in the field: stack-overflow crash on
+  // `trellis update --migrate`, late April 2026).
+  it.each([
+    ".claude\\worktrees\\feat-x\\src\\main.ts",
+    ".trellis\\tasks\\04-17-foo\\prd.md",
+    ".trellis\\workspace\\dev\\journal-1.md",
+    ".opencode\\node_modules\\zod\\index.js",
+  ])("excludes Windows-style backslash path %s", (p) => {
+    expect(shouldExcludeFromBackup(p)).toBe(true);
   });
 });

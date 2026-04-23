@@ -922,6 +922,21 @@ describe("regression: current-task path normalization", () => {
     );
   });
 
+  it("[workflow-v2] shared session-start READY guidance points to Phase 2.1, not mandatory before-dev", () => {
+    setupTaskRepo();
+
+    writeProjectFile(
+      path.join(".claude", "hooks", "session-start.py"),
+      expectTemplateContent(claudeSessionStart, "claude session-start"),
+    );
+
+    const rawOutput = runPython(path.join(".claude", "hooks", "session-start.py"));
+    expect(rawOutput).toContain("Follow Phase 2.1 for your platform");
+    expect(rawOutput).not.toContain(
+      "Next-Action: Load skill `trellis-before-dev`",
+    );
+  });
+
   it("[current-task] OpenCode context layer normalizes backslash refs for downstream plugins", () => {
     setupTaskRepo();
 
@@ -1159,6 +1174,162 @@ describe("regression: current-task path normalization", () => {
   });
 
   // ------------------------------------------------------------
+  // v0.5.0-beta.12: init-context removal + jsonl seeding on task create
+  // ------------------------------------------------------------
+
+  it("[init-context-removal] task.py create does NOT seed jsonl when no sub-agent platform configured", () => {
+    setupTaskRepo("");
+    // setupTaskRepo does not create any .{platform}/ dir → agent-less mode
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "plain task" --slug plain-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    const tasksDir = path.join(tmpDir, ".trellis", "tasks");
+    const newDirs = fs
+      .readdirSync(tasksDir)
+      .filter((d) => d.includes("plain-task"));
+    expect(newDirs.length).toBeGreaterThan(0);
+    const taskDir = path.join(tasksDir, newDirs[0]);
+    expect(fs.existsSync(path.join(taskDir, "implement.jsonl"))).toBe(false);
+    expect(fs.existsSync(path.join(taskDir, "check.jsonl"))).toBe(false);
+  });
+
+  it("[init-context-removal] task.py create seeds jsonl when a sub-agent platform dir exists", () => {
+    setupTaskRepo("");
+    // Simulate a Claude Code install
+    fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seeded task" --slug seeded-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    const tasksDir = path.join(tmpDir, ".trellis", "tasks");
+    const newDirs = fs
+      .readdirSync(tasksDir)
+      .filter((d) => d.includes("seeded-task"));
+    expect(newDirs.length).toBeGreaterThan(0);
+    const taskDir = path.join(tasksDir, newDirs[0]);
+
+    for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
+      const jsonlPath = path.join(taskDir, jsonlName);
+      expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
+      const content = fs.readFileSync(jsonlPath, "utf-8").trim();
+      // One line of self-describing seed with `_example` and no `file` field.
+      const lines = content.split("\n");
+      expect(lines.length).toBe(1);
+      const row = JSON.parse(lines[0]) as Record<string, unknown>;
+      expect(row._example).toBeDefined();
+      expect(row.file).toBeUndefined();
+    }
+  });
+
+  it("[init-context-removal] task.py init-context is deprecated with clear pointer to Phase 1.3", () => {
+    setupTaskRepo("");
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    let threw = false;
+    let stderr = "";
+    try {
+      execSync(
+        `${pythonCmd} ${JSON.stringify(taskScriptPath)} init-context .trellis/tasks/issue-106 fullstack`,
+        { cwd: tmpDir, encoding: "utf-8" },
+      );
+    } catch (err) {
+      threw = true;
+      const e = err as { stderr?: string; status?: number };
+      stderr = e.stderr ?? "";
+      expect(e.status).toBe(2);
+    }
+    expect(threw).toBe(true);
+    expect(stderr).toContain("v0.5.0-beta.12");
+    expect(stderr).toContain("Phase 1.3");
+    expect(stderr).toContain("add-context");
+  });
+
+  it("[init-context-removal] inject-subagent-context.py skips seed rows (no `file` field)", () => {
+    // Hook's read_jsonl_entries should return empty list when jsonl contains
+    // only a seed row — not crash, not treat `_example` as a path.
+    const hookContent = getSharedHookScripts().find(
+      (h) => h.name === "inject-subagent-context.py",
+    )?.content;
+    expect(hookContent).toBeDefined();
+    const hookPath = path.join(tmpDir, "hook.py");
+    fs.writeFileSync(hookPath, hookContent as string, "utf-8");
+
+    // Minimal fake jsonl with only seed
+    const jsonlDir = path.join(tmpDir, "repo");
+    fs.mkdirSync(jsonlDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(jsonlDir, "seed.jsonl"),
+      JSON.stringify({ _example: "seed row" }) + "\n",
+      "utf-8",
+    );
+
+    // Run a tiny Python snippet that imports the hook module and calls
+    // read_jsonl_entries. Capturing the stderr warning proves the code path.
+    const probeScript = `
+import sys, importlib.util
+spec = importlib.util.spec_from_file_location("h", ${JSON.stringify(hookPath)})
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+entries = mod.read_jsonl_entries(${JSON.stringify(jsonlDir)}, "seed.jsonl")
+print(len(entries))
+`;
+    const probePath = path.join(tmpDir, "probe.py");
+    fs.writeFileSync(probePath, probeScript, "utf-8");
+    const result = execSync(`${pythonCmd} ${JSON.stringify(probePath)}`, {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    expect(result.trim()).toBe("0");
+  });
+
+  it("[init-context-removal] task.py validate treats seed-only jsonl as 0 errors", () => {
+    setupTaskRepo("");
+    fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seed-only" --slug seed-only-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    const taskDir = fs
+      .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+      .find((d) => d.includes("seed-only-task"));
+    expect(taskDir).toBeDefined();
+    const relTaskDir = path.posix.join(".trellis", "tasks", taskDir as string);
+
+    const result = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} validate ${relTaskDir}`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    // Exit 0 (no error raised) plus success marker in output.
+    expect(result).toContain("All validations passed");
+  });
+
+  it("[init-context-removal] task.py list-context prints 'no curated entries yet' for seed-only jsonl", () => {
+    setupTaskRepo("");
+    fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seed-list" --slug seed-list-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    const taskDir = fs
+      .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+      .find((d) => d.includes("seed-list-task"));
+    expect(taskDir).toBeDefined();
+    const relTaskDir = path.posix.join(".trellis", "tasks", taskDir as string);
+
+    const result = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} list-context ${relTaskDir}`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    // Sentinel message proves the seed-detection branch ran.
+    expect(result).toContain("no curated entries yet");
+  });
+
+  // ------------------------------------------------------------
   // workflow_phase.get_phase_index() expansion (FP round 3)
   //   Now returns Phase Index + Phase 1/2/3 bodies (was Phase Index only).
   // ------------------------------------------------------------
@@ -1199,6 +1370,58 @@ describe("regression: current-task path normalization", () => {
     expect(output).toContain("#### 3.3 Spec update");
     // Stops at Workflow State Breadcrumbs (consumed by UserPromptSubmit hook)
     expect(output).not.toContain("## Workflow State Breadcrumbs");
+  });
+
+  it("[workflow-v2] --mode phase --platform codex filters out generic before-dev routing", () => {
+    writeTrellisScripts();
+    writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
+    writeProjectFile(path.join(".trellis", "workflow.md"), templateWorkflowMd());
+
+    const contextScript = path.join(tmpDir, ".trellis", "scripts", "get_context.py");
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(contextScript)} --mode phase --platform codex`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    expect(output).toContain("trellis-implement");
+    expect(output).not.toContain(
+      "| About to write code / start implementing | trellis-before-dev |",
+    );
+    expect(output).not.toContain("before-dev takes under a minute");
+  });
+
+  it("[workflow-v2] step 2.1 for codex describes self-loaded agent context, not hook injection", () => {
+    writeTrellisScripts();
+    writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
+    writeProjectFile(path.join(".trellis", "workflow.md"), templateWorkflowMd());
+
+    const contextScript = path.join(tmpDir, ".trellis", "scripts", "get_context.py");
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(contextScript)} --mode phase --step 2.1 --platform codex`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    expect(output).toContain("The Codex sub-agent definition auto-handles");
+    expect(output).toContain("Reads `.trellis/.current-task`, `prd.md`, and `info.md`");
+    expect(output).not.toContain("The platform hook/plugin auto-handles");
+    expect(output).not.toContain("Load the `trellis-before-dev` skill");
+  });
+
+  it("[workflow-v2] --mode phase --platform kilo keeps trellis-before-dev routing (agent-less path)", () => {
+    // Symmetric to the codex filter test: agent-less platforms MUST still
+    // see `trellis-before-dev` because they write code in the main session.
+    writeTrellisScripts();
+    writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
+    writeProjectFile(path.join(".trellis", "workflow.md"), templateWorkflowMd());
+
+    const contextScript = path.join(tmpDir, ".trellis", "scripts", "get_context.py");
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(contextScript)} --mode phase --platform kilo`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    expect(output).toContain("`trellis-before-dev`");
+    expect(output).not.toContain("Dispatch the `trellis-implement` sub-agent");
   });
 
   // ------------------------------------------------------------
@@ -1555,8 +1778,9 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
   // Regression for 04-22-migrate-flow-bugs Bug A: codex/kiro branches of
   // get_trellis_command_path were missing the `trellis-` prefix that
   // 0.5.0-beta.0 introduced via 60+ rename manifest entries. Without the
-  // prefix, init-context writes broken check.jsonl / implement.jsonl paths
-  // that don't resolve to any real skill file.
+  // prefix, any caller that built skill paths via get_trellis_command_path
+  // (add-context, check agent prelude, etc.) would produce paths that don't
+  // resolve to any real skill file.
   it("[migrate-flow-bugs] get_trellis_command_path codex branch uses trellis- prefix", () => {
     expect(commonCliAdapter).toMatch(
       /def get_trellis_command_path[\s\S]*?elif self\.platform == "codex":[\s\S]*?return f"\.agents\/skills\/trellis-\{name\}\/SKILL\.md"/,
@@ -1587,7 +1811,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
       /_ALL_PLATFORM_CONFIG_DIRS\s*=\s*\(([\s\S]*?)\)/,
     );
     expect(tupleMatch).toBeTruthy();
-    const tupleBody = tupleMatch![1];
+    const tupleBody = (tupleMatch as RegExpMatchArray)[1];
     expect(tupleBody).not.toMatch(/"\.agents"/);
     // Must still include actual platform dirs
     expect(tupleBody).toContain('".claude"');
@@ -1611,45 +1835,59 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     );
   });
 
-  // task.py init-context now accepts --platform so skills/commands (rendered
-  // per-platform via {{CLI_FLAG}} substitution) can pass the invoking
-  // platform explicitly instead of relying on detect_platform auto-detect.
-  it("[migrate-flow-bugs] task.py init-context subparser accepts --platform", () => {
+  // v0.5.0-beta.12 removed `task.py init-context` — Phase 1.3 is now
+  // agent-curated. The subparser, cmd_init_context, and get_check_context
+  // helpers are all gone. task.py still guards against old invocations with
+  // a clear deprecation message so users who muscle-memory-type the old
+  // command get pointed at the new workflow.
+  it("[init-context-removal] task.py no longer registers init-context subparser", () => {
     const taskScript = getAllScripts().get("task.py");
     expect(taskScript).toBeDefined();
-    // --platform arg registered on the init-context subparser
-    expect(taskScript!).toMatch(
-      /p_init\.add_argument\(\s*"--platform"/,
+    expect(taskScript as string).not.toMatch(
+      /subparsers\.add_parser\(\s*"init-context"/,
     );
   });
 
-  it("[migrate-flow-bugs] cmd_init_context threads args.platform through to get_check_context", () => {
-    const taskContext = getAllScripts().get("common/task_context.py");
-    expect(taskContext).toBeDefined();
-    // Pulls platform from args
-    expect(taskContext!).toMatch(
-      /platform:\s*str\s*\|\s*None\s*=\s*getattr\(args,\s*"platform",\s*None\)/,
+  it("[init-context-removal] task.py emits deprecation message on init-context invocation", () => {
+    const taskScript = getAllScripts().get("task.py");
+    expect(taskScript).toBeDefined();
+    // Guard fires before argparse so user sees the real reason (not argparse's
+    // generic "invalid choice" error).
+    expect(taskScript as string).toMatch(
+      /sys\.argv\[1\]\s*==\s*"init-context"/,
     );
-    // Passes platform to get_check_context
-    expect(taskContext!).toMatch(
-      /get_check_context\(repo_root,\s*platform=platform\)/,
-    );
+    expect(taskScript as string).toContain("v0.5.0-beta.12");
+    expect(taskScript as string).toContain("Phase 1.3");
   });
 
-  it("[migrate-flow-bugs] get_check_context uses explicit platform when provided, auto-detect otherwise", () => {
+  it("[init-context-removal] common/task_context.py removes cmd_init_context + get_check_context helpers", () => {
     const taskContext = getAllScripts().get("common/task_context.py");
     expect(taskContext).toBeDefined();
-    expect(taskContext!).toMatch(
-      /def get_check_context\(repo_root:\s*Path,\s*platform:\s*str\s*\|\s*None\s*=\s*None\)/,
-    );
-    // Explicit platform path
-    expect(taskContext!).toMatch(
-      /if platform:\s*\n\s*adapter\s*=\s*get_cli_adapter\(platform\)/,
-    );
-    // Fallback to auto-detect
-    expect(taskContext!).toMatch(
-      /else:\s*\n\s*adapter\s*=\s*get_cli_adapter_auto\(repo_root\)/,
-    );
+    // Mechanical-fill path gone; only curate helpers remain.
+    expect(taskContext as string).not.toMatch(/def cmd_init_context\b/);
+    expect(taskContext as string).not.toMatch(/def get_check_context\b/);
+    expect(taskContext as string).not.toMatch(/def get_implement_backend\b/);
+    expect(taskContext as string).not.toMatch(/def get_implement_frontend\b/);
+    // Remaining surface — still callable by task.py.
+    expect(taskContext as string).toMatch(/def cmd_add_context\b/);
+    expect(taskContext as string).toMatch(/def cmd_validate\b/);
+    expect(taskContext as string).toMatch(/def cmd_list_context\b/);
+  });
+
+  it("[init-context-removal] task_store.cmd_create seeds jsonl for sub-agent platforms", () => {
+    const taskStore = getAllScripts().get("common/task_store.py");
+    expect(taskStore).toBeDefined();
+    // Sub-agent platform probe.
+    expect(taskStore as string).toMatch(/_SUBAGENT_CONFIG_DIRS/);
+    expect(taskStore as string).toContain('".claude"');
+    expect(taskStore as string).toContain('".codex"');
+    expect(taskStore as string).toContain('".github/copilot"');
+    // Seed row is self-describing and has no `file` field (so consumers skip
+    // it naturally).
+    expect(taskStore as string).toMatch(/_write_seed_jsonl/);
+    expect(taskStore as string).toContain('"_example"');
+    // cmd_create calls into the seed path.
+    expect(taskStore as string).toMatch(/_has_subagent_platform\(repo_root\)/);
   });
 
   // Regression for 04-22-migrate-flow-bugs Bug C: breaking releases must
@@ -1701,26 +1939,22 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(offenders).toEqual([]);
   });
 
-  it("[migrate-flow-bugs] platform-specific start templates invoke init-context with --platform {{CLI_FLAG}}", () => {
-    // Both codex skill start and copilot prompts start must pass the
-    // platform explicitly; {{CLI_FLAG}} gets substituted per-platform at
-    // configure time via resolvePlaceholders.
+  it("[init-context-removal] platform-specific start templates no longer reference init-context", () => {
+    // v0.5.0-beta.12 removed `task.py init-context`. Platform start templates
+    // were updated to describe agent-curated Phase 1.3 instead. They must not
+    // reference the deleted subcommand.
     const pkgRoot = path.resolve(__dirname, "..");
     const codexStart = fs.readFileSync(
       path.join(pkgRoot, "src/templates/codex/skills/start/SKILL.md"),
       "utf-8",
     );
-    expect(codexStart).toContain(
-      'task.py init-context "$TASK_DIR" <type> --platform {{CLI_FLAG}}',
-    );
+    expect(codexStart).not.toContain("task.py init-context");
 
     const copilotStart = fs.readFileSync(
       path.join(pkgRoot, "src/templates/copilot/prompts/start.prompt.md"),
       "utf-8",
     );
-    expect(copilotStart).toContain(
-      'task.py init-context "$TASK_DIR" <type> --platform {{CLI_FLAG}}',
-    );
+    expect(copilotStart).not.toContain("task.py init-context");
   });
 
   it("[beta.9] cli_adapter.py has get_cli_adapter function with validation", () => {
@@ -2246,7 +2480,7 @@ describe("regression: class-2 platforms use pull-based sub-agent context", () =>
       it("research definition does NOT contain pull-based prelude", () => {
         // research is orthogonal: it searches .trellis/spec/ and doesn't
         // depend on an active task. Prelude would make it fail when Phase 1.2
-        // runs before init-context.
+        // runs before Phase 1.3's jsonl curation.
         for (const file of nonPreludeAgents) {
           const content = fs.readFileSync(path.join(tmpDir, file), "utf-8");
           expect(content).not.toContain("Required: Load Trellis Context First");
