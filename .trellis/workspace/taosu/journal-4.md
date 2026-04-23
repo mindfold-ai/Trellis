@@ -1544,3 +1544,54 @@ A downstream user running an enterprise-forked Claude Code distribution reported
 
 - Commit spec updates (optional, low urgency)
 - If the 3.10 → 3.9 relaxation question resurfaces, revisit `commands/init.ts` version floor
+
+
+## Session 126: init-context removal, session-start READY fix, release pipeline hardening → 0.5.0-beta.12
+
+**Date**: 2026-04-23
+**Task**: init-context removal, session-start READY fix, release pipeline hardening → 0.5.0-beta.12
+**Branch**: `feat/v0.5.0-beta`
+
+### Summary
+
+Removed task.py init-context; Phase 1.3 now AI-curated (task create seeds jsonl, AI fills spec+research). Split Skill Routing per-platform. Fixed READY gate drift across 4 session-start impls (shared + codex + copilot + opencode). Fixed trellis update backup-phase stack overflow. Hardened release pipeline: check-manifest-continuity.js (pre-release gate against the beta.10 incident repeat), create-manifest.js guard against rewriting published manifests, restored 0.5.0-beta.10.json. Aligned README Python floor wording with actual hard-exit behavior. Shipped as 0.5.0-beta.12 — 671/671 tests green, CI published to npm.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `19374ff` | (see git log) |
+| `9b92941` | (see git log) |
+| `279b542` | (see git log) |
+| `d0e04ab` | (see git log) |
+| `bff5154` | (see git log) |
+| `44233e1` | (see git log) |
+| `ffeec47` | (see git log) |
+| `de42883` | (see git log) |
+| `c800da3` | (see git log) |
+| `771d3dc` | (see git log) |
+| `92ed240` | (see git log) |
+| `b9cdd59` | (see git log) |
+| `f72176e` | (see git log) |
+| `2cea886` | (see git log) |
+| `1414ecf` | (see git log) |
+| `192cad0` | (see git log) |
+| `c3690d0` | (see git log) |
+| `dc79a01` | (see git log) |
+| `83597dd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
