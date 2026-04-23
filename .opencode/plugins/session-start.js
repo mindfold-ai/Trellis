@@ -16,6 +16,33 @@ const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 
 
 /**
+ * Return true iff jsonl has at least one row with a `file` field.
+ * A freshly seeded jsonl only contains a `{"_example": ...}` row (no `file`
+ * key) — that is NOT "ready". Readiness requires at least one curated entry.
+ * Matches the contract used by `shared-hooks/inject-subagent-context.py`.
+ */
+function hasCuratedJsonlEntry(jsonlPath) {
+  try {
+    const content = readFileSync(jsonlPath, "utf-8")
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim()
+      if (!line) continue
+      try {
+        const row = JSON.parse(line)
+        if (row && typeof row === "object" && typeof row.file === "string" && row.file) {
+          return true
+        }
+      } catch {
+        // Ignore malformed line — move on.
+      }
+    }
+  } catch {
+    return false
+  }
+  return false
+}
+
+/**
  * Check current task status and return structured status string.
  * JavaScript equivalent of _get_task_status in Claude's session-start.py.
  */
@@ -52,27 +79,20 @@ function getTaskStatus(ctx) {
   let hasContext = false
   for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
     const jsonlPath = join(taskDir, jsonlName)
-    if (existsSync(jsonlPath)) {
-      try {
-        const st = statSync(jsonlPath)
-        if (st.size > 0) {
-          hasContext = true
-          break
-        }
-      } catch {
-        // Ignore stat errors
-      }
+    if (existsSync(jsonlPath) && hasCuratedJsonlEntry(jsonlPath)) {
+      hasContext = true
+      break
     }
   }
 
   const hasPrd = existsSync(join(taskDir, "prd.md"))
 
   if (!hasPrd) {
-    return `Status: NOT READY\nTask: ${taskTitle}\nMissing: prd.md not created\nNext: Write PRD, then research → init-context → start`
+    return `Status: NOT READY\nTask: ${taskTitle}\nMissing: prd.md not created\nNext: Write PRD (see workflow.md Phase 1.1) then curate implement.jsonl per Phase 1.3`
   }
 
   if (!hasContext) {
-    return `Status: NOT READY\nTask: ${taskTitle}\nMissing: Context not configured (no jsonl files)\nNext: Complete Phase 2 (research → init-context → start) before implementing`
+    return `Status: NOT READY\nTask: ${taskTitle}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then \`task.py start\``
   }
 
   return `Status: READY\nTask: ${taskTitle}\nNext: Continue with implement or check`

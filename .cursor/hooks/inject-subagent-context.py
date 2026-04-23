@@ -19,6 +19,7 @@ Context Source: .trellis/.current-task points to task directory
 - info.md         - Technical design
 - codex-review-output.txt - Code Review results
 """
+from __future__ import annotations
 
 # IMPORTANT: Suppress all warnings FIRST
 import warnings
@@ -31,7 +32,7 @@ from pathlib import Path
 
 # IMPORTANT: Force stdout to use UTF-8 on Windows
 # This fixes UnicodeEncodeError when outputting non-ASCII characters
-if sys.platform == "win32":
+if sys.platform.startswith("win"):
     import io as _io
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
@@ -167,15 +168,27 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
     Schema:
         {"file": "path/to/file.md", "reason": "..."}
         {"file": "path/to/dir/", "type": "directory", "reason": "..."}
+        {"_example": "..."}          # seed row — skipped (no `file` field)
+
+    Rows without a ``file`` field (e.g. the self-describing seed line written
+    by ``task.py create`` before the agent has curated entries) are skipped
+    silently. If the resulting entry list is empty, a stderr warning is
+    emitted so the operator can debug missing context.
 
     Returns:
         [(path, content), ...]
     """
     full_path = os.path.join(base_path, jsonl_path)
     if not os.path.exists(full_path):
+        print(
+            f"[inject-subagent-context] WARN: {jsonl_path} not found — "
+            f"sub-agent will receive only prd.md",
+            file=sys.stderr,
+        )
         return []
 
     results = []
+    saw_real_entry = False
     try:
         with open(full_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -188,8 +201,10 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
                     entry_type = item.get("type", "file")
 
                     if not file_path:
+                        # Seed / comment row — skip silently
                         continue
 
+                    saw_real_entry = True
                     if entry_type == "directory":
                         # Read all .md files in directory
                         dir_contents = read_directory_contents(base_path, file_path)
@@ -203,6 +218,14 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
                     continue
     except Exception:
         pass
+
+    if not saw_real_entry:
+        print(
+            f"[inject-subagent-context] WARN: {jsonl_path} has no curated "
+            f"entries (only seed / empty) — sub-agent will receive only "
+            f"prd.md. See workflow.md Phase 1.3 for curation guidance.",
+            file=sys.stderr,
+        )
 
     return results
 
@@ -391,7 +414,11 @@ Finish checklist and requirements:
 def get_research_context(repo_root: str, task_dir: str | None) -> str:
     """
     Context for Research Agent — project structure overview for spec directories.
+
+    `task_dir` kept for signature parity with get_implement_context / get_check_context
+    so the dispatcher can call them uniformly.
     """
+    _ = task_dir
     context_parts = []
 
     # 1. Project structure overview (dynamically discover spec directories)

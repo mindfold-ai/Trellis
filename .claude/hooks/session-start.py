@@ -3,6 +3,7 @@
 """
 Session Start Hook - Inject structured context
 """
+from __future__ import annotations
 
 # IMPORTANT: Suppress all warnings FIRST
 import warnings
@@ -17,13 +18,36 @@ from pathlib import Path
 
 # IMPORTANT: Force stdout to use UTF-8 on Windows
 # This fixes UnicodeEncodeError when outputting non-ASCII characters
-if sys.platform == "win32":
+if sys.platform.startswith("win"):
     import io as _io
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     elif hasattr(sys.stdout, "detach"):
         sys.stdout = _io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
+
+
+def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
+    """Return True iff jsonl has at least one row with a ``file`` field.
+
+    A freshly seeded jsonl only contains a ``{"_example": ...}`` row (no
+    ``file`` key) — that is NOT "ready". Readiness requires at least one
+    curated entry. Matches the contract used by ``inject-subagent-context.py``.
+    """
+    try:
+        for line in jsonl_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict) and row.get("file"):
+                return True
+    except (OSError, UnicodeDecodeError):
+        return False
+    return False
 
 
 def should_skip_injection() -> bool:
@@ -169,11 +193,25 @@ def _get_task_status(trellis_dir: Path) -> str:
             "inline in the main session. Findings go to `{task_dir}/research/*.md`; PRD only links to them."
         )
 
-    # Case 5: PRD ready — enter Execute phase
+    # Case 4b: PRD exists but implement.jsonl has only seed (no curated entries) — Phase 1.3 gate
+    implement_jsonl = task_dir / "implement.jsonl"
+    if implement_jsonl.is_file() and not _has_curated_jsonl_entry(implement_jsonl):
+        return (
+            f"Status: PLANNING (Phase 1.3)\nTask: {task_title}\n"
+            "Next-Action: Curate `implement.jsonl` and `check.jsonl` with the spec + research files "
+            "the Phase 2 sub-agents will need. Only spec paths (`.trellis/spec/**/*.md`) and research "
+            "files (`{TASK_DIR}/research/*.md`) — no code paths. Run "
+            "`python3 ./.trellis/scripts/get_context.py --mode packages` to list available specs, "
+            "then edit the jsonl files or use `python3 ./.trellis/scripts/task.py add-context`. "
+            "See `.trellis/workflow.md` Phase 1.3 for details."
+        )
+
+    # Case 5: PRD + curated jsonl (or agent-less platform with no jsonl) — enter Execute phase
     return (
         f"Status: READY\nTask: {task_title}\n"
-        "Next-Action: Load skill `trellis-before-dev` to read relevant specs, "
-        "then spawn `trellis-implement` sub-agent via the Task tool. "
+        "Next-Action: Follow Phase 2.1 for your platform. For agent-capable platforms, "
+        "spawn `trellis-implement` via the Task tool; if you stay in the main session, "
+        "load `trellis-before-dev` before writing code. "
         "After implementation, spawn `trellis-check` sub-agent for quality verification.\n"
         "Sub-agent roster: `trellis-implement` (writes code), `trellis-check` (verifies + self-fixes), "
         "`trellis-research` (persists findings to `research/*.md` — use when you'd otherwise do "

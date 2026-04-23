@@ -24,6 +24,29 @@ def should_skip_injection() -> bool:
     return os.environ.get("CODEX_NON_INTERACTIVE") == "1"
 
 
+def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
+    """Return True iff jsonl has at least one row with a ``file`` field.
+
+    A freshly seeded jsonl only contains a ``{"_example": ...}`` row (no
+    ``file`` key) — that is NOT "ready". Readiness requires at least one
+    curated entry. Matches the contract used by ``inject-subagent-context.py``.
+    """
+    try:
+        for line in jsonl_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict) and row.get("file"):
+                return True
+    except (OSError, UnicodeDecodeError):
+        return False
+    return False
+
+
 def read_file(path: Path, fallback: str = "") -> str:
     try:
         return path.read_text(encoding="utf-8")
@@ -110,17 +133,17 @@ def _get_task_status(trellis_dir: Path) -> str:
     has_context = False
     for jsonl_name in ("implement.jsonl", "check.jsonl", "spec.jsonl"):
         jsonl_path = task_dir / jsonl_name
-        if jsonl_path.is_file() and jsonl_path.stat().st_size > 0:
+        if jsonl_path.is_file() and _has_curated_jsonl_entry(jsonl_path):
             has_context = True
             break
 
     has_prd = (task_dir / "prd.md").is_file()
 
     if not has_prd:
-        return f"Status: NOT READY\nTask: {task_title}\nMissing: prd.md not created\nNext: Write PRD, then research → init-context → start"
+        return f"Status: NOT READY\nTask: {task_title}\nMissing: prd.md not created\nNext: Write PRD (see workflow.md Phase 1.1) then curate implement.jsonl per Phase 1.3"
 
     if not has_context:
-        return f"Status: NOT READY\nTask: {task_title}\nMissing: Context not configured (no jsonl files)\nNext: Complete Phase 2 (research → init-context → start) before implementing"
+        return f"Status: NOT READY\nTask: {task_title}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then `task.py start`"
 
     return f"Status: READY\nTask: {task_title}\nNext: Continue with implement or check"
 
