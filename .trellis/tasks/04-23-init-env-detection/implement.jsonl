@@ -1,0 +1,4 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "init 环境检测与跨平台适配直接相关"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "init 需要按 OS 生成正确的 python/python3、hook 和帮助文案"}
