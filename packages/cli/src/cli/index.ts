@@ -103,6 +103,9 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
+        console.error(error instanceof Error ? error.stack : error);
+      }
       process.exit(1);
     }
   });
@@ -131,6 +134,9 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
+        console.error(error instanceof Error ? error.stack : error);
+      }
       process.exit(1);
     }
   });

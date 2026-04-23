@@ -657,6 +657,7 @@ const BACKUP_DIRS = ALL_MANAGED_DIRS;
  */
 const BACKUP_EXCLUDE_PATTERNS = [
   ".backup-", // Previous backups
+  "/node_modules", // Installed dependencies; restore via package manager
   "/workspace/", // Developer workspace (user data)
   "/tasks/", // Task data (user data)
   "/spec/", // Spec files (user-customized content)
@@ -678,8 +679,16 @@ const BACKUP_EXCLUDE_PATTERNS = [
  * @internal Exported for testing only
  */
 export function shouldExcludeFromBackup(relativePath: string): boolean {
+  // Normalize Windows backslashes to forward slashes so patterns like
+  // "/worktrees/" / "/tasks/" match regardless of host OS. Without this,
+  // Windows `path.relative` returns `.claude\worktrees\...` and none of
+  // the slash-prefixed exclude patterns trigger — which causes
+  // `collectAllFiles` to descend into platform worktrees (full nested
+  // project copies) and explode the scan. Same normalization pattern
+  // used by `isManagedPath` in configurators/index.ts.
+  const normalized = relativePath.replace(/\\/g, "/");
   for (const pattern of BACKUP_EXCLUDE_PATTERNS) {
-    if (relativePath.includes(pattern)) {
+    if (normalized.includes(pattern)) {
       return true;
     }
   }
@@ -699,7 +708,7 @@ function createFullBackup(cwd: string): string | null {
     const dirPath = path.join(cwd, dir);
     if (!fs.existsSync(dirPath)) continue;
 
-    const files = collectAllFiles(dirPath);
+    const files = collectAllFiles(dirPath, cwd);
     for (const fullPath of files) {
       const relativePath = path.relative(cwd, fullPath);
 
@@ -758,18 +767,33 @@ async function getLatestNpmVersion(): Promise<string | null> {
 /**
  * Recursively collect all files in a directory
  */
-function collectAllFiles(dirPath: string): string[] {
+function collectAllFiles(dirPath: string, cwd = process.cwd()): string[] {
   if (!fs.existsSync(dirPath)) return [];
 
   const files: string[] = [];
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  const stack = [dirPath];
 
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectAllFiles(fullPath));
-    } else if (entry.isFile()) {
-      files.push(fullPath);
+  while (stack.length > 0) {
+    const currentDir = stack.pop();
+    if (!currentDir) continue;
+
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      const relativePath = path.relative(cwd, fullPath);
+
+      // Never follow symlinks / Windows directory junctions — a junction
+      // pointing at an ancestor would loop the scan forever. Node's
+      // `isSymbolicLink()` returns true for NTFS junctions since v12.
+      if (entry.isSymbolicLink()) continue;
+
+      if (entry.isDirectory()) {
+        if (!shouldExcludeFromBackup(relativePath)) {
+          stack.push(fullPath);
+        }
+      } else if (entry.isFile()) {
+        files.push(fullPath);
+      }
     }
   }
 
@@ -791,7 +815,7 @@ function isDirectorySafeToReplace(
   const dirFullPath = path.join(cwd, dirRelativePath);
   if (!fs.existsSync(dirFullPath)) return true;
 
-  const files = collectAllFiles(dirFullPath);
+  const files = collectAllFiles(dirFullPath, cwd);
   if (files.length === 0) return true; // Empty directory is safe
 
   for (const fullPath of files) {
