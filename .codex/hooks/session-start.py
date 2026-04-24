@@ -19,9 +19,29 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
+FIRST_REPLY_NOTICE = """<first-reply-notice>
+On the first visible assistant reply in this session, begin with exactly one short Chinese sentence:
+Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份、git 状态、active tasks、spec 索引已加载。
+Then continue directly with the user's request. This notice is one-shot: do not repeat it after the first assistant reply in the same session.
+</first-reply-notice>"""
+
 
 def should_skip_injection() -> bool:
     return os.environ.get("CODEX_NON_INTERACTIVE") == "1"
+
+
+def configure_project_encoding(project_dir: Path) -> None:
+    """Reuse Trellis' shared Windows stdio encoding helper before JSON output."""
+    scripts_dir = project_dir / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+
+    try:
+        from common import configure_encoding  # type: ignore[import-not-found]
+
+        configure_encoding()
+    except Exception:
+        pass
 
 
 def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
@@ -145,7 +165,12 @@ def _get_task_status(trellis_dir: Path) -> str:
     if not has_context:
         return f"Status: NOT READY\nTask: {task_title}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then `task.py start`"
 
-    return f"Status: READY\nTask: {task_title}\nNext: Continue with implement or check"
+    return (
+        f"Status: READY\nTask: {task_title}\n"
+        "Next required action: dispatch `trellis-implement` per Phase 2.1. "
+        "For agent-capable platforms, do NOT edit code in the main session. "
+        "After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion."
+    )
 
 
 def _extract_range(content: str, start_header: str, end_header: str) -> str:
@@ -203,6 +228,8 @@ def main() -> None:
     except (json.JSONDecodeError, KeyError):
         project_dir = Path(".").resolve()
 
+    configure_project_encoding(project_dir)
+
     trellis_dir = project_dir / ".trellis"
 
     output = StringIO()
@@ -213,6 +240,8 @@ Read and follow all instructions below carefully.
 </session-context>
 
 """)
+    output.write(FIRST_REPLY_NOTICE)
+    output.write("\n\n")
 
     output.write("<current-state>\n")
     context_script = trellis_dir / "scripts" / "get_context.py"
@@ -231,8 +260,9 @@ Read and follow all instructions below carefully.
         "- If you're spawning an implement/check sub-agent, context is injected "
         "automatically via `{task}/implement.jsonl` / `check.jsonl`. You do NOT "
         "need to read these indexes yourself.\n"
-        "- If you're editing code directly in the main session, Read the relevant "
-        "index(es) on-demand and follow their Pre-Dev Checklist.\n\n"
+        "- For agent-capable platforms, do NOT edit code directly in the main "
+        "session; dispatch `trellis-implement` and `trellis-check` so JSONL "
+        "context is loaded by the sub-agents.\n\n"
     )
 
     # guides/ inlined (cross-package thinking, broadly useful)
@@ -281,8 +311,8 @@ Read and follow all instructions below carefully.
 
     output.write("""<ready>
 Context loaded. Workflow index, project state, and guidelines are already injected above — do NOT re-read them.
-Wait for the user's first message, then handle it following the workflow guide.
-If there is an active task, ask whether to continue it.
+When the user sends the first message, follow <task-status> and the workflow guide.
+If a task is READY, execute its Next required action without asking whether to continue.
 </ready>""")
 
     context = output.getvalue()

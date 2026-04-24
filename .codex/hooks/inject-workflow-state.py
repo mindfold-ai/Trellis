@@ -153,8 +153,11 @@ _FALLBACK_BREADCRUMBS = {
     ),
     "in_progress": (
         "Flow: trellis-implement → trellis-check → trellis-update-spec → finish\n"
-        "Check conversation history + git status to determine current step; "
-        "do NOT skip trellis-check."
+        "Next required action: inspect conversation history + git status, then "
+        "execute the next uncompleted step in that sequence.\n"
+        "For agent-capable platforms, do NOT edit code in the main session; "
+        "dispatch `trellis-implement` for implementation and dispatch "
+        "`trellis-check` before reporting completion."
     ),
     "completed": (
         "User commits changes; then run task.py archive."

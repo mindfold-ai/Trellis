@@ -14,6 +14,12 @@ import { TrellisContext, contextCollector, debugLog } from "../lib/trellis-conte
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 
+const FIRST_REPLY_NOTICE = `<first-reply-notice>
+On the first visible assistant reply in this session, begin with exactly one short Chinese sentence:
+Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份、git 状态、active tasks、spec 索引已加载。
+Then continue directly with the user's request. This notice is one-shot: do not repeat it after the first assistant reply in the same session.
+</first-reply-notice>`
+
 
 /**
  * Return true iff jsonl has at least one row with a `file` field.
@@ -95,7 +101,12 @@ function getTaskStatus(ctx) {
     return `Status: NOT READY\nTask: ${taskTitle}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then \`task.py start\``
   }
 
-  return `Status: READY\nTask: ${taskTitle}\nNext: Continue with implement or check`
+  return (
+    `Status: READY\nTask: ${taskTitle}\n` +
+    "Next required action: dispatch `trellis-implement` per Phase 2.1. " +
+    "For agent-capable platforms, do NOT edit code in the main session. " +
+    "After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion."
+  )
 }
 
 /**
@@ -215,7 +226,7 @@ function resolveSpecScope(config) {
 /**
  * Build session context for injection
  */
-function buildSessionContext(ctx) {
+export function buildSessionContext(ctx) {
   const directory = ctx.directory
   const trellisDir = join(directory, ".trellis")
 
@@ -229,6 +240,7 @@ function buildSessionContext(ctx) {
 You are starting a new session in a Trellis-managed project.
 Read and follow all instructions below carefully.
 </trellis-context>`)
+  parts.push(FIRST_REPLY_NOTICE)
 
   // Legacy migration warning
   const legacyWarning = checkLegacySpec(directory, config)
@@ -288,8 +300,7 @@ Read and follow all instructions below carefully.
   }
 
   // 4. Guidelines — paths-only for most indexes; guides/ inlined (cross-package,
-  //    broadly useful). Sub-agents get their specific specs via jsonl injection —
-  //    main agent reads paths on demand when editing code directly.
+  //    broadly useful). Sub-agents get their specific specs via jsonl injection.
   parts.push("<guidelines>")
   parts.push(
     "Project spec indexes are listed by path below. Each index contains a " +
@@ -298,8 +309,9 @@ Read and follow all instructions below carefully.
     "- If you're spawning an implement/check sub-agent, context is injected " +
     "automatically via `{task}/implement.jsonl` / `check.jsonl`. You do NOT " +
     "need to read these indexes yourself.\n" +
-    "- If you're editing code directly in the main session, Read the relevant " +
-    "index(es) on-demand and follow their Pre-Dev Checklist.\n"
+    "- For agent-capable platforms, do NOT edit code directly in the main " +
+    "session; dispatch `trellis-implement` and `trellis-check` so JSONL " +
+    "context is loaded by the sub-agents.\n"
   )
 
   const specDir = join(directory, ".trellis", "spec")
@@ -379,8 +391,8 @@ Read and follow all instructions below carefully.
   // 7. Final directive
   parts.push(`<ready>
 Context loaded. Workflow index, project state, and guidelines are already injected above — do NOT re-read them.
-Wait for the user's first message, then handle it following the workflow guide.
-If there is an active task, ask whether to continue it.
+When the user sends the first message, follow <task-status> and the workflow guide.
+If a task is READY, execute its Next required action without asking whether to continue.
 </ready>`)
 
   return parts.join("\n\n")
