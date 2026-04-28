@@ -1,87 +1,52 @@
-# Code Quality Check
+# 代码质量检查
 
-Comprehensive quality verification for recently written code. Combines spec compliance, cross-layer safety, and pre-commit checks.
+对刚完成的代码做全面质量验证：规范合规、跨层安全与提交前检查。
 
 ---
 
-## Step 1: Identify What Changed
+## 第 1 步：识别变更范围
 
 ```bash
 git diff --name-only HEAD
 git status
 ```
 
-## Step 2: Read Applicable Specs
+## 第 2 步：阅读适用规范
 
 ```bash
 python3 ./.trellis/scripts/get_context.py --mode packages
 ```
 
-For each changed package/layer, read the spec index and follow its **Quality Check** section:
+对每个变更到的包/层，阅读其 spec 索引并执行 **Quality Check**：
 
 ```bash
 cat .trellis/spec/<package>/<layer>/index.md
 ```
 
-Read the specific guideline files referenced — the index is a pointer, not the goal.
+继续阅读索引中引用的具体规范文件（索引只是导航）。
 
-## Step 3: Run Project Checks
+## 第 3 步：运行项目检查
 
-Run the project's lint, type-check, and test commands. Fix any failures before proceeding.
+运行项目的 lint、type-check、tests。若失败，先修复再继续。
 
-## Step 4: Review Against Checklist
+## 第 4 步：按清单复核
 
-### Code Quality
+### 代码质量
 
-- [ ] Linter passes?
-- [ ] Type checker passes (if applicable)?
-- [ ] Tests pass?
-- [ ] No debug logging left in?
-- [ ] No suppressed warnings or type-safety bypasses?
+- [ ] Linter 通过？
+- [ ] Type checker 通过（如适用）？
+- [ ] Tests 通过？
+- [ ] 无遗留调试日志？
+- [ ] 无忽略告警或类型安全绕过？
 
-### Test Coverage
+### 测试覆盖
 
-- [ ] New function → unit test added?
-- [ ] Bug fix → regression test added?
-- [ ] Changed behavior → existing tests updated?
+- [ ] 新函数 → 已补 unit test？
+- [ ] 修 bug → 已补 regression test？
+- [ ] 改行为 → 已更新现有测试？
 
-### Spec Sync
+### 规范同步
 
-- [ ] Does `.trellis/spec/` need updates? (new patterns, conventions, lessons learned)
+- [ ] 是否需要更新 `.trellis/spec/`？（新模式、约定或经验）
 
-> "If I fixed a bug or discovered something non-obvious, should I document it so future me won't hit the same issue?" → If YES, update the relevant spec doc.
-
-## Step 5: Cross-Layer Dimensions (if applicable)
-
-Skip this step if your change is confined to a single layer.
-
-### A. Data Flow (changes touch 3+ layers)
-
-- [ ] Read flow traces correctly: Storage → Service → API → UI
-- [ ] Write flow traces correctly: UI → API → Service → Storage
-- [ ] Types/schemas correctly passed between layers?
-- [ ] Errors properly propagated to caller?
-
-### B. Code Reuse (modifying constants, creating utilities)
-
-- [ ] Searched for existing similar code before creating new?
-  ```bash
-  grep -r "pattern" src/
-  ```
-- [ ] If 2+ places define same value → extracted to shared constant?
-- [ ] After batch modification, all occurrences updated?
-
-### C. Import/Dependency (creating new files)
-
-- [ ] Correct import paths (relative vs absolute)?
-- [ ] No circular dependencies?
-
-### D. Same-Layer Consistency
-
-- [ ] Other places using the same concept are consistent?
-
----
-
-## Step 6: Report and Fix
-
-Report violations found and fix them directly. Re-run project checks after fixes.
+> “这次修复/实现里有非显而易见结论吗？未来我是否可能再次踩坑？”如果是，请更新相应 spec。

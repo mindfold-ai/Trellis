@@ -104,21 +104,21 @@ export function resolvePlaceholders(
 /** Skill description registry — maps template name to auto-trigger description. */
 const SKILL_DESCRIPTIONS: Record<string, string> = {
   start:
-    "Initializes an AI development session by reading workflow guides, developer identity, git status, active tasks, and project guidelines from .trellis/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context.",
+    "初始化 AI 开发会话：读取 .trellis/ 下的工作流指南、开发者身份、git 状态、活跃任务与项目规范，并对输入任务进行分流（brainstorm / 直接处理 / 任务工作流）。适用于开启新会话、恢复工作、启动新任务或重建项目上下文。",
   continue:
-    "Resume work on the current task. Loads the workflow Phase Index, figures out which phase/step to pick up at, then pulls the step-level detail via get_context.py --mode phase. Use when coming back to an in-progress task and you need to know what to do next.",
+    "恢复当前任务：加载工作流阶段索引，判断应从哪个阶段/步骤继续，再通过 get_context.py --mode phase 拉取步骤细节。适用于回到进行中的任务且需要明确下一步时。",
   "finish-work":
-    "Wrap up the current session: verify quality gate passed, remind user to commit, archive completed tasks, and record session progress to the developer journal. Use when done coding and ready to end the session.",
+    "收尾当前会话：确认质量门禁通过，提醒用户提交，归档已完成任务，并把本次进展写入开发者日志。适用于编码完成准备结束会话时。",
   "before-dev":
-    "Discovers and injects project-specific coding guidelines from .trellis/spec/ before implementation begins. Reads spec indexes, pre-development checklists, and shared thinking guides for the target package. Use when starting a new coding task, before writing any code, switching to a different package, or needing to refresh project conventions and standards.",
+    "在实现前发现并注入 .trellis/spec/ 中与项目相关的编码规范。会读取目标包的 spec 索引、开发前检查清单与共享思维指南。适用于开始新编码任务、写代码前、切换包或需要刷新项目规范时。",
   brainstorm:
-    "Guides collaborative requirements discovery before implementation. Creates task directory, seeds PRD, asks high-value questions one at a time, researches technical choices, and converges on MVP scope. Use when requirements are unclear, there are multiple valid approaches, or the user describes a new feature or complex task.",
+    "在实现前引导协作式需求澄清：创建任务目录、初始化 PRD、一次一个高价值问题、调研技术方案并收敛到 MVP 范围。适用于需求不清、方案多解，或用户提出新功能/复杂任务时。",
   check:
-    "Comprehensive quality verification: spec compliance, lint, type-check, tests, cross-layer data flow, code reuse, and consistency checks. Use when code is written and needs quality verification, before committing changes, or to catch context drift during long sessions.",
+    "综合质量验证：规范合规、lint、type-check、tests、跨层数据流、代码复用与一致性检查。适用于代码完成后质检、提交前检查，或长会话中防止上下文漂移。",
   "break-loop":
-    "Deep bug analysis to break the fix-forget-repeat cycle. Analyzes root cause category, why fixes failed, prevention mechanisms, and captures knowledge into specs. Use after fixing a bug to prevent the same class of bugs.",
+    "进行深度缺陷分析，打破“修完就忘、反复重犯”循环。分析根因类别、修复失败原因、预防机制，并将经验沉淀到 specs。适用于 bug 修复后防止同类问题再次发生。",
   "update-spec":
-    "Captures executable contracts and coding conventions into .trellis/spec/ documents. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions.",
+    "将可执行契约与编码约定沉淀到 .trellis/spec/ 文档。适用于在调试、实现或讨论中获得了值得保留的经验时。",
 };
 
 /**
@@ -145,10 +145,9 @@ export function wrapWithSkillFrontmatter(
  * SKILL_DESCRIPTIONS, which is long prose aimed at the skill matcher.
  */
 const COMMAND_DESCRIPTIONS: Record<string, string> = {
-  start: "Initialize a Trellis development session.",
-  continue: "Resume work on the current task at the correct phase.",
-  "finish-work":
-    "Wrap up the current session: quality gate, commit reminder, archive, journal.",
+  start: "初始化 Trellis 开发会话。",
+  continue: "在正确阶段恢复当前任务。",
+  "finish-work": "收尾当前会话：质量门禁、提交提醒、归档与日志。",
 };
 
 /** Wrap resolved command content with YAML frontmatter (name + description). */

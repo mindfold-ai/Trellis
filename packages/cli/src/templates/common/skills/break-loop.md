@@ -1,125 +1,40 @@
-# Break the Loop - Deep Bug Analysis
+# 打破循环 - 深度缺陷复盘
 
-When debug is complete, use this for deep analysis to break the "fix bug -> forget -> repeat" cycle.
+当 bug 已修复后，使用本流程打破“修完就忘、反复重犯”的循环。
 
 ---
 
-## Analysis Framework
+## 复盘框架
 
-Analyze the bug you just fixed from these 5 dimensions:
+从以下 5 个维度分析本次缺陷：
 
-### 1. Root Cause Category
+### 1. 根因分类
 
-Which category does this bug belong to?
+归类到哪一类？
 
-| Category | Characteristics | Example |
+| 类别 | 特征 | 示例 |
 |----------|-----------------|---------|
-| **A. Missing Spec** | No documentation on how to do it | New feature without checklist |
-| **B. Cross-Layer Contract** | Interface between layers unclear | API returns different format than expected |
-| **C. Change Propagation Failure** | Changed one place, missed others | Changed function signature, missed call sites |
-| **D. Test Coverage Gap** | Unit test passes, integration fails | Works alone, breaks when combined |
-| **E. Implicit Assumption** | Code relies on undocumented assumption | Timestamp seconds vs milliseconds |
+| **A. 规范缺失** | 没有明确文档指导 | 新功能缺少检查清单 |
+| **B. 跨层契约问题** | 层间接口约定不清 | API 返回格式与调用方预期不一致 |
+| **C. 变更传播失败** | 改了 A 漏了 B | 改函数签名但漏改调用点 |
+| **D. 测试覆盖缺口** | 单测过了但集成挂了 | 单点正确，联动失败 |
+| **E. 隐式假设** | 依赖未写明前提 | 时间戳秒/毫秒混用 |
 
-### 2. Why Fixes Failed (if applicable)
+### 2. 为什么之前修复失败（如适用）
 
-If you tried multiple fixes before succeeding, analyze each failure:
+若经历多次尝试，逐次分析失败原因：表层修复、范围不全、工具盲区、心智模型偏差等。
 
-- **Surface Fix**: Fixed symptom, not root cause
-- **Incomplete Scope**: Found root cause, didn't cover all cases
-- **Tool Limitation**: grep missed it, type check wasn't strict
-- **Mental Model**: Kept looking in same layer, didn't think cross-layer
+### 3. 预防机制
 
-### 3. Prevention Mechanisms
+哪些机制可避免重现？文档、架构、编译期约束、运行时监控、测试覆盖、Code Review 清单。
 
-What mechanisms would prevent this from happening again?
+### 4. 系统性扩展
 
-| Type | Description | Example |
-|------|-------------|---------|
-| **Documentation** | Write it down so people know | Update thinking guide |
-| **Architecture** | Make the error impossible structurally | Type-safe wrappers |
-| **Compile-time** | Strict type checking, no escape hatches | Signature change causes compile error |
-| **Runtime** | Monitoring, alerts, scans | Detect orphan entities |
-| **Test Coverage** | E2E tests, integration tests | Verify full flow |
-| **Code Review** | Checklist, PR template | "Did you check X?" |
+这次 bug 暴露了哪些更广泛问题？相似风险点、架构缺陷、流程改进机会、团队认知缺口。
 
-### 4. Systematic Expansion
+### 5. 知识沉淀
 
-What broader problems does this bug reveal?
-
-- **Similar Issues**: Where else might this problem exist?
-- **Design Flaw**: Is there a fundamental architecture issue?
-- **Process Flaw**: Is there a development process improvement?
-- **Knowledge Gap**: Is the team missing some understanding?
-
-### 5. Knowledge Capture
-
-Solidify insights into the system:
-
-- [ ] Update `.trellis/spec/guides/` thinking guides
-- [ ] Update relevant `.trellis/spec/` docs
-- [ ] Create issue record (if applicable)
-- [ ] Create feature ticket for root fix
-- [ ] Update check guidelines if needed
-
----
-
-## Output Format
-
-Please output analysis in this format:
-
-```markdown
-## Bug Analysis: [Short Description]
-
-### 1. Root Cause Category
-- **Category**: [A/B/C/D/E] - [Category Name]
-- **Specific Cause**: [Detailed description]
-
-### 2. Why Fixes Failed (if applicable)
-1. [First attempt]: [Why it failed]
-2. [Second attempt]: [Why it failed]
-...
-
-### 3. Prevention Mechanisms
-| Priority | Mechanism | Specific Action | Status |
-|----------|-----------|-----------------|--------|
-| P0 | ... | ... | TODO/DONE |
-
-### 4. Systematic Expansion
-- **Similar Issues**: [List places with similar problems]
-- **Design Improvement**: [Architecture-level suggestions]
-- **Process Improvement**: [Development process suggestions]
-
-### 5. Knowledge Capture
-- [ ] [Documents to update / tickets to create]
-```
-
----
-
-## Core Philosophy
-
-> **The value of debugging is not in fixing the bug, but in making this class of bugs never happen again.**
-
-Three levels of insight:
-1. **Tactical**: How to fix THIS bug
-2. **Strategic**: How to prevent THIS CLASS of bugs
-3. **Philosophical**: How to expand thinking patterns
-
-30 minutes of analysis saves 30 hours of future debugging.
-
----
-
-## After Analysis: Immediate Actions
-
-**IMPORTANT**: After completing the analysis above, you MUST immediately:
-
-1. **Update spec/guides** - Don't just list TODOs, actually update the relevant files:
-   - If it's a cross-platform issue → update `cross-platform-thinking-guide.md`
-   - If it's a cross-layer issue → update `cross-layer-thinking-guide.md`
-   - If it's a code reuse issue → update `code-reuse-thinking-guide.md`
-   - If it's domain-specific → update `backend/*.md` or `frontend/*.md`
-
-2. **Sync templates** - After updating `.trellis/spec/`, sync to `src/templates/markdown/spec/`
-
-3. **Commit the spec updates** - This is the primary output, not just the analysis text
-
-> **The analysis is worthless if it stays in chat. The value is in the updated specs.**
+- [ ] 更新 `.trellis/spec/guides/` 思维指南
+- [ ] 更新相关 `.trellis/spec/` 规范
+- [ ] 必要时补 issue / 根因修复任务
+- [ ] 必要时补检查规范
