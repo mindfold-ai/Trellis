@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend quality checklist"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Review Pi extension-backed platform and shared Agent Skills contracts"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Review future test coverage expectations"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Review future Vitest style"}
+{"file": ".trellis/tasks/04-28-pi-shared-agents-subagent-config/research/pi-shared-agents-subagent-config.md", "reason": "Research findings and acceptance risks"}

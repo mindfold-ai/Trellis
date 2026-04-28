@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend pre-development checklist and quality expectations"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Pi is a TypeScript extension platform; keep template and generated platform behavior aligned"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "General implementation quality and maintainability rules"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Clear errors for missing TRELLIS_PI_CLI_JS and child process failures"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Unit test checklist for CLI template changes"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Vitest structure and assertion conventions"}
+{"file": ".trellis/tasks/04-28-pi-windows-subagent-spawn/research/issue-201-local-analysis.md", "reason": "Issue-specific launcher analysis and implementation scope"}

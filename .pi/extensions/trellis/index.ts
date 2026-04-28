@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 
 type JsonObject = Record<string, unknown>;
@@ -40,6 +40,27 @@ interface SubagentInput {
   prompt?: string;
   mode?: "single" | "parallel" | "chain";
   prompts?: string[];
+  model?: string;
+  thinking?: ThinkingLevel;
+}
+
+type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+interface AgentConfig {
+  model?: string;
+  thinking?: ThinkingLevel;
+  // Parsed for pi-subagents-compatible agent files; Pi CLI has no documented fallback-model flag to pass through here.
+  fallbackModels: string[];
+}
+
+interface AgentDefinition {
+  content: string;
+  config: AgentConfig;
+}
+
+interface PiRunConfig {
+  model?: string;
+  thinking?: ThinkingLevel;
 }
 
 const TRELLIS_AGENT_JSONL: Record<string, string> = {
@@ -72,14 +93,19 @@ function readText(path: string): string {
   }
 }
 
-function stripMarkdownFrontmatter(content: string): string {
+function splitMarkdownFrontmatter(content: string): {
+  frontmatter: string;
+  body: string;
+} {
   const normalized = content.replace(/^\uFEFF/, "");
-  const match = normalized.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
-  return (match ? normalized.slice(match[0].length) : normalized).trimStart();
+  const match = normalized.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  return match
+    ? { frontmatter: match[1] ?? "", body: normalized.slice(match[0].length) }
+    : { frontmatter: "", body: normalized };
 }
 
-function toPiPromptArgument(prompt: string): string {
-  return prompt.startsWith("-") ? `\n${prompt}` : prompt;
+function stripMarkdownFrontmatter(content: string): string {
+  return splitMarkdownFrontmatter(content).body.trimStart();
 }
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -88,6 +114,136 @@ function isJsonObject(value: unknown): value is JsonObject {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+const THINKING_LEVELS = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+] as const satisfies readonly ThinkingLevel[];
+const THINKING_SUFFIX_RE = /:(?:off|minimal|low|medium|high|xhigh)$/i;
+
+function normalizeThinking(value: unknown): ThinkingLevel | undefined {
+  const raw = stringValue(value)?.toLowerCase();
+  if (!raw) return undefined;
+  return THINKING_LEVELS.includes(raw as ThinkingLevel)
+    ? (raw as ThinkingLevel)
+    : undefined;
+}
+
+function parseFrontmatterScalar(value: string): string | null {
+  const trimmed = value.trim();
+  if (
+    !trimmed ||
+    trimmed === "|" ||
+    trimmed === ">" ||
+    trimmed === "[]" ||
+    trimmed === "null" ||
+    trimmed === "~"
+  ) {
+    return null;
+  }
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim() || null;
+  }
+  return trimmed;
+}
+
+function parseInlineList(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "[]") return [];
+  const body =
+    trimmed.startsWith("[") && trimmed.endsWith("]")
+      ? trimmed.slice(1, -1)
+      : trimmed;
+  return body
+    .split(",")
+    .map((item) => parseFrontmatterScalar(item))
+    .filter((item): item is string => !!item);
+}
+
+function readIndentedList(
+  lines: string[],
+  startIndex: number,
+): { values: string[]; nextIndex: number } {
+  const values: string[] = [];
+  let index = startIndex + 1;
+  while (index < lines.length) {
+    const line = lines[index] ?? "";
+    if (/^[A-Za-z][A-Za-z0-9_-]*\s*:/.test(line)) break;
+    const item = line.match(/^\s*-\s*(.*)$/);
+    if (item) {
+      const scalar = parseFrontmatterScalar(item[1] ?? "");
+      if (scalar) values.push(scalar);
+    }
+    index += 1;
+  }
+  return { values, nextIndex: index - 1 };
+}
+
+function parseAgentConfig(content: string): AgentConfig {
+  const config: AgentConfig = { fallbackModels: [] };
+  const { frontmatter } = splitMarkdownFrontmatter(content);
+  const lines = frontmatter.split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = (lines[index] ?? "").match(
+      /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/,
+    );
+    if (!match) continue;
+
+    const key = match[1] ?? "";
+    const value = match[2] ?? "";
+    if (key === "model") {
+      config.model = parseFrontmatterScalar(value) ?? undefined;
+    } else if (key === "thinking") {
+      config.thinking = normalizeThinking(parseFrontmatterScalar(value));
+    } else if (key === "fallbackModels" || key === "fallback_models") {
+      if (value.trim()) {
+        config.fallbackModels = parseInlineList(value);
+      } else {
+        const result = readIndentedList(lines, index);
+        config.fallbackModels = result.values;
+        index = result.nextIndex;
+      }
+    }
+  }
+
+  return config;
+}
+
+function modelHasThinkingSuffix(model: string): boolean {
+  return THINKING_SUFFIX_RE.test(model.trim());
+}
+
+function buildPiModelArgs(config: PiRunConfig): string[] {
+  const model = stringValue(config.model);
+  const thinking = normalizeThinking(config.thinking);
+  if (model) {
+    return [
+      "--model",
+      thinking && !modelHasThinkingSuffix(model)
+        ? `${model}:${thinking}`
+        : model,
+    ];
+  }
+  return thinking ? ["--thinking", thinking] : [];
+}
+
+function resolveSubagentRunConfig(
+  input: SubagentInput,
+  agentConfig: AgentConfig,
+): PiRunConfig {
+  return {
+    model: stringValue(input.model) ?? agentConfig.model,
+    thinking: normalizeThinking(input.thinking) ?? agentConfig.thinking,
+  };
 }
 
 function sanitizeKey(raw: string): string {
@@ -102,13 +258,149 @@ function hashValue(raw: string): string {
   return createHash("sha256").update(raw).digest("hex").slice(0, 24);
 }
 
+interface PiInvocation {
+  command: string;
+  argsPrefix: string[];
+}
+
+const PI_CLI_JS_SEGMENTS = [
+  "node_modules",
+  "@mariozechner",
+  "pi-coding-agent",
+  "dist",
+  "cli.js",
+];
+const MAX_SUBAGENT_STDOUT_BYTES = 8 * 1024 * 1024;
+const MAX_SUBAGENT_STDERR_BYTES = 1024 * 1024;
+
+// Nested agents can emit unbounded output; keep the tail so diagnostics survive without growing memory indefinitely.
+class BoundedBufferCollector {
+  private chunks: Buffer[] = [];
+  private length = 0;
+  private truncatedBytes = 0;
+
+  constructor(private readonly maxBytes: number) {}
+
+  append(chunk: Buffer): void {
+    const data = chunk;
+    if (data.length >= this.maxBytes) {
+      this.truncatedBytes += this.length + data.length - this.maxBytes;
+      this.chunks = [data.subarray(data.length - this.maxBytes)];
+      this.length = this.maxBytes;
+      return;
+    }
+
+    this.chunks.push(data);
+    this.length += data.length;
+
+    while (this.length > this.maxBytes) {
+      const first = this.chunks[0];
+      if (!first) break;
+      const overflow = this.length - this.maxBytes;
+      if (first.length <= overflow) {
+        this.chunks.shift();
+        this.length -= first.length;
+        this.truncatedBytes += first.length;
+      } else {
+        this.chunks[0] = first.subarray(overflow);
+        this.length -= overflow;
+        this.truncatedBytes += overflow;
+        break;
+      }
+    }
+  }
+
+  toString(): string {
+    const body = Buffer.concat(this.chunks, this.length).toString("utf-8");
+    return this.truncatedBytes
+      ? `[${this.truncatedBytes} bytes truncated]\n${body}`
+      : body;
+  }
+}
+
+function isExistingFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const value of values) {
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    unique.push(value);
+  }
+  return unique;
+}
+
+function candidatePiCliJsPaths(): string[] {
+  const candidates: string[] = [];
+
+  for (const arg of process.argv) {
+    if (/pi-coding-agent[\\/]dist[\\/]cli\.js$/i.test(arg)) {
+      candidates.push(resolve(arg));
+    }
+  }
+
+  const npmPrefix =
+    stringValue(process.env.npm_config_prefix) ??
+    stringValue(process.env.NPM_CONFIG_PREFIX);
+  if (npmPrefix) {
+    candidates.push(join(npmPrefix, ...PI_CLI_JS_SEGMENTS));
+    candidates.push(join(npmPrefix, "lib", ...PI_CLI_JS_SEGMENTS));
+  }
+
+  const appData = stringValue(process.env.APPDATA);
+  if (appData) {
+    candidates.push(join(appData, "npm", ...PI_CLI_JS_SEGMENTS));
+  }
+
+  const pathValue = process.env.PATH ?? process.env.Path ?? "";
+  for (const pathEntry of pathValue.split(delimiter)) {
+    const entry = pathEntry.trim();
+    if (!entry) continue;
+    candidates.push(join(entry, ...PI_CLI_JS_SEGMENTS));
+    candidates.push(join(dirname(entry), ...PI_CLI_JS_SEGMENTS));
+    candidates.push(join(dirname(entry), "lib", ...PI_CLI_JS_SEGMENTS));
+  }
+
+  return uniqueStrings(candidates);
+}
+
+function resolvePiInvocation(): PiInvocation {
+  const envCli = stringValue(process.env.TRELLIS_PI_CLI_JS);
+  if (envCli) {
+    const cliJs = resolve(envCli);
+    if (!isExistingFile(cliJs)) {
+      throw new Error(`TRELLIS_PI_CLI_JS points to a missing file: ${cliJs}`);
+    }
+    return { command: process.execPath, argsPrefix: [cliJs] };
+  }
+
+  for (const cliJs of candidatePiCliJsPaths()) {
+    if (isExistingFile(cliJs)) {
+      return { command: process.execPath, argsPrefix: [cliJs] };
+    }
+  }
+
+  return { command: "pi", argsPrefix: [] };
+}
+
 function createProcessContextKey(projectRoot: string): string {
   return `pi_process_${hashValue(
-    [projectRoot, process.pid, Date.now(), randomBytes(8).toString("hex")].join(":"),
+    [projectRoot, process.pid, Date.now(), randomBytes(8).toString("hex")].join(
+      ":",
+    ),
   )}`;
 }
 
-function callString(callback: (() => string | undefined) | undefined): string | null {
+function callString(
+  callback: (() => string | undefined) | undefined,
+): string | null {
   if (!callback) return null;
   try {
     return stringValue(callback());
@@ -123,7 +415,13 @@ function lookupString(data: unknown, keys: string[]): string | null {
     const value = stringValue(data[key]);
     if (value) return value;
   }
-  for (const nestedKey of ["input", "properties", "event", "hook_input", "hookInput"]) {
+  for (const nestedKey of [
+    "input",
+    "properties",
+    "event",
+    "hook_input",
+    "hookInput",
+  ]) {
     const nested = data[nestedKey];
     const value = lookupString(nested, keys);
     if (value) return value;
@@ -160,7 +458,7 @@ function extractFinalAssistantText(output: string): string | null {
       const text = extractTextContent(message.content);
       if (text) finalText = text;
     } catch {
-      // Pi can print non-JSON diagnostics around JSON mode; keep scanning.
+      // Pi can print non-JSON diagnostics around structured output; keep scanning.
     }
   }
 
@@ -185,6 +483,44 @@ function taskRefToDir(projectRoot: string, taskRef: string): string {
   return join(projectRoot, ".trellis", "tasks", taskRef);
 }
 
+function sessionFileHasCurrentTask(path: string): boolean {
+  try {
+    const context = JSON.parse(readText(path)) as JsonObject;
+    return !!normalizeTaskRef(stringValue(context.current_task) ?? "");
+  } catch {
+    return false;
+  }
+}
+
+function activeRuntimeContextKeys(projectRoot: string): string[] {
+  const sessionsDir = join(projectRoot, ".trellis", ".runtime", "sessions");
+  try {
+    return readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .map((entry) => entry.name.slice(0, -".json".length))
+      .filter((key) =>
+        sessionFileHasCurrentTask(join(sessionsDir, `${key}.json`)),
+      );
+  } catch {
+    return [];
+  }
+}
+
+function adoptExistingContextKey(
+  projectRoot: string,
+  contextKey: string,
+): string {
+  const sessionsDir = join(projectRoot, ".trellis", ".runtime", "sessions");
+  if (sessionFileHasCurrentTask(join(sessionsDir, `${contextKey}.json`))) {
+    return contextKey;
+  }
+
+  const keys = activeRuntimeContextKeys(projectRoot);
+  const processKeys = keys.filter((key) => key.startsWith("pi_process_"));
+  const candidates = processKeys.length ? processKeys : keys;
+  return candidates.length === 1 ? candidates[0] : contextKey;
+}
+
 function resolveContextKey(
   input: unknown,
   ctx?: PiExtensionContext,
@@ -202,11 +538,7 @@ function resolveContextKey(
 
   const transcriptPath =
     callString(ctx?.sessionManager?.getSessionFile) ??
-    lookupString(input, [
-      "transcript_path",
-      "transcriptPath",
-      "transcript",
-    ]);
+    lookupString(input, ["transcript_path", "transcriptPath", "transcript"]);
   if (transcriptPath) return `pi_transcript_${hashValue(transcriptPath)}`;
 
   return fallback ?? null;
@@ -218,11 +550,18 @@ function readCurrentTask(
   ctx?: PiExtensionContext,
   contextKeyOverride?: string | null,
 ): string | null {
-  const contextKey = resolveContextKey(platformInput, ctx, contextKeyOverride);
+  const contextKey =
+    contextKeyOverride ?? resolveContextKey(platformInput, ctx);
   if (contextKey) {
     try {
       const rawContext = readText(
-        join(projectRoot, ".trellis", ".runtime", "sessions", `${contextKey}.json`),
+        join(
+          projectRoot,
+          ".trellis",
+          ".runtime",
+          "sessions",
+          `${contextKey}.json`,
+        ),
       );
       const context = JSON.parse(rawContext) as JsonObject;
       const taskRef = normalizeTaskRef(stringValue(context.current_task) ?? "");
@@ -293,11 +632,20 @@ function buildTrellisContext(
   ].join("\n");
 }
 
-function readAgentDefinition(projectRoot: string, agent: string): string {
+function normalizeAgentName(agent: string): string {
+  return agent.startsWith("trellis-") ? agent : `trellis-${agent}`;
+}
+
+function readAgentDefinition(
+  projectRoot: string,
+  agent: string,
+): AgentDefinition {
   const normalized = agent.startsWith("trellis-") ? agent : `trellis-${agent}`;
-  return stripMarkdownFrontmatter(
-    readText(join(projectRoot, ".pi", "agents", `${normalized}.md`)),
-  );
+  const raw = readText(join(projectRoot, ".pi", "agents", `${normalized}.md`));
+  return {
+    content: stripMarkdownFrontmatter(raw),
+    config: parseAgentConfig(raw),
+  };
 }
 
 function commandStartsWithTrellisContext(command: string): boolean {
@@ -337,35 +685,89 @@ function injectTrellisContextIntoBash(
 function runPi(
   projectRoot: string,
   prompt: string,
+  runConfig: PiRunConfig,
   contextKey?: string | null,
+  signal?: AbortSignal,
 ): Promise<string> {
   return new Promise((resolvePromise, reject) => {
+    if (signal?.aborted) {
+      reject(new Error("pi subagent cancelled"));
+      return;
+    }
+
+    const invocation = resolvePiInvocation();
+    const modelArgs = buildPiModelArgs(runConfig);
     const child = spawn(
-      "pi",
-      ["--mode", "json", "-p", "--no-session", toPiPromptArgument(prompt)],
+      invocation.command,
+      [
+        ...invocation.argsPrefix,
+        "--mode",
+        "text",
+        ...modelArgs,
+        "-p",
+        "--no-session",
+      ],
       {
         cwd: projectRoot,
         env: contextKey
           ? { ...process.env, TRELLIS_CONTEXT_ID: contextKey }
           : process.env,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true,
       },
     );
 
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
-    child.on("error", reject);
+    const stdout = new BoundedBufferCollector(MAX_SUBAGENT_STDOUT_BYTES);
+    const stderr = new BoundedBufferCollector(MAX_SUBAGENT_STDERR_BYTES);
+    let settled = false;
+    let aborted = false;
+
+    const abortChild = (): void => {
+      aborted = true;
+      child.kill();
+    };
+
+    const cleanup = (): void => {
+      signal?.removeEventListener("abort", abortChild);
+    };
+
+    const fail = (error: Error): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+
+    const succeed = (value: string): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolvePromise(value);
+    };
+
+    signal?.addEventListener("abort", abortChild, { once: true });
+
+    child.stdout?.on("data", (chunk: Buffer) => stdout.append(chunk));
+    child.stderr?.on("data", (chunk: Buffer) => stderr.append(chunk));
+    child.stdin?.on("error", (error: Error & { code?: string }) => {
+      if (!aborted && error.code !== "EPIPE") fail(error);
+    });
+    child.on("error", fail);
     child.on("close", (code) => {
-      const out = Buffer.concat(stdout).toString("utf-8");
-      const err = Buffer.concat(stderr).toString("utf-8");
-      if (code === 0) {
-        resolvePromise(formatPiOutput(out, err));
+      const out = stdout.toString();
+      const err = stderr.toString();
+      if (aborted) {
+        fail(new Error("pi subagent cancelled"));
+      } else if (code === 0) {
+        succeed(formatPiOutput(out, err));
       } else {
-        reject(new Error(err || `pi exited with code ${code ?? "unknown"}`));
+        fail(
+          new Error(err || out || `pi exited with code ${code ?? "unknown"}`),
+        );
       }
     });
+
+    child.stdin?.end(prompt);
   });
 }
 
@@ -373,10 +775,13 @@ function buildSubagentPrompt(
   projectRoot: string,
   input: SubagentInput,
   contextKey?: string | null,
+  agentName?: string,
+  agentDefinition?: AgentDefinition,
 ): string {
-  const agent = input.agent ?? "trellis-implement";
-  const normalized = agent.startsWith("trellis-") ? agent : `trellis-${agent}`;
-  const definition = readAgentDefinition(projectRoot, normalized);
+  const normalized =
+    agentName ?? normalizeAgentName(input.agent ?? "trellis-implement");
+  const definition =
+    agentDefinition ?? readAgentDefinition(projectRoot, normalized);
   const context = buildTrellisContext(
     projectRoot,
     normalized,
@@ -388,7 +793,7 @@ function buildSubagentPrompt(
 
   return [
     "## Trellis Agent Definition",
-    definition || "(missing agent definition)",
+    definition.content || "(missing agent definition)",
     "",
     context,
     "",
@@ -401,7 +806,11 @@ async function runSubagent(
   projectRoot: string,
   input: SubagentInput,
   contextKey?: string | null,
+  signal?: AbortSignal,
 ): Promise<string> {
+  const agentName = normalizeAgentName(input.agent ?? "trellis-implement");
+  const agentDefinition = readAgentDefinition(projectRoot, agentName);
+  const runConfig = resolveSubagentRunConfig(input, agentDefinition.config);
   const mode = input.mode ?? "single";
   if (mode === "parallel") {
     const prompts = input.prompts ?? (input.prompt ? [input.prompt] : []);
@@ -409,8 +818,16 @@ async function runSubagent(
       prompts.map((prompt) =>
         runPi(
           projectRoot,
-          buildSubagentPrompt(projectRoot, { ...input, prompt }, contextKey),
+          buildSubagentPrompt(
+            projectRoot,
+            { ...input, prompt },
+            contextKey,
+            agentName,
+            agentDefinition,
+          ),
+          runConfig,
           contextKey,
+          signal,
         ),
       ),
     );
@@ -423,13 +840,21 @@ async function runSubagent(
     for (const prompt of prompts) {
       previous = await runPi(
         projectRoot,
-        buildSubagentPrompt(projectRoot, {
-          ...input,
-          prompt: previous
-            ? `${prompt}\n\nPrevious output:\n${previous}`
-            : prompt,
-        }, contextKey),
+        buildSubagentPrompt(
+          projectRoot,
+          {
+            ...input,
+            prompt: previous
+              ? `${prompt}\n\nPrevious output:\n${previous}`
+              : prompt,
+          },
+          contextKey,
+          agentName,
+          agentDefinition,
+        ),
+        runConfig,
         contextKey,
+        signal,
       );
     }
     return previous;
@@ -437,8 +862,16 @@ async function runSubagent(
 
   return runPi(
     projectRoot,
-    buildSubagentPrompt(projectRoot, input, contextKey),
+    buildSubagentPrompt(
+      projectRoot,
+      input,
+      contextKey,
+      agentName,
+      agentDefinition,
+    ),
+    runConfig,
     contextKey,
+    signal,
   );
 }
 
@@ -455,12 +888,15 @@ export default function trellisExtension(pi: {
   let currentContextKey: string | null = null;
 
   const getContextKey = (input?: unknown, ctx?: PiExtensionContext): string => {
-    const contextKey = resolveContextKey(
+    const resolvedContextKey = resolveContextKey(
       input,
       ctx,
       currentContextKey ?? processContextKey,
     );
-    currentContextKey = contextKey ?? processContextKey;
+    currentContextKey = adoptExistingContextKey(
+      projectRoot,
+      resolvedContextKey ?? processContextKey,
+    );
     return currentContextKey;
   };
 
@@ -473,7 +909,8 @@ export default function trellisExtension(pi: {
       properties: {
         agent: {
           type: "string",
-          description: "Agent name, such as trellis-implement or trellis-check.",
+          description:
+            "Agent name, such as trellis-implement or trellis-check.",
         },
         prompt: {
           type: "string",
@@ -489,6 +926,17 @@ export default function trellisExtension(pi: {
           items: { type: "string" },
           description: "Prompts for parallel or chain mode.",
         },
+        model: {
+          type: "string",
+          description:
+            "Optional Pi model override for the child sub-agent process.",
+        },
+        thinking: {
+          type: "string",
+          enum: ["off", "minimal", "low", "medium", "high", "xhigh"],
+          description:
+            "Optional Pi thinking level override for the child sub-agent process.",
+        },
       },
       required: ["prompt"],
     },
@@ -500,7 +948,7 @@ export default function trellisExtension(pi: {
       ctx?: PiExtensionContext,
     ): Promise<PiToolResult> => {
       const contextKey = getContextKey(input, ctx);
-      const output = await runSubagent(projectRoot, input, contextKey);
+      const output = await runSubagent(projectRoot, input, contextKey, _signal);
       return {
         content: [{ type: "text", text: output }],
         details: {

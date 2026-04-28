@@ -13,7 +13,7 @@ Platform support uses a **centralized registry pattern** (similar to Turborepo's
 - **Shared configurator utilities**: `src/configurators/shared.ts` — `resolvePlaceholders()`, `writeSkills()`, `writeAgents()`, `writeSharedHooks()`, `resolveAllAsSkills()`, `resolveCommands()`, `resolveSkills()`, `wrapWithSkillFrontmatter()`
 - **Shared template utilities**: `src/templates/template-utils.ts` — `createTemplateReader()` factory that eliminates boilerplate across platform template modules
 - **Shared hooks**: `src/templates/shared-hooks/` — platform-independent Python hook scripts (session-start, inject-workflow-state, inject-subagent-context, inject-shell-session-context) written as-is to platform hook directories according to the capability table. Claude Code `statusLine` is not installed by default.
-- **Common templates**: `src/templates/common/` — single source of truth for commands (start, finish-work) and skills (before-dev, brainstorm, check, break-loop, update-spec) with `{{placeholder}}` resolution per platform
+- **Common templates**: `src/templates/common/` — single source of truth for commands (start, finish-work), single-file workflow skills (before-dev, brainstorm, check, break-loop, update-spec), and multi-file bundled skills (trellis-meta) with `{{placeholder}}` resolution per platform
 - **Shared utilities**: `src/utils/compare-versions.ts` — `compareVersions()` with full prerelease support (used by cli, update, migrations)
 - **Derived helpers**: `ALL_MANAGED_DIRS`, `getConfiguredPlatforms()`, etc. — consumed by update, init, hash tracking
 
@@ -101,7 +101,7 @@ When adding a new platform `{platform}`, update the following:
 | `src/templates/{platform}/extensions/trellis/index.ts.txt` | Project-local extension source written to `.pi/extensions/trellis/index.ts` |
 | `src/templates/{platform}/settings.json` | Platform settings that enable extension, skills, and prompts |
 
-> Note: Pi Agent uses project-local TypeScript extensions instead of Trellis Python hooks. Keep generated hooks under `.pi/extensions/`, write prompt templates under `.pi/prompts/trellis-*.md`, write Agent Skills under `.pi/skills/`, and do not copy `shared-hooks/*.py` into `.pi/`.
+> Note: Pi Agent uses project-local TypeScript extensions instead of Trellis Python hooks. Keep generated hooks under `.pi/extensions/`, write prompt templates under `.pi/prompts/trellis-*.md`, write Agent Skills under `.pi/skills/`, and do not copy `shared-hooks/*.py` into `.pi/`. Do not redirect Pi to shared `.agents/skills` until shared Agent Skill text is platform-neutral; Codex and Pi command references can differ. For the nested Pi launcher contract, see "Scenario: Pi Sub-Agent Launcher".
 
 **Skills pattern** (Codex, Kiro):
 
@@ -199,7 +199,73 @@ When adding a new platform `{platform}`, update the following:
 | Skill | `break-loop` | Post-debug analysis | Yes |
 | Skill | `update-spec` | Update code-spec docs | Yes |
 
-> **Rule**: When a new command/skill is added, it is added to `src/templates/common/commands/` or `src/templates/common/skills/` — ALL platforms pick it up automatically via `resolveCommands()` / `resolveSkills()` / `resolveAllAsSkills()`. Check `src/templates/common/` as the reference source.
+> **Rule**: When a new command/single-file workflow skill is added, it is added to `src/templates/common/commands/` or `src/templates/common/skills/` — ALL platforms pick it up automatically via `resolveCommands()` / `resolveSkills()` / `resolveAllAsSkills()`. Check `src/templates/common/` as the reference source.
+
+**Bundled built-in skills**: Multi-file skills with references/assets live under `src/templates/common/bundled-skills/<skill-name>/` and are installed through the same platform skill roots as workflow skills.
+
+#### Scenario: Multi-file bundled skills
+
+##### 1. Scope / Trigger
+
+Use bundled skills when a built-in skill needs files beyond `SKILL.md`, such as `references/`, examples, or assets. Do not flatten large reference trees into `src/templates/common/skills/*.md`; single-file workflow skills stay there, while multi-file built-ins use `src/templates/common/bundled-skills/<skill-name>/`.
+
+##### 2. Signatures
+
+| Helper | Contract |
+|--------|----------|
+| `getBundledSkillTemplates()` | Recursively reads `bundled-skills/*/` and returns POSIX relative file paths under each skill directory |
+| `resolveBundledSkills(ctx)` | Resolves placeholders without adding frontmatter; bundled `SKILL.md` already owns frontmatter |
+| `writeSkills(skillRoot, skills, bundledSkills)` | Writes both single-file workflow skills and bundled skill files |
+| `collectSkillTemplates(skillRoot, skills, bundledSkills)` | Returns the same skill file set for `collectTemplates()` / update hash tracking |
+
+##### 3. Contracts
+
+- Bundled skill source path: `src/templates/common/bundled-skills/<skill-name>/`.
+- Bundled skill target path: `<platform-skill-root>/<skill-name>/<relative-file>`.
+- `SKILL.md` inside a bundled skill owns its own YAML frontmatter; `wrapWithSkillFrontmatter()` must not be applied to bundled files.
+- Relative file paths returned from the common template reader are POSIX-style, stable, and relative to the skill directory.
+- `collectTemplates()` must return byte-identical content for every file that `configure*()` writes.
+
+##### 4. Validation & Error Matrix
+
+| Condition | Expected behavior |
+|-----------|-------------------|
+| Bundled skill directory is missing | Return no bundled skills; single-file workflow skill generation continues |
+| Bundled skill has nested references | Preserve the nested relative path under every platform skill root |
+| Bundled `SKILL.md` contains placeholders | Resolve placeholders with the platform `TemplateContext` |
+| Platform writes bundled skill but omits it from `collectTemplates()` | Failing test; update hash tracking would drift |
+| Bundled file path uses OS-specific separators | Normalize to POSIX relative paths before adding to template maps |
+
+##### 5. Good/Base/Bad Cases
+
+- Good: `trellis-meta` installs as `<platform-skill-root>/trellis-meta/SKILL.md` plus `references/**`, and `collectPlatformTemplates(platform)` returns the same files.
+- Base: no bundled skills exist; existing `resolveSkills()` / `resolveAllAsSkills()` behavior remains unchanged.
+- Bad: platform-specific configurators copy `trellis-meta` manually, creating a second installer that update hash tracking can miss.
+
+##### 6. Tests Required
+
+- Init integration test proving at least Claude and Codex write `trellis-meta/SKILL.md` plus one reference file.
+- Configurator test proving configured files are byte-for-byte equal to `collectPlatformTemplates()` for every platform that writes skills.
+- Regression test proving `.trellis/.template-hashes.json` includes bundled skill reference files after init.
+
+##### 7. Wrong vs Correct
+
+Wrong:
+
+```typescript
+files.set(".claude/skills/trellis-meta/SKILL.md", metaSkillContent);
+```
+
+Correct:
+
+```typescript
+await writeSkills(skillRoot, resolveSkills(ctx), resolveBundledSkills(ctx));
+for (const [filePath, content] of collectSkillTemplates(skillRoot, skills, bundled)) {
+  files.set(filePath, content);
+}
+```
+
+**Rule**: Do not add a parallel installer for built-in multi-file skills. If `trellis init` writes a bundled skill file, the platform's `collectTemplates()` path must return the same relative path and byte-identical content so `.trellis/.template-hashes.json` can track it. At minimum, tests must cover one reference file (for example `trellis-meta/references/core/template-pipeline.md`) and the platform-specific install root.
 
 ### Step 5: Template Extraction
 
@@ -419,7 +485,7 @@ For Pi Agent:
 | User prompt submit | `input` extension event |
 | Per-turn context injection | `before_agent_start` or `context` extension event |
 | Pre-tool-use guard / mutation | `tool_call` extension event; mutate Bash `event.input.command` in place |
-| Sub-agent dispatch | custom `subagent` tool that spawns `pi --mode json -p --no-session` with `TRELLIS_CONTEXT_ID` |
+| Sub-agent dispatch | custom `subagent` tool that resolves the Pi CLI JS entrypoint when possible, runs `--mode text -p --no-session`, sends the delegated prompt through stdin, and forwards `TRELLIS_CONTEXT_ID` |
 
 If `agentCapable` is true, `task.py create` must seed `implement.jsonl` / `check.jsonl`, and generated sub-agent definitions or extension code must consume those files.
 
@@ -489,6 +555,149 @@ await writeFile(
 ```
 
 Extension-backed platforms keep hook-equivalent behavior in platform-native extension files and test those files as templates.
+
+---
+
+## Scenario: Pi Sub-Agent Launcher
+
+### 1. Scope / Trigger
+
+Use this contract when `.pi/extensions/trellis/index.ts` launches a nested Pi process for the Trellis `subagent` tool.
+
+This is Windows-sensitive runtime integration. Node `spawn("pi", ...)` can fail with `ENOENT` when Pi is installed through an npm shim instead of a real `pi.exe`, and passing the full delegated prompt as an argv value can hit platform argument-length limits.
+
+### 2. Signatures
+
+Launcher resolver:
+
+```typescript
+interface PiInvocation {
+  command: string;
+  argsPrefix: string[];
+}
+
+function resolvePiInvocation(): PiInvocation;
+```
+
+Nested launch:
+
+```typescript
+spawn(invocation.command, [
+  ...invocation.argsPrefix,
+  "--mode",
+  "text",
+  "-p",
+  "--no-session",
+], {
+  cwd: projectRoot,
+  env: { ...process.env, TRELLIS_CONTEXT_ID: contextKey },
+  stdio: ["pipe", "pipe", "pipe"],
+  windowsHide: true,
+});
+```
+
+### 3. Contracts
+
+| Field / Env | Contract |
+|---|---|
+| `TRELLIS_PI_CLI_JS` | Optional absolute or relative path to `@mariozechner/pi-coding-agent/dist/cli.js`; if set, it is authoritative |
+| `command` | `process.execPath` when a CLI JS entrypoint is resolved; otherwise `"pi"` fallback |
+| `argsPrefix` | `[cliJs]` for resolved JS entrypoint; `[]` for fallback |
+| Prompt transport | Write delegated prompt to `child.stdin`, never as a positional argv prompt |
+| Output mode | Use `--mode text`; keep final-output formatter tolerant of structured or diagnostic output |
+| Context | Forward `TRELLIS_CONTEXT_ID` into the child env when available |
+| Agent config | Parse `model`, `thinking`, and `fallbackModels` from `.pi/agents/*.md` frontmatter |
+| Per-call overrides | `subagent` tool input may override frontmatter with `model` and `thinking` |
+| Model/thinking args | If model and thinking are present and model has no thinking suffix, pass `--model <model>:<thinking>`; if model already has a suffix, pass it unchanged; if thinking exists without model, pass `--thinking <level>` |
+| Output buffers | Bound stdout and stderr collection separately; keep the tail plus truncation notice |
+
+Candidate JS entrypoint lookup should cover:
+
+```text
+process.argv entries ending in pi-coding-agent/dist/cli.js
+npm_config_prefix / NPM_CONFIG_PREFIX
+APPDATA/npm
+PATH entries, their parent directories, and parent/lib variants
+```
+
+### 4. Validation & Error Matrix
+
+| Condition | Behavior |
+|---|---|
+| `TRELLIS_PI_CLI_JS` points to an existing file | Launch with `process.execPath` and `[cliJs, "--mode", "text", "-p", "--no-session"]` |
+| `TRELLIS_PI_CLI_JS` points to a missing file | Reject with an error naming `TRELLIS_PI_CLI_JS` and the resolved missing path |
+| A candidate CLI JS entrypoint exists | Launch with `process.execPath` and the candidate path |
+| No candidate CLI JS entrypoint exists | Fall back to `spawn("pi", ["--mode", "text", "-p", "--no-session"])` |
+| `AbortSignal` is already aborted | Reject before spawning |
+| `AbortSignal` fires after spawn | Kill the child and reject with `pi subagent cancelled` |
+| Child exits non-zero | Reject with stderr, else stdout, else an exit-code message |
+| stdout/stderr exceed limits | Keep the most recent bytes and prefix output with a truncation notice |
+
+### 5. Good / Base / Bad Cases
+
+Good:
+
+```typescript
+const invocation = resolvePiInvocation();
+const child = spawn(invocation.command, [
+  ...invocation.argsPrefix,
+  "--mode",
+  "text",
+  "-p",
+  "--no-session",
+], { stdio: ["pipe", "pipe", "pipe"] });
+child.stdin?.end(prompt);
+```
+
+Base:
+
+```typescript
+return { command: "pi", argsPrefix: [] };
+```
+
+Bad:
+
+```typescript
+spawn("pi", ["--mode", "json", "-p", "--no-session", prompt]);
+```
+
+### 6. Tests Required
+
+Add or update template/configurator tests that assert:
+
+- the generated extension contains `resolvePiInvocation`, `TRELLIS_PI_CLI_JS`, `process.execPath`, `APPDATA`, npm prefix lookup, and PATH splitting by `delimiter`;
+- the generated extension writes the prompt through `child.stdin?.end(prompt)`;
+- the generated extension contains bounded stdout/stderr collectors;
+- the old argv launcher and `toPiPromptArgument` are absent;
+- `.pi/extensions/trellis/index.ts` stays byte-for-byte aligned with `src/templates/pi/extensions/trellis/index.ts.txt`;
+- the dogfood extension compiles as TypeScript independently of the package build.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```typescript
+spawn("pi", ["--mode", "json", "-p", "--no-session", toPiPromptArgument(prompt)]);
+```
+
+This depends on direct executable lookup for `pi` and uses argv for an unbounded generated prompt.
+
+#### Correct
+
+```typescript
+const invocation = resolvePiInvocation();
+const child = spawn(invocation.command, [
+  ...invocation.argsPrefix,
+  "--mode",
+  "text",
+  "-p",
+  "--no-session",
+], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+
+child.stdin?.end(prompt);
+```
+
+Resolve npm-shim installs through the real JS entrypoint when possible, keep `pi` as the compatibility fallback, and transport generated prompts through stdin.
 
 ---
 

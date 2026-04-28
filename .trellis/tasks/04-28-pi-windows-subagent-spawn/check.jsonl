@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend quality checklist"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Review Pi platform template behavior against platform integration rules"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Review implementation quality and maintainability"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Review error paths and child process failure handling"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Review test coverage expectations"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Review test style and assertions"}
+{"file": ".trellis/tasks/04-28-pi-windows-subagent-spawn/research/issue-201-local-analysis.md", "reason": "Issue-specific acceptance criteria and risks"}
