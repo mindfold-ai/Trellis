@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend pre-development checklist and init behavior guidance."}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Init flow conventions and platform setup behavior context."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "TypeScript quality rules for CLI source changes."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Regression test expectations for changed init behavior."}

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend quality checklist for changed init behavior."}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Verify init flow remains consistent with platform integration rules."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Verify TypeScript style and dead-code cleanup."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Verify regression test coverage and style."}
