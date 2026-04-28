@@ -1,0 +1,9 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/workspace/kleinhe/trellis-docs-deep-research-2026-04-27.md", "reason": "Research synthesis and recommended docs information architecture"}
+{"file": "README.md", "reason": "Current public positioning to align docs copy with"}
+{"file": ".trellis/spec/docs-site/docs/index.md", "reason": "Docs-site guideline index"}
+{"file": ".trellis/spec/docs-site/docs/directory-structure.md", "reason": "Mintlify file organization and navigation requirements"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "MDX frontmatter, components, callouts, and code block rules"}
+{"file": ".trellis/spec/docs-site/docs/config-guidelines.md", "reason": "docs.json navigation and i18n configuration rules"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "Documentation voice, page structure, and quality checklist"}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared thinking guide index for cross-cutting planning"}

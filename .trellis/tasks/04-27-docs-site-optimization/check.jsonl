@@ -1,0 +1,10 @@
+{"file": ".opencode/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".opencode/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": ".trellis/workspace/kleinhe/trellis-docs-deep-research-2026-04-27.md", "reason": "Check implementation against research synthesis and recommendations"}
+{"file": "README.md", "reason": "Verify docs positioning stays consistent with README"}
+{"file": ".trellis/spec/docs-site/docs/index.md", "reason": "Check docs work against docs-site guideline index"}
+{"file": ".trellis/spec/docs-site/docs/directory-structure.md", "reason": "Verify new pages and navigation follow file structure rules"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "Verify MDX syntax and component usage"}
+{"file": ".trellis/spec/docs-site/docs/config-guidelines.md", "reason": "Verify docs.json navigation and i18n configuration"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "Verify docs writing quality and structure"}
+{"file": ".trellis/spec/guides/index.md", "reason": "Check planning for reuse, cross-platform, and cross-layer concerns"}

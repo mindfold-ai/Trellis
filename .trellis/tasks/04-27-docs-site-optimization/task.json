@@ -1,0 +1,53 @@
+{
+  "id": "docs-site-optimization",
+  "name": "docs-site-optimization",
+  "title": "Optimize Trellis documentation site",
+  "description": "Plan and execute a documentation-site optimization based on peer harness docs research, Trellis user research, and enterprise rollout needs.",
+  "status": "planning",
+  "dev_type": "docs",
+  "scope": null,
+  "package": "docs-site",
+  "priority": "P0",
+  "creator": "kleinhe",
+  "assignee": "kleinhe",
+  "createdAt": "2026-04-27",
+  "completedAt": null,
+  "branch": "feature/readme-docs-optimization",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "brainstorm"
+    },
+    {
+      "phase": 2,
+      "action": "research"
+    },
+    {
+      "phase": 3,
+      "action": "implement"
+    },
+    {
+      "phase": 4,
+      "action": "check"
+    },
+    {
+      "phase": 5,
+      "action": "update-spec"
+    },
+    {
+      "phase": 6,
+      "action": "record-session"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
