@@ -1,28 +1,28 @@
-# Finish Work
+# 收尾工作
 
-Wrap up the current session.
+结束当前开发会话。
 
-## Step 1: Quality Gate
+## 第 1 步：质量门禁
 
-`trellis-check` should have already run in Phase 3. If not, trigger it now and do not proceed until lint, type-check, tests, and spec compliance pass.
+Phase 3 通常已运行 `trellis-check`。若未运行，先补跑并确保 lint、type-check、tests 与 spec 合规全部通过。
 
-## Step 2: Remind User to Commit
+## 第 2 步：提醒用户提交
 
-If there are uncommitted changes:
+如存在未提交变更：
 
-> "Please review the changes and commit when ready."
+> "请先审阅变更，确认后再提交。"
 
-Do NOT run `git commit` — the human commits after testing.
+不要替用户执行 `git commit`。
 
-## Step 3: Record Session (after commit)
+## 第 3 步：记录会话（提交后）
 
-Archive finished tasks (judge by work status, not the `status` field):
+归档已完成任务（以实际状态判断，不仅看 `status` 字段）：
 
 ```bash
 {{PYTHON_CMD}} ./.trellis/scripts/task.py archive <task-name>
 ```
 
-Append a session entry (auto-handles journal rotation, line count, index update):
+追加会话记录（自动处理日志轮转、行数与索引）：
 
 ```bash
 {{PYTHON_CMD}} ./.trellis/scripts/add_session.py \
