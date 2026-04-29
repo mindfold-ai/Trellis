@@ -250,11 +250,14 @@ how to provide a session runtime. For Claude Code, SessionStart receives
 `CLAUDE_ENV_FILE`; Trellis must append `export TRELLIS_CONTEXT_ID=<context-key>`
 there so later Bash tools inherit the same session identity. For OpenCode,
 `tool.execute.before` must prefix Bash commands with
-`export TRELLIS_CONTEXT_ID=<context-key>;` from plugin session identity when the
-command does not already set it, because some TUI sessions do not expose
-`OPENCODE_RUN_ID` to Bash. Use `export` instead of a single-command environment
-assignment so compound commands like `task.py start && task.py current` keep the
-same context for every command in the Bash invocation.
+`TRELLIS_CONTEXT_ID` from plugin session identity when the command does not
+already set it, because some TUI sessions do not expose `OPENCODE_RUN_ID` to
+Bash. The prefix must match the host shell: use
+`export TRELLIS_CONTEXT_ID=<context-key>;` for POSIX shells and
+`$env:TRELLIS_CONTEXT_ID = '<context-key>';` for Windows PowerShell. Keep the
+assignment before the user's command so compound commands like
+`task.py start && task.py current` keep the same context for every command in
+the Bash invocation.
 For Cursor, `session-start.py` is not a reliable shell environment bridge.
 Instead, `inject-shell-session-context.py` must run on `beforeShellExecution`
 and write a short-lived `.trellis/.runtime/cursor-shell/*.json` ticket for
@@ -425,6 +428,16 @@ Replaces 9 scattered task iteration patterns with a single typed API.
 | `children_progress` | `(children, all_statuses) -> str` | Format `" [2/3 done]"` or `""` |
 
 **Sorting guarantee**: `iter_active_tasks` uses `sorted(tasks_dir.iterdir())` — same order as the filesystem `ls` output. This is frozen behavior; changing the sort would break display consistency.
+
+#### Parent-child invariant (children list)
+
+`children` on a parent task is the **historical** list of subtask dir names — it must NOT be pruned when a child is archived. The contract:
+
+- `cmd_archive` keeps the archived child's name in the parent's `children`.
+- `children_progress` treats any `child` not present in `all_statuses` (i.e. no longer in the active tasks dir) as **completed**, since `cmd_archive` always sets `status=completed` before moving the directory.
+- Renderers that walk children (e.g. `task.py:_print_task`) must guard with `if child_name in all_tasks` so archived entries are silently skipped, not shown.
+
+**Why**: pruning on archive caused `[1/6 done]` → `[0/5 done]` regression — both numerator and denominator dropped, hiding completed work. The single field `children` serves two readers (parent-to-child traversal and progress %); both must agree on its meaning. If you ever need an "active children only" view, derive it via `[c for c in t.children if c in all_statuses]`, do not mutate the field.
 
 ---
 
