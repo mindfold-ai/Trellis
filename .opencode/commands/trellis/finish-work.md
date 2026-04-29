@@ -1,32 +1,40 @@
 # Finish Work
 
-Wrap up the current session.
+Wrap up the current session: archive the active task and record the session journal. Code commits are NOT done here — those happen in workflow Phase 3.4 before you invoke this command.
 
-## Step 1: Quality Gate
+## Step 1: Sanity check — working tree must be clean
 
-`trellis-check` should have already run in Phase 3. If not, trigger it now and do not proceed until lint, type-check, tests, and spec compliance pass.
-
-## Step 2: Remind User to Commit
-
-If there are uncommitted changes:
-
-> "Please review the changes and commit when ready."
-
-Do NOT run `git commit` — the human commits after testing.
-
-## Step 3: Record Session (after commit)
-
-Archive finished tasks (judge by work status, not the `status` field):
+Run:
 
 ```bash
-python3 ./.trellis/scripts/task.py archive <task-name>
+git status --porcelain
 ```
 
-Append a session entry (auto-handles journal rotation, line count, index update):
+Filter out paths under `.trellis/workspace/` and `.trellis/tasks/` — those are managed by `add_session.py` and `task.py archive` auto-commits and will appear dirty as part of this skill's own work.
+
+If anything else is dirty (any path outside those two prefixes), **stop and bail out** with:
+
+> "Working tree has uncommitted code changes. Return to workflow Phase 3.4 to commit them before running `/trellis:finish-work`."
+
+Do NOT run `git commit` here. Do NOT prompt the user to commit. The user goes back to Phase 3.4 and the AI drives the batched commit there.
+
+## Step 2: Archive task (if there is an active task)
 
 ```bash
-python3 ./.trellis/scripts/add_session.py \
+{{PYTHON_CMD}} ./.trellis/scripts/task.py archive <task-name>
+```
+
+This produces a `chore(task): archive ...` commit via the script's auto-commit. If there is no active task, skip this step.
+
+## Step 3: Record session journal
+
+```bash
+{{PYTHON_CMD}} ./.trellis/scripts/add_session.py \
   --title "Session Title" \
   --commit "hash1,hash2" \
   --summary "Brief summary"
 ```
+
+Use the work-commit hashes produced in Phase 3.4 (run `git log --oneline` to find them) for `--commit`. Do not include the archive commit hash. This produces a `chore: record journal` commit.
+
+Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` → `chore: record journal`.

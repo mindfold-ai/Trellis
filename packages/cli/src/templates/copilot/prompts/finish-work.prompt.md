@@ -1,157 +1,73 @@
 ---
-description: "Trellis Copilot prompt: Finish Work - Pre-Commit Checklist"
+description: "Trellis Copilot prompt: Finish Work â€” archive task + record session journal"
 ---
 
-# Finish Work - Pre-Commit Checklist
+# Finish Work
 
-Before submitting or committing, use this checklist to ensure work completeness.
+Wrap up the current session: archive the active task and record the session journal. Code commits are NOT done here â€” those happen in workflow Phase 3.4 before you invoke this prompt.
 
-**Timing**: After code is written and tested, before commit
+**Timing**: After Phase 3.4 (Commit changes) â€” when the working tree is already clean.
 
 ---
 
-## Checklist
+## Step 1: Sanity check â€” working tree must be clean
 
-### 1. Code Quality
+Run:
 
 ```bash
-# Must pass
-pnpm lint
-pnpm type-check
-pnpm test
+git status --porcelain
 ```
 
-- [ ] `pnpm lint` passes with 0 errors?
-- [ ] `pnpm type-check` passes with no type errors?
-- [ ] Tests pass?
-- [ ] No `console.log` statements (use logger)?
-- [ ] No non-null assertions (the `x!` operator)?
-- [ ] No `any` types?
+Filter out paths under `.trellis/workspace/` and `.trellis/tasks/` â€” those are managed by `add_session.py` and `task.py archive` auto-commits and will appear dirty as part of this prompt's own work.
 
-### 1.5. Test Coverage
+If anything else is dirty (any path outside those two prefixes), **stop and bail out** with:
 
-Check if your change needs new or updated tests (see `.trellis/spec/unit-test/conventions.md`):
+> "Working tree has uncommitted code changes. Return to workflow Phase 3.4 to commit them before running `/finish-work`."
 
-- [ ] New pure function â†?unit test added?
-- [ ] Bug fix â†?regression test added in `test/regression.test.ts`?
-- [ ] Changed init/update behavior â†?integration test added/updated?
-- [ ] No logic change (text/data only) â†?no test needed
+Do NOT run `git commit` here. Do NOT prompt the user to commit. The user goes back to Phase 3.4 and the AI drives the batched commit there.
 
-### 2. Code-Spec Sync
-
-**Code-Spec Docs**:
-- [ ] Does `.trellis/spec/backend/` need updates?
-  - New patterns, new modules, new conventions
-- [ ] Does `.trellis/spec/frontend/` need updates?
-  - New components, new hooks, new patterns
-- [ ] Does `.trellis/spec/guides/` need updates?
-  - New cross-layer flows, lessons from bugs
-
-**Key Question**: 
-> "If I fixed a bug or discovered something non-obvious, should I document it so future me (or others) won't hit the same issue?"
-
-If YES -> Update the relevant code-spec doc.
-
-### 2.5. Code-Spec Hard Block (Infra/Cross-Layer)
-
-If this change touches infra or cross-layer contracts, this is a blocking checklist:
-
-- [ ] Spec content is executable (real signatures/contracts), not principle-only text
-- [ ] Includes file path + command/API name + payload field names
-- [ ] Includes validation and error matrix
-- [ ] Includes Good/Base/Bad cases
-- [ ] Includes required tests and assertion points
-
-**Block Rule**:
-In pipeline mode, the finish agent will automatically detect and execute spec updates when gaps are found.
-If running this checklist manually, ensure spec sync is complete before committing â€?run `/` if needed.
-
-### 3. API Changes
-
-If you modified API endpoints:
-
-- [ ] Input schema updated?
-- [ ] Output schema updated?
-- [ ] API documentation updated?
-- [ ] Client code updated to match?
-
-### 4. Database Changes
-
-If you modified database schema:
-
-- [ ] Migration file created?
-- [ ] Schema file updated?
-- [ ] Related queries updated?
-- [ ] Seed data updated (if applicable)?
-
-### 5. Cross-Layer Verification
-
-If the change spans multiple layers:
-
-- [ ] Data flows correctly through all layers?
-- [ ] Error handling works at each boundary?
-- [ ] Types are consistent across layers?
-- [ ] Loading states handled?
-
-### 6. Manual Testing
-
-- [ ] Feature works in browser/app?
-- [ ] Edge cases tested?
-- [ ] Error states tested?
-- [ ] Works after page refresh?
-
----
-
-## Quick Check Flow
+## Step 2: Archive task (if there is an active task)
 
 ```bash
-# 1. Code checks
-pnpm lint && pnpm type-check
-
-# 2. View changes
-git status
-git diff --name-only
-
-# 3. Based on changed files, check relevant items above
+python3 ./.trellis/scripts/task.py archive <task-name>
 ```
 
----
+This produces a `chore(task): archive ...` commit via the script's auto-commit. If there is no active task, skip this step.
 
-## Common Oversights
+## Step 3: Record session journal
 
-| Oversight | Consequence | Check |
-|-----------|-------------|-------|
-| Code-spec docs not updated | Others don't know the change | Check .trellis/spec/ |
-| Spec text is abstract only | Easy regressions in infra/cross-layer changes | Require signature/contract/matrix/cases/tests |
-| Migration not created | Schema out of sync | Check db/migrations/ |
-| Types not synced | Runtime errors | Check shared types |
-| Tests not updated | False confidence | Run full test suite |
-| Console.log left in | Noisy production logs | Search for console.log |
+```bash
+python3 ./.trellis/scripts/add_session.py \
+  --title "Session Title" \
+  --commit "hash1,hash2" \
+  --summary "Brief summary"
+```
+
+Use the work-commit hashes produced in Phase 3.4 (run `git log --oneline` to find them) for `--commit`. Do not include the archive commit hash. This produces a `chore: record journal` commit.
+
+Final git log order: `<work commits from 3.4>` â†’ `chore(task): archive ...` â†’ `chore: record journal`.
 
 ---
 
 ## Relationship to Other Commands
 
 ```
-Development Flow:
-  Write code -> Test -> / -> git commit -> /
-                          |                              |
-                   Ensure completeness              Record progress
-                   
+Development Flow (workflow.md Phase 3):
+  3.1 Quality verification
+  3.2 Debug retrospective (on demand)
+  3.3 Spec update
+  3.4 Commit changes  -> AI drafts batched commits, user confirms
+  3.5 Wrap-up         -> /finish-work (this prompt: archive + journal)
+
 Debug Flow:
-  Hit bug -> Fix -> / -> Knowledge capture
-                       |
-                  Deep analysis
+  Hit bug -> Fix -> /break-loop -> Knowledge capture
 ```
 
-- `/` - Check work completeness (this command)
-- `/` - Record session and commits
-- `/` - Deep analysis after debugging
+- `/finish-work` â€” archive + record session (this prompt)
+- `/break-loop` â€” deep analysis after debugging
 
 ---
 
 ## Core Principle
 
-> **Delivery includes not just code, but also documentation, verification, and knowledge capture.**
-
-Complete work = Code + Docs + Tests + Verification
+> **Finish-work is pure bookkeeping.** Code is already committed before this runs. If the working tree is dirty, this prompt refuses to proceed.
