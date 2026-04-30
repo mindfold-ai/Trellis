@@ -44,6 +44,7 @@ import {
   collectSkillTemplates,
   applyPullBasedPreludeMarkdown,
   applyPullBasedPreludeToml,
+  normalizeCopilotMarkdownAgents,
 } from "./shared.js";
 
 // Platform-specific template content (hooks, agents, settings — NOT commands/skills)
@@ -381,8 +382,11 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       )) {
         files.set(k, v);
       }
-      // Agents: reuse Cursor content + prepend pull-based prelude
-      for (const agent of applyPullBasedPreludeMarkdown(getCursorAgents())) {
+      // Agents: reuse Cursor content + prepend pull-based prelude, then
+      // normalize Cursor's Claude-style tools frontmatter for Copilot.
+      for (const agent of applyPullBasedPreludeMarkdown(
+        normalizeCopilotMarkdownAgents(getCursorAgents()),
+      )) {
         files.set(`.github/agents/${agent.name}.agent.md`, agent.content);
       }
       const hooksConfig = resolvePlaceholders(getCopilotHooksConfig());

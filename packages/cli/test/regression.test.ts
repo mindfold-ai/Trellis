@@ -3957,6 +3957,67 @@ describe("regression: class-2 platforms use pull-based sub-agent context", () =>
   }
 });
 
+describe("regression: copilot agents use YAML tools frontmatter", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-copilot-tools-"));
+    setWriteMode("force");
+    await configurePlatform("copilot", tmpDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("writes Copilot agent tools as YAML lists", () => {
+    const content = fs.readFileSync(
+      path.join(tmpDir, ".github/agents/trellis-implement.agent.md"),
+      "utf-8",
+    );
+    const frontmatter = content.split("---\n")[1] ?? "";
+
+    expect(frontmatter).toContain(
+      "tools:\n  - read\n  - edit\n  - execute\n  - search\n  - web\n  - exa/*",
+    );
+    expect(frontmatter).not.toContain(
+      "tools: Read, Write, Edit, Bash, Glob, Grep",
+    );
+  });
+
+  it("maps research agent MCP tools to Copilot tool names", () => {
+    const content = fs.readFileSync(
+      path.join(tmpDir, ".github/agents/trellis-research.agent.md"),
+      "utf-8",
+    );
+    const frontmatter = content.split("---\n")[1] ?? "";
+
+    expect(frontmatter).toContain("tools:\n  - read");
+    expect(frontmatter).toContain("  - edit");
+    expect(frontmatter).toContain("  - search");
+    expect(frontmatter).toContain("  - execute");
+    expect(frontmatter).toContain("  - web");
+    expect(frontmatter).toContain("  - exa/*");
+    expect(frontmatter).toContain("  - chrome-devtools/*");
+    expect(frontmatter).not.toContain("mcp__exa__");
+    expect(frontmatter).not.toContain("mcp__chrome-devtools__*");
+    expect(frontmatter).not.toContain("Skill");
+  });
+
+  it("collectPlatformTemplates matches written Copilot agent output", () => {
+    const templates = collectPlatformTemplates("copilot");
+    expect(templates).toBeInstanceOf(Map);
+
+    const generated = fs.readFileSync(
+      path.join(tmpDir, ".github/agents/trellis-check.agent.md"),
+      "utf-8",
+    );
+    expect(templates?.get(".github/agents/trellis-check.agent.md")).toBe(
+      generated,
+    );
+  });
+});
+
 describe("regression: pi uses TypeScript extension assets instead of Python hooks", () => {
   let tmpDir: string;
 
