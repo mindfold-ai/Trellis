@@ -138,6 +138,119 @@ function replaceTrellisManagedBlock(
   );
 }
 
+/**
+ * Workflow-state breadcrumb tag-block replacement (used by buildWorkflowMdTemplate).
+ *
+ * Each `[workflow-state:STATUS]...[/workflow-state:STATUS]` block in workflow.md
+ * is the runtime source of truth for the per-turn breadcrumb that
+ * inject-workflow-state.py / .js read on every UserPromptSubmit. The blocks are
+ * managed by Trellis: when the CLI ships an updated breadcrumb body, every
+ * downstream user project must pick it up (otherwise the per-turn nudge stays
+ * silent on new mandatory steps — see Phase 3.4 commit drift / Phase 1.3 jsonl
+ * curation drift, the bugs that motivated workflow-state-contract.md).
+ *
+ * Replacement contract:
+ *   - For every status block present in the *template* workflow.md, replace
+ *     the user's same-named block with the template version.
+ *   - If a block exists in the template but not in the user's file (either the
+ *     user removed it, or they're upgrading from a pre-tag version), append
+ *     the template block at the end of the file so the runtime hook can find it.
+ *   - Everything outside the named blocks (the user's narrative customizations
+ *     to the Phase Index, Skill Routing tables, etc.) is preserved verbatim.
+ */
+const WORKFLOW_STATE_TAG_RE =
+  /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g;
+
+function extractWorkflowStateBlocks(content: string): Map<string, string> {
+  const blocks = new Map<string, string>();
+  for (const match of content.matchAll(WORKFLOW_STATE_TAG_RE)) {
+    blocks.set(match[1], match[0]);
+  }
+  return blocks;
+}
+
+function replaceWorkflowStateBlock(
+  content: string,
+  status: string,
+  newBlock: string,
+): { content: string; replaced: boolean } {
+  const re = new RegExp(
+    `\\[workflow-state:${status}\\]\\s*\\n[\\s\\S]*?\\n\\s*\\[/workflow-state:${status}\\]`,
+  );
+  const match = content.match(re);
+  if (match?.index === undefined) {
+    return { content, replaced: false };
+  }
+  return {
+    content:
+      content.slice(0, match.index) +
+      newBlock +
+      content.slice(match.index + match[0].length),
+    replaced: true,
+  };
+}
+
+function buildWorkflowMdTemplate(cwd: string): string {
+  const fullPath = path.join(cwd, DIR_NAMES.WORKFLOW, "workflow.md");
+  if (!fs.existsSync(fullPath)) {
+    return workflowMdTemplate;
+  }
+
+  let existingContent: string;
+  try {
+    existingContent = fs.readFileSync(fullPath, "utf-8");
+  } catch {
+    return workflowMdTemplate;
+  }
+
+  const templateBlocks = extractWorkflowStateBlocks(workflowMdTemplate);
+  if (templateBlocks.size === 0) {
+    // Template has no breadcrumb tags — fall back to full overwrite contract.
+    return workflowMdTemplate;
+  }
+
+  const existingBlocks = extractWorkflowStateBlocks(existingContent);
+  let merged = existingContent;
+  const appendQueue: string[] = [];
+  const customizedOverwritten: string[] = [];
+  for (const [status, block] of templateBlocks) {
+    const existing = existingBlocks.get(status);
+    if (existing && existing !== block) {
+      customizedOverwritten.push(status);
+    }
+    const result = replaceWorkflowStateBlock(merged, status, block);
+    if (result.replaced) {
+      merged = result.content;
+    } else {
+      // User's file lacks this tag (older format, or user pruned it). Queue
+      // for append so the per-turn hook can find it; runtime degrades to
+      // generic "Refer to workflow.md" otherwise.
+      appendQueue.push(block);
+    }
+  }
+
+  if (appendQueue.length > 0) {
+    const trimmed = merged.replace(/\s+$/, "");
+    merged = `${trimmed}\n\n${appendQueue.join("\n\n")}\n`;
+  }
+
+  if (customizedOverwritten.length > 0) {
+    // Surface a one-line note so users who customized breadcrumb bodies know
+    // their edits were replaced. Same trade-off as the AGENTS.md
+    // TRELLIS:START/END managed-block: customizations inside the marked
+    // region are owned by the CLI; everything outside is preserved verbatim.
+    console.log(
+      chalk.yellow(
+        `  Note: workflow.md [workflow-state:${customizedOverwritten.join(", ")}] block(s) ` +
+          `were updated to the latest CLI version. If you had customized breadcrumb wording, ` +
+          `re-apply your edits to the new bodies (content outside [workflow-state:*] tags is preserved).`,
+      ),
+    );
+  }
+
+  return merged;
+}
+
 function buildAgentsMdTemplate(cwd: string): string {
   const fullPath = path.join(cwd, FILE_NAMES.AGENTS);
   if (!fs.existsSync(fullPath)) {
@@ -145,10 +258,24 @@ function buildAgentsMdTemplate(cwd: string): string {
   }
 
   const existingContent = fs.readFileSync(fullPath, "utf-8");
-  return (
-    replaceTrellisManagedBlock(existingContent, agentsMdContent) ??
-    agentsMdContent
-  );
+
+  // Existing file already has TRELLIS:START/END markers — replace just the
+  // managed block, preserving everything outside it.
+  const replaced = replaceTrellisManagedBlock(existingContent, agentsMdContent);
+  if (replaced !== null) {
+    return replaced;
+  }
+
+  // Existing file has no managed-block markers (pre-0.5.0-beta.18 project, or
+  // user hand-wrote AGENTS.md without ever running through Trellis). Append
+  // the template's managed block at the end so user content is preserved
+  // instead of clobbered.
+  const templateBlock = getTrellisManagedBlock(agentsMdContent);
+  if (!templateBlock) {
+    return agentsMdContent;
+  }
+  const trimmed = existingContent.replace(/\s+$/, "");
+  return `${trimmed}\n\n${templateBlock}\n`;
 }
 
 function isKnownUntrackedTemplate(
@@ -505,9 +632,17 @@ function collectTemplateFiles(
   // just user-facing documentation — `## Phase Index`, `## Phase 1/2/3` headings,
   // and `[workflow-state:STATUS]` tag blocks are parsed by get_context.py /
   // shared hooks, so scripts break silently when workflow.md drifts from the
-  // CLI version. Users who customized their copy land in the normal
-  // "Modified by you" confirm prompt at write time (not force-overwritten).
-  files.set(`${DIR_NAMES.WORKFLOW}/workflow.md`, workflowMdTemplate);
+  // CLI version.
+  //
+  // Starting v0.5.0-rc.0, the breadcrumb tag blocks
+  // `[workflow-state:STATUS]...[/workflow-state:STATUS]` are managed via
+  // per-block replacement (similar to AGENTS.md's TRELLIS:START/END managed
+  // block) so user customizations to the rest of the file (Phase Index,
+  // Skill Routing tables, narrative customizations) are preserved while the
+  // runtime-critical breadcrumb bodies still pick up CLI updates. Outside
+  // the tag blocks the file falls through to the normal "Modified by you"
+  // confirm prompt at write time when the user has edited it.
+  files.set(`${DIR_NAMES.WORKFLOW}/workflow.md`, buildWorkflowMdTemplate(cwd));
   // workspace/index.md stays excluded — it's runtime-appended by add_session.py
   // (journal index) and has no script-parsed structure.
   files.set(FILE_NAMES.AGENTS, buildAgentsMdTemplate(cwd));

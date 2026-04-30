@@ -754,6 +754,119 @@ Create a format table covering every combination of:
 
 ---
 
+## Routing Fixes: Audit ALL Entry Paths Before Claiming a Fix Is Complete
+
+**Trigger**: Modifying any decision/dispatch logic in a command that has multiple entry paths into the same downstream behavior — `trellis init` (handleReinit fast-path + main dispatch), `trellis update` (force vs interactive), or any function with early-return guards above the change point.
+
+**Common mistake**: Patch the dispatch you grepped for, manually verify on one fixture, ship. The other entry path stays broken because (a) it short-circuits before reaching your fix, (b) the manual fixture happened to use a flag combination that bypassed the unfixed path, and (c) the test you wrote also used that convenient bypass flag.
+
+### Scope / Trigger
+- Any change inside a function that contains an early-return guard like `if (!isFirstInit && !options.force && !options.skipExisting) { ...; return; }` followed by additional dispatch logic later.
+- Any change to a "create X if conditions hold" branch where another sibling function makes the same kind of decision.
+- Bug-fix work where the user reported one specific flag combination — assume there are other combinations that hit the same defect via a different path.
+
+### Audit Contract
+
+Before landing the fix, produce an entry-path inventory:
+
+```bash
+# Find every call site / branch that can produce the buggy outcome
+rg -n "createBootstrapTask|createJoinerOnboardingTask" packages/cli/src/commands/init.ts
+rg -n "if \(!options\.force.*return|reinitDone|return true.*//.*handled" packages/cli/src/commands/init.ts
+```
+
+For each entry path, record:
+
+| Entry path | Reaches your fix? | Flag combination required to enter it | Flag combination that *bypasses* it |
+|------------|-------------------|---------------------------------------|-------------------------------------|
+| Path A: `init()` main dispatch | yes (your fix is here) | `--force` or `--skip-existing` (skips reinit) | (always reachable when entered) |
+| Path B: `handleReinit` early return | **no** | none of force / skipExisting / first-init | `--force` or `--skip-existing` |
+
+If any entry path doesn't reach the fix, you have two options:
+
+1. **Extend the fix** so all paths funnel into the same logic (e.g. relax the guard at the early-return so the case you care about falls through to the patched dispatch).
+2. **Patch each path individually** — only when funneling is structurally infeasible.
+
+Funneling is preferred: it eliminates the class of bug, not just the instance.
+
+### Tests Required
+- **One test per entry path**, asserting the fix's effect using the exact flag combination that selects that path.
+- A test that uses a "convenience" flag (`force: true`) to bypass an entry-path guard does NOT cover that entry path — it covers the bypass route. See `cli/unit-test/conventions.md` → "Bug-Fix Tests Must Reproduce Reported Flag Combination".
+- After landing, re-build the CLI and run the user's exact reported command on a fixture. If you can't reproduce the bug pre-fix on that fixture, your repro is wrong, not the fix.
+
+### Wrong vs Correct
+
+#### Wrong — patch only the dispatch you noticed, test with a flag combination that bypasses the unpatched path
+
+```typescript
+// init.ts — main dispatch only
+if (isFirstInit || tasksEmpty) {
+  createBootstrapTask(...);
+} else if (!hadDeveloperFileAtStart) {
+  createJoinerOnboardingTask(...);
+}
+
+// handleReinit — UNCHANGED, still mis-routes empty-tasks recovery to joiner
+async function handleReinit(...) {
+  // ... no tasksEmpty check ...
+  if (!hadDeveloperFileBefore) createJoinerOnboardingTask(...);
+}
+
+// Guard at the top of init() — UNCHANGED
+if (!isFirstInit && !options.force && !options.skipExisting) {
+  await handleReinit(...);  // ← user's `--yes` alone enters here, never reaches the fix
+}
+```
+
+```typescript
+// Test that "passes" while bug is still live
+it("empty tasks/ → bootstrap", async () => {
+  await init({ yes: true, user: "alice", force: true });  // ← force bypasses handleReinit
+  expect(...).toBe(true);  // green, but only because force routed around the bug
+});
+```
+
+Net: ship lands with the user's exact command (`trellis init -u alice --codex --yes`) still broken.
+
+#### Correct — make all entry paths converge, test each path
+
+```typescript
+// init.ts — relax the guard so empty-tasks recovery never enters reinit
+const tasksEmptyEarly =
+  !fs.existsSync(tasksDirEarly) || fs.readdirSync(tasksDirEarly).length === 0;
+if (
+  !isFirstInit &&
+  !options.force &&
+  !options.skipExisting &&
+  !tasksEmptyEarly
+) {
+  await handleReinit(...);
+}
+// Main dispatch handles all empty-tasks cases uniformly
+```
+
+```typescript
+// Two tests: one per entry path, neither uses the bypass flag to dodge work
+it("#2b empty tasks/ + --yes alone → bootstrap (reported case)", async () => {
+  await init({ yes: true, user: "alice" });  // exactly the user's command
+  ...
+});
+it("#2c empty tasks/ + --yes --force → bootstrap (force path)", async () => {
+  await init({ yes: true, user: "alice", force: true });
+  ...
+});
+```
+
+### Why
+
+Multi-entry dispatch is a structural force-multiplier for bugs: every entry path is a separate opportunity for the original defect to manifest, and the cost of missing one is "the user re-files the same issue with slightly different flags." Auditing each entry path takes 5 minutes; missing one costs a release cycle.
+
+### Case Study (2026-04-30): issue #204 `--yes` + bootstrap recovery
+
+The first commit (`346003d`) added a `tasksEmpty` fallback only in `init()`'s main dispatch. It made the `--yes` log line correct, made `--force --yes` recover bootstrap, and added a passing test (`#2b` with `force: true`). It did NOT fix the user's literal reported command — `trellis init -u <name> --codex --yes` — because that command goes through `handleReinit` at `init.ts:931`, which short-circuits before reaching the patched dispatch. Caught by `trellis-check` sub-agent doing a live CLI repro on the dist build. Fixed in `589f753` by adding `!tasksEmptyEarly` to the reinit guard, plus splitting the test into `#2b` (no force, reported case) and `#2c` (with force, parity check).
+
+---
+
 ## DO / DON'T
 
 ### DO

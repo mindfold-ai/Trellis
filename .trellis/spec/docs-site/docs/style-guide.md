@@ -77,6 +77,20 @@ Links to related content or next actions.
 | Section heading | Sentence case | "Configure your settings"             |
 | Description     | Sentence      | "Learn how to set up authentication." |
 
+### Technical Architecture Openings
+
+Open technical architecture pages with the system thesis, then immediately ground it in concrete scope, modules, and source-of-truth files. Product positioning is acceptable when it names the architecture being documented; audience storytelling is not.
+
+**Good:**
+
+> Trellis is a Team-level Agent Harness with built-in LLM wiki. In implementation terms, that means two systems share the same project files: the agent harness controls workflow execution, and the LLM wiki stores specs, tasks, research, and journals.
+
+**Avoid:**
+
+> This page is for contributors and fork modders: engineers extending Trellis itself, not end users.
+
+**Why**: Architecture docs should preserve the conceptual model, but the opening must quickly become a technical map. Audience labels and unsupported positioning prose make the page feel like a pitch instead of a technical contract.
+
 ### Lists
 
 **Use bullet lists for:**
@@ -139,6 +153,33 @@ Technical specifications and API details.
 | 401  | Unauthorized |
 | 500  | Server Error |
 ```
+
+### Architecture Content
+
+Architecture and system-overview pages should explain the request or
+workflow path before listing components.
+
+```mdx
+## From one request
+
+Explain how a user action moves through the system:
+input -> state lookup -> context selection -> execution -> verification
+-> persistence.
+
+## Component recap
+
+Summarize each component after the reader understands why it appears.
+```
+
+**Why**: Component-first pages force readers to memorize names before
+they understand the problem each component solves. A workflow-first path
+shows when each file, hook, script, or role becomes necessary, then the
+recap table reinforces the model.
+
+**Reference detail**: Put exhaustive field tables, path matrices, and
+per-platform configuration in reference pages or appendices. The
+architecture page should summarize and link to those references instead
+of duplicating them.
 
 ---
 

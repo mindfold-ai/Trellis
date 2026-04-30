@@ -22,11 +22,15 @@ Shows the Phase Index (Plan / Execute / Finish) with routing + skill mapping.
 
 ## Step 3: Decide Where You Are
 
-Compare the task's `prd.md` + recent activity against the Phase Index:
+`get_context.py` shows the active task's `status` field. Route by `status` + artifact presence:
 
-- No `prd.md` yet, or requirements unclear → **Phase 1: Plan** (start at step 1.0/1.1)
-- `prd.md` exists + context configured, but code not written → **Phase 2: Execute** (step 2.1)
-- Code written, pending final quality gate → **Phase 3: Finish** (step 3.1)
+- `status=planning` + no `prd.md` → **1.1** (load `trellis-brainstorm`)
+- `status=planning` + `prd.md` exists + `implement.jsonl` not curated (only the seed `_example` row) → **1.3**
+- `status=planning` + `prd.md` + curated `implement.jsonl` → **1.4** (run `task.py start` to enter Phase 2)
+- `status=in_progress` + implementation not started → **2.1**
+- `status=in_progress` + implementation done, not yet checked → **2.2**
+- `status=in_progress` + check passed → **3.1**
+- `status=completed` (rare; usually archived immediately) → archive flow
 
 Phase rules (full detail in `.trellis/workflow.md`):
 

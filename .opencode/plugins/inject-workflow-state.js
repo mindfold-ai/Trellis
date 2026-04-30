@@ -5,14 +5,16 @@
  * Per-turn UserPromptSubmit equivalent for OpenCode.
  *
  * On every chat.message, if a Trellis task is active, inject a short
- * <workflow-state> breadcrumb reminding the main AI what task is active
- * and its expected flow. Breadcrumb text is pulled from the project's
- * workflow.md [workflow-state:STATUS] tag blocks (single source of
- * truth for users who fork the Trellis workflow), with hardcoded
- * fallbacks so the hook never breaks when workflow.md is missing or
- * malformed.
+ * <workflow-state> breadcrumb reminding the main AI what task is
+ * active and its expected flow. Breadcrumb text is pulled exclusively
+ * from the project's workflow.md [workflow-state:STATUS] tag blocks —
+ * workflow.md is the single source of truth. There are no fallback
+ * tables in this plugin: when workflow.md is missing or a tag is
+ * absent, the breadcrumb degrades to a generic
+ * "Refer to workflow.md for current step." line so users see (and fix)
+ * the broken state instead of the plugin silently masking it.
  *
- * Unlike session-start, this plugin does NOT dedupe — breadcrumb
+ * Unlike session-start, this plugin does NOT dedupe — the breadcrumb
  * should surface on every turn so long conversations don't drift.
  *
  * Silently skips when:
@@ -29,80 +31,25 @@ import { TrellisContext, debugLog } from "../lib/trellis-context.js"
 // (so "in-review" / "blocked-by-team" work alongside "in_progress").
 const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g
 
-// Hardcoded defaults for built-in Trellis statuses. Used when workflow.md
-// is missing, malformed, or lacks the tag for this status.
-//
-// `no_task` is a pseudo-status emitted when no session active task exists — keeps
-// the Next-Action reminder flowing per-turn even without an active task.
-const FALLBACK_BREADCRUMBS = {
-  no_task:
-    "No active task.\n" +
-    "Trigger words in the user message that suggest creating a task: " +
-    "重构 / 抽成 / 独立 / 分发 / 拆出来 / 搞一个 / 做成 / 接入 / 集成 / " +
-    "refactor / rewrite / extract / productize / publish / build X / design Y.\n" +
-    "Task is NOT required if ALL three hold: (a) zero file writes this turn, " +
-    "(b) answer fits in one reply with no multi-round plan, (c) no research " +
-    "beyond reading 1-2 repo files.\n" +
-    "When in doubt and no override below applies: prefer creating a task — " +
-    "over-tasking is cheap; under-tasking leaks plans and research into " +
-    "main context.\n" +
-    "Flow: load `trellis-brainstorm` skill → it creates the task via " +
-    "`python3 ./.trellis/scripts/task.py create` and drives requirements Q&A. " +
-    "For research-heavy work (tool comparison, docs, cross-platform survey), " +
-    "spawn `trellis-research` sub-agents via Task tool — NEVER do 3+ inline " +
-    "WebFetch/WebSearch/`gh api` calls in the main conversation.\n" +
-    "User override (per-turn escape hatch): if the user's CURRENT message " +
-    "contains an explicit opt-out phrase (\"跳过 trellis\" / \"别走流程\" / " +
-    "\"小修一下\" / \"直接改\" / \"先别建任务\" / \"skip trellis\" / " +
-    "\"no task\" / \"just do it\" / \"don't create a task\"), honor it for " +
-    "this turn — briefly acknowledge (\"好，本轮跳过 trellis 流程\") and " +
-    "proceed without creating a task. Per-turn only; does not carry forward; " +
-    "do NOT invent an override the user did not say.",
-  planning:
-    "Complete prd.md via trellis-brainstorm skill; then run task.py start.\n" +
-    "Research belongs in `{task_dir}/research/*.md`, written by " +
-    "`trellis-research` sub-agents. Do NOT inline WebFetch/WebSearch in " +
-    "main session — PRD only links to research files.",
-  in_progress:
-    "Flow: trellis-implement → trellis-check → trellis-update-spec → finish\n" +
-    "Next required action: inspect conversation history + git status, then " +
-    "execute the next uncompleted step in that sequence.\n" +
-    "For agent-capable platforms, the default is to dispatch " +
-    "`trellis-implement` for implementation and `trellis-check` before " +
-    "reporting completion — do not edit code in the main session by default.\n" +
-    "Use the exact Trellis agent type names when spawning sub-agents: " +
-    "`trellis-implement`, `trellis-check`, or `trellis-research`. " +
-    "Generic/default/generalPurpose sub-agents do not receive " +
-    "`implement.jsonl` / `check.jsonl` injection.\n" +
-    "User override (per-turn escape hatch): if the user's CURRENT message " +
-    "explicitly tells the main session to handle it directly (\"你直接改\" / " +
-    "\"别派 sub-agent\" / \"main session 写就行\" / \"do it inline\" / " +
-    "\"不用 sub-agent\"), honor it for this turn and edit code directly. " +
-    "Per-turn only; does not carry forward; do NOT invent an override the " +
-    "user did not say.",
-  completed:
-    "Code committed via Phase 3.4; run `/trellis:finish-work` to wrap up " +
-    "(archive task + record session).\n" +
-    "If you reach this state with uncommitted code, return to Phase 3.4 " +
-    "first — `/finish-work` refuses to run on a dirty working tree.\n" +
-    "`task.py archive` deletes runtime session files that point at the " +
-    "archived task.",
-}
-
 /**
  * Parse workflow.md for [workflow-state:STATUS] blocks.
- * Returns {status: body}. Missing tags fall back to hardcoded defaults.
+ *
+ * Returns {status: body}. workflow.md is the single source of truth —
+ * there are no fallback tables here. Missing tags (or a missing /
+ * unreadable workflow.md) fall back to a generic line in
+ * buildBreadcrumb so users see the broken state and fix workflow.md
+ * rather than the plugin silently masking it.
  */
 function loadBreadcrumbs(directory) {
-  const result = { ...FALLBACK_BREADCRUMBS }
   const workflowPath = join(directory, ".trellis", "workflow.md")
-  if (!existsSync(workflowPath)) return result
+  if (!existsSync(workflowPath)) return {}
   let content
   try {
     content = readFileSync(workflowPath, "utf-8")
   } catch {
-    return result
+    return {}
   }
+  const result = {}
   for (const match of content.matchAll(TAG_RE)) {
     const status = match[1]
     const body = match[2].trim()
@@ -137,8 +84,9 @@ function getActiveTask(ctx, platformInput = null) {
 
 /**
  * Build the <workflow-state>...</workflow-state> block.
- * - Known status (templates or fallback) → detailed body
- * - Unknown status → generic "refer to workflow.md"
+ * - Known status (tag present in workflow.md) → detailed body
+ * - Unknown status (no tag, or workflow.md missing) → generic
+ *   "Refer to workflow.md for current step." line
  * - no_task pseudo-status (id === null) → header omits task info
  */
 function buildBreadcrumb(id, status, templates, source = null) {

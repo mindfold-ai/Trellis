@@ -1,0 +1,10 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "新 SoT 合约 — 文档需要描述的标准答案"}
+{"file": ".trellis/spec/docs-site/docs/index.md", "reason": "docs-site 文档 spec 入口"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "docs 写作风格 — 跟 humanizer-zh tone 配合"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "MDX 语法约定"}
+{"file": ".trellis/spec/docs-site/docs/sync-on-change.md", "reason": "中英文同步约定"}
+{"file": ".trellis/spec/docs-site/docs/directory-structure.md", "reason": "docs-site 目录结构（区分 advanced/ vs zh/advanced/ vs release/）"}
+{"file": ".trellis/tasks/archive/2026-04/04-30-workflow-state-commit-gap/research/breadcrumb-state-machine.md", "reason": "breadcrumb subsystem 架构 — 文档要表达的内容"}
+{"file": ".trellis/tasks/archive/2026-04/04-30-workflow-state-commit-gap/research/status-transitions.md", "reason": "Status writer 和 lifecycle 事件清单 — R3 R4 章节素材"}
+{"file": ".trellis/tasks/archive/2026-04/04-30-workflow-state-commit-gap/research/hook-topology.md", "reason": "Hook 平台拓扑 — multi-platform.mdx 相关"}

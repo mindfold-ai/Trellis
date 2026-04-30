@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import warnings
@@ -214,8 +215,23 @@ def _extract_range(content: str, start_header: str, end_header: str) -> str:
     return "\n".join(lines[start:end]).rstrip()
 
 
+_BREADCRUMB_TAG_RE = re.compile(
+    r"\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n.*?\n\s*\[/workflow-state:\1\]",
+    re.DOTALL,
+)
+
+
+def _strip_breadcrumb_tag_blocks(content: str) -> str:
+    return _BREADCRUMB_TAG_RE.sub("", content)
+
+
 def _build_workflow_toc(workflow_path: Path) -> str:
-    """Inject workflow guide: TOC + Phase Index + Phase 1/2/3 step details."""
+    """Inject workflow guide: TOC + Phase Index + Phase 1/2/3 step details.
+
+    Since v0.5.0-rc.0 the [workflow-state:STATUS] breadcrumb tag blocks
+    live inside ## Phase Index. They're consumed by inject-workflow-state.py
+    on each UserPromptSubmit, so strip them from the session-start payload.
+    """
     content = read_file(workflow_path)
     if not content:
         return "No workflow.md found"
@@ -231,9 +247,9 @@ def _build_workflow_toc(workflow_path: Path) -> str:
             out_lines.append(line)
     out_lines += ["", "---", ""]
 
-    phases = _extract_range(content, "Phase Index", "Workflow State Breadcrumbs")
+    phases = _extract_range(content, "Phase Index", "Customizing Trellis (for forks)")
     if phases:
-        out_lines.append(phases)
+        out_lines.append(_strip_breadcrumb_tag_blocks(phases).rstrip())
 
     return "\n".join(out_lines).rstrip()
 

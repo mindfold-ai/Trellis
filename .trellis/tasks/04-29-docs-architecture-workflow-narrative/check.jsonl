@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/docs-site/docs/index.md", "reason": "Docs-site quality checklist entry point"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "Verify MDX syntax and component usage"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "Verify docs style and voice"}
+{"file": ".trellis/spec/docs-site/docs/ascii-art-alignment.md", "reason": "Verify text diagrams remain aligned"}

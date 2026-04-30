@@ -261,6 +261,22 @@ def cmd_create(args: argparse.Namespace) -> int:
 
                 print(colored(f"Linked as child of: {parent_dir.name}", Colors.GREEN), file=sys.stderr)
 
+    # Auto-activate the new task so the per-turn breadcrumb fires planning
+    # state. Best-effort: gracefully degrade if no session identity (CLI run
+    # outside an AI session) — the task is still created, the user can run
+    # task.py start later. Pointer is session-scoped so this never affects
+    # other AI sessions.
+    try:
+        from .active_task import resolve_context_key, set_active_task
+        if resolve_context_key():
+            try:
+                rel_dir = task_dir.relative_to(repo_root).as_posix()
+            except ValueError:
+                rel_dir = str(task_dir)
+            set_active_task(rel_dir, repo_root)
+    except Exception:
+        pass
+
     print(colored(f"Created task: {dir_name}", Colors.GREEN), file=sys.stderr)
     print("", file=sys.stderr)
     print(colored("Next steps:", Colors.BLUE), file=sys.stderr)

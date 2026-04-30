@@ -7,9 +7,9 @@
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `journal-4.md`
-- **Total Sessions**: 136
-- **Last Active**: 2026-04-29
+- **Active File**: `journal-5.md`
+- **Total Sessions**: 138
+- **Last Active**: 2026-04-30
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,8 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~1940 | Active |
+| `journal-5.md` | ~41 | Active |
+| `journal-4.md` | ~1975 | Archived |
 | `journal-3.md` | ~1988 | Archived |
 | `journal-2.md` | ~1963 | Archived |
 | `journal-1.md` | ~1998 | Archived |
@@ -32,6 +33,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 138 | 2026-04-30 | Workflow-state breadcrumb SoT collapse + commit step + auto-active create | `ad49153`, `c52ece2` | `feat/v0.5.0-beta` |
+| 137 | 2026-04-30 | Fix issue #204: trellis init --yes non-interactive + bootstrap recovery | `346003d`, `589f753`, `6fe9489` | `feat/v0.5.0-beta` |
 | 136 | 2026-04-29 | Redesign Phase 3.4 commit + /finish-work refocuses on record-session | `d2849f9`, `a97b649`, `ff07846`, `1aa2a13`, `446379e` | `feat/v0.5.0-beta` |
 | 135 | 2026-04-29 | Fix parent-child task progress regression on child archive | `e25d7db`, `4d550d0` | `feat/v0.5.0-beta` |
 | 134 | 2026-04-28 | Pi subagent config and bundled meta skill | `f3a273b`, `b37cb1b`, `5dff2ad`, `3fa969c` | `feat/v0.5.0-beta` |

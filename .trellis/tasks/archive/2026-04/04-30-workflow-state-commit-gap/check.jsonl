@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Routing audit + bug-fix test discipline — both apply to verifying this task's coverage"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test conventions, especially Bug-Fix Tests Must Reproduce Reported Flag Combination"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Integration test patterns — tests for workflow.md/script changes go through this layer"}
+{"file": ".trellis/spec/cli/backend/migrations.md", "reason": "Migration verification — manifest behavior on existing user projects"}
+{"file": ".trellis/tasks/04-30-workflow-state-commit-gap/research/breadcrumb-state-machine.md", "reason": "Three-source consistency expectation"}
+{"file": ".trellis/tasks/04-30-workflow-state-commit-gap/research/status-transitions.md", "reason": "Status writer table — verify R7 doesn't introduce new writers in unexpected places"}

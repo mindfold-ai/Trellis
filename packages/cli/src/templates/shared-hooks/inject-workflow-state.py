@@ -2,11 +2,14 @@
 """Trellis UserPromptSubmit hook: inject per-turn workflow breadcrumb.
 
 Runs on every user prompt. Resolves the active task through Trellis'
-session-aware active task resolver and emits a short <workflow-state> block
-reminding the main AI what task is active and its expected flow. Breadcrumb text is pulled from
-workflow.md [workflow-state:STATUS] tag blocks (single source of truth
-for users who fork the Trellis workflow), with hardcoded fallbacks so
-the hook never breaks when workflow.md is missing or malformed.
+session-aware active task resolver and emits a short <workflow-state>
+block reminding the main AI what task is active and its expected flow.
+Breadcrumb text is pulled exclusively from workflow.md
+[workflow-state:STATUS] tag blocks — workflow.md is the single source of
+truth. There are no fallback dicts in this script: when workflow.md is
+missing or a tag is absent, the breadcrumb degrades to a generic
+"Refer to workflow.md for current step." line so users see (and fix)
+the broken state instead of the hook silently masking it.
 
 Shared across all hook-capable platforms (Claude, Cursor, Codex, Qoder,
 CodeBuddy, Droid, Gemini, Copilot). Kiro is not wired (no per-turn
@@ -16,10 +19,6 @@ writeSharedHooks() at init time.
 Silent exit 0 cases (no output):
   - No .trellis/ directory found (not a Trellis project)
   - task.json malformed or missing status
-
-Unknown status (no tag + no hardcoded fallback) emits a generic
-breadcrumb rather than silent-exiting, so custom statuses surface in
-the UI instead of appearing as "randomly broken".
 """
 from __future__ import annotations
 
@@ -136,89 +135,24 @@ _TAG_RE = re.compile(
     re.DOTALL,
 )
 
-# Hardcoded defaults for built-in Trellis statuses. Used when workflow.md is
-# missing, malformed, or lacks the tag for this status.
-#
-# `no_task` is a pseudo-status emitted when no session active task exists — it keeps
-# the Next-Action reminder flowing per-turn even without an active task.
-_FALLBACK_BREADCRUMBS = {
-    "no_task": (
-        "No active task.\n"
-        "Trigger words in the user message that suggest creating a task: "
-        "重构 / 抽成 / 独立 / 分发 / 拆出来 / 搞一个 / 做成 / 接入 / 集成 / "
-        "refactor / rewrite / extract / productize / publish / build X / design Y.\n"
-        "Task is NOT required if ALL three hold: (a) zero file writes this turn, "
-        "(b) answer fits in one reply with no multi-round plan, (c) no research "
-        "beyond reading 1-2 repo files.\n"
-        "When in doubt and no override below applies: prefer creating a task — "
-        "over-tasking is cheap; under-tasking leaks plans and research into "
-        "main context.\n"
-        "Flow: load `trellis-brainstorm` skill → it creates the task via "
-        "`python3 ./.trellis/scripts/task.py create` and drives requirements Q&A. "
-        "For research-heavy work (tool comparison, docs, cross-platform survey), "
-        "spawn `trellis-research` sub-agents via Task tool — NEVER do 3+ inline "
-        "WebFetch/WebSearch/`gh api` calls in the main conversation.\n"
-        "User override (per-turn escape hatch): if the user's CURRENT message "
-        "contains an explicit opt-out phrase (\"跳过 trellis\" / \"别走流程\" / "
-        "\"小修一下\" / \"直接改\" / \"先别建任务\" / \"skip trellis\" / "
-        "\"no task\" / \"just do it\" / \"don't create a task\"), honor it for "
-        "this turn — briefly acknowledge (\"好，本轮跳过 trellis 流程\") and "
-        "proceed without creating a task. Per-turn only; does not carry forward; "
-        "do NOT invent an override the user did not say."
-    ),
-    "planning": (
-        "Complete prd.md via trellis-brainstorm skill; then run task.py start.\n"
-        "Research belongs in `{task_dir}/research/*.md`, written by "
-        "`trellis-research` sub-agents. Do NOT inline WebFetch/WebSearch in "
-        "main session — PRD only links to research files."
-    ),
-    "in_progress": (
-        "Flow: trellis-implement → trellis-check → trellis-update-spec → finish\n"
-        "Next required action: inspect conversation history + git status, then "
-        "execute the next uncompleted step in that sequence.\n"
-        "For agent-capable platforms, the default is to dispatch "
-        "`trellis-implement` for implementation and `trellis-check` before "
-        "reporting completion — do not edit code in the main session by default.\n"
-        "Use the exact Trellis agent type names when spawning sub-agents: "
-        "`trellis-implement`, `trellis-check`, or `trellis-research`. "
-        "Generic/default/generalPurpose sub-agents do not receive "
-        "`implement.jsonl` / `check.jsonl` injection.\n"
-        "User override (per-turn escape hatch): if the user's CURRENT message "
-        "explicitly tells the main session to handle it directly (\"你直接改\" / "
-        "\"别派 sub-agent\" / \"main session 写就行\" / \"do it inline\" / "
-        "\"不用 sub-agent\"), honor it for this turn and edit code directly. "
-        "Per-turn only; does not carry forward; do NOT invent an override the "
-        "user did not say."
-    ),
-    "completed": (
-        "Code committed via Phase 3.4; run `/trellis:finish-work` to wrap up "
-        "(archive task + record session).\n"
-        "If you reach this state with uncommitted code, return to Phase 3.4 "
-        "first — `/finish-work` refuses to run on a dirty working tree.\n"
-        "`task.py archive` deletes runtime session files that point at the "
-        "archived task."
-    ),
-}
-
-
 def load_breadcrumbs(root: Path) -> dict[str, str]:
     """Parse workflow.md for [workflow-state:STATUS] blocks.
 
-    Returns {status: body_text}. Missing tags fall back to hardcoded
-    defaults so the hook always has something to say for built-in
-    statuses. Custom statuses without tags fall to generic breadcrumb
-    downstream (see build_breadcrumb).
+    Returns {status: body_text}. workflow.md is the single source of
+    truth — there are no fallback dicts in this script. Missing tags
+    (or a missing/unreadable workflow.md) fall back to a generic line
+    in build_breadcrumb so users see the broken state and fix
+    workflow.md, rather than the hook silently masking the issue.
     """
-    result = dict(_FALLBACK_BREADCRUMBS)
-
     workflow = root / ".trellis" / "workflow.md"
     if not workflow.is_file():
-        return result
+        return {}
     try:
         content = workflow.read_text(encoding="utf-8")
     except OSError:
-        return result
+        return {}
 
+    result: dict[str, str] = {}
     for match in _TAG_RE.finditer(content):
         status = match.group(1)
         body = match.group(2).strip()
@@ -235,8 +169,9 @@ def build_breadcrumb(
 ) -> str:
     """Build the <workflow-state>...</workflow-state> block.
 
-    - Known status (in templates or fallback) → detailed template body
-    - Unknown status (no tag + no fallback) → generic "refer to workflow.md"
+    - Known status (tag present in workflow.md) → detailed template body
+    - Unknown status (no tag, or workflow.md missing) → generic
+      "Refer to workflow.md for current step." line
     - `no_task` pseudo-status (task_id is None) → header omits task info
     """
     body = templates.get(status)

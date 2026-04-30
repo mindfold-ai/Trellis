@@ -257,6 +257,44 @@ title: 'Templates'
 
 **Prevention**: Pick one form per callout and keep both tags consistent. When the body contains backtick code spans, bolded text, or more than one sentence, default to the block form for readability.
 
+### Bulleted List Inside `<Note>` / `<Warning>` / `<Info>` / `<Tip>`
+
+**Symptom**: Same as Mixed Block/Inline above — page renders as `A parsing error occurred`, title falls back to slug.
+
+**Cause**: Prettier reformats Markdown inside JSX block bodies. Bulleted lists indented under the opening tag get pulled to column 0; the closing tag then gets indented 2 spaces. Mintlify sees the bullets as content outside the `<Note>` and the closing tag as misplaced. Parse fails.
+
+```mdx
+<!-- Authored as: -->
+<Note>
+  Hook support varies by platform:
+
+  - **SessionStart** ships on Claude Code, Cursor, OpenCode...
+  - **PreToolUse** ships on a smaller subset...
+</Note>
+
+<!-- Prettier rewrites to (broken): -->
+<Note>
+  Hook support varies by platform:
+
+- **SessionStart** ships on Claude Code, Cursor, OpenCode...
+- **PreToolUse** ships on a smaller subset...
+  </Note>
+```
+
+**Prevention**: Don't put bulleted lists inside callouts. Keep the callout to a single inline summary line; place the list outside it.
+
+```mdx
+<!-- DO -->
+<Note>Hook support varies by platform and by event — see the per-event matrix below.</Note>
+
+- **SessionStart** ships on Claude Code, Cursor, OpenCode...
+- **PreToolUse** ships on a smaller subset...
+```
+
+If the bullets really must be inside the callout (rare — usually the inline-summary + list-outside form reads better anyway), use raw HTML `<ul><li>` instead of Markdown bullets so Prettier won't reformat them.
+
+**Why this isn't caught by `prettier --check` or `markdownlint-cli2`**: both pass on the broken output. Only `mintlify broken-links` (or rendering the page in a Mintlify dev server) surfaces the parse failure. Worth wiring into CI.
+
 ### Table Column Alignment
 
 **Problem**: markdownlint MD060 requires consistent table pipe alignment.

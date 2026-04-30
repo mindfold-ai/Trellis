@@ -1,0 +1,11 @@
+{"file": ".trellis/spec/docs-site/docs/index.md", "reason": "Docs-site spec index for final review"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "Validate MDX syntax and components"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "Validate docs tone and structure"}
+{"file": ".trellis/spec/docs-site/docs/sync-on-change.md", "reason": "Validate English and Chinese pages remain paired"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Validate workflow-state claims against current contract"}
+{"file": "docs-site/advanced/custom-spec-template-marketplace.mdx", "reason": "Validate new English Advanced spec marketplace authoring page"}
+{"file": "docs-site/zh/advanced/custom-spec-template-marketplace.mdx", "reason": "Validate new Chinese Advanced spec marketplace authoring page"}
+{"file": "docs-site/docs.json", "reason": "Validate new Advanced navigation entries for English and Chinese"}
+{"file": "packages/cli/src/utils/template-fetcher.ts", "reason": "Validate custom registry claims against current CLI behavior"}
+{"file": "docs-site/start/real-world-scenarios.mdx", "reason": "Validate task/subtask example in English product-feature scenario"}
+{"file": "docs-site/zh/start/real-world-scenarios.mdx", "reason": "Validate task/subtask example in Chinese product-feature scenario"}

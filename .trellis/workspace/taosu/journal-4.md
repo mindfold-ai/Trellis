@@ -1938,3 +1938,38 @@ Re-brainstormed the rolled-back 04-22 task and locked in option 2: workflow.md g
 ### Next Steps
 
 - None - task complete
+
+
+## Session 137: Fix issue #204: trellis init --yes non-interactive + bootstrap recovery
+
+**Date**: 2026-04-30
+**Task**: Fix issue #204: trellis init --yes non-interactive + bootstrap recovery
+**Branch**: `feat/v0.5.0-beta`
+
+### Summary
+
+Fixed trellis init bug where --yes still prompted on .codex/config.toml conflict (mapped --yes to skip write-mode + non-TTY fallback in writeFile) and where bootstrap task was never recreated after an aborted partial init (added tasksEmpty fallback to main dispatch + relaxed handleReinit guard so empty tasks/ falls through). trellis-check caught the handleReinit gap that the first commit missed — the user's exact reported flag combination went through that bypass path. Sidecar: captured two lessons in spec (cli/backend/quality-guidelines.md routing-fix entry-path audit; cli/unit-test/conventions.md bug-fix test discipline + helper coupling rule). Logged a separate sibling task 04-30-workflow-state-commit-gap for the hook in_progress breadcrumb that omits commit step — discovered while running this task. Bug 3 (Maximum call stack size exceeded from issue #204) not in scope; awaiting reporter stack trace via issue comment.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `346003d` | (see git log) |
+| `589f753` | (see git log) |
+| `6fe9489` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

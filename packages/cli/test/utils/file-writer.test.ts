@@ -146,4 +146,20 @@ describe("writeFile", () => {
     expect(result).toBe(true);
     expect(fs.readFileSync(filePath, "utf-8")).toBe("line1\nline2");
   });
+
+  it("falls back to skip in non-TTY when mode is 'ask' (CI safety net for issue #204)", async () => {
+    const filePath = path.join(tmpDir, "non-tty-conflict.txt");
+    fs.writeFileSync(filePath, "original");
+    setWriteMode("ask");
+
+    // Vitest runs without a TTY on stdin (process.stdin.isTTY is undefined),
+    // so this exercises the layer-level fallback that prevents
+    // ERR_USE_AFTER_CLOSE from inquirer when a CLI flag forgot to call
+    // setWriteMode.
+    expect(process.stdin.isTTY).toBeFalsy();
+
+    const result = await writeFile(filePath, "new content");
+    expect(result).toBe(false);
+    expect(fs.readFileSync(filePath, "utf-8")).toBe("original");
+  });
 });

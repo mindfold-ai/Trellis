@@ -332,6 +332,70 @@ Before writing a test, ask:
 4. **Does this depend on data that grows over time?** → Use dynamic counts
 5. **Does this test real behavior or just restate the implementation?** → Only test behavior
 6. **Does the test input actually reach the code path being tested?** → Verify with mental deletion test
+7. **For bug-fix tests: do the args match the user's reported flag combination?** → If you "simplified" by adding a convenience flag, you're testing a different path
+
+### Bug-Fix Tests Must Reproduce the Reported Flag Combination
+
+```typescript
+// Bad: convenience flag bypasses the very guard the bug lives behind
+it("#2b issue #204: empty tasks/ → bootstrap", async () => {
+  await init({ yes: true, user: "alice", force: true });
+  // ↑ `force: true` skips the `if (!options.force) handleReinit(...)` guard
+  //   in init.ts:931. Test green even though the user's `--yes` alone hits
+  //   handleReinit and mis-routes to joiner.
+  expect(fs.existsSync(bootstrapPath)).toBe(true);
+});
+
+// Good: args match exactly what the issue reporter typed
+it("#2b issue #204: empty tasks/ + --yes alone → bootstrap", async () => {
+  await init({ yes: true, user: "alice" });  // user's literal command
+  expect(fs.existsSync(bootstrapPath)).toBe(true);
+});
+
+// Optional sibling for the parallel happy path
+it("#2c issue #204: empty tasks/ + --yes --force → bootstrap", async () => {
+  await init({ yes: true, user: "alice", force: true });
+  expect(fs.existsSync(bootstrapPath)).toBe(true);
+});
+```
+
+**Why**: Convenience flags (`force`, `skipExisting`, `--no-confirm`) in CLI tests often exist to skip prompts in test runs — but those same flags also short-circuit reinit / dispatch / interactive guards. A test that adds them to "make the test simpler" can silently route through a different code path than the one the user hit. Test green ≠ bug fixed.
+
+**Detection**: For any bug-fix test, line up the args against the issue reporter's exact command. Each extra flag must justify itself: is it required to reach the reproduction state, or did you add it because the test "wouldn't run without it"? If the latter, the test is testing the bypass, not the fix.
+
+**Related**: `cli/backend/quality-guidelines.md` → "Routing Fixes: Audit ALL Entry Paths" — the structural side of the same lesson. Every convenience flag in tests typically corresponds to an unfixed entry path in production code.
+
+### Helper Setup Functions Are Load-Bearing — Audit Their Dependents Before Changing
+
+```typescript
+// Original helper — every joiner test relies on tasks/ being empty
+function simulateExistingCheckout() {
+  fs.mkdirSync(path.join(workflow, "tasks"), { recursive: true });
+  fs.mkdirSync(path.join(workflow, "spec"), { recursive: true });
+}
+
+// Updated helper — now also seeds tasks/archive/
+function simulateExistingCheckout() {
+  fs.mkdirSync(path.join(workflow, "tasks", "archive"), { recursive: true });
+  // ...
+}
+```
+
+If production code starts using `tasks/.length === 0` as the discriminator between "real reinit" and "aborted recovery", every test that calls `simulateExistingCheckout()` silently flips to the new branch. Tests still green, but they're testing a different scenario than their name claims.
+
+**Rule**: Before modifying a helper that produces fixture state, `grep` for its callers and trace each one against the new behavior. Document load-bearing invariants in a JSDoc comment so the next maintainer doesn't need to re-derive them:
+
+```typescript
+/**
+ * Helper: simulate a fresh clone of an existing Trellis project...
+ *
+ * NOTE: the seeded `tasks/archive/` is load-bearing for the joiner branch.
+ * If you change the `tasksEmpty` predicate in init.ts (currently
+ * `!exists || readdirSync().length === 0`), audit this helper — e.g., if
+ * archive/ stops counting as "non-empty", every joiner test below regresses
+ * into the bootstrap-fallback branch and assertions flip silently.
+ */
+```
 
 ---
 

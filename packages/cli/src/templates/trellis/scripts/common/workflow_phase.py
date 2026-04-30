@@ -65,7 +65,10 @@ def get_phase_index() -> str:
     Matches what the SessionStart hook injects into the `<workflow>` block:
     starts at `## Phase Index`, continues through `## Phase 1: Plan`,
     `## Phase 2: Execute`, `## Phase 3: Finish`, stops at
-    `## Workflow State Breadcrumbs` (consumed by UserPromptSubmit hook).
+    `## Customizing Trellis (for forks)` (the docs-for-forks footer).
+    `[workflow-state:STATUS]` tag blocks (now embedded in Phase Index since
+    v0.5.0-rc.0) are consumed by the UserPromptSubmit hook so they're
+    stripped from this output.
     """
     text = _read_workflow()
     lines = text.splitlines()
@@ -77,7 +80,7 @@ def get_phase_index() -> str:
         if start is None and stripped == _PHASE_INDEX_HEADING:
             start = i
             continue
-        if start is not None and stripped == "## Workflow State Breadcrumbs":
+        if start is not None and stripped == "## Customizing Trellis (for forks)":
             end = i
             break
 
@@ -85,7 +88,16 @@ def get_phase_index() -> str:
         return ""
     if end is None:
         end = len(lines)
-    return "\n".join(lines[start:end]).rstrip() + "\n"
+
+    section = "\n".join(lines[start:end]).rstrip()
+    # Strip [workflow-state:STATUS]...[/workflow-state:STATUS] blocks since
+    # they're injected separately by inject-workflow-state.py per-turn.
+    import re as _re
+    tag_re = _re.compile(
+        r"\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n.*?\n\s*\[/workflow-state:\1\]\n?",
+        _re.DOTALL,
+    )
+    return tag_re.sub("", section).rstrip() + "\n"
 
 
 def get_step(step_id: str) -> str:

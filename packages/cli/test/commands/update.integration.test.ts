@@ -293,6 +293,34 @@ describe("update() integration", () => {
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(modifiedOldContent);
   });
 
+  it("#4d preserves user AGENTS.md without TRELLIS markers by appending the managed block", async () => {
+    await setupProject();
+
+    const targetRelative = FILE_NAMES.AGENTS;
+    const targetFull = path.join(tmpDir, targetRelative);
+    const templateContent = fs.readFileSync(targetFull, "utf-8");
+
+    // User has a hand-written AGENTS.md with no TRELLIS:START/END markers at
+    // all (predates 0.5.0-beta.18 or was authored by hand). Pre-fix behavior
+    // would clobber this content; post-fix should append the managed block.
+    const userContent = "# Project notes\n\nThings the team agreed on.\n";
+    fs.writeFileSync(targetFull, userContent);
+
+    await update({ force: true });
+
+    const result = fs.readFileSync(targetFull, "utf-8");
+    expect(result).toContain("# Project notes");
+    expect(result).toContain("Things the team agreed on.");
+    expect(result).toContain("<!-- TRELLIS:START -->");
+    expect(result).toContain("<!-- TRELLIS:END -->");
+    // Managed block should sit AFTER the user content, not replace it.
+    expect(result.indexOf("# Project notes")).toBeLessThan(
+      result.indexOf("<!-- TRELLIS:START -->"),
+    );
+    // Tail equals the canonical template (force-applied managed block).
+    expect(result.endsWith(templateContent.trimEnd() + "\n")).toBe(true);
+  });
+
   it("#5 force overwrites user-modified files", async () => {
     await setupProject();
 
@@ -867,5 +895,96 @@ describe("update() integration", () => {
     expect(
       fs.existsSync(path.join(backupDir, ".opencode", "node_modules")),
     ).toBe(false);
+  });
+
+  it("#workflow-md-r4 buildWorkflowMdTemplate merges legacy workflow.md: appends missing tag blocks, replaces customized blocks, preserves user prose", async () => {
+    // Finding 2: end-to-end coverage of buildWorkflowMdTemplate's per-tag
+    // managed-block replacement (R4 of workflow-state-commit-gap task).
+    // Legacy fixture: heavy user customization outside tag blocks; only 2 of
+    // 4 [workflow-state:*] blocks present (planning, in_progress) with
+    // customized bodies; no_task and completed blocks absent entirely.
+    await setupProject();
+
+    const workflowPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const userNarrative1 =
+      "## Local Notes\n\nThis project's workflow has been adjusted for our team.\n";
+    const userNarrative2 =
+      "## Team Conventions\n\n- We always pair on PRD reviews.\n- We use --no-pager for git logs.\n";
+    const customizedPlanning =
+      "[workflow-state:planning]\nCUSTOM BODY: my planning hint that's been heavily edited.\n[/workflow-state:planning]";
+    const customizedInProgress =
+      "[workflow-state:in_progress]\nCUSTOM BODY: my in_progress hint with notes.\n[/workflow-state:in_progress]";
+    const legacyContent =
+      "# Workflow\n\n" +
+      userNarrative1 +
+      "\n" +
+      customizedPlanning +
+      "\n\n" +
+      userNarrative2 +
+      "\n" +
+      customizedInProgress +
+      "\n";
+
+    fs.writeFileSync(workflowPath, legacyContent, "utf-8");
+
+    // Invalidate hash so update treats workflow.md as needing reconciliation.
+    const hashFile = path.join(
+      tmpDir,
+      DIR_NAMES.WORKFLOW,
+      ".template-hashes.json",
+    );
+    const hashes = removeHashEntry(
+      readHashesV2(hashFile),
+      PATHS.WORKFLOW_GUIDE_FILE,
+    ) as Record<string, string>;
+    writeHashesV2(hashFile, hashes);
+
+    const consoleLogSpy = vi.spyOn(console, "log");
+
+    await update({ force: true });
+
+    const merged = fs.readFileSync(workflowPath, "utf-8");
+
+    // All 4 required blocks are present after merge.
+    for (const status of [
+      "planning",
+      "in_progress",
+      "no_task",
+      "completed",
+    ] as const) {
+      const re = new RegExp(
+        `\\[workflow-state:${status}\\]\\s*\\n[\\s\\S]+?\\n\\s*\\[/workflow-state:${status}\\]`,
+      );
+      expect(merged, `${status} block must be present after merge`).toMatch(re);
+    }
+
+    // User narrative outside the tag blocks is preserved verbatim.
+    expect(merged).toContain("## Local Notes");
+    expect(merged).toContain(
+      "This project's workflow has been adjusted for our team.",
+    );
+    expect(merged).toContain("## Team Conventions");
+    expect(merged).toContain("- We always pair on PRD reviews.");
+    expect(merged).toContain("- We use --no-pager for git logs.");
+
+    // Customized blocks were REPLACED with canonical content (per the
+    // managed-block contract — customizations inside tag blocks are owned by
+    // the CLI, same trade-off as AGENTS.md TRELLIS:START/END).
+    expect(merged).not.toContain(
+      "CUSTOM BODY: my planning hint that's been heavily edited.",
+    );
+    expect(merged).not.toContain(
+      "CUSTOM BODY: my in_progress hint with notes.",
+    );
+
+    // The yellow warning was emitted listing the customized blocks that got
+    // overwritten (so the user knows to re-apply customization).
+    const warningCalls = consoleLogSpy.mock.calls.filter((args) =>
+      String(args[0] ?? "").includes("[workflow-state:"),
+    );
+    expect(warningCalls.length).toBeGreaterThan(0);
+    const warningText = warningCalls.map((c) => String(c[0])).join("\n");
+    expect(warningText).toMatch(/planning/);
+    expect(warningText).toMatch(/in_progress/);
   });
 });

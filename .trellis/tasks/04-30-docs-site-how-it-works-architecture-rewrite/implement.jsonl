@@ -1,0 +1,15 @@
+{"file": ".trellis/spec/docs-site/docs/index.md", "reason": "Docs-site spec index and required pre-development checklist"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "MDX syntax and component usage constraints"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "Docs writing style and anti-marketing guidance"}
+{"file": ".trellis/spec/docs-site/docs/sync-on-change.md", "reason": "Bilingual docs-site sync requirements"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Authoritative workflow-state runtime contract for correcting architecture docs"}
+{"file": ".trellis/tasks/archive/2026-04/04-30-workflow-state-commit-gap/research/breadcrumb-state-machine.md", "reason": "Detailed workflow-state state machine research behind the current architecture"}
+{"file": ".trellis/tasks/archive/2026-04/04-30-workflow-state-commit-gap/research/status-transitions.md", "reason": "Task status writer and lifecycle event research"}
+{"file": "docs-site/start/install-and-first-task.mdx", "reason": "Existing remote spec template CLI examples and custom registry wording"}
+{"file": "docs-site/zh/start/install-and-first-task.mdx", "reason": "Chinese remote spec template CLI examples and custom registry wording"}
+{"file": "docs-site/templates/specs-index.mdx", "reason": "Existing public spec template marketplace catalog to avoid duplicating catalog content"}
+{"file": "docs-site/zh/templates/specs-index.mdx", "reason": "Chinese public spec template marketplace catalog to keep new Advanced page distinct"}
+{"file": "packages/cli/src/utils/template-fetcher.ts", "reason": "Current registry parsing, index probing, direct download, and template path behavior"}
+{"file": "packages/cli/src/commands/init.ts", "reason": "Current init-time remote template selection and registry mode branching"}
+{"file": "docs-site/start/real-world-scenarios.mdx", "reason": "Product-feature scenario needing concrete task/subtask example"}
+{"file": "docs-site/zh/start/real-world-scenarios.mdx", "reason": "Chinese product-feature scenario needing concrete task/subtask example"}

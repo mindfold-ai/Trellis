@@ -61,10 +61,24 @@ describe("init() joiner onboarding", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  /** Helper: simulate a fresh clone — `.trellis/` committed, `.developer` absent */
+  /**
+   * Helper: simulate a fresh clone of an existing Trellis project — `.trellis/`
+   * committed (with at least one archived task indicating prior work),
+   * `.developer` absent. Real fresh-clone state always has either an active or
+   * archived bootstrap task; an empty `tasks/` indicates an aborted partial
+   * init (issue #204) and triggers the bootstrap fallback instead of joiner.
+   *
+   * NOTE: the seeded `tasks/archive/` is load-bearing for the joiner branch.
+   * If you change the `tasksEmpty` predicate in init.ts (currently
+   * `!exists || readdirSync().length === 0`), audit this helper — e.g., if
+   * archive/ stops counting as "non-empty", every joiner test below regresses
+   * into the bootstrap-fallback branch and assertions flip silently.
+   */
   function simulateExistingCheckout(): void {
     const workflow = path.join(tmpDir, DIR_NAMES.WORKFLOW);
-    fs.mkdirSync(path.join(workflow, DIR_NAMES.TASKS), { recursive: true });
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.TASKS, "archive"), {
+      recursive: true,
+    });
     fs.mkdirSync(path.join(workflow, DIR_NAMES.SPEC), { recursive: true });
     fs.mkdirSync(path.join(workflow, DIR_NAMES.WORKSPACE), { recursive: true });
   }
@@ -142,6 +156,46 @@ describe("init() joiner onboarding", () => {
     // Bootstrap task NOT created
     expect(
       fs.existsSync(path.join(tmpDir, PATHS.TASKS, "00-bootstrap-guidelines")),
+    ).toBe(false);
+  });
+
+  it("#2b issue #204: existing .trellis/ but tasks/ empty → bootstrap fallback (--yes alone, no --force)", async () => {
+    // Mirrors the exact reproduction in issue #204: first run aborted partway
+    // after writing the .trellis/ skeleton but before creating bootstrap;
+    // second run uses `--yes` alone (no --force, no --skip-existing) to recover.
+    // Without the empty-tasks early-bypass at init.ts:931, this command would
+    // route through handleReinit and mis-create a joiner task.
+    const workflow = path.join(tmpDir, DIR_NAMES.WORKFLOW);
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.TASKS), { recursive: true });
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.SPEC), { recursive: true });
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.WORKSPACE), { recursive: true });
+
+    await init({ yes: true, user: "alice" });
+
+    expect(
+      fs.existsSync(path.join(tmpDir, PATHS.TASKS, "00-bootstrap-guidelines")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, PATHS.TASKS, "00-join-alice")),
+    ).toBe(false);
+  });
+
+  it("#2c issue #204 with --force: empty tasks/ also triggers bootstrap fallback (not joiner)", async () => {
+    // Same recovery scenario but with --force, which bypasses handleReinit
+    // via the original guard rather than the empty-tasks bypass. Both paths
+    // must converge on bootstrap creation.
+    const workflow = path.join(tmpDir, DIR_NAMES.WORKFLOW);
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.TASKS), { recursive: true });
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.SPEC), { recursive: true });
+    fs.mkdirSync(path.join(workflow, DIR_NAMES.WORKSPACE), { recursive: true });
+
+    await init({ yes: true, user: "alice", force: true });
+
+    expect(
+      fs.existsSync(path.join(tmpDir, PATHS.TASKS, "00-bootstrap-guidelines")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, PATHS.TASKS, "00-join-alice")),
     ).toBe(false);
   });
 

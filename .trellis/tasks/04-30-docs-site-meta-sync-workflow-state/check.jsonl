@@ -1,0 +1,6 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "SoT 准确性核对"}
+{"file": ".trellis/spec/docs-site/docs/style-guide.md", "reason": "写作语气 — 技术文档基调，避免宣传腔"}
+{"file": ".trellis/spec/docs-site/docs/sync-on-change.md", "reason": "中英版本一致性核对清单"}
+{"file": ".trellis/spec/docs-site/docs/mdx-guidelines.md", "reason": "MDX 语法合规"}
+{"file": ".trellis/tasks/archive/2026-04/04-30-workflow-state-commit-gap/research/breadcrumb-state-machine.md", "reason": "对照实际架构 verify 文档描述无错"}

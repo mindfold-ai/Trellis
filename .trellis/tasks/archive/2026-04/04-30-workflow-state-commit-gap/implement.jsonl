@@ -1,0 +1,9 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend conventions index"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script conventions for .trellis/scripts/ — relevant for inject-workflow-state.py + task_store.py changes"}
+{"file": ".trellis/spec/cli/backend/migrations.md", "reason": "Migration system for template files — needed for R4 manifest entry"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "TS quality conventions; the new 'Routing Fixes: Audit ALL Entry Paths' section is directly relevant to R7/R8"}
+{"file": ".trellis/tasks/04-30-workflow-state-commit-gap/research/breadcrumb-state-machine.md", "reason": "Source of truth for the 3-source layout + drift map driving R5"}
+{"file": ".trellis/tasks/04-30-workflow-state-commit-gap/research/status-transitions.md", "reason": "Status writer inventory — needed for R6 spec + R7 cmd_create change"}
+{"file": ".trellis/tasks/04-30-workflow-state-commit-gap/research/hook-topology.md", "reason": "Per-platform hook layout — referenced by R6 reachability matrix"}
+{"file": ".trellis/tasks/04-30-workflow-state-commit-gap/research/commit-guidance-trail.md", "reason": "Where commit guidance lives across the codebase — context for R1"}

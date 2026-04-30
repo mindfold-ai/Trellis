@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0-beta.19",
+  "description": "Beta.19 hot-fixes a regression introduced in beta.18: when an AGENTS.md exists without `<!-- TRELLIS:START -->` / `<!-- TRELLIS:END -->` markers (pre-beta.18 projects, or hand-authored files), `trellis update` was clobbering the user's content with the bare Trellis template. The managed block now appends to the existing file instead of overwriting it. No migration actions are required.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(update): Preserve user content in `AGENTS.md` when the file has no `<!-- TRELLIS:START -->` / `<!-- TRELLIS:END -->` markers. Beta.18's managed-block replacement returned the bare template as a fallback when no markers were found, which silently replaced the user's hand-written `AGENTS.md` content during `trellis update`. The fallback now appends the canonical managed block to the existing content instead, so user-authored sections are preserved verbatim. Existing tests cover the legacy-pristine and modified-managed-block cases; the new `#4d preserves user AGENTS.md without TRELLIS markers by appending the managed block` case covers the hand-authored-without-markers path.",
+  "migrations": [],
+  "notes": "Run `trellis update` to receive the AGENTS.md preservation fix. No `--migrate` flag is required. If beta.18 already overwrote your `AGENTS.md`, restore the file from git history and re-run `trellis update` on beta.19 to merge in the managed block while keeping your content."
+}

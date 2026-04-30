@@ -84,8 +84,14 @@ export async function writeFile(
     return false;
   }
 
-  // File exists with different content, handle based on mode
-  const mode = globalWriteMode;
+  // File exists with different content, handle based on mode.
+  // Non-TTY (CI, pipes, scripted runs): never prompt — fall back to skip
+  // rather than crash with ERR_USE_AFTER_CLOSE if a CLI flag forgot to call
+  // setWriteMode. Layer-level safety net for the init.ts mapping.
+  const mode =
+    globalWriteMode === "ask" && !process.stdin.isTTY
+      ? "skip"
+      : globalWriteMode;
 
   if (mode === "force") {
     fs.writeFileSync(filePath, content);

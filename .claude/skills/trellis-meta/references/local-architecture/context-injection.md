@@ -60,7 +60,7 @@ If shell commands cannot see the same context key, `task.py current --source` ma
 | Need | Edit location |
 | --- | --- |
 | Change session-start injected content | The platform's `session-start` hook or plugin file. |
-| Change per-turn workflow-state rules | State blocks in `.trellis/workflow.md` and the platform workflow-state hook. |
+| Change per-turn workflow-state rules | `[workflow-state:STATUS]` block in `.trellis/workflow.md`. The platform workflow-state hook parses these blocks verbatim and embeds no fallback text. |
 | Change how sub-agents read context | Platform agent definitions, the `inject-subagent-context` hook, or agent preludes. |
 | Change JSONL validation/display | `.trellis/scripts/common/task_context.py`. |
 | Change active task resolution | `.trellis/scripts/common/active_task.py`. |

@@ -1103,6 +1103,161 @@ describe("regression: current-task path normalization", () => {
     expect(fs.existsSync(contextPath)).toBe(false);
   });
 
+  it("[workflow-state-r7] task.py create auto-sets session pointer when TRELLIS_CONTEXT_ID is set (planning breadcrumb reachable)", () => {
+    // Pre-R7 (v0.5.0-beta.19 and earlier), `task.py create` only created the
+    // task directory; the session pointer was set by `task.py start`. That
+    // made the [workflow-state:planning] block dead text — the breadcrumb
+    // stayed at no_task during brainstorm + jsonl curation. R7 hooked
+    // set_active_task into cmd_create so the planning breadcrumb fires
+    // immediately when session identity is available.
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
+    );
+    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-auto-active" --slug r7-auto --assignee test-dev`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "r7-session" }),
+      },
+    );
+
+    // Resolve the new task directory (MM-DD-r7-auto)
+    const taskDir = fs
+      .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+      .find((d) => d.includes("r7-auto"));
+    expect(taskDir).toBeDefined();
+
+    const contextPath = path.join(
+      tmpDir,
+      ".trellis",
+      ".runtime",
+      "sessions",
+      "r7-session.json",
+    );
+    expect(fs.existsSync(contextPath)).toBe(true);
+    const context = JSON.parse(fs.readFileSync(contextPath, "utf-8")) as {
+      current_task: string;
+    };
+    expect(context.current_task).toBe(`.trellis/tasks/${taskDir}`);
+  });
+
+  it("[workflow-state-r7] task.py create degrades silently without session identity (no .runtime side effect)", () => {
+    // R7 contract: best-effort activation. No context key (CLI shell with no
+    // session env) → task is still created, but no .runtime/sessions/ file is
+    // written. Pre-R7 behavior parity for headless CLI usage.
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
+    );
+    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    // sessionEnv() with no overrides drops every session-identity env var.
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-cli-only" --slug r7-cli --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    const taskDir = fs
+      .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+      .find((d) => d.includes("r7-cli"));
+    expect(taskDir).toBeDefined();
+
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    if (fs.existsSync(sessionsDir)) {
+      const files = fs.readdirSync(sessionsDir);
+      expect(files).toEqual([]);
+    }
+  });
+
+  it("[workflow-state-r7] task.py create then task.py start is idempotent (pointer + status flip)", () => {
+    // Finding 6: R7 made cmd_create auto-call set_active_task. cmd_start also
+    // calls set_active_task. The second call must not error, and status must
+    // still flip planning → in_progress correctly.
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
+    );
+    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-idem" --slug r7-idem --assignee test-dev`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "r7-idem-session" }),
+      },
+    );
+
+    const taskDir = fs
+      .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+      .find((d) => d.includes("r7-idem"));
+    expect(taskDir).toBeDefined();
+    const relTaskDir = path.posix.join(".trellis", "tasks", taskDir as string);
+
+    // Status should be planning after create.
+    const taskJsonPath = path.join(
+      tmpDir,
+      ".trellis",
+      "tasks",
+      taskDir as string,
+      "task.json",
+    );
+    const beforeStart = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8")) as {
+      status: string;
+    };
+    expect(beforeStart.status).toBe("planning");
+
+    // Now run start with the same session — must not error.
+    let startStatus = 0;
+    let startOutput = "";
+    try {
+      startOutput = execSync(
+        `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(relTaskDir)}`,
+        {
+          cwd: tmpDir,
+          encoding: "utf-8",
+          env: sessionEnv({ TRELLIS_CONTEXT_ID: "r7-idem-session" }),
+        },
+      );
+    } catch (err) {
+      const e = err as { status?: number; stderr?: string; stdout?: string };
+      startStatus = e.status ?? 1;
+      startOutput = (e.stdout ?? "") + (e.stderr ?? "");
+    }
+    expect(startStatus).toBe(0);
+    expect(startOutput).toContain("planning → in_progress");
+
+    // Status flipped to in_progress.
+    const afterStart = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8")) as {
+      status: string;
+    };
+    expect(afterStart.status).toBe("in_progress");
+
+    // Pointer still points at the same task.
+    const contextPath = path.join(
+      tmpDir,
+      ".trellis",
+      ".runtime",
+      "sessions",
+      "r7-idem-session.json",
+    );
+    expect(fs.existsSync(contextPath)).toBe(true);
+    const context = JSON.parse(fs.readFileSync(contextPath, "utf-8")) as {
+      current_task: string;
+    };
+    expect(context.current_task).toBe(relTaskDir);
+  });
+
   it("[session-current-task] task.py archive deletes runtime sessions pointing at the archived task", () => {
     setupTaskRepo();
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -1949,11 +2104,14 @@ describe("regression: current-task path normalization", () => {
     );
   }
 
-  it("[workflow-state] in_progress default hardcoded fallback works without workflow.md", () => {
+  it("[workflow-state] missing/empty workflow.md degrades to generic line (post-R5: no fallback dict)", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     writeWorkflowStateHook();
-    // overwrite workflow.md with empty content (no tag blocks)
+    // overwrite workflow.md with empty content (no tag blocks). After
+    // v0.5.0-rc.0 the fallback dict was removed — the hook now degrades
+    // to the generic "Refer to workflow.md" line so users see (and fix) the
+    // broken state instead of being silently masked by hardcoded text.
     writeWorkflowMd("# Empty\n");
 
     const output = runInjectWorkflowState();
@@ -1964,16 +2122,32 @@ describe("regression: current-task path normalization", () => {
       "Task: issue-106 (in_progress)",
     );
     expect(parsed.hookSpecificOutput.additionalContext).toContain(
+      "Refer to workflow.md",
+    );
+    // Hardcoded fallback wording must NOT appear post-R5
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain(
       "trellis-implement → trellis-check",
     );
-    expect(parsed.hookSpecificOutput.additionalContext).toContain(
-      "do not edit code in the main session by default",
+  });
+
+  it("[workflow-state] in_progress tag in workflow.md mentions Phase 3.4 commit (R1 invariant)", () => {
+    setupTaskRepo();
+    writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
+    writeWorkflowStateHook();
+    // Write a workflow.md containing only the in_progress tag with the
+    // canonical Phase 3.4 commit reminder. This guards against future
+    // regressions that omit Phase 3.4 from the per-turn breadcrumb.
+    writeWorkflowMd(
+      "[workflow-state:in_progress]\n" +
+        "Flow: trellis-implement → trellis-check → trellis-update-spec → commit (Phase 3.4) → /trellis:finish-work\n" +
+        "[/workflow-state:in_progress]\n",
     );
+
+    const parsed = JSON.parse(runInjectWorkflowState()) as {
+      hookSpecificOutput: { additionalContext: string };
+    };
     expect(parsed.hookSpecificOutput.additionalContext).toContain(
-      "`trellis-check` before reporting completion",
-    );
-    expect(parsed.hookSpecificOutput.additionalContext).toContain(
-      "Generic/default/generalPurpose sub-agents do not receive",
+      "commit (Phase 3.4)",
     );
   });
 
@@ -1994,6 +2168,23 @@ describe("regression: current-task path normalization", () => {
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain(
       "trellis-implement → trellis-check",
     );
+  });
+
+  it("[workflow-state-r5] inject-workflow-state.py contains no _FALLBACK_BREADCRUMBS dict (post-rc.0 collapse)", () => {
+    // R5: the fallback breadcrumb dict was removed in v0.5.0-rc.0 to
+    // collapse three sources (workflow.md / py / js) to one. This test
+    // guards against accidental re-introduction.
+    const py = injectWorkflowStateScript ?? "";
+    expect(py).not.toMatch(/_FALLBACK_BREADCRUMBS\s*=\s*\{/);
+  });
+
+  it("[workflow-state-r5] opencode inject-workflow-state.js contains no FALLBACK_BREADCRUMBS dict", () => {
+    const jsURL = new URL(
+      "../src/templates/opencode/plugins/inject-workflow-state.js",
+      import.meta.url,
+    );
+    const js = fs.readFileSync(jsURL, "utf-8");
+    expect(js).not.toMatch(/const\s+FALLBACK_BREADCRUMBS\s*=\s*\{/);
   });
 
   it("[workflow-state] custom status with hyphen matches via regex", () => {
@@ -2055,7 +2246,15 @@ describe("regression: current-task path normalization", () => {
   it("[workflow-state] no_task breadcrumb emitted when no session active task exists", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Empty\n");
+    // Post-R5: breadcrumb body is read exclusively from workflow.md tag
+    // blocks. Provide a minimal no_task tag so the test can assert the
+    // routing to trellis-brainstorm content surfaces.
+    writeProjectFile(
+      path.join(".trellis", "workflow.md"),
+      "[workflow-state:no_task]\n" +
+        "No active task. Load `trellis-brainstorm` skill to start.\n" +
+        "[/workflow-state:no_task]\n",
+    );
     writeLegacyCurrentTask(".trellis/tasks/issue-106");
     writeWorkflowStateHook();
     // Legacy repo-global state must not suppress the session no_task breadcrumb.
@@ -2318,6 +2517,91 @@ print(len(entries))
     return readFileSync(templatePath, "utf-8");
   }
 
+  it("[workflow-state-r1] template workflow.md [workflow-state:in_progress] mentions commit (Phase 3.4)", () => {
+    const wf = templateWorkflowMd();
+    const match = wf.match(
+      /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/,
+    );
+    expect(match).toBeTruthy();
+    const body = match?.[1] ?? "";
+    expect(body).toMatch(/commit \(Phase 3\.4\)/i);
+  });
+
+  it("[workflow-state-r2] template workflow.md [workflow-state:planning] mentions Phase 1.3 + jsonl curation", () => {
+    const wf = templateWorkflowMd();
+    const match = wf.match(
+      /\[workflow-state:planning\]([\s\S]*?)\[\/workflow-state:planning\]/,
+    );
+    expect(match).toBeTruthy();
+    const body = match?.[1] ?? "";
+    expect(body).toMatch(/Phase 1\.3/);
+    expect(body).toMatch(/implement\.jsonl|check\.jsonl/);
+  });
+
+  it("[workflow-state-r3-no_task] template workflow.md [workflow-state:no_task] block is present and well-formed", () => {
+    const wf = templateWorkflowMd();
+    expect(wf).toMatch(
+      /\[workflow-state:no_task\]\s*\n[\s\S]+?\n\s*\[\/workflow-state:no_task\]/,
+    );
+  });
+
+  it("[workflow-state-r3-completed] template workflow.md [workflow-state:completed] block is present and well-formed", () => {
+    const wf = templateWorkflowMd();
+    expect(wf).toMatch(
+      /\[workflow-state:completed\]\s*\n[\s\S]+?\n\s*\[\/workflow-state:completed\]/,
+    );
+  });
+
+  it("[strip-breadcrumb] _strip_breadcrumb_tag_blocks only strips matched STATUS pairs (backreference parity with parser)", () => {
+    // Finding 1: the strip regex previously used [A-Za-z0-9_-]+ on both ends,
+    // accepting [workflow-state:A]...[/workflow-state:B]. The parser uses \1
+    // backreference to require matched STATUS. Tightening the strip regex to
+    // use the same backreference closes the contract gap.
+    const sessionStartScript = getSharedHookScripts().find(
+      (hook) => hook.name === "session-start.py",
+    )?.content;
+    writeProjectFile(
+      path.join(".claude", "hooks", "session-start.py"),
+      expectTemplateContent(sessionStartScript, "shared session-start"),
+    );
+
+    // Each probe writes a fenced result so newlines in stripped output are
+    // preserved; the JS side parses by splitting on the END marker.
+    const probe = [
+      "import importlib.util, pathlib, json",
+      "spec = importlib.util.spec_from_file_location('ss', pathlib.Path('.claude/hooks/session-start.py'))",
+      "mod = importlib.util.module_from_spec(spec)",
+      "spec.loader.exec_module(mod)",
+      "matched = '[workflow-state:planning]\\nbody\\n[/workflow-state:planning]'",
+      "mismatched = '[workflow-state:planning]\\nbody\\n[/workflow-state:in_progress]'",
+      "nested_orphan = '[workflow-state:planning]\\nbody1\\n[/workflow-state:other]\\ntail\\n[/workflow-state:planning]'",
+      "result = {'M': mod._strip_breadcrumb_tag_blocks(matched), 'X': mod._strip_breadcrumb_tag_blocks(mismatched), 'N': mod._strip_breadcrumb_tag_blocks(nested_orphan)}",
+      "print(json.dumps(result))",
+    ].join("; ");
+    const output = execSync(`${pythonCmd} -c ${JSON.stringify(probe)}`, {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    const lastLine = output
+      .split("\n")
+      .filter((l) => l.startsWith("{"))
+      .pop();
+    const result = JSON.parse(lastLine ?? "{}") as Record<string, string>;
+
+    // Matched pair: stripped (empty string).
+    expect(result.M).toBe("");
+    // Mismatched pair: NOT stripped — full input preserved.
+    expect(result.X).toContain("[workflow-state:planning]");
+    expect(result.X).toContain("[/workflow-state:in_progress]");
+    // Nested orphan: outer pair matches via \1 backreference and gets
+    // stripped as one unit. Either fully stripped or fully preserved —
+    // never partial (no dangling [/workflow-state:other] orphan).
+    if (result.N !== "") {
+      expect(result.N).toContain("[workflow-state:planning]");
+      expect(result.N).toContain("[/workflow-state:planning]");
+    }
+  });
+
   it("[workflow-v2] get_context.py --mode phase returns Phase Index + Phase 1/2/3 step bodies", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
@@ -2513,11 +2797,12 @@ print(len(entries))
     expect(workflowBlock).toContain("#### 1.1 Requirement exploration");
     expect(workflowBlock).toContain("#### 2.1 Implement");
     expect(workflowBlock).toContain("#### 3.3 Spec update");
-    // Breadcrumbs BODY excluded (different hook consumes the tag blocks);
-    // the TOC line "## Workflow State Breadcrumbs" is fine, but the tag
-    // blocks themselves must NOT appear here.
-    expect(workflowBlock).not.toContain("[workflow-state:planning]");
-    expect(workflowBlock).not.toContain("[workflow-state:in_progress]");
+    // Breadcrumb tag BLOCKS (matched opening + closing pair) excluded — they're
+    // consumed by inject-workflow-state.py. Inline `[workflow-state:planning]`
+    // mentions in narrative prose are fine; only complete blocks are stripped.
+    const tagBlockRe =
+      /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n[\s\S]*?\n\s*\[\/workflow-state:\1\]/;
+    expect(tagBlockRe.test(workflowBlock)).toBe(false);
   });
 
   it("[workflow-v2] session-start.py <guidelines> block lists spec paths, not inlined content", () => {
