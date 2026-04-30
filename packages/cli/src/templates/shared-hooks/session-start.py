@@ -562,6 +562,16 @@ def _build_workflow_overview(workflow_path: Path) -> str:
     return "\n".join(out_lines).rstrip()
 
 
+def _emit_platform_info(output):
+    """Emit platform-specific command information."""
+    python_cmd = "python" if sys.platform.startswith("win") else "python3"
+    output.write("<platform-info>\n")
+    output.write(f"OS: {sys.platform}\n")
+    output.write(f"Python command: {python_cmd}\n")
+    output.write(f"IMPORTANT: When executing Python scripts, always use `{python_cmd}` not the other variant.\n")
+    output.write("</platform-info>\n\n")
+
+
 def main():
     if should_skip_injection():
         sys.exit(0)
@@ -614,6 +624,8 @@ Read and follow all instructions below carefully.
 """)
     output.write(FIRST_REPLY_NOTICE)
     output.write("\n\n")
+
+    _emit_platform_info(output)
 
     # Legacy migration warning
     legacy_warning = _check_legacy_spec(trellis_dir, is_mono, packages)

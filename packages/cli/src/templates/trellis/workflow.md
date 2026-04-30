@@ -1,5 +1,7 @@
 # Development Workflow
 
+> **Platform Note**: All `python3` commands in this document should be run as `python` on Windows.
+
 ---
 
 ## Core Principles
