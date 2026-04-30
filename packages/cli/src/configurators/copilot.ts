@@ -8,6 +8,7 @@ import {
   resolveSkills,
   resolveBundledSkills,
   applyPullBasedPreludeMarkdown,
+  normalizeCopilotMarkdownAgents,
   writeSkills,
   writeSharedHooks,
 } from "./shared.js";
@@ -45,9 +46,13 @@ export async function configureCopilot(cwd: string): Promise<void> {
   // Copilot is a class-2 (pull-based) platform: hook events don't reliably
   // fire for sub-agents (#2392/#2540). Reuse Cursor's agent content and
   // prepend the pull-based prelude so sub-agents Read Trellis context themselves.
+  // Cursor uses Claude-style comma-separated tools frontmatter; normalize that
+  // to Copilot's YAML tool list format before writing into .github/agents.
   const { getAllAgents: getCursorAgents } =
     await import("../templates/cursor/index.js");
-  for (const agent of applyPullBasedPreludeMarkdown(getCursorAgents())) {
+  for (const agent of applyPullBasedPreludeMarkdown(
+    normalizeCopilotMarkdownAgents(getCursorAgents()),
+  )) {
     await writeFile(
       path.join(agentsDir, `${agent.name}.agent.md`),
       agent.content,

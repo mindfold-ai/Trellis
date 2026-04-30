@@ -383,26 +383,14 @@ export function injectPullBasedPreludeMarkdown(
   agentType: SubAgentType,
 ): string {
   const prelude = buildPullBasedPrelude(agentType);
-  const lines = content.split("\n");
+  const sections = splitMarkdownFrontmatter(content);
 
-  if (lines[0] !== "---") {
+  if (!sections) {
     return prelude + content;
   }
-  // Find closing frontmatter
-  let close = -1;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i] === "---") {
-      close = i;
-      break;
-    }
-  }
-  if (close === -1) {
-    return prelude + content;
-  }
-  const head = lines.slice(0, close + 1).join("\n");
-  const tail = lines.slice(close + 1).join("\n");
-  // Skip leading blank lines in tail to keep things tidy
-  const tailTrimmed = tail.replace(/^\n+/, "");
+
+  const head = `---\n${sections.frontmatter}\n---`;
+  const tailTrimmed = sections.body.replace(/^(\r?\n)+/, "");
   return `${head}\n\n${prelude}${tailTrimmed}`;
 }
 
@@ -441,6 +429,25 @@ export interface AgentContent {
   content: string;
 }
 
+interface MarkdownFrontmatterSections {
+  body: string;
+  frontmatter: string;
+}
+
+function splitMarkdownFrontmatter(
+  content: string,
+): MarkdownFrontmatterSections | null {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    frontmatter: match[1],
+    body: content.slice(match[0].length),
+  };
+}
+
 export function applyPullBasedPreludeMarkdown(
   agents: readonly AgentContent[],
 ): AgentContent[] {
@@ -452,6 +459,71 @@ export function applyPullBasedPreludeMarkdown(
       content: injectPullBasedPreludeMarkdown(a.content, t),
     };
   });
+}
+
+function mapLegacyToolToCopilot(tool: string): string[] {
+  switch (tool) {
+    case "Read":
+      return ["read"];
+    case "Write":
+    case "Edit":
+      return ["edit"];
+    case "Glob":
+    case "Grep":
+      return ["search"];
+    case "Bash":
+      return ["execute"];
+    case "mcp__exa__web_search_exa":
+    case "mcp__exa__get_code_context_exa":
+      return ["web", "exa/*"];
+    case "mcp__chrome-devtools__*":
+      return ["chrome-devtools/*"];
+    case "Skill":
+      return [];
+    default:
+      return [];
+  }
+}
+
+function normalizeCopilotMarkdownAgentFrontmatter(content: string): string {
+  const sections = splitMarkdownFrontmatter(content);
+  if (!sections) {
+    return content;
+  }
+
+  const frontmatter = sections.frontmatter.split(/\r?\n/);
+  const body = sections.body;
+  const normalized: string[] = [];
+
+  for (const line of frontmatter) {
+    if (!line.startsWith("tools:")) {
+      normalized.push(line);
+      continue;
+    }
+
+    const legacyTools = line
+      .slice("tools:".length)
+      .split(",")
+      .map((token) => token.trim())
+      .filter((token) => token.length > 0);
+    const tools = [...new Set(legacyTools.flatMap(mapLegacyToolToCopilot))];
+
+    normalized.push("tools:");
+    for (const tool of tools) {
+      normalized.push(`  - ${tool}`);
+    }
+  }
+
+  return `---\n${normalized.join("\n")}\n---\n${body}`;
+}
+
+export function normalizeCopilotMarkdownAgents(
+  agents: readonly AgentContent[],
+): AgentContent[] {
+  return agents.map((agent) => ({
+    ...agent,
+    content: normalizeCopilotMarkdownAgentFrontmatter(agent.content),
+  }));
 }
 
 export function applyPullBasedPreludeToml(
