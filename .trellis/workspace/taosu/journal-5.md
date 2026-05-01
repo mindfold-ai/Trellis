@@ -39,3 +39,69 @@ Converged the workflow-state breadcrumb subsystem to workflow.md as single sourc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 139: fix opencode trellis-research persist (#211)
+
+**Date**: 2026-05-01
+**Task**: fix opencode trellis-research persist (#211)
+**Branch**: `feat/v0.5.0-rc`
+
+### Summary
+
+Rewrote opencode trellis-research agent template to grant write/edit permission and added the cursor/claude shared body (PERSIST + Workflow + Scope Limits). Extended the existing 'research agent persists findings' regression test to cover opencode (the missing platform that masked the drift). 789/789 vitest, lint, tsc clean. Closes #211.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fd32162` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 140: regression test for opencode plugin export shape (#212)
+
+**Date**: 2026-05-01
+**Task**: regression test for opencode plugin export shape (#212)
+**Branch**: `feat/v0.5.0-rc`
+
+### Summary
+
+Added regression test asserting every .opencode/plugins/*.js file has exactly one top-level export and that it is 'export default'. Backfills the missing test for dc2bea3's #212 fix — without this, anyone adding a named export to a plugin file would silently break opencode plugin loading. 792/792 vitest, lint, tsc clean. Manually verified the test catches a probe 'export const X = 1'.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5e938d9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -4128,6 +4128,26 @@ describe("regression: research agent persists findings to task dir", () => {
     expect(data.instructions).toContain("{TASK_DIR}/research/");
     expect(data.instructions).toMatch(/PERSIST|persist/);
   });
+
+  it("opencode research.md grants write/edit permission and has persist instruction", () => {
+    const content = fs.readFileSync(
+      path.join(
+        repoRoot,
+        "packages/cli/src/templates/opencode/agents/trellis-research.md",
+      ),
+      "utf-8",
+    );
+    const fm = content.split("---\n")[1] ?? "";
+    // OpenCode uses YAML permission block, not Claude-style `tools:` list
+    expect(fm).toMatch(/^\s*write:\s*allow\s*$/m);
+    expect(fm).toMatch(/^\s*edit:\s*allow\s*$/m);
+    // Body must reference persist target and PERSIST keyword
+    expect(content).toContain("{TASK_DIR}/research/");
+    expect(content).toMatch(/PERSIST|[Pp]ersist/);
+    // Must not have blanket "Modify any files" forbidden rule (the pre-fix
+    // body's central failure)
+    expect(content).not.toMatch(/^- Modify any files\s*$/m);
+  });
 });
 
 describe("regression: templates/markdown/spec contains only .md.txt files (0.5.0-beta.9)", () => {
@@ -4161,4 +4181,39 @@ describe("regression: templates/markdown/spec contains only .md.txt files (0.5.0
       `Orphan non-.md.txt files in templates/markdown/spec/: ${orphans.join(", ")}`,
     ).toEqual([]);
   });
+});
+
+describe("regression: opencode plugin files have only export default (#212)", () => {
+  // OpenCode 1.2.x plugin loader iterates `Object.entries(mod)` and invokes
+  // every export as a plugin factory. Named exports alongside the default get
+  // called with wrong args, the loader aborts, and the default factory
+  // silently never runs — no error surfaces to stderr or to the plugin's own
+  // debug log. dc2bea3 fixed session-start.js by extracting named exports to
+  // lib/session-utils.js. This test prevents regression: any future named
+  // export added directly to a `.opencode/plugins/*.js` file would silently
+  // break that plugin's hooks on user machines.
+  const __dirname2 = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(__dirname2, "../../..");
+  const pluginsDir = path.join(
+    repoRoot,
+    "packages/cli/src/templates/opencode/plugins",
+  );
+  const pluginFiles = fs
+    .readdirSync(pluginsDir)
+    .filter((f) => f.endsWith(".js"));
+
+  for (const file of pluginFiles) {
+    it(`${file} has exactly one export, and it is 'export default'`, () => {
+      const content = fs.readFileSync(path.join(pluginsDir, file), "utf-8");
+      const exportLines = content
+        .split("\n")
+        .filter((l) => /^export\s/.test(l));
+      expect(
+        exportLines,
+        `${file} must have exactly one top-level export (got ${exportLines.length}). ` +
+          `Move helper functions/constants to ../lib/ — opencode loader treats every export as a plugin factory.`,
+      ).toHaveLength(1);
+      expect(exportLines[0]).toMatch(/^export\s+default\s/);
+    });
+  }
 });

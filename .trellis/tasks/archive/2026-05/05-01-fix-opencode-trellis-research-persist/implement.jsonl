@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "platform template authoring conventions"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "general code quality + invariants for cli package"}
+{"file": "packages/cli/src/templates/cursor/agents/trellis-research.md", "reason": "shared body shape used by claude/cursor/droid/gemini/codebuddy — copy as opencode body"}
+{"file": "packages/cli/src/templates/claude/agents/trellis-research.md", "reason": "frontmatter description canonical wording"}
+{"file": "packages/cli/src/templates/opencode/agents/trellis-research.md", "reason": "the file being rewritten"}

@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0-rc.1",
+  "description": "Patches rc.0 with two OpenCode fixes: trellis-research subagent gains write permission and persists findings to {TASK_DIR}/research/ (#211); session-start.js extracts named exports to lib/session-utils.js so the OpenCode 1.2.x loader reaches export default (#212). No new migrations.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(opencode): `trellis-research` subagent template grants `write: allow` / `edit: allow` and the prompt body now matches the cursor/claude shape (Core Principle, Workflow Step 1–5 with `mkdir -p {TASK_DIR}/research/`, Scope Limits, File Format, DO/DON'T). The redundant 'Context Self-Loading' section is removed; `inject-subagent-context.js` already pre-loads spec dir context (#211).\n- fix(opencode): extract `buildSessionContext` and `hasInjectedTrellisContext` from `.opencode/plugins/session-start.js` into `lib/session-utils.js` so each plugin file has only `export default`. The OpenCode 1.2.x loader iterates `Object.entries(mod)` and invokes every export as a factory; the named exports caused the loader to abort before reaching the default export (#212).\n\n**Testing:**\n- test(opencode): walk `templates/opencode/plugins/*.js` and assert each file has exactly one top-level export matching `^export\\s+default\\s/` to prevent #212-class regressions.\n- test(opencode): extend the `research agent persists findings to task dir` regression group with an OpenCode-specific case asserting YAML `permission:` frontmatter and body contents, closing the gap that masked #211.",
+  "migrations": [],
+  "notes": "RC install: `npm install -g @mindfoldhq/trellis@rc`. Projects on 0.5 (beta or rc.0) run `trellis update`. Projects upgrading from 0.4.x run `trellis update --migrate`; the 0.5 migration chain begins at 0.5.0-beta.0. rc.1 adds no new migration entries."
+}

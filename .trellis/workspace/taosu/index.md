@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-5.md`
-- **Total Sessions**: 138
-- **Last Active**: 2026-04-30
+- **Total Sessions**: 140
+- **Last Active**: 2026-05-01
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-5.md` | ~41 | Active |
+| `journal-5.md` | ~107 | Active |
 | `journal-4.md` | ~1975 | Archived |
 | `journal-3.md` | ~1988 | Archived |
 | `journal-2.md` | ~1963 | Archived |
@@ -33,6 +33,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 140 | 2026-05-01 | regression test for opencode plugin export shape (#212) | `5e938d9` | `feat/v0.5.0-rc` |
+| 139 | 2026-05-01 | fix opencode trellis-research persist (#211) | `fd32162` | `feat/v0.5.0-rc` |
 | 138 | 2026-04-30 | Workflow-state breadcrumb SoT collapse + commit step + auto-active create | `ad49153`, `c52ece2` | `feat/v0.5.0-beta` |
 | 137 | 2026-04-30 | Fix issue #204: trellis init --yes non-interactive + bootstrap recovery | `346003d`, `589f753`, `6fe9489` | `feat/v0.5.0-beta` |
 | 136 | 2026-04-29 | Redesign Phase 3.4 commit + /finish-work refocuses on record-session | `d2849f9`, `a97b649`, `ff07846`, `1aa2a13`, `446379e` | `feat/v0.5.0-beta` |

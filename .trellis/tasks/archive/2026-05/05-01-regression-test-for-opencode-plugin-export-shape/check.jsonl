@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "test anti-patterns + style conventions"}
+{"file": "packages/cli/test/regression.test.ts", "reason": "verification target — new describe block must follow walk-pattern style and not duplicate other tests"}

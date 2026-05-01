@@ -3,7 +3,7 @@ import { contextCollector } from "../../src/templates/opencode/lib/trellis-conte
 import {
   buildSessionContext,
   hasInjectedTrellisContext,
-} from "../../src/templates/opencode/plugins/session-start.js";
+} from "../../src/templates/opencode/lib/session-utils.js";
 import injectSubagentContextPlugin from "../../src/templates/opencode/plugins/inject-subagent-context.js";
 
 interface TestContextCollector {

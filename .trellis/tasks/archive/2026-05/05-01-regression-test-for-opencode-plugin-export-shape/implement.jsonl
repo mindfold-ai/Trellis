@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "test conventions + anti-patterns for the new regression case"}
+{"file": "packages/cli/test/regression.test.ts", "reason": "extension target — add new describe block following the existing 'templates/markdown/spec contains only .md.txt files' walk pattern at line 4072"}
+{"file": "packages/cli/src/templates/opencode/plugins/session-start.js", "reason": "verify only `export default` remains after dc2bea3"}
+{"file": "packages/cli/src/templates/opencode/plugins/inject-subagent-context.js", "reason": "verify only `export default`"}
+{"file": "packages/cli/src/templates/opencode/plugins/inject-workflow-state.js", "reason": "verify only `export default`"}
