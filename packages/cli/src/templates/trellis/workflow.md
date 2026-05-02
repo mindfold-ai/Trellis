@@ -151,16 +151,16 @@ Phase 3: Finish  → distill lessons + wrap-up
 
 [workflow-state:no_task]
 No active task. **A Direct answer** — pure Q&A / explanation / lookup / chat; no file writes + one-line answer + repo reads ≤ 2 files → AI judges, no override needed.
-**B Create a task** — any implementation / code change / build / refactor work. Entry sequence: (1) `python3 ./.trellis/scripts/task.py create "<title>"` to create the task (status=planning, breadcrumb switches to [workflow-state:planning] for brainstorm + jsonl phase guidance) → (2) load `trellis-brainstorm` skill to discuss requirements with the user and iterate on prd.md → (3) once prd is done and jsonl is curated, run `task.py start <task-dir>` to enter [workflow-state:in_progress] for the implementation skeleton. For research-heavy work, dispatch `trellis-research` sub-agents — main agent must NOT do 3+ inline WebFetch / WebSearch / `gh api` calls. **"It looks small" is NOT grounds for downgrading B to A or C**.
+**B Create a task** — any implementation / code change / build / refactor work. Entry sequence: (1) `python3 ./.trellis/scripts/task.py create "<title>"` to create the task (status=planning, breadcrumb switches to [workflow-state:planning] for brainstorm + jsonl phase guidance) → (2) load `trellis-brainstorm` skill to discuss requirements with the user and iterate on prd.md → (3) once prd is done, jsonl is curated, and the user has explicitly confirmed or overridden PRD confirmation, run `task.py start <task-dir>` to enter [workflow-state:in_progress] for the implementation skeleton. For research-heavy work, dispatch `trellis-research` sub-agents — main agent must NOT do 3+ inline WebFetch / WebSearch / `gh api` calls. **"It looks small" is NOT grounds for downgrading B to A or C**.
 **C Inline change** (per-turn only, escape hatch for B) — the user's CURRENT message MUST contain one of: "skip trellis" / "no task" / "just do it" / "don't create a task" / "跳过 trellis" / "别走流程" / "小修一下" / "直接改" / "先别建任务" → briefly acknowledge ("ok, skipping trellis flow this turn"), then inline. **Without seeing one of these phrases you must NOT inline on your own**; do not invent an override the user never said.
 [/workflow-state:no_task]
 
 ### Phase 1: Plan
 - 1.0 Create task `[required · once]` (just `task.py create`; status enters planning)
-- 1.1 Requirement exploration `[required · repeatable]`
+- 1.1 Requirement exploration `[required · repeatable]` — converge the PRD, then get explicit user confirmation or override
 - 1.2 Research `[optional · repeatable]`
 - 1.3 Configure context `[required · once]` — Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi
-- 1.4 Activate task `[required · once]` (run `task.py start`; status → in_progress)
+- 1.4 Activate task `[required · once]` (run `task.py start` only after `meta.prd_status` is `confirmed` or `override`; status → in_progress)
 - 1.5 Completion criteria
 
 <!-- Per-turn breadcrumb: shown throughout Phase 1 (status='planning') -->
@@ -168,7 +168,8 @@ No active task. **A Direct answer** — pure Q&A / explanation / lookup / chat; 
 [workflow-state:planning]
 Load the `trellis-brainstorm` skill and iterate on prd.md with the user.
 Phase 1.3 (required, once): before `task.py start`, you MUST curate `implement.jsonl` and `check.jsonl` — list the spec / research files sub-agents need so they get the right context injected. You may skip only if the jsonl already has agent-curated entries (the seed `_example` row alone doesn't count).
-Then run `task.py start <task-dir>` to flip status to in_progress.
+Before implementation, the user must explicitly confirm the PRD or explicitly skip confirmation. Record the result with `python3 ./.trellis/scripts/task.py set-prd-status <task-dir> confirmed` or `... override`. While `meta.prd_status` is `draft` (or missing), do NOT dispatch `trellis-implement` and do NOT run `task.py start`.
+Once jsonl is curated and `meta.prd_status` is `confirmed` or `override`, run `task.py start <task-dir>` to flip status to in_progress.
 Research output **must** land in `{task_dir}/research/*.md`, written by `trellis-research` sub-agents. The main agent should not inline WebFetch / WebSearch — the PRD only links to research files.
 [/workflow-state:planning]
 

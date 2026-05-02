@@ -394,7 +394,7 @@ Record the outcome in PRD as an ADR-lite section:
 
 ## Step 8: Final Confirmation + Implementation Plan
 
-When open questions are resolved, confirm complete requirements with a structured summary:
+When open questions are resolved, confirm complete requirements with a structured summary and an explicit user choice:
 
 ### Final confirmation format
 
@@ -430,8 +430,22 @@ Here's my understanding of the complete requirements:
 * PR2: <core behavior>
 * PR3: <edge cases + docs + cleanup>
 
-Does this look correct? If yes, I'll proceed with implementation.
+Please choose the next step:
+
+1. Confirm PRD and enter implementation
+2. Revise PRD first
+3. Skip confirmation and implement anyway
 ```
+
+### Required status recording
+
+The PRD is not implementation-ready until the user's choice is persisted in `task.json -> meta.prd_status`:
+
+* Choice 1 → run `python3 ./.trellis/scripts/task.py set-prd-status <task-dir> confirmed`
+* Choice 2 → keep `prd_status=draft` and continue brainstorming
+* Choice 3 → run `python3 ./.trellis/scripts/task.py set-prd-status <task-dir> override`
+
+Do not enter implementation while `prd_status` is still `draft`.
 
 ### Subtask Decomposition (Complex Tasks)
 
@@ -502,13 +516,13 @@ Context / Decision / Consequences
 
 ## Integration with Start Workflow
 
-After brainstorm completes (Step 8 confirmation approved), the flow continues to the Task Workflow's **Phase 2: Prepare for Implementation**:
+After brainstorm completes (Step 8 choice 1 or 3 recorded in `prd_status`), the flow continues to the Task Workflow's **Phase 2: Prepare for Implementation**:
 
 ```text
 Brainstorm
   Step 0: Create task directory + seed PRD
   Step 1–7: Discover requirements, research, converge
-  Step 8: Final confirmation → user approves
+   Step 8: Final confirmation → user confirms or explicitly overrides
   ↓
 Task Workflow Phase 2 (Prepare for Implementation)
   Code-Spec Depth Check (if applicable)

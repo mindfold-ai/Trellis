@@ -41,6 +41,7 @@ from .paths import (
     get_repo_root,
     get_tasks_dir,
 )
+from .prd_status import PRD_STATUS_DRAFT
 from .task_utils import (
     archive_task_complete,
     find_task_by_name,
@@ -222,7 +223,7 @@ def cmd_create(args: argparse.Namespace) -> int:
         "parent": None,
         "relatedFiles": [],
         "notes": "",
-        "meta": {},
+        "meta": {"prd_status": PRD_STATUS_DRAFT},
     }
 
     write_json(task_json_path, task_data)

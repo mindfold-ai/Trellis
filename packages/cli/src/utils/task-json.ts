@@ -9,6 +9,13 @@
  * Field names, order, and null defaults match task_store.py exactly.
  */
 
+export type PrdStatus = "draft" | "confirmed" | "override";
+
+export interface TaskMeta extends Record<string, unknown> {
+  prd_status: PrdStatus;
+  linear_issue?: string;
+}
+
 export interface TaskJson {
   id: string;
   name: string;
@@ -33,7 +40,7 @@ export interface TaskJson {
   parent: string | null;
   relatedFiles: string[];
   notes: string;
-  meta: Record<string, unknown>;
+  meta: TaskMeta;
 }
 
 /**
@@ -70,7 +77,7 @@ export function emptyTaskJson(overrides: Partial<TaskJson> = {}): TaskJson {
     parent: null,
     relatedFiles: [],
     notes: "",
-    meta: {},
+    meta: { prd_status: "draft" },
   };
   return { ...base, ...overrides };
 }

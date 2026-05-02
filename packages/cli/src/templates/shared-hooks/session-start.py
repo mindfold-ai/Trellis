@@ -59,6 +59,18 @@ def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
     return False
 
 
+def _get_prd_status(task_data: dict) -> str:
+    meta = task_data.get("meta")
+    if isinstance(meta, dict):
+        value = meta.get("prd_status")
+        if value in ("draft", "confirmed", "override"):
+            return value
+    status = task_data.get("status")
+    if status in ("in_progress", "completed"):
+        return "confirmed"
+    return "draft"
+
+
 def should_skip_injection() -> bool:
     """Check if any platform's non-interactive flag is set."""
     non_interactive_vars = [
@@ -305,7 +317,30 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
             "See `.trellis/workflow.md` Phase 1.3 for details."
         )
 
-    # Case 5: PRD + curated jsonl (or agent-less platform with no jsonl) — enter Execute phase
+    prd_status = _get_prd_status(task_data)
+
+    # Case 4c: PRD content exists, but the user has not explicitly confirmed it yet.
+    if prd_status == "draft":
+        return (
+            f"Status: PLANNING (PRD confirmation)\nTask: {task_title}\n"
+            f"Source: {active.source}\n"
+            "Next-Action: send the structured PRD confirmation summary from `trellis-brainstorm` Step 8, "
+            "then wait for the user's explicit choice: confirm, revise, or skip confirmation. "
+            "Record the result with `python3 ./.trellis/scripts/task.py set-prd-status <task-dir> confirmed` "
+            "or `... override` before entering implementation. Do NOT dispatch `trellis-implement` yet."
+        )
+
+    # Case 4d: PRD is confirmed / overridden, but the task has not crossed the Phase 1.4 start gate yet.
+    if task_status == "planning":
+        return (
+            f"Status: PLANNING (Phase 1.4)\nTask: {task_title}\n"
+            f"Source: {active.source}\n"
+            f"Next-Action: run `python3 ./.trellis/scripts/task.py start {task_dir.name}` to enter Phase 2. "
+            f"The PRD gate is already satisfied (`prd_status={prd_status}`), so activation is the last "
+            "required step before dispatching `trellis-implement`."
+        )
+
+    # Case 5: task is in_progress and cleared the PRD gate — enter Execute phase
     return (
         f"Status: READY\nTask: {task_title}\n"
         f"Source: {active.source}\n"

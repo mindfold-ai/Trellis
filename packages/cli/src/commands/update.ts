@@ -2344,6 +2344,7 @@ export async function update(options: UpdateOptions): Promise<void> {
           creator: "trellis-update",
           assignee: currentDeveloper,
           createdAt: todayStr,
+          meta: { prd_status: "confirmed" },
         });
 
         // Write task.json

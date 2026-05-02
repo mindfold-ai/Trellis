@@ -1214,8 +1214,20 @@ describe("regression: current-task path normalization", () => {
     );
     const beforeStart = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8")) as {
       status: string;
+      meta?: { prd_status?: string };
     };
     expect(beforeStart.status).toBe("planning");
+    expect(beforeStart.meta?.prd_status).toBe("draft");
+
+    const confirmOutput = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} set-prd-status ${JSON.stringify(relTaskDir)} confirmed`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "r7-idem-session" }),
+      },
+    );
+    expect(confirmOutput).toContain("draft → confirmed");
 
     // Now run start with the same session — must not error.
     let startStatus = 0;
@@ -1256,6 +1268,93 @@ describe("regression: current-task path normalization", () => {
       current_task: string;
     };
     expect(context.current_task).toBe(relTaskDir);
+  });
+
+  it("[prd-status] task.py start blocks planning tasks until PRD is confirmed", () => {
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
+    );
+    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "prd gate" --slug prd-gate --assignee test-dev`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "prd-gate-session" }),
+      },
+    );
+
+    const taskDir = fs
+      .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+      .find((d) => d.includes("prd-gate"));
+    expect(taskDir).toBeDefined();
+    const relTaskDir = path.posix.join(".trellis", "tasks", taskDir as string);
+    const taskJsonPath = path.join(
+      tmpDir,
+      ".trellis",
+      "tasks",
+      taskDir as string,
+      "task.json",
+    );
+
+    let startStatus = 0;
+    let startOutput = "";
+    try {
+      startOutput = execSync(
+        `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(relTaskDir)}`,
+        {
+          cwd: tmpDir,
+          encoding: "utf-8",
+          env: sessionEnv({ TRELLIS_CONTEXT_ID: "prd-gate-session" }),
+        },
+      );
+    } catch (error) {
+      const e = error as { status?: number; stdout?: string; stderr?: string };
+      startStatus = e.status ?? 1;
+      startOutput = (e.stdout ?? "") + (e.stderr ?? "");
+    }
+
+    expect(startStatus).toBe(1);
+    expect(startOutput).toContain("Cannot enter implementation while PRD is unconfirmed");
+    expect(startOutput).toContain("set-prd-status");
+
+    const blockedTask = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8")) as {
+      status: string;
+      meta?: { prd_status?: string };
+    };
+    expect(blockedTask.status).toBe("planning");
+    expect(blockedTask.meta?.prd_status).toBe("draft");
+
+    const confirmOutput = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} set-prd-status ${JSON.stringify(relTaskDir)} confirmed`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "prd-gate-session" }),
+      },
+    );
+    expect(confirmOutput).toContain("draft → confirmed");
+
+    const allowedOutput = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(relTaskDir)}`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "prd-gate-session" }),
+      },
+    );
+    expect(allowedOutput).toContain("planning → in_progress");
+
+    const afterStart = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8")) as {
+      status: string;
+      meta?: { prd_status?: string };
+    };
+    expect(afterStart.status).toBe("in_progress");
+    expect(afterStart.meta?.prd_status).toBe("confirmed");
   });
 
   it("[session-current-task] task.py archive deletes runtime sessions pointing at the archived task", () => {
@@ -1575,6 +1674,37 @@ describe("regression: current-task path normalization", () => {
     );
   });
 
+  it("[prd-status] session-start keeps planning tasks out of READY until PRD is confirmed", () => {
+    setupTaskRepo();
+    writeSessionContext("claude_prd-a", ".trellis/tasks/issue-106");
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "task.json"),
+      JSON.stringify(
+        {
+          title: "Issue 106 task",
+          status: "planning",
+          package: null,
+          meta: { prd_status: "draft" },
+        },
+        null,
+        2,
+      ),
+    );
+    writeProjectFile(
+      path.join(".claude", "hooks", "session-start.py"),
+      expectTemplateContent(claudeSessionStart, "claude session-start"),
+    );
+
+    const output = runPython(
+      path.join(".claude", "hooks", "session-start.py"),
+      JSON.stringify({ cwd: tmpDir, session_id: "prd-a" }),
+    );
+
+    expect(output).toContain("Status: PLANNING (PRD confirmation)");
+    expect(output).toContain("set-prd-status");
+    expect(output).not.toContain("Status: READY");
+  });
+
   it("[session-current-task] Claude SessionStart persists TRELLIS_CONTEXT_ID for Bash commands", () => {
     setupTaskRepo();
     const sessionStartScript = getSharedHookScripts().find(
@@ -1722,6 +1852,78 @@ describe("regression: current-task path normalization", () => {
     );
     expect(prompt).toContain("TOKEN_CURSOR_HOOK_TEST");
     expect(parsed.hookSpecificOutput?.updatedInput?.prompt).toBe(prompt);
+  });
+
+  it("[prd-status] Cursor preToolUse blocks trellis-implement when PRD is still draft", () => {
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "task.json"),
+      JSON.stringify(
+        {
+          title: "Issue 106 task",
+          status: "planning",
+          package: null,
+          meta: { prd_status: "draft" },
+        },
+        null,
+        2,
+      ),
+    );
+    const injectSubagentContextScript = getSharedHookScripts().find(
+      (hook) => hook.name === "inject-subagent-context.py",
+    )?.content;
+    writeProjectFile(
+      path.join(".cursor", "hooks", "inject-subagent-context.py"),
+      expectTemplateContent(
+        injectSubagentContextScript,
+        "inject-subagent-context hook",
+      ),
+    );
+    writeProjectFile(
+      path.join(".trellis", ".runtime", "sessions", "cursor_parent-a.json"),
+      JSON.stringify(
+        {
+          current_task: ".trellis/tasks/issue-106",
+          current_run: null,
+          platform: "cursor",
+        },
+        null,
+        2,
+      ),
+    );
+
+    const hookOutput = runPython(
+      path.join(".cursor", "hooks", "inject-subagent-context.py"),
+      JSON.stringify({
+        cursor_version: "3.2.11",
+        hook_event_name: "preToolUse",
+        tool_name: "Subagent",
+        tool_input: {
+          prompt: "Please implement the feature.",
+          subagent_type: {
+            custom: {
+              name: "trellis-implement",
+            },
+          },
+        },
+        conversation_id: "parent-a",
+        cwd: tmpDir,
+      }),
+    );
+
+    const parsed = JSON.parse(hookOutput) as {
+      updated_input?: { prompt?: string };
+      hookSpecificOutput?: { updatedInput?: { prompt?: string } };
+    };
+    const prompt =
+      parsed.updated_input?.prompt ??
+      parsed.hookSpecificOutput?.updatedInput?.prompt ??
+      "";
+
+    expect(prompt).toContain("PRD Gate Failed");
+    expect(prompt).toContain("set-prd-status");
+    expect(prompt).toContain("Do NOT modify code");
   });
 
   it("[session-current-task] Cursor generic subagents do not receive Trellis jsonl injection", () => {
@@ -3924,6 +4126,9 @@ describe("regression: class-2 platforms use pull-based sub-agent context", () =>
           const content = fs.readFileSync(path.join(tmpDir, file), "utf-8");
           expect(content).toContain("Required: Load Trellis Context First");
           expect(content).toContain("task.py current --source");
+          if (file.includes("implement")) {
+            expect(content).toContain("prd_status");
+          }
         }
       });
 
@@ -4055,6 +4260,9 @@ describe("regression: pi uses TypeScript extension assets instead of Python hook
       );
       expect(content).toContain("Required: Load Trellis Context First");
       expect(content).toContain("task.py current --source");
+      if (agent.includes("implement")) {
+        expect(content).toContain("prd_status");
+      }
     }
   });
 });

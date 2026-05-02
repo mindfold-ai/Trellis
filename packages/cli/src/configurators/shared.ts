@@ -357,15 +357,17 @@ export function buildPullBasedPrelude(agentType: SubAgentType): string {
   // JSONL filenames stay as implement.jsonl / check.jsonl — they are internal
   // context buckets keyed by role (not by platform-visible agent name).
   const jsonl = agentType === "check" ? "check.jsonl" : "implement.jsonl";
+  const prdGate =
+    agentType === "implement"
+      ? "2. Read the task's `task.json` and verify `meta.prd_status` is `confirmed` or `override`. If it is `draft` or missing, stop immediately, explain that PRD confirmation is required, and do NOT edit code.\n3. Read the task's `prd.md` (requirements) and `info.md` if it exists (technical design).\n4. Read `<task-path>/implement.jsonl` — JSONL list of dev spec files relevant to this agent.\n5. For each entry in the JSONL, Read its `file` path — these are the dev specs you must follow."
+      : "2. Read the task's `prd.md` (requirements) and `info.md` if it exists (technical design).\n3. Read `<task-path>/check.jsonl` — JSONL list of dev spec files relevant to this agent.\n4. For each entry in the JSONL, Read its `file` path — these are the dev specs you must follow.";
 
   return `## Required: Load Trellis Context First
 
 This platform does NOT auto-inject task context via hook. Before doing anything else, you MUST load context yourself:
 
 1. Run \`python3 ./.trellis/scripts/task.py current --source\` to find the active task path and source (e.g. \`Current task: .trellis/tasks/04-17-foo\`).
-2. Read the task's \`prd.md\` (requirements) and \`info.md\` if it exists (technical design).
-3. Read \`<task-path>/${jsonl}\` — JSONL list of dev spec files relevant to this agent.
-4. For each entry in the JSONL, Read its \`file\` path — these are the dev specs you must follow.
+${prdGate}
    **Skip rows without a \`"file"\` field** (e.g. \`{"_example": "..."}\` seed rows left over from \`task.py create\` before the curator ran).
 
 If \`${jsonl}\` has no curated entries (only a seed row, or the file is missing), fall back to: read \`prd.md\`, list available specs with \`python3 ./.trellis/scripts/get_context.py --mode packages\`, and pick the specs that match the task domain yourself. Do NOT block on the missing jsonl — proceed with prd-only context plus your spec judgment.

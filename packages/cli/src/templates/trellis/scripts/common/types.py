@@ -18,6 +18,12 @@ from typing import TypedDict
 # task.json shape (TypedDict — used only for read-path type hints)
 # =============================================================================
 
+class TaskMeta(TypedDict, total=False):
+    """Known keys stored under task.json ``meta``."""
+
+    prd_status: str
+    linear_issue: str
+
 class TaskData(TypedDict, total=False):
     """Shape of task.json on disk.
 
@@ -48,7 +54,7 @@ class TaskData(TypedDict, total=False):
     parent: str | None
     relatedFiles: list[str]
     notes: str
-    meta: dict
+    meta: TaskMeta
 
 
 # =============================================================================
@@ -89,7 +95,7 @@ class TaskInfo:
         return self.raw.get("branch")
 
     @property
-    def meta(self) -> dict:
+    def meta(self) -> TaskMeta:
         return self.raw.get("meta", {})
 
 

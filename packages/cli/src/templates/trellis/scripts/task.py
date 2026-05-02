@@ -8,6 +8,7 @@ Usage:
     python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
     python3 task.py validate <dir>              # Validate jsonl files
     python3 task.py list-context <dir>          # List jsonl entries
+    python3 task.py set-prd-status <dir> <status> # Set PRD confirmation state
     python3 task.py start <dir>                 # Set active task
     python3 task.py current [--source]          # Show active task
     python3 task.py finish                      # Clear active task
@@ -43,6 +44,12 @@ from common.active_task import (
     set_active_task,
 )
 from common.io import read_json, write_json
+from common.prd_status import (
+    PRD_STATUS_VALUES,
+    can_enter_implementation,
+    get_prd_status,
+    set_prd_status,
+)
 from common.task_utils import resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
 
@@ -106,10 +113,27 @@ def cmd_start(args: argparse.Namespace) -> int:
         task_json_path = full_path / FILE_TASK_JSON
         if task_json_path.is_file():
             data = read_json(task_json_path)
-            if data and data.get("status") == "planning":
-                data["status"] = "in_progress"
-                if write_json(task_json_path, data):
-                    print(colored("✓ Status: planning → in_progress", Colors.GREEN))
+            if data:
+                if data.get("status") == "planning" and not can_enter_implementation(data):
+                    prd_status = get_prd_status(data)
+                    print(
+                        colored(
+                            "Error: Cannot enter implementation while PRD is unconfirmed.",
+                            Colors.RED,
+                        )
+                    )
+                    print(f"Current prd_status: {prd_status}")
+                    print(
+                        "Next step: confirm the PRD with the user, then run "
+                        "`python3 ./.trellis/scripts/task.py set-prd-status <dir> confirmed` "
+                        "or `... override` before `task.py start`."
+                    )
+                    return 1
+
+                if data.get("status") == "planning":
+                    data["status"] = "in_progress"
+                    if write_json(task_json_path, data):
+                        print(colored("✓ Status: planning → in_progress", Colors.GREEN))
 
         print()
         print(colored("The hook will now inject context from this task's jsonl files.", Colors.BLUE))
@@ -159,6 +183,45 @@ def cmd_current(args: argparse.Namespace) -> int:
         return 0
 
     return 1
+
+
+def cmd_set_prd_status(args: argparse.Namespace) -> int:
+    """Set persistent PRD confirmation state for a task."""
+    repo_root = get_repo_root()
+    task_input = args.dir
+
+    if not task_input:
+        print(colored("Error: task directory or name required", Colors.RED))
+        return 1
+
+    full_path = resolve_task_dir(task_input, repo_root)
+    if not full_path.is_dir():
+        print(colored(f"Error: Task not found: {task_input}", Colors.RED))
+        return 1
+
+    task_json_path = full_path / FILE_TASK_JSON
+    if not task_json_path.is_file():
+        print(colored(f"Error: task.json not found: {full_path}", Colors.RED))
+        return 1
+
+    data = read_json(task_json_path)
+    if not data:
+        print(colored(f"Error: failed to read task.json: {task_json_path}", Colors.RED))
+        return 1
+
+    old_value = get_prd_status(data)
+    try:
+        set_prd_status(data, args.status)
+    except ValueError as error:
+        print(colored(f"Error: {error}", Colors.RED))
+        return 1
+
+    if not write_json(task_json_path, data):
+        print(colored(f"Error: failed to write task.json: {task_json_path}", Colors.RED))
+        return 1
+
+    print(colored(f"✓ PRD status: {old_value} → {args.status}", Colors.GREEN))
+    return 0
 
 
 # =============================================================================
@@ -291,6 +354,7 @@ Usage:
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
+    python3 task.py set-prd-status <dir> <status>      Set PRD confirmation state
   python3 task.py start <dir>                        Set active task
   python3 task.py current [--source]                 Show active task
   python3 task.py finish                             Clear active task
@@ -315,6 +379,7 @@ Examples:
   python3 task.py create "Add login feature" --slug add-login --package cli
   python3 task.py create "Child task" --slug child --parent .trellis/tasks/01-21-parent
   python3 task.py add-context <dir> implement .trellis/spec/cli/backend/auth.md "Auth guidelines"
+    python3 task.py set-prd-status add-login confirmed
   python3 task.py set-branch <dir> task/add-login
   python3 task.py start .trellis/tasks/01-21-add-login
   python3 task.py current --source
@@ -395,6 +460,11 @@ def main() -> int:
     p_listctx = subparsers.add_parser("list-context", help="List context entries")
     p_listctx.add_argument("dir", help="Task directory")
 
+    # set-prd-status
+    p_prd = subparsers.add_parser("set-prd-status", help="Set PRD confirmation state")
+    p_prd.add_argument("dir", help="Task directory")
+    p_prd.add_argument("status", choices=PRD_STATUS_VALUES, help="PRD status")
+
     # start
     p_start = subparsers.add_parser("start", help="Set active task")
     p_start.add_argument("dir", help="Task directory")
@@ -457,6 +527,7 @@ def main() -> int:
         "add-context": cmd_add_context,
         "validate": cmd_validate,
         "list-context": cmd_list_context,
+        "set-prd-status": cmd_set_prd_status,
         "start": cmd_start,
         "current": cmd_current,
         "finish": cmd_finish,

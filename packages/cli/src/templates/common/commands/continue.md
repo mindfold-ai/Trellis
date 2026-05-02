@@ -26,7 +26,8 @@ Shows the Phase Index (Plan / Execute / Finish) with routing + skill mapping.
 
 - `status=planning` + no `prd.md` → **1.1** (load `trellis-brainstorm`)
 - `status=planning` + `prd.md` exists + `implement.jsonl` not curated (only the seed `_example` row) → **1.3**
-- `status=planning` + `prd.md` + curated `implement.jsonl` → **1.4** (run `task.py start` to enter Phase 2)
+- `status=planning` + `prd.md` + curated `implement.jsonl` + `meta.prd_status=draft` (or missing) → return to **1.1 / Step 8** and get explicit PRD confirmation
+- `status=planning` + `prd.md` + curated `implement.jsonl` + `meta.prd_status=confirmed|override` → **1.4** (run `task.py start` to enter Phase 2)
 - `status=in_progress` + implementation not started → **2.1**
 - `status=in_progress` + implementation done, not yet checked → **2.2**
 - `status=in_progress` + check passed → **3.1**

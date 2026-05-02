@@ -63,6 +63,31 @@ AGENTS_REQUIRE_TASK = (AGENT_IMPLEMENT, AGENT_CHECK)
 AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_RESEARCH)
 
 
+def load_task_data(repo_root: str, task_dir: str) -> dict:
+    """Load task.json for the active task, returning {} on failure."""
+    raw = read_file_content(repo_root, f"{task_dir}/{FILE_TASK_JSON}")
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def get_prd_status(task_data: dict) -> str:
+    """Read task.json meta.prd_status with a safe default."""
+    meta = task_data.get("meta")
+    if isinstance(meta, dict):
+        value = meta.get("prd_status")
+        if value in ("draft", "confirmed", "override"):
+            return value
+    status = task_data.get("status")
+    if status in ("in_progress", "completed"):
+        return "confirmed"
+    return "draft"
+
+
 def find_repo_root(start_path: str) -> str | None:
     """
     Find git repo root from start_path upwards
@@ -359,6 +384,28 @@ All the information you need has been prepared for you:
 - Do NOT execute git commit, only code modifications
 - Follow all dev specs injected above
 - Report list of modified/created files when done"""
+
+
+def build_prd_gate_prompt(original_prompt: str, task_dir: str, prd_status: str) -> str:
+    """Build a refusal prompt when implementation is blocked by PRD state."""
+    return f"""# Implement Agent Task
+
+## PRD Gate Failed
+
+Task `{task_dir}` is blocked from implementation because `task.json -> meta.prd_status` is `{prd_status}`.
+
+Implementation may proceed only when `prd_status` is `confirmed` or `override`.
+
+## Required Behavior
+
+- Do NOT modify code.
+- Tell the main session/user: 当前任务 PRD 尚未确认，不能进入实现。请先完成用户确认，或由用户明确表示跳过确认直接实现。
+- Mention the recording command: `python3 ./.trellis/scripts/task.py set-prd-status <task-dir> confirmed` or `... override`.
+
+## Original Request
+
+{original_prompt}
+"""
 
 
 def build_check_prompt(original_prompt: str, context: str) -> str:
@@ -693,10 +740,17 @@ def main():
     is_finish_phase = "[finish]" in original_prompt.lower()
 
     # Get context and build prompt based on subagent type
+    task_data = load_task_data(repo_root, task_dir) if task_dir else {}
+
     if subagent_type == AGENT_IMPLEMENT:
         assert task_dir is not None  # validated above
-        context = get_implement_context(repo_root, task_dir)
-        new_prompt = build_implement_prompt(original_prompt, context)
+        prd_status = get_prd_status(task_data)
+        if prd_status not in ("confirmed", "override"):
+            context = f"PRD gate blocked: prd_status={prd_status}"
+            new_prompt = build_prd_gate_prompt(original_prompt, task_dir, prd_status)
+        else:
+            context = get_implement_context(repo_root, task_dir)
+            new_prompt = build_implement_prompt(original_prompt, context)
     elif subagent_type == AGENT_CHECK:
         assert task_dir is not None  # validated above
         if is_finish_phase:
