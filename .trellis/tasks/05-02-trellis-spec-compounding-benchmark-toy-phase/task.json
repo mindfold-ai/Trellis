@@ -1,9 +1,9 @@
 {
-  "id": "trellis-uninstall-command",
-  "name": "trellis-uninstall-command",
-  "title": "trellis uninstall command",
+  "id": "trellis-spec-compounding-benchmark-toy-phase",
+  "name": "trellis-spec-compounding-benchmark-toy-phase",
+  "title": "Trellis spec-compounding benchmark (toy phase)",
   "description": "",
-  "status": "in_progress",
+  "status": "planning",
   "dev_type": null,
   "scope": null,
   "package": null,
