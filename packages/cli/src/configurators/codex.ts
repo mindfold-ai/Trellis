@@ -15,6 +15,7 @@ import {
   applyPullBasedPreludeToml,
   writeSkills,
   writeSharedHooks,
+  replacePythonCommandLiterals,
 } from "./shared.js";
 
 /**
@@ -41,7 +42,10 @@ export async function configureCodex(cwd: string): Promise<void> {
   for (const skill of getAllCodexSkills()) {
     const skillDir = path.join(codexSkillsRoot, skill.name);
     ensureDir(skillDir);
-    await writeFile(path.join(skillDir, "SKILL.md"), skill.content);
+    await writeFile(
+      path.join(skillDir, "SKILL.md"),
+      replacePythonCommandLiterals(skill.content),
+    );
   }
 
   // Custom agents → .codex/agents/
@@ -54,7 +58,7 @@ export async function configureCodex(cwd: string): Promise<void> {
   for (const agent of applyPullBasedPreludeToml(getAllAgents())) {
     await writeFile(
       path.join(codexAgentsRoot, `${agent.name}.toml`),
-      agent.content,
+      replacePythonCommandLiterals(agent.content),
     );
   }
 
@@ -64,7 +68,10 @@ export async function configureCodex(cwd: string): Promise<void> {
 
   // Codex-specific hooks (e.g., session-start.py tailored for Codex)
   for (const hook of getAllHooks()) {
-    await writeFile(path.join(hooksDir, hook.name), hook.content);
+    await writeFile(
+      path.join(hooksDir, hook.name),
+      replacePythonCommandLiterals(hook.content),
+    );
   }
 
   // Shared hooks (inject-workflow-state.py only). Codex bundles its own
@@ -91,5 +98,8 @@ export async function configureCodex(cwd: string): Promise<void> {
 
   // Config → .codex/config.toml
   const config = getConfigTemplate();
-  await writeFile(path.join(codexRoot, config.targetPath), config.content);
+  await writeFile(
+    path.join(codexRoot, config.targetPath),
+    replacePythonCommandLiterals(config.content),
+  );
 }

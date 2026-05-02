@@ -35,6 +35,7 @@ import {
 } from "../templates/markdown/index.js";
 
 import { writeFile, ensureDir } from "../utils/file-writer.js";
+import { replacePythonCommandLiterals } from "./shared.js";
 import {
   sanitizePkgName,
   type ProjectType,
@@ -93,7 +94,7 @@ export async function createWorkflowStructure(
   // Copy workflow.md from templates
   await writeFile(
     path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE),
-    workflowMdTemplate,
+    replacePythonCommandLiterals(workflowMdTemplate),
   );
 
   // Copy .gitignore from templates
@@ -112,7 +113,7 @@ export async function createWorkflowStructure(
   ensureDir(path.join(cwd, PATHS.WORKSPACE));
   await writeFile(
     path.join(cwd, PATHS.WORKSPACE, "index.md"),
-    agentProgressIndexContent,
+    replacePythonCommandLiterals(agentProgressIndexContent),
   );
 
   // Create tasks/ directory

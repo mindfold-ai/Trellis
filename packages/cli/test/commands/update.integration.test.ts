@@ -691,9 +691,11 @@ describe("update() integration", () => {
       "hooks",
       "statusline.py",
     );
+    const expectedPythonCmd =
+      process.platform === "win32" ? "python" : "python3";
     const statusLineConfig = {
       type: "command",
-      command: "python3 .claude/hooks/statusline.py",
+      command: `${expectedPythonCmd} .claude/hooks/statusline.py`,
     };
 
     const settings = JSON.parse(

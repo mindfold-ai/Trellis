@@ -18,6 +18,26 @@ export function getPythonCommandForPlatform(
 }
 
 /**
+ * Replace literal `python3` with `python` on Windows, excluding shebang lines.
+ *
+ * Applied at init/update write time so that all file types (including .py, .md,
+ * .toml, .json) get the correct command for the host platform without needing
+ * template-level changes or runtime detection code.
+ *
+ * On non-Windows platforms this is a no-op (returns content unchanged).
+ * The replacement is idempotent: running it twice produces the same result.
+ */
+export function replacePythonCommandLiterals(content: string): string {
+  if (process.platform !== "win32") return content;
+  return content
+    .split("\n")
+    .map((line) =>
+      line.startsWith("#!") ? line : line.replaceAll("python3", "python"),
+    )
+    .join("\n");
+}
+
+/**
  * Resolve platform-specific placeholders in template content.
  *
  * When called without a context, only resolves {{PYTHON_CMD}} (legacy behavior
@@ -62,7 +82,9 @@ export function resolvePlaceholders(
   content: string,
   context?: TemplateContext,
 ): string {
-  let result = content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform());
+  let result = replacePythonCommandLiterals(
+    content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform()),
+  );
 
   if (!context) return result;
 
@@ -306,12 +328,18 @@ export async function writeSkills(
   for (const skill of skills) {
     const skillDir = path.join(skillsRoot, skill.name);
     ensureDir(skillDir);
-    await writeFile(path.join(skillDir, "SKILL.md"), skill.content);
+    await writeFile(
+      path.join(skillDir, "SKILL.md"),
+      replacePythonCommandLiterals(skill.content),
+    );
   }
   for (const skillFile of bundledSkills) {
     const targetPath = path.join(skillsRoot, skillFile.relativePath);
     ensureDir(path.dirname(targetPath));
-    await writeFile(targetPath, skillFile.content);
+    await writeFile(
+      targetPath,
+      replacePythonCommandLiterals(skillFile.content),
+    );
   }
 }
 
@@ -323,7 +351,10 @@ export async function writeAgents(
 ): Promise<void> {
   ensureDir(agentsDir);
   for (const agent of agents) {
-    await writeFile(path.join(agentsDir, `${agent.name}${ext}`), agent.content);
+    await writeFile(
+      path.join(agentsDir, `${agent.name}${ext}`),
+      replacePythonCommandLiterals(agent.content),
+    );
   }
 }
 
@@ -336,7 +367,10 @@ export async function writeSharedHooks(
     await import("../templates/shared-hooks/index.js");
   ensureDir(hooksDir);
   for (const hook of getSharedHookScriptsForPlatform(platform)) {
-    await writeFile(path.join(hooksDir, hook.name), hook.content);
+    await writeFile(
+      path.join(hooksDir, hook.name),
+      replacePythonCommandLiterals(hook.content),
+    );
   }
 }
 
@@ -358,7 +392,7 @@ export function buildPullBasedPrelude(agentType: SubAgentType): string {
   // context buckets keyed by role (not by platform-visible agent name).
   const jsonl = agentType === "check" ? "check.jsonl" : "implement.jsonl";
 
-  return `## Required: Load Trellis Context First
+  return replacePythonCommandLiterals(`## Required: Load Trellis Context First
 
 This platform does NOT auto-inject task context via hook. Before doing anything else, you MUST load context yourself:
 
@@ -374,7 +408,7 @@ If there is no active task or the task has no \`prd.md\`, ask the user what to w
 
 ---
 
-`;
+`);
 }
 
 /** Insert prelude into a markdown agent definition (after YAML frontmatter). */
@@ -383,26 +417,14 @@ export function injectPullBasedPreludeMarkdown(
   agentType: SubAgentType,
 ): string {
   const prelude = buildPullBasedPrelude(agentType);
-  const lines = content.split("\n");
+  const sections = splitMarkdownFrontmatter(content);
 
-  if (lines[0] !== "---") {
+  if (!sections) {
     return prelude + content;
   }
-  // Find closing frontmatter
-  let close = -1;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i] === "---") {
-      close = i;
-      break;
-    }
-  }
-  if (close === -1) {
-    return prelude + content;
-  }
-  const head = lines.slice(0, close + 1).join("\n");
-  const tail = lines.slice(close + 1).join("\n");
-  // Skip leading blank lines in tail to keep things tidy
-  const tailTrimmed = tail.replace(/^\n+/, "");
+
+  const head = `---\n${sections.frontmatter}\n---`;
+  const tailTrimmed = sections.body.replace(/^(\r?\n)+/, "");
   return `${head}\n\n${prelude}${tailTrimmed}`;
 }
 
@@ -441,6 +463,25 @@ export interface AgentContent {
   content: string;
 }
 
+interface MarkdownFrontmatterSections {
+  body: string;
+  frontmatter: string;
+}
+
+function splitMarkdownFrontmatter(
+  content: string,
+): MarkdownFrontmatterSections | null {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    frontmatter: match[1],
+    body: content.slice(match[0].length),
+  };
+}
+
 export function applyPullBasedPreludeMarkdown(
   agents: readonly AgentContent[],
 ): AgentContent[] {
@@ -452,6 +493,71 @@ export function applyPullBasedPreludeMarkdown(
       content: injectPullBasedPreludeMarkdown(a.content, t),
     };
   });
+}
+
+function mapLegacyToolToCopilot(tool: string): string[] {
+  switch (tool) {
+    case "Read":
+      return ["read"];
+    case "Write":
+    case "Edit":
+      return ["edit"];
+    case "Glob":
+    case "Grep":
+      return ["search"];
+    case "Bash":
+      return ["execute"];
+    case "mcp__exa__web_search_exa":
+    case "mcp__exa__get_code_context_exa":
+      return ["web", "exa/*"];
+    case "mcp__chrome-devtools__*":
+      return ["chrome-devtools/*"];
+    case "Skill":
+      return [];
+    default:
+      return [];
+  }
+}
+
+function normalizeCopilotMarkdownAgentFrontmatter(content: string): string {
+  const sections = splitMarkdownFrontmatter(content);
+  if (!sections) {
+    return content;
+  }
+
+  const frontmatter = sections.frontmatter.split(/\r?\n/);
+  const body = sections.body;
+  const normalized: string[] = [];
+
+  for (const line of frontmatter) {
+    if (!line.startsWith("tools:")) {
+      normalized.push(line);
+      continue;
+    }
+
+    const legacyTools = line
+      .slice("tools:".length)
+      .split(",")
+      .map((token) => token.trim())
+      .filter((token) => token.length > 0);
+    const tools = [...new Set(legacyTools.flatMap(mapLegacyToolToCopilot))];
+
+    normalized.push("tools:");
+    for (const tool of tools) {
+      normalized.push(`  - ${tool}`);
+    }
+  }
+
+  return `---\n${normalized.join("\n")}\n---\n${body}`;
+}
+
+export function normalizeCopilotMarkdownAgents(
+  agents: readonly AgentContent[],
+): AgentContent[] {
+  return agents.map((agent) => ({
+    ...agent,
+    content: normalizeCopilotMarkdownAgentFrontmatter(agent.content),
+  }));
 }
 
 export function applyPullBasedPreludeToml(

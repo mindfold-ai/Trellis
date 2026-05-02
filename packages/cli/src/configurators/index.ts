@@ -35,6 +35,7 @@ import { configurePi, collectPiTemplates } from "./pi.js";
 
 // Shared utilities
 import {
+  replacePythonCommandLiterals,
   resolvePlaceholders,
   resolveAllAsSkills,
   resolveBundledSkills,
@@ -44,6 +45,7 @@ import {
   collectSkillTemplates,
   applyPullBasedPreludeMarkdown,
   applyPullBasedPreludeToml,
+  normalizeCopilotMarkdownAgents,
 } from "./shared.js";
 
 // Platform-specific template content (hooks, agents, settings — NOT commands/skills)
@@ -116,6 +118,15 @@ function collectSharedHooks(
     files.set(`${hooksPath}/${hook.name}`, hook.content);
   }
   return files;
+}
+
+/** Apply python3→python replacement to all content in a template map. */
+function replaceInMap(map: Map<string, string>): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const [key, content] of map) {
+    result.set(key, replacePythonCommandLiterals(content));
+  }
+  return result;
 }
 
 /** Helper: collect commands + skills for "both" platforms */
@@ -381,8 +392,11 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       )) {
         files.set(k, v);
       }
-      // Agents: reuse Cursor content + prepend pull-based prelude
-      for (const agent of applyPullBasedPreludeMarkdown(getCursorAgents())) {
+      // Agents: reuse Cursor content + prepend pull-based prelude, then
+      // normalize Cursor's Claude-style tools frontmatter for Copilot.
+      for (const agent of applyPullBasedPreludeMarkdown(
+        normalizeCopilotMarkdownAgents(getCursorAgents()),
+      )) {
         files.set(`.github/agents/${agent.name}.agent.md`, agent.content);
       }
       const hooksConfig = resolvePlaceholders(getCopilotHooksConfig());
@@ -503,7 +517,8 @@ export function configurePlatform(
 export function collectPlatformTemplates(
   platformId: AITool,
 ): Map<string, string> | undefined {
-  return PLATFORM_FUNCTIONS[platformId].collectTemplates?.();
+  const map = PLATFORM_FUNCTIONS[platformId].collectTemplates?.();
+  return map ? replaceInMap(map) : map;
 }
 
 /**

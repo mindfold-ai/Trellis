@@ -6,6 +6,7 @@ import { ensureDir, writeFile } from "../utils/file-writer.js";
 import { toPosix } from "../utils/posix.js";
 import {
   collectSkillTemplates,
+  replacePythonCommandLiterals,
   resolveBundledSkills,
   resolveCommands,
   resolveSkills,
@@ -63,7 +64,10 @@ function walkOpenCodeTemplateDir(): Map<string, string> {
         const content = readFileSync(absEntry, "utf-8");
         // Map keys are logical paths used as cross-platform hash keys / lookup
         // keys downstream. Always POSIX, regardless of host OS.
-        files.set(toPosix(path.join(".opencode", relEntry)), content);
+        files.set(
+          toPosix(path.join(".opencode", relEntry)),
+          replacePythonCommandLiterals(content),
+        );
       }
     }
   }

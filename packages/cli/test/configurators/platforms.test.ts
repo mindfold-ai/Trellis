@@ -32,6 +32,7 @@ import {
   resolveCommands,
   resolveSkills,
   wrapWithCommandFrontmatter,
+  replacePythonCommandLiterals,
 } from "../../src/configurators/shared.js";
 
 const BUNDLED_SKILL_NAME = "trellis-meta";
@@ -306,14 +307,16 @@ describe("configurePlatform", () => {
           expect(written).toContain(originalBody);
         }
       } else {
-        expect(written).toBe(agent.content);
+        expect(written).toBe(replacePythonCommandLiterals(agent.content));
       }
     }
 
     const config = getCodexConfigTemplate();
     const configPath = path.join(tmpDir, ".codex", config.targetPath);
     expect(fs.existsSync(configPath)).toBe(true);
-    expect(fs.readFileSync(configPath, "utf-8")).toBe(config.content);
+    expect(fs.readFileSync(configPath, "utf-8")).toBe(
+      replacePythonCommandLiterals(config.content),
+    );
   });
 
   it("configurePlatform('codex') resolves PYTHON_CMD in hooks.json", async () => {
@@ -616,7 +619,9 @@ describe("configurePlatform", () => {
         hook.name,
       );
       expect(fs.existsSync(hookPath)).toBe(true);
-      expect(fs.readFileSync(hookPath, "utf-8")).toBe(hook.content);
+      expect(fs.readFileSync(hookPath, "utf-8")).toBe(
+        replacePythonCommandLiterals(hook.content),
+      );
     }
   });
 
@@ -825,7 +830,7 @@ describe("configurePlatform", () => {
         path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
         "utf-8",
       ),
-    ).toBe(getPiExtensionTemplate());
+    ).toBe(replacePythonCommandLiterals(getPiExtensionTemplate()));
 
     for (const agent of getPiAgents()) {
       const content = fs.readFileSync(
@@ -835,7 +840,7 @@ describe("configurePlatform", () => {
       if (["trellis-implement", "trellis-check"].includes(agent.name)) {
         expect(content).toContain("Required: Load Trellis Context First");
       } else {
-        expect(content).toBe(agent.content);
+        expect(content).toBe(replacePythonCommandLiterals(agent.content));
       }
     }
   });
@@ -856,7 +861,7 @@ describe("configurePlatform", () => {
       "Required: Load Trellis Context First",
     );
     expect(templates?.get(".pi/extensions/trellis/index.ts")).toBe(
-      getPiExtensionTemplate(),
+      replacePythonCommandLiterals(getPiExtensionTemplate()),
     );
     expect(templates?.get(".pi/settings.json")).toBe(
       resolvePlaceholders(getPiSettings().content),
