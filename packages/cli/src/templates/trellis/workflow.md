@@ -151,7 +151,7 @@ Phase 3: Finish  → distill lessons + wrap-up
 
 [workflow-state:no_task]
 No active task. **A Direct answer** — pure Q&A / explanation / lookup / chat; no file writes + one-line answer + repo reads ≤ 2 files → AI judges, no override needed.
-**B Create a task** — any implementation / code change / build / refactor work. Entry sequence: (1) `python3 ./.trellis/scripts/task.py create "<title>"` to create the task (status=planning, breadcrumb switches to [workflow-state:planning] for brainstorm + jsonl phase guidance) → (2) load `trellis-brainstorm` skill to discuss requirements with the user and iterate on prd.md → (3) once prd is done, jsonl is curated, and the user has explicitly confirmed or overridden PRD confirmation, run `task.py start <task-dir>` to enter [workflow-state:in_progress] for the implementation skeleton. For research-heavy work, dispatch `trellis-research` sub-agents — main agent must NOT do 3+ inline WebFetch / WebSearch / `gh api` calls. **"It looks small" is NOT grounds for downgrading B to A or C**.
+**B Create a task** — any implementation / code change / build / refactor work. Entry sequence: (1) `python3 ./.trellis/scripts/task.py create "<title>"` to create the task (status=planning, breadcrumb switches to [workflow-state:planning] for brainstorm + jsonl phase guidance) → (2) load `trellis-brainstorm` skill to discuss requirements with the user and iterate on prd.md → (3) once prd is done, jsonl is curated, and the user has explicitly confirmed or overridden PRD confirmation, run `task.py start <task-dir>` to enter [workflow-state:in_progress] for the implementation skeleton. For research-heavy external/technical discovery, dispatch `trellis-research` sub-agents — main agent must NOT do inline WebFetch / WebSearch / `gh api` discovery on sub-agent-capable platforms. **"It looks small" is NOT grounds for downgrading B to A or C**.
 **C Inline change** (per-turn only, escape hatch for B) — the user's CURRENT message MUST contain one of: "skip trellis" / "no task" / "just do it" / "don't create a task" / "跳过 trellis" / "别走流程" / "小修一下" / "直接改" / "先别建任务" → briefly acknowledge ("ok, skipping trellis flow this turn"), then inline. **Without seeing one of these phrases you must NOT inline on your own**; do not invent an override the user never said.
 [/workflow-state:no_task]
 
@@ -170,7 +170,7 @@ Load the `trellis-brainstorm` skill and iterate on prd.md with the user.
 Phase 1.3 (required, once): before `task.py start`, you MUST curate `implement.jsonl` and `check.jsonl` — list the spec / research files sub-agents need so they get the right context injected. You may skip only if the jsonl already has agent-curated entries (the seed `_example` row alone doesn't count).
 Before implementation, the user must explicitly confirm the PRD or explicitly skip confirmation. Record the result with `python3 ./.trellis/scripts/task.py set-prd-status <task-dir> confirmed` or `... override`. While `meta.prd_status` is `draft` (or missing), do NOT dispatch `trellis-implement` and do NOT run `task.py start`.
 Once jsonl is curated and `meta.prd_status` is `confirmed` or `override`, run `task.py start <task-dir>` to flip status to in_progress.
-Research output **must** land in `{task_dir}/research/*.md`, written by `trellis-research` sub-agents. The main agent should not inline WebFetch / WebSearch — the PRD only links to research files.
+Research output **must** land in `{TASK_DIR}/research/*.md`, written by `trellis-research` sub-agents. On sub-agent-capable platforms, the main session must NOT do inline WebFetch / WebSearch / `gh api` discovery; it frames research tasks, dispatches `trellis-research`, and the PRD only links to research files.
 [/workflow-state:planning]
 
 ### Phase 2: Execute
@@ -186,7 +186,9 @@ Research output **must** land in `{task_dir}/research/*.md`, written by `trellis
 
 [workflow-state:in_progress]
 **Flow**: trellis-implement → trellis-check → trellis-update-spec → commit (Phase 3.4) → `/trellis:finish-work`.
-**Default (no override)**: dispatch the `trellis-implement` / `trellis-check` sub-agents — the main agent does NOT edit code by default. Phase 3.4 commit (required, once): after trellis-update-spec, or whenever implementation is verifiably complete, the main agent **drives the commit** — state the commit plan in user-facing text, then run `git commit` — BEFORE suggesting `/trellis:finish-work`. `/finish-work` refuses to run on a dirty working tree (paths outside `.trellis/workspace/` and `.trellis/tasks/`).
+**Next required action: dispatch `trellis-implement` per Phase 2.1 (no override).** On sub-agent-capable platforms, main-session implementation is blocked: the main session must NOT inspect implementation details, edit code, or run implementation/check work inline. After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion.
+**Main-session role**: dispatch sub-agents, read their summaries, perform the Phase 3.3 spec update gate, and then drive Phase 3.4 commit — state the commit plan in user-facing text, run `git commit`, and do this BEFORE suggesting `/trellis:finish-work`. `/finish-work` refuses to run on a dirty working tree (paths outside `.trellis/workspace/` and `.trellis/tasks/`).
+**Phase 3.3 spec update gate (required, once)**: after `trellis-check`, explicitly load/run/walk through `trellis-update-spec` and record whether spec updates were made or intentionally left unchanged before Phase 3.4 commit. Spec edits made opportunistically by `trellis-implement` / `trellis-check` do NOT replace this explicit main-session judgment.
 **Inline override** (per-turn only, escape hatch for sub-agent dispatch): the user's CURRENT message MUST explicitly contain one of: "do it inline" / "no sub-agent" / "你直接改" / "别派 sub-agent" / "main session 写就行" / "不用 sub-agent". **Without seeing one of these phrases you must NOT inline on your own**; do not invent an override the user never said.
 [/workflow-state:in_progress]
 
@@ -317,7 +319,7 @@ Return to this step whenever requirements change and revise `prd.md`.
 
 #### 1.2 Research `[optional · repeatable]`
 
-Research can happen at any time during requirement exploration. It isn't limited to local code — you can use any available tool (MCP servers, skills, web search, etc.) to look up external information, including third-party library docs, industry practices, API references, etc.
+Research can happen at any time during requirement exploration. It isn't limited to local code; it can cover third-party library docs, industry practices, API references, CLI/platform conventions, and other external technical discovery. Route it by platform: sub-agent-capable platforms dispatch `trellis-research`; direct-only platforms research in the main session. In both cases, findings are persisted to files.
 
 [Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
@@ -326,6 +328,8 @@ Spawn the research sub-agent:
 - **Agent type**: `trellis-research`
 - **Task description**: Research <specific question>
 - **Key requirement**: Research output MUST be persisted to `{TASK_DIR}/research/`
+
+The main session frames the research question and dispatches the sub-agent; it must NOT perform inline WebFetch / WebSearch / `gh api` discovery. Read only the returned path + one-line summary, then link the persisted research file from the PRD.
 
 [/Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
@@ -433,6 +437,8 @@ Goal: turn the prd into code that passes quality checks.
 
 [Claude Code, Cursor, OpenCode, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
+Main-session no-inline gate: unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`, do not inspect or edit implementation files here. Dispatch the implementation work to the sub-agent.
+
 Spawn the implement sub-agent:
 
 - **Agent type**: `trellis-implement`
@@ -445,6 +451,8 @@ The platform hook/plugin auto-handles:
 [/Claude Code, Cursor, OpenCode, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
 [Codex]
+
+Main-session no-inline gate: unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`, do not inspect or edit implementation files here. Dispatch the implementation work to the sub-agent.
 
 Spawn the implement sub-agent:
 
@@ -459,6 +467,8 @@ The Codex sub-agent definition auto-handles the context load requirement:
 [/Codex]
 
 [Kiro]
+
+Main-session no-inline gate: unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`, do not inspect or edit implementation files here. Dispatch the implementation work to the sub-agent.
 
 Spawn the implement sub-agent:
 
@@ -485,6 +495,8 @@ The platform prelude auto-handles the context load requirement:
 
 [Claude Code, Cursor, OpenCode, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
+Main-session no-inline gate: unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`, do not review or patch implementation details inline. Dispatch verification to the check sub-agent.
+
 Spawn the check sub-agent:
 
 - **Agent type**: `trellis-check`
@@ -498,6 +510,8 @@ The check agent's job:
 [/Claude Code, Cursor, OpenCode, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
 [Codex]
+
+Main-session no-inline gate: unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`, do not review or patch implementation details inline. Dispatch verification to the check sub-agent.
 
 Spawn the check sub-agent:
 
@@ -536,12 +550,28 @@ Goal: ensure code quality, capture lessons, record the work.
 
 #### 3.1 Quality verification `[required · repeatable]`
 
+[Claude Code, Cursor, OpenCode, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
+
+Dispatch `trellis-check` before commit closure if it has not run after the latest code changes. The main session does not inspect or patch implementation details inline unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`.
+
+[/Claude Code, Cursor, OpenCode, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
+
+[Codex]
+
+Dispatch `trellis-check` before commit closure with an explicit task path in the task description if session identity is not visible. The main session does not inspect or patch implementation details inline unless the current user turn contains the documented inline override phrase from `[workflow-state:in_progress]`.
+
+[/Codex]
+
+[Kilo, Antigravity, Windsurf]
+
 Load the `trellis-check` skill and do a final verification:
 - Spec compliance
 - lint / type-check / tests
 - Cross-layer consistency (when changes span layers)
 
 If issues are found → fix → re-check, until green.
+
+[/Kilo, Antigravity, Windsurf]
 
 #### 3.2 Debug retrospective `[on demand]`
 
@@ -559,7 +589,9 @@ Load the `trellis-update-spec` skill and review whether this task produced new k
 - Pitfalls you hit
 - New technical decisions
 
-Update the docs under `.trellis/spec/` accordingly. Even if the conclusion is "nothing to update", walk through the judgment.
+Update the docs under `.trellis/spec/` accordingly. This is a required main-session gate before Phase 3.4: after `trellis-check`, explicitly load/run/walk through `trellis-update-spec` and record whether spec updates were made or intentionally left unchanged.
+
+Spec edits made opportunistically by `trellis-implement` / `trellis-check` do NOT replace this explicit Phase 3.3 judgment. Even if specs were already edited during implementation, the main session still walks through `trellis-update-spec` and records the outcome.
 
 #### 3.4 Commit changes `[required · once]`
 

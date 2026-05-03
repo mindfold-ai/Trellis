@@ -250,7 +250,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
             "Research reminder: for research-heavy tasks (comparing tools, reading external docs, "
             "cross-platform surveys), spawn `trellis-research` sub-agents via the Task tool — "
             "they persist findings to `{TASK_DIR}/research/*.md` and keep main context clean. "
-            "Do NOT do 10+ inline WebFetch/WebSearch in the main conversation.\n"
+            "Do NOT perform inline WebFetch/WebSearch/gh api research in the main conversation.\n"
             "User override (per-turn escape hatch): if the user's first message explicitly opts "
             "out of the workflow (\"跳过 trellis\" / \"别走流程\" / \"小修一下\" / \"直接改\" / "
             "\"skip trellis\" / \"no task\" / \"just do it\"), honor it for this turn — "
@@ -299,8 +299,8 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
             "Next-Action: Load skill `trellis-brainstorm` to clarify requirements with the user "
             "and produce prd.md in the task directory.\n"
             "Research reminder: when the task needs external research (tool comparison, docs, "
-            "conventions survey), spawn `trellis-research` sub-agents — don't WebFetch/WebSearch "
-            "inline in the main session. Findings go to `{task_dir}/research/*.md`; PRD only links to them."
+            "conventions survey), spawn `trellis-research` sub-agents — don't WebFetch/WebSearch/gh api "
+            "inline in the main session. Findings must go to `{TASK_DIR}/research/*.md`; PRD only links to them."
         )
 
     # Case 4b: PRD exists but implement.jsonl has only seed (no curated entries) — Phase 1.3 gate
@@ -311,7 +311,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
             f"Source: {active.source}\n"
             "Next-Action: Curate `implement.jsonl` and `check.jsonl` with the spec + research files "
             "the Phase 2 sub-agents will need. Only spec paths (`.trellis/spec/**/*.md`) and research "
-            "files (`{TASK_DIR}/research/*.md`) — no code paths. Run "
+            "files written by `trellis-research` (`{TASK_DIR}/research/*.md`) — no code paths. Run "
             "`python3 ./.trellis/scripts/get_context.py --mode packages` to list available specs, "
             "then edit the jsonl files or use `python3 ./.trellis/scripts/task.py add-context`. "
             "See `.trellis/workflow.md` Phase 1.3 for details."
@@ -345,15 +345,18 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
         f"Status: READY\nTask: {task_title}\n"
         f"Source: {active.source}\n"
         "Next required action: dispatch `trellis-implement` per Phase 2.1. "
-        "For agent-capable platforms, the default is to NOT edit code in the main session. "
-        "After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion.\n"
+        "For agent-capable platforms, main-session implementation is blocked: do NOT inspect implementation details, "
+        "edit code, or run implementation inline unless the user's CURRENT message contains an inline override. "
+        "After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion. "
+        "Before commit/finish, explicitly run/load `trellis-update-spec` for Phase 3.3 and record whether "
+        "spec updates were made; sub-agent spec edits do not replace this explicit judgment.\n"
         "Sub-agent roster: `trellis-implement` (writes code), `trellis-check` (verifies + self-fixes), "
-        "`trellis-research` (persists findings to `research/*.md` — use when you'd otherwise do "
-        "multiple WebFetch/WebSearch inline).\n"
+        "`trellis-research` (persists findings to `{TASK_DIR}/research/*.md` — use for external/technical "
+        "discovery you'd otherwise do with WebFetch/WebSearch/gh api inline).\n"
         "User override (per-turn escape hatch): if the user's CURRENT message explicitly tells the "
         "main session to handle it directly (\"你直接改\" / \"别派 sub-agent\" / \"main session 写就行\" / "
         "\"do it inline\" / \"不用 sub-agent\"), honor it for this turn and edit code directly. "
-        "Per-turn only; do NOT invent an override the user did not say."
+        "Per-turn only; without one of these current-turn phrases, main-session implementation remains blocked."
     )
 
 

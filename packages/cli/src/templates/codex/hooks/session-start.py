@@ -149,7 +149,13 @@ def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
 def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
     active = _resolve_active_task(trellis_dir, hook_input)
     if not active.task_path:
-        return f"Status: NO ACTIVE TASK\nSource: {active.source}\nNext: Describe what you want to work on"
+        return (
+            f"Status: NO ACTIVE TASK\nSource: {active.source}\n"
+            "Next: Describe what you want to work on\n"
+            "Research reminder: for research-heavy external/technical discovery, dispatch `trellis-research` "
+            "sub-agents and persist findings to `{TASK_DIR}/research/*.md`; do NOT research inline with "
+            "WebFetch/WebSearch/gh api in the main session."
+        )
 
     task_ref = active.task_path
     task_dir = _resolve_task_dir(trellis_dir, task_ref)
@@ -180,21 +186,30 @@ def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
     has_prd = (task_dir / "prd.md").is_file()
 
     if not has_prd:
-        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: prd.md not created\nNext: Write PRD (see workflow.md Phase 1.1) then curate implement.jsonl per Phase 1.3"
+        return (
+            f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\n"
+            "Missing: prd.md not created\n"
+            "Next: Write PRD (see workflow.md Phase 1.1) then curate implement.jsonl per Phase 1.3\n"
+            "Research reminder: delegate external/technical discovery to `trellis-research`; findings must go "
+            "to `{TASK_DIR}/research/*.md`, and the PRD should link to those files."
+        )
 
     if not has_context:
-        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then `task.py start`"
+        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + `trellis-research` files from `{{TASK_DIR}}/research/*.md` only), then `task.py start`"
 
     return (
         f"Status: READY\nTask: {task_title}\n"
         f"Source: {active.source}\n"
         "Next required action: dispatch `trellis-implement` per Phase 2.1. "
-        "For agent-capable platforms, the default is to NOT edit code in the main session. "
-        "After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion.\n"
+        "For agent-capable platforms, main-session implementation is blocked: do NOT inspect implementation details, "
+        "edit code, or run implementation inline unless the user's CURRENT message contains an inline override. "
+        "After implementation, dispatch `trellis-check` per Phase 2.2 before reporting completion. "
+        "Before commit/finish, explicitly run/load `trellis-update-spec` for Phase 3.3 and record whether "
+        "spec updates were made; sub-agent spec edits do not replace this explicit judgment.\n"
         "User override (per-turn escape hatch): if the user's CURRENT message explicitly tells the "
         "main session to handle it directly (\"你直接改\" / \"别派 sub-agent\" / \"main session 写就行\" / "
         "\"do it inline\" / \"不用 sub-agent\"), honor it for this turn and edit code directly. "
-        "Per-turn only; do NOT invent an override the user did not say."
+        "Per-turn only; without one of these current-turn phrases, main-session implementation remains blocked."
     )
 
 

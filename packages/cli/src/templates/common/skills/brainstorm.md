@@ -187,9 +187,9 @@ Examples:
 * The user asks for "best practice", "how others do it", "recommendation"
 * The user can't reasonably enumerate options
 
-### Delegate to `trellis-research` sub-agent (don't research inline)
+### Delegate external/technical discovery to `trellis-research` sub-agents
 
-For each research topic, **spawn a `trellis-research` sub-agent via the Task tool** — don't do WebFetch / WebSearch / `gh api` inline in the main conversation.
+For each research-heavy external/technical discovery topic, **spawn a `trellis-research` sub-agent via the Task tool** — don't do WebFetch / WebSearch / `gh api` inline in the main conversation on sub-agent-capable platforms.
 
 Why:
 - The sub-agent has its own context window → doesn't pollute brainstorm context with raw tool output
@@ -203,7 +203,7 @@ Task description template: "Research <specific question>; persist findings to `{
 ❌ Bad (what you must NOT do):
 ```
 Main agent: WebFetch(url-A) → WebFetch(url-B) → Bash(gh api ...)
-          → WebSearch(q1) → WebSearch(q2) → ... (10+ inline calls)
+          → WebSearch(q1) → WebSearch(q2) → ... (multiple inline calls)
           → Write(research/topic.md)
 ```
 → Pollutes main context with raw HTML/JSON, burns tokens.

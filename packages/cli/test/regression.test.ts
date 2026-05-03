@@ -2229,8 +2229,16 @@ describe("regression: current-task path normalization", () => {
     expect(rawOutput).toContain(
       "Next required action: dispatch `trellis-implement`",
     );
-    expect(rawOutput).toContain("default is to NOT edit code in the main session");
+    expect(rawOutput).toContain("main-session implementation is blocked");
+    expect(rawOutput).toContain("do NOT inspect implementation details");
+    expect(rawOutput).toContain("unless the user's CURRENT message");
     expect(rawOutput).toContain("dispatch `trellis-check`");
+    expect(rawOutput).toContain(
+      "Before commit/finish, explicitly run/load `trellis-update-spec` for Phase 3.3",
+    );
+    expect(rawOutput).toContain(
+      "sub-agent spec edits do not replace this explicit judgment",
+    );
     expect(rawOutput).not.toContain("if you stay in the main session");
     expect(rawOutput).not.toContain(
       "load `trellis-before-dev` before writing code",
@@ -2719,6 +2727,20 @@ print(len(entries))
     return readFileSync(templatePath, "utf-8");
   }
 
+  function workflowSection(
+    workflow: string,
+    startMarker: string,
+    endMarker: string,
+  ): string {
+    const start = workflow.indexOf(startMarker);
+    expect(start, `${startMarker} should exist`).toBeGreaterThanOrEqual(0);
+    const end = workflow.indexOf(endMarker, start + startMarker.length);
+    expect(end, `${endMarker} should follow ${startMarker}`).toBeGreaterThan(
+      start,
+    );
+    return workflow.slice(start, end);
+  }
+
   it("[workflow-state-r1] template workflow.md [workflow-state:in_progress] mentions commit (Phase 3.4)", () => {
     const wf = templateWorkflowMd();
     const match = wf.match(
@@ -2727,6 +2749,41 @@ print(len(entries))
     expect(match).toBeTruthy();
     const body = match?.[1] ?? "";
     expect(body).toMatch(/commit \(Phase 3\.4\)/i);
+  });
+
+  it("[workflow-main-session-gate] template workflow.md in_progress blocks inline main-session implementation", () => {
+    const wf = templateWorkflowMd();
+    const match = wf.match(
+      /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/,
+    );
+    expect(match).toBeTruthy();
+    const body = match?.[1] ?? "";
+    expect(body).toContain(
+      "Next required action: dispatch `trellis-implement` per Phase 2.1",
+    );
+    expect(body).toContain("main-session implementation is blocked");
+    expect(body).toContain("must NOT inspect implementation details");
+    expect(body).toContain("the user's CURRENT message MUST explicitly contain");
+    expect(body).toContain(
+      "Without seeing one of these phrases you must NOT inline",
+    );
+  });
+
+  it("[workflow-main-session-gate] template workflow.md in_progress requires explicit Phase 3.3 update-spec gate", () => {
+    const wf = templateWorkflowMd();
+    const match = wf.match(
+      /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/,
+    );
+    expect(match).toBeTruthy();
+    const body = match?.[1] ?? "";
+    expect(body).toContain("Phase 3.3 spec update gate");
+    expect(body).toContain(
+      "explicitly load/run/walk through `trellis-update-spec`",
+    );
+    expect(body).toContain("record whether spec updates were made");
+    expect(body).toContain(
+      "Spec edits made opportunistically by `trellis-implement` / `trellis-check` do NOT replace",
+    );
   });
 
   it("[workflow-state-r2] template workflow.md [workflow-state:planning] mentions Phase 1.3 + jsonl curation", () => {
@@ -2738,6 +2795,155 @@ print(len(entries))
     const body = match?.[1] ?? "";
     expect(body).toMatch(/Phase 1\.3/);
     expect(body).toMatch(/implement\.jsonl|check\.jsonl/);
+  });
+
+  it("[workflow-main-session-gate] template workflow.md planning block requires trellis-research persistence", () => {
+    const wf = templateWorkflowMd();
+    const match = wf.match(
+      /\[workflow-state:planning\]([\s\S]*?)\[\/workflow-state:planning\]/,
+    );
+    expect(match).toBeTruthy();
+    const body = match?.[1] ?? "";
+    expect(body).toContain(
+      "Research output **must** land in `{TASK_DIR}/research/*.md`",
+    );
+    expect(body).toContain("written by `trellis-research` sub-agents");
+    expect(body).toContain(
+      "must NOT do inline WebFetch / WebSearch / `gh api` discovery",
+    );
+  });
+
+  it("[workflow-main-session-gate] template workflow.md routes Phase 3.1 verification through trellis-check", () => {
+    const wf = templateWorkflowMd();
+    expect(wf).toContain("#### 3.1 Quality verification");
+    expect(wf).toContain("Dispatch `trellis-check` before commit closure");
+    expect(wf).toContain(
+      "The main session does not inspect or patch implementation details inline",
+    );
+  });
+
+  it("[workflow-main-session-gate] template workflow.md routes Phase 3.3 through explicit trellis-update-spec judgment", () => {
+    const wf = templateWorkflowMd();
+    const specUpdate = workflowSection(
+      wf,
+      "#### 3.3 Spec update `[required · once]`",
+      "#### 3.4 Commit changes `[required · once]`",
+    );
+
+    expect(specUpdate).toContain(
+      "required main-session gate before Phase 3.4",
+    );
+    expect(specUpdate).toContain(
+      "explicitly load/run/walk through `trellis-update-spec`",
+    );
+    expect(specUpdate).toContain(
+      "Spec edits made opportunistically by `trellis-implement` / `trellis-check` do NOT replace",
+    );
+    expect(specUpdate).toContain(
+      "the main session still walks through `trellis-update-spec`",
+    );
+  });
+
+  it("[workflow-main-session-gate] template workflow.md Phase 2 routes sub-agent-capable platforms through implement/check agents", () => {
+    const wf = templateWorkflowMd();
+    const implement = workflowSection(
+      wf,
+      "#### 2.1 Implement `[required · repeatable]`",
+      "#### 2.2 Quality check `[required · repeatable]`",
+    );
+    const check = workflowSection(
+      wf,
+      "#### 2.2 Quality check `[required · repeatable]`",
+      "#### 2.3 Rollback `[on demand]`",
+    );
+
+    expect(implement).toContain("Main-session no-inline gate");
+    expect(implement).toContain(
+      "Dispatch the implementation work to the sub-agent",
+    );
+    expect(implement).toContain("**Agent type**: `trellis-implement`");
+    expect(check).toContain("Main-session no-inline gate");
+    expect(check).toContain("Dispatch verification to the check sub-agent");
+    expect(check).toContain("**Agent type**: `trellis-check`");
+
+    const directImplement =
+      implement.match(
+        /\[Kilo, Antigravity, Windsurf\]([\s\S]*?)\[\/Kilo, Antigravity, Windsurf\]/,
+      )?.[1] ?? "";
+    const directCheck =
+      check.match(
+        /\[Kilo, Antigravity, Windsurf\]([\s\S]*?)\[\/Kilo, Antigravity, Windsurf\]/,
+      )?.[1] ?? "";
+    expect(directImplement).toContain("Load the `trellis-before-dev` skill");
+    expect(directImplement).not.toContain("Main-session no-inline gate");
+    expect(directCheck).toContain("Load the `trellis-check` skill");
+    expect(directCheck).not.toContain("Main-session no-inline gate");
+  });
+
+  it("[workflow-main-session-gate] generated session summaries keep no-inline and research persistence guards", () => {
+    const claudeTemplates = collectPlatformTemplates("claude-code");
+    const codexTemplates = collectPlatformTemplates("codex");
+    const copilotTemplates = collectPlatformTemplates("copilot");
+    const opencodeTemplates = collectPlatformTemplates("opencode");
+
+    expect(claudeTemplates).toBeInstanceOf(Map);
+    expect(codexTemplates).toBeInstanceOf(Map);
+    expect(copilotTemplates).toBeInstanceOf(Map);
+    expect(opencodeTemplates).toBeInstanceOf(Map);
+    if (!claudeTemplates || !codexTemplates || !copilotTemplates || !opencodeTemplates) {
+      throw new Error("Expected tracked templates for agent-capable platforms");
+    }
+
+    for (const [label, content] of [
+      ["claude-code", claudeTemplates.get(".claude/hooks/session-start.py")],
+      ["codex", codexTemplates.get(".codex/hooks/session-start.py")],
+      [
+        "copilot",
+        copilotTemplates.get(".github/copilot/hooks/session-start.py"),
+      ],
+      ["opencode", opencodeTemplates.get(".opencode/lib/session-utils.js")],
+    ] as const) {
+      expect(content, `${label} session summary should exist`).toBeTruthy();
+      const surface = content ?? "";
+      expect(surface).toContain(
+        "Next required action: dispatch `trellis-implement`",
+      );
+      expect(surface).toContain("main-session implementation is blocked");
+      expect(surface).toContain("do NOT inspect implementation details");
+      expect(surface).toContain(
+        "unless the user's CURRENT message contains an inline override",
+      );
+      expect(surface).toContain("dispatch `trellis-check` per Phase 2.2");
+      expect(surface).toContain(
+        "Before commit/finish, explicitly run/load `trellis-update-spec` for Phase 3.3",
+      );
+      expect(surface).toContain(
+        "sub-agent spec edits do not replace this explicit judgment",
+      );
+      expect(surface).toContain("`trellis-research`");
+      expect(surface).toContain("`{TASK_DIR}/research/*.md`");
+      expect(surface).toContain("WebFetch/WebSearch/gh api");
+    }
+  });
+
+  it("[workflow-main-session-gate] brainstorm research guidance delegates discovery to trellis-research", () => {
+    const brainstorm = getSkillTemplates().find(
+      (template) => template.name === "brainstorm",
+    )?.content;
+    expect(brainstorm).toBeTruthy();
+    const content = brainstorm ?? "";
+    expect(content).toContain(
+      "Delegate external/technical discovery to `trellis-research` sub-agents",
+    );
+    expect(content).toContain(
+      "spawn a `trellis-research` sub-agent via the Task tool",
+    );
+    expect(content).toContain(
+      "don't do WebFetch / WebSearch / `gh api` inline in the main conversation",
+    );
+    expect(content).toContain(
+      "persist findings to `{TASK_DIR}/research/<topic-slug>.md`",
+    );
   });
 
   it("[workflow-state-r3-no_task] template workflow.md [workflow-state:no_task] block is present and well-formed", () => {
