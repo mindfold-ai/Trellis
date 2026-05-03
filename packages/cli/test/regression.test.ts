@@ -2909,11 +2909,45 @@ print(len(entries))
     );
 
     expect(output).toContain("The Codex sub-agent definition auto-handles");
+    expect(output).toContain("Task: `{TASK_DIR}`");
     expect(output).toContain(
       "Resolves the active task with `task.py current --source`",
     );
+    expect(output).toContain(
+      "falls back to the explicit `Task: {TASK_DIR}` path",
+    );
     expect(output).not.toContain("The platform hook/plugin auto-handles");
     expect(output).not.toContain("Load the `trellis-before-dev` skill");
+  });
+
+  it("[workflow-v2] step 2.2 for codex includes explicit task path fallback", () => {
+    writeTrellisScripts();
+    writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
+    writeProjectFile(
+      path.join(".trellis", "workflow.md"),
+      templateWorkflowMd(),
+    );
+
+    const contextScript = path.join(
+      tmpDir,
+      ".trellis",
+      "scripts",
+      "get_context.py",
+    );
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(contextScript)} --mode phase --step 2.2 --platform codex`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    expect(output).toContain(
+      "The Codex check agent uses the same pull-based context load requirement",
+    );
+    expect(output).toContain("Task: `{TASK_DIR}`");
+    expect(output).toContain(
+      "falls back to the explicit `Task: {TASK_DIR}` path",
+    );
+    expect(output).not.toContain("The platform hook/plugin auto-handles");
+    expect(output).not.toContain("Load the `trellis-check` skill");
   });
 
   it("[pi] step 2.1 describes extension-backed sub-agent context path", () => {
@@ -4126,6 +4160,10 @@ describe("regression: class-2 platforms use pull-based sub-agent context", () =>
           const content = fs.readFileSync(path.join(tmpDir, file), "utf-8");
           expect(content).toContain("Required: Load Trellis Context First");
           expect(content).toContain("task.py current --source");
+          expect(content).toContain("Task: .trellis/tasks/04-17-foo");
+          expect(content).toContain(
+            "Do NOT guess from the newest task directory",
+          );
           if (file.includes("implement")) {
             expect(content).toContain("prd_status");
           }

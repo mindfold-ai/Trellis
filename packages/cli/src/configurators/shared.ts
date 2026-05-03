@@ -401,12 +401,13 @@ export function buildPullBasedPrelude(agentType: SubAgentType): string {
 This platform does NOT auto-inject task context via hook. Before doing anything else, you MUST load context yourself:
 
 1. Run \`python3 ./.trellis/scripts/task.py current --source\` to find the active task path and source (e.g. \`Current task: .trellis/tasks/04-17-foo\`).
+    If this returns no active task, inspect your current agent task/prompt for an explicit task path line such as \`Task: .trellis/tasks/04-17-foo\`. If found, use that path as \`<task-path>\` and continue. Do NOT guess from the newest task directory.
 ${prdGate}
    **Skip rows without a \`"file"\` field** (e.g. \`{"_example": "..."}\` seed rows left over from \`task.py create\` before the curator ran).
 
 If \`${jsonl}\` has no curated entries (only a seed row, or the file is missing), fall back to: read \`prd.md\`, list available specs with \`python3 ./.trellis/scripts/get_context.py --mode packages\`, and pick the specs that match the task domain yourself. Do NOT block on the missing jsonl — proceed with prd-only context plus your spec judgment.
 
-If there is no active task or the task has no \`prd.md\`, ask the user what to work on; do NOT proceed without context.
+If you cannot determine a task path, or the task has no \`prd.md\`, ask the user what to work on; do NOT proceed without context.
 
 ---
 

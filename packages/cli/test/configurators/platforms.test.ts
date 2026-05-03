@@ -297,6 +297,10 @@ describe("configurePlatform", () => {
       if (needsPrelude) {
         expect(written).toContain("Required: Load Trellis Context First");
         expect(written).toContain("task.py current --source");
+        expect(written).toContain("Task: .trellis/tasks/04-17-foo");
+        expect(written).toContain(
+          "Do NOT guess from the newest task directory",
+        );
         // Original body must still be present (prepend, not replace)
         const originalBody = agent.content
           .split("developer_instructions")[1]

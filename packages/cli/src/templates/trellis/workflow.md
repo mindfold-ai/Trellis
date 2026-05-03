@@ -449,10 +449,11 @@ The platform hook/plugin auto-handles:
 Spawn the implement sub-agent:
 
 - **Agent type**: `trellis-implement`
-- **Task description**: Implement the requirements per prd.md, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
+- **Task description**: Task: `{TASK_DIR}`. Implement the requirements per prd.md, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
 
 The Codex sub-agent definition auto-handles the context load requirement:
 - Resolves the active task with `task.py current --source`, then reads `prd.md` and `info.md` if present
+- If session identity is not visible, falls back to the explicit `Task: {TASK_DIR}` path in the task description
 - Reads `implement.jsonl` and requires the agent to load each referenced spec file before coding
 
 [/Codex]
@@ -482,7 +483,7 @@ The platform prelude auto-handles the context load requirement:
 
 #### 2.2 Quality check `[required · repeatable]`
 
-[Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
+[Claude Code, Cursor, OpenCode, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
 
 Spawn the check sub-agent:
 
@@ -494,7 +495,21 @@ The check agent's job:
 - Auto-fix issues it finds
 - Run lint and typecheck to verify
 
-[/Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
+[/Claude Code, Cursor, OpenCode, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi]
+
+[Codex]
+
+Spawn the check sub-agent:
+
+- **Agent type**: `trellis-check`
+- **Task description**: Task: `{TASK_DIR}`. Review all code changes against spec and prd; fix any findings directly; ensure lint and type-check pass
+
+The Codex check agent uses the same pull-based context load requirement:
+- Resolves the active task with `task.py current --source`
+- If session identity is not visible, falls back to the explicit `Task: {TASK_DIR}` path in the task description
+- Reads `check.jsonl` and requires the agent to load each referenced spec file before reviewing
+
+[/Codex]
 
 [Kilo, Antigravity, Windsurf]
 
