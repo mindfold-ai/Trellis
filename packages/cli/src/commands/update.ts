@@ -49,6 +49,7 @@ import {
   isManagedPath,
   isManagedRootDir,
 } from "../configurators/index.js";
+import { replacePythonCommandLiterals } from "../configurators/shared.js";
 
 export interface UpdateOptions {
   dryRun?: boolean;
@@ -675,6 +676,11 @@ function collectTemplateFiles(
         }
       }
     }
+  }
+
+  // Apply python3→python replacement for Windows consistency with init-time writes
+  for (const [filePath, content] of files) {
+    files.set(filePath, replacePythonCommandLiterals(content));
   }
 
   return files;

@@ -11,6 +11,7 @@ import {
   normalizeCopilotMarkdownAgents,
   writeSkills,
   writeSharedHooks,
+  replacePythonCommandLiterals,
 } from "./shared.js";
 
 /**
@@ -55,7 +56,7 @@ export async function configureCopilot(cwd: string): Promise<void> {
   )) {
     await writeFile(
       path.join(agentsDir, `${agent.name}.agent.md`),
-      agent.content,
+      replacePythonCommandLiterals(agent.content),
     );
   }
 
@@ -63,7 +64,10 @@ export async function configureCopilot(cwd: string): Promise<void> {
   const hooksDir = path.join(copilotRoot, "hooks");
   ensureDir(hooksDir);
   for (const hook of getAllHooks()) {
-    await writeFile(path.join(hooksDir, hook.name), hook.content);
+    await writeFile(
+      path.join(hooksDir, hook.name),
+      replacePythonCommandLiterals(hook.content),
+    );
   }
 
   // Shared hook scripts (inject-workflow-state.py only). Copilot bundles its

@@ -35,6 +35,7 @@ import { configurePi, collectPiTemplates } from "./pi.js";
 
 // Shared utilities
 import {
+  replacePythonCommandLiterals,
   resolvePlaceholders,
   resolveAllAsSkills,
   resolveBundledSkills,
@@ -117,6 +118,15 @@ function collectSharedHooks(
     files.set(`${hooksPath}/${hook.name}`, hook.content);
   }
   return files;
+}
+
+/** Apply python3→python replacement to all content in a template map. */
+function replaceInMap(map: Map<string, string>): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const [key, content] of map) {
+    result.set(key, replacePythonCommandLiterals(content));
+  }
+  return result;
 }
 
 /** Helper: collect commands + skills for "both" platforms */
@@ -507,7 +517,8 @@ export function configurePlatform(
 export function collectPlatformTemplates(
   platformId: AITool,
 ): Map<string, string> | undefined {
-  return PLATFORM_FUNCTIONS[platformId].collectTemplates?.();
+  const map = PLATFORM_FUNCTIONS[platformId].collectTemplates?.();
+  return map ? replaceInMap(map) : map;
 }
 
 /**

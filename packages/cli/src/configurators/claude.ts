@@ -10,6 +10,7 @@ import {
   resolveBundledSkills,
   writeSkills,
   writeSharedHooks,
+  replacePythonCommandLiterals,
 } from "./shared.js";
 
 const EXCLUDE_PATTERNS = [
@@ -56,7 +57,7 @@ async function copyDirFiltered(
       if (entry === "settings.json") {
         content = resolvePlaceholders(content);
       }
-      await writeFile(destPath, content);
+      await writeFile(destPath, replacePythonCommandLiterals(content));
     }
   }
 }
