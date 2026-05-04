@@ -57,7 +57,8 @@
     "figlet": "^1.9.4",
     "giget": "^3.1.1",
     "inquirer": "^9.3.7",
-    "undici": "^6.21.0"
+    "undici": "^6.21.0",
+    "zod": "^4.4.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

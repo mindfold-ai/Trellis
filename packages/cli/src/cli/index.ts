@@ -5,6 +5,7 @@ import { Command } from "commander";
 import { init } from "../commands/init.js";
 import { update } from "../commands/update.js";
 import { uninstall } from "../commands/uninstall.js";
+import { runMem } from "../commands/mem.js";
 import { DIR_NAMES } from "../constants/paths.js";
 import { VERSION, PACKAGE_NAME } from "../constants/version.js";
 import { compareVersions } from "../utils/compare-versions.js";
@@ -156,6 +157,32 @@ program
         yes: options.yes as boolean,
         dryRun: options.dryRun as boolean,
       });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
+        console.error(error instanceof Error ? error.stack : error);
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command("mem")
+  .description(
+    "Search/recall AI conversation history across Claude Code, Codex, OpenCode (run 'trellis mem help' for subcommands and flags)",
+  )
+  .allowUnknownOption(true)
+  .helpOption(false)
+  .argument(
+    "[args...]",
+    "subcommand and arguments (list|search|context|extract|projects|help)",
+  )
+  .action((args: string[] = []) => {
+    try {
+      runMem(args);
     } catch (error) {
       console.error(
         chalk.red("Error:"),
