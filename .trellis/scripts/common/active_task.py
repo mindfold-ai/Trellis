@@ -92,6 +92,8 @@ class ActiveTask:
         """Human-readable source label."""
         if self.source_type == "session" and self.context_key:
             return f"session:{self.context_key}"
+        if self.source_type == "session-fallback" and self.context_key:
+            return f"session-fallback:{self.context_key}"
         return self.source_type
 
 
@@ -471,19 +473,50 @@ def resolve_active_task(
     """Resolve the active task from session runtime state only.
 
     A stale session task is returned as stale. Missing context identity or a
-    missing/empty session context means there is no active task.
+    missing/empty session context falls back to single-session inference: if
+    exactly one session file exists in the runtime, return its task with
+    source_type="session-fallback" — covers class-2 platform sub-agents (codex,
+    copilot, gemini, qoder) that don't inherit the parent's session id. ≥2
+    files or 0 files yield ActiveTask(None) — refuses to guess across windows.
     """
     context_key = resolve_context_key(platform_input, platform)
-    if not context_key:
-        return ActiveTask(None, "none")
+    if context_key:
+        context = _read_json(_context_path(repo_root, context_key)) or {}
+        task_ref = _string_value(context.get("current_task"))
+        active = _active_from_ref(task_ref, repo_root, "session", context_key)
+        if active:
+            return active
 
-    context = _read_json(_context_path(repo_root, context_key)) or {}
-    task_ref = _string_value(context.get("current_task"))
-    active = _active_from_ref(task_ref, repo_root, "session", context_key)
-    if active:
-        return active
+    fallback = _resolve_single_session_fallback(repo_root)
+    if fallback is not None:
+        return fallback
 
     return ActiveTask(None, "none", context_key)
+
+
+def _resolve_single_session_fallback(repo_root: Path) -> ActiveTask | None:
+    """Return the task pointed at by the sole session file, if exactly one exists.
+
+    Used when context-key resolution fails (typical for class-2 platform
+    sub-agents). Returns None if 0 or ≥2 session files are present — refuses
+    to pick across windows so 04-21's multi-session isolation contract holds.
+    """
+    sessions_dir = _runtime_sessions_dir(repo_root)
+    if not sessions_dir.is_dir():
+        return None
+
+    session_files = sorted(sessions_dir.glob("*.json"))
+    if len(session_files) != 1:
+        return None
+
+    session_file = session_files[0]
+    context = _read_json(session_file) or {}
+    task_ref = _string_value(context.get("current_task"))
+    if not task_ref:
+        return None
+
+    fallback_key = session_file.stem
+    return _active_from_ref(task_ref, repo_root, "session-fallback", fallback_key)
 
 
 def _utc_now() -> str:

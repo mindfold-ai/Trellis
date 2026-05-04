@@ -76,6 +76,23 @@ describe("trellis template constants", () => {
     expect(workflowMdTemplate).toContain("#");
   });
 
+  it("[issue-225] workflow.md in_progress breadcrumb has class-2 sub-agent dispatch protocol", () => {
+    // The in_progress breadcrumb instructs the main agent to prefix
+    // dispatch prompts with "Active task: <path>" on class-2 platforms.
+    // Without this line, codex/copilot/gemini/qoder sub-agents cannot
+    // find the active task (no PreToolUse hook to inject context).
+    const inProgressMatch = /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/.exec(
+      workflowMdTemplate,
+    );
+    if (!inProgressMatch) {
+      throw new Error("in_progress breadcrumb block must exist in workflow.md");
+    }
+    const block = inProgressMatch[1];
+    expect(block).toContain("Active task:");
+    expect(block.toLowerCase()).toContain("class-2");
+    expect(block).toMatch(/codex|copilot|gemini|qoder/);
+  });
+
   it("gitignoreTemplate contains ignore patterns", () => {
     expect(gitignoreTemplate).toContain(".developer");
     expect(gitignoreTemplate).toContain("__pycache__");

@@ -809,6 +809,16 @@ Platform's hook either doesn't expose a sub-agent spawn event or can't modify th
 | Codex | `PreToolUse` only fires for Bash; `CollabAgentSpawn` hook unimplemented ([#15486](https://github.com/openai/codex/issues/15486)) |
 | Copilot | `preToolUse` doesn't enforce on subagents ([#2392](https://github.com/github/copilot-cli/issues/2392), [#2540](https://github.com/github/copilot-cli/issues/2540)) |
 
+#### Active task discovery on class-2 platforms (issue #225)
+
+Sub-agents on class-2 platforms run as **separate sessions** with their own session ids — they do not inherit the parent's `<PLATFORM>_SESSION_ID` env, so the session-scoped active-task resolver (see `### Active Task Resolution` above) returns `None` for the sub-agent's own session key. To bridge that gap the prelude (`buildPullBasedPrelude` in `src/configurators/shared.ts`) tells sub-agents to discover the active task in this order:
+
+1. **`Active task: <path>` line in dispatch prompt** — primary path. The main agent is required by `workflow.md`'s `[workflow-state:in_progress]` breadcrumb to prefix every class-2 sub-agent dispatch with `Active task: <path from task.py current>`. The breadcrumb fires on every `UserPromptSubmit` while `task.json.status == in_progress`, so the rule is reinjected per turn.
+2. **`task.py current --source`** — secondary. Resolves via the session-scoped runtime store. Returns `Source: session:<key>` on a precise match, or `Source: session-fallback:<key>` when the runtime contains exactly one session file (single-window inference; see `_resolve_single_session_fallback` in `active_task.py`). Returns nothing when ≥2 session files exist — refuses to guess across windows so 04-21's multi-session isolation contract holds.
+3. **Ask the user** — terminal fallback when both above yield nothing.
+
+When changing the prelude, the dispatch protocol, or the `session-fallback` semantics, all three layers must stay aligned. `regression.test.ts > [issue-225]` and `regression.test.ts > [session-fallback]` are the contract tests; `templates/trellis.test.ts > [issue-225]` asserts the workflow.md breadcrumb still carries the protocol. Manual e2e runbook lives in the historical task `.trellis/tasks/<archive>/05-04-fix-codex-subagent-missing-active-task/manual-verify.md`.
+
 ### Mode C — Extension-backed (1 platform)
 
 Platform can expose hook-equivalent events and custom tools through a project-local extension. Trellis owns the sub-agent tool and/or context injection path.

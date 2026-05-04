@@ -2057,6 +2057,85 @@ describe("regression: current-task path normalization", () => {
   });
 
   // ------------------------------------------------------------
+  // Single-session fallback (issue #225 — class-2 sub-agents)
+  // ------------------------------------------------------------
+
+  function runTaskCurrent(envOverrides: NodeJS.ProcessEnv = {}): {
+    output: string;
+    status: number;
+  } {
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    let output = "";
+    let status = 0;
+    try {
+      output = execSync(
+        `${pythonCmd} ${JSON.stringify(taskScriptPath)} current --source`,
+        {
+          cwd: tmpDir,
+          encoding: "utf-8",
+          env: sessionEnv(envOverrides),
+        },
+      );
+    } catch (error) {
+      status =
+        typeof (error as { status?: unknown }).status === "number"
+          ? (error as { status: number }).status
+          : 1;
+      output = String((error as { stdout?: unknown }).stdout ?? "");
+    }
+    return { output, status };
+  }
+
+  it("[session-fallback] single session file — fallback returns its task with session-fallback source", () => {
+    setupTaskRepo();
+    writeSessionContext("codex_session_parent", ".trellis/tasks/issue-106");
+
+    const { output, status } = runTaskCurrent();
+    expect(status).toBe(0);
+    expect(output).toContain("Current task: .trellis/tasks/issue-106");
+    expect(output).toContain("Source: session-fallback:codex_session_parent");
+  });
+
+  it("[session-fallback] zero session files — no fallback, returns none", () => {
+    setupTaskRepo();
+    // No session files written
+
+    const { output, status } = runTaskCurrent();
+    expect(status).toBe(1);
+    expect(output).toContain("Current task: (none)");
+    expect(output).toContain("Source: none");
+  });
+
+  it("[session-fallback] multiple session files — refuses to guess, returns none", () => {
+    setupTaskRepo();
+    writeSessionContext("codex_session_a", ".trellis/tasks/issue-106");
+    writeProjectFile(
+      path.join(".trellis", "tasks", "other-task", "task.json"),
+      JSON.stringify({ title: "other", status: "in_progress" }, null, 2),
+    );
+    writeSessionContext("codex_session_b", ".trellis/tasks/other-task");
+
+    const { output, status } = runTaskCurrent();
+    expect(status).toBe(1);
+    expect(output).toContain("Current task: (none)");
+    expect(output).toContain("Source: none");
+  });
+
+  it("[session-fallback] explicit context-key match takes precedence over fallback", () => {
+    setupTaskRepo();
+    writeSessionContext("codex_session_explicit", ".trellis/tasks/issue-106");
+
+    const { output, status } = runTaskCurrent({
+      TRELLIS_CONTEXT_ID: "codex_session_explicit",
+    });
+    expect(status).toBe(0);
+    expect(output).toContain("Current task: .trellis/tasks/issue-106");
+    // Source should be "session:" (precise match), not "session-fallback:"
+    expect(output).toContain("Source: session:codex_session_explicit");
+    expect(output).not.toContain("session-fallback");
+  });
+
+  // ------------------------------------------------------------
   // inject-workflow-state.py hook (workflow-enforcement-v2)
   // ------------------------------------------------------------
 
@@ -3924,6 +4003,14 @@ describe("regression: class-2 platforms use pull-based sub-agent context", () =>
           const content = fs.readFileSync(path.join(tmpDir, file), "utf-8");
           expect(content).toContain("Required: Load Trellis Context First");
           expect(content).toContain("task.py current --source");
+        }
+      });
+
+      it("[issue-225] prelude tells sub-agent to look for `Active task:` line in dispatch prompt first", () => {
+        for (const file of preludeAgents) {
+          const content = fs.readFileSync(path.join(tmpDir, file), "utf-8");
+          expect(content).toContain("Active task:");
+          expect(content).toContain("dispatch prompt");
         }
       });
 
