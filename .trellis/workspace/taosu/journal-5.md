@@ -171,3 +171,36 @@ Three Gemini CLI 0.40.x bug fixes from issue #224: drop `tools:` line from agent
 ### Next Steps
 
 - None - task complete
+
+
+## Session 143: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand
+
+**Date**: 2026-05-04
+**Task**: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Created feat/v0.6.0-beta branch and ported the mem-poc chat-history.ts POC into packages/cli as the 'trellis mem' subcommand group (projects/list/search/context/extract). Wired through commander as a passthrough; added zod ^4 dep; adapted code to Trellis ESLint rules (interface over type, no non-null assertions, 'unknown' callback return for readJsonl). All 847 existing tests pass; smoke-tested all 5 subcommands against real session data.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e1b368d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
