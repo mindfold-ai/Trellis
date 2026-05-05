@@ -18,10 +18,13 @@ If you're using Codex or another agent-capable tool, additional project-scoped h
 
 ## Subagents
 
-- ALWAYS wait for all subagents to complete before yielding.
+- ALWAYS wait for every spawned subagent to reach a terminal status before yielding, acting on partial results, or spawning followups.
+  - On Codex, this means calling the `wait` tool with the subagent's thread id (requires `multi_agent_v2`). Do NOT infer completion from elapsed time.
+  - On Claude Code / OpenCode, this means awaiting the Task/agent tool result before continuing.
+- NEVER cancel or re-spawn a subagent that hasn't finished. If a subagent appears stuck, raise the wait timeout (Codex default 30s, max 1h) before judging it broken.
 - Spawn subagents automatically when:
   - Parallelizable work (e.g., install + verify, npm test + typecheck, multiple tasks from plan)
-  - Long-running or blocking tasks where a worker can run independently.
+  - Long-running or blocking tasks where a worker can run independently
   - Isolation for risky changes or checks
 
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.

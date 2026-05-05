@@ -1,15 +1,37 @@
 # Project-scoped Codex defaults for Trellis workflows.
-# Codex loads this after ~/.codex/config.toml when you work in this project.
+# Codex merges this layer after the user-level config when the project
+# is marked as a trusted project. To trust this project, add it under
+# `[projects]` in ~/.codex/config.toml, e.g.:
+#
+#   [projects."/abs/path/to/this/repo"]
+#   trust_level = "trusted"
+#
+# Without trust, the [features] block below is loaded but disabled.
 
 # Keep AGENTS.md as the primary project instruction file.
 project_doc_fallback_filenames = ["AGENTS.md"]
 
-# NOTE: Trellis's SessionStart + UserPromptSubmit hooks require opt-in.
-# Add the following to your USER-level config at ~/.codex/config.toml
-# (not this project file — features.* must be enabled globally):
-#
-#   [features]
-#   codex_hooks = true
-#
-# Without this flag, hooks.json is ignored and Trellis context won't
-# be injected into Codex sessions.
+# Trellis-required features. Both can also be set at user level if you
+# prefer one global toggle.
+# - codex_hooks: enables SessionStart + UserPromptSubmit hooks defined
+#   in this directory's hooks.json (Trellis context injection).
+# - multi_agent_v2: forces structured subagent orchestration with the
+#   `wait` tool — parent must block on terminal status before acting,
+#   instead of cancelling / re-spawning impatiently. Incompatible with
+#   [agents].max_threads (codex will reject the combination).
+[features]
+codex_hooks = true
+
+# v2 orchestration tuning. `enabled = true` is required — the table form
+# does NOT auto-enable the feature without it (codex source:
+# MultiAgentV2ConfigToml::enabled returns self.enabled).
+# - max_concurrent_threads_per_session: bumps default 4 → 6 to leave
+#   headroom when research fans out into parallel sub-topics.
+# - min_wait_timeout_ms: 480000 ms = 8 min. Trellis subagents
+#   (research / implement / check) routinely take 2–10 min; clamping
+#   the floor up from codex's 10 s prevents the parent from giving up
+#   prematurely and re-spawning. Hard ceiling is 3,600,000 (1 h).
+[features.multi_agent_v2]
+enabled = true
+max_concurrent_threads_per_session = 6
+min_wait_timeout_ms = 480000
