@@ -9,9 +9,19 @@
  * - 0.3.0-beta.16 < 0.3.0-rc.0 (alphabetically: "beta" < "rc")
  */
 export function compareVersions(a: string, b: string): number {
-  // Split into base version and prerelease parts
-  const [aBase, aPrerelease] = a.split("-", 2);
-  const [bBase, bPrerelease] = b.split("-", 2);
+  // Split into base version and prerelease parts on the FIRST hyphen.
+  // `String.split("-", 2)` cannot be used here: in JavaScript the limit
+  // truncates the result instead of joining the tail (unlike Python's
+  // `maxsplit`), so `"1.0.0-alpha-1".split("-", 2)` yields
+  // `["1.0.0", "alpha"]` and silently drops `-1`. SemVer permits hyphens
+  // inside a single prerelease identifier (e.g. `1.0.0-alpha-1`), so we
+  // must preserve everything after the first hyphen.
+  const splitOnFirstHyphen = (v: string): [string, string | undefined] => {
+    const idx = v.indexOf("-");
+    return idx === -1 ? [v, undefined] : [v.slice(0, idx), v.slice(idx + 1)];
+  };
+  const [aBase, aPrerelease] = splitOnFirstHyphen(a);
+  const [bBase, bPrerelease] = splitOnFirstHyphen(b);
 
   // Parse base version (only numeric parts before any hyphen)
   const parseBase = (v: string): number[] =>
