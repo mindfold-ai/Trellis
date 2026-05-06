@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0-rc.6",
+  "description": "Windows session-start.py normalizes MSYS/Cygwin/WSL paths. finish-work Step 2 classifies dirty paths instead of aborting unconditionally. No new migrations.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(hooks): Windows `session-start.py` normalizes MSYS `/d/...`, Cygwin `/cygdrive/d/...`, WSL `/mnt/d/...` to `D:\\...` before `Path.resolve()`. Synced to 6 copies (`.claude/`, `.codex/`, `.cursor/` + templates `shared-hooks/`, `codex/`, `copilot/`). Fixes #226.\n\n**Enhancements:**\n- feat(finish-work): Step 2 classifies dirty paths into current-task / other-window / indeterminate. Only current-task paths abort; other-window paths are reported and skipped; indeterminate paths prompt the user. Synced to 8 copies.",
+  "migrations": [],
+  "notes": "RC install: `npm install -g @mindfoldhq/trellis@rc`. Windows + Git Bash users should upgrade to restore Trellis context injection."
+}

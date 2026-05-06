@@ -63,4 +63,50 @@ describe("requireSupportedPython", () => {
       'Python command "python" not found. Trellis init requires Python ≥ 3.9.',
     );
   });
+
+  it("warns and proceeds when child_process spawn is sandbox-restricted (EPERM)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.mocked(execSync).mockImplementation(() => {
+      const err = new Error("Operation not permitted") as NodeJS.ErrnoException;
+      err.code = "EPERM";
+      throw err;
+    });
+
+    const result = requireSupportedPython("python3");
+
+    expect(result).toBe("version unknown (sandbox-restricted)");
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/Python version check skipped/);
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/EPERM\/EACCES/);
+  });
+
+  it("treats EACCES the same as EPERM (sandbox-restricted)", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.mocked(execSync).mockImplementation(() => {
+      const err = new Error("Permission denied") as NodeJS.ErrnoException;
+      err.code = "EACCES";
+      throw err;
+    });
+
+    expect(requireSupportedPython("python3")).toBe(
+      "version unknown (sandbox-restricted)",
+    );
+  });
+
+  it("skips the probe entirely when TRELLIS_SKIP_PYTHON_CHECK=1", () => {
+    const prev = process.env.TRELLIS_SKIP_PYTHON_CHECK;
+    process.env.TRELLIS_SKIP_PYTHON_CHECK = "1";
+    try {
+      // execSync should not be called at all
+      const result = requireSupportedPython("python3");
+      expect(result).toBe("version check skipped (TRELLIS_SKIP_PYTHON_CHECK=1)");
+      expect(execSync).not.toHaveBeenCalled();
+    } finally {
+      if (prev === undefined) {
+        delete process.env.TRELLIS_SKIP_PYTHON_CHECK;
+      } else {
+        process.env.TRELLIS_SKIP_PYTHON_CHECK = prev;
+      }
+    }
+  });
 });

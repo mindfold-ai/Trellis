@@ -33,7 +33,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
-| 143 | 2026-05-04 | Integrate mem-poc into trellis CLI as 'trellis mem' subcommand | `e1b368d` | `feat/v0.6.0-beta` |
+| 144 | 2026-05-04 | Integrate mem-poc into trellis CLI as 'trellis mem' subcommand | `e1b368d` | `feat/v0.6.0-beta` |
+| 143 | 2026-05-04 | Fix codex sub-agent missing active task (#225) | `8a39265` | `feat/v0.5.0-rc` |
 | 142 | 2026-05-03 | Fix Gemini CLI 0.40.x template compat (#224) | `9a4c53b` | `feat/v0.5.0-rc` |
 | 141 | 2026-05-02 | trellis uninstall command (#221) | `255d499` | `feat/v0.5.0-rc` |
 | 140 | 2026-05-01 | regression test for opencode plugin export shape (#212) | `5e938d9` | `feat/v0.5.0-rc` |

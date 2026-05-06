@@ -111,6 +111,9 @@ export default async ({ directory }) => {
       // so it persists in conversation history.
       "chat.message": async (input, output) => {
         try {
+          if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
+            return
+          }
           if (process.env.OPENCODE_NON_INTERACTIVE === "1") {
             return
           }

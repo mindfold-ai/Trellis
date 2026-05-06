@@ -43,6 +43,11 @@ export default async ({ directory, client }) => {
         const agent = input.agent || "unknown"
         debugLog("session", "chat.message called, sessionID:", sessionID, "agent:", agent)
 
+        if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
+          debugLog("session", "Skipping - TRELLIS_HOOKS disabled")
+          return
+        }
+
         if (process.env.OPENCODE_NON_INTERACTIVE === "1") {
           debugLog("session", "Skipping - non-interactive mode")
           return

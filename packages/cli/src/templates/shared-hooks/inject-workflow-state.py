@@ -194,6 +194,9 @@ def build_breadcrumb(
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+        return 0
+
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):

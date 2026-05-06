@@ -1,15 +1,32 @@
 # Project-scoped Codex defaults for Trellis workflows.
-# Codex loads this after ~/.codex/config.toml when you work in this project.
+# Codex merges this layer after the user-level config when the project
+# is marked as a trusted project. To trust this project, add it under
+# `[projects]` in ~/.codex/config.toml, e.g.:
+#
+#   [projects."/abs/path/to/this/repo"]
+#   trust_level = "trusted"
+#
+# Without trust, the [features] block below is loaded but disabled.
 
 # Keep AGENTS.md as the primary project instruction file.
 project_doc_fallback_filenames = ["AGENTS.md"]
 
-# NOTE: Trellis's SessionStart + UserPromptSubmit hooks require opt-in.
-# Add the following to your USER-level config at ~/.codex/config.toml
-# (not this project file — features.* must be enabled globally):
-#
-#   [features]
-#   codex_hooks = true
-#
-# Without this flag, hooks.json is ignored and Trellis context won't
-# be injected into Codex sessions.
+# Codex hooks (`hooks.json` in this directory) load automatically once
+# the project is trusted — no feature flag needed. CodexHooks is Stable
+# and default_enabled: true in codex's feature registry; the legacy
+# `[features].codex_hooks = true` flag is no longer required.
+
+# multi_agent_v2 forces structured subagent orchestration with the
+# `wait` tool — parent must block on terminal status before acting,
+# instead of cancelling / re-spawning. Incompatible with
+# [agents].max_threads (codex will reject the combination).
+# `enabled = true` is required inside the table — the table form does
+# NOT auto-enable the feature without it.
+# - max_concurrent_threads_per_session: bumps default 4 → 6.
+# - min_wait_timeout_ms: 480000 ms = 8 min. Codex default is 10 s, too
+#   short for Trellis subagents that routinely take 2-10 min. Hard
+#   ceiling is 3,600,000 (1 h).
+[features.multi_agent_v2]
+enabled = true
+max_concurrent_threads_per_session = 6
+min_wait_timeout_ms = 480000

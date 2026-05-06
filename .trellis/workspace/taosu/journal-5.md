@@ -173,7 +173,99 @@ Three Gemini CLI 0.40.x bug fixes from issue #224: drop `tools:` line from agent
 - None - task complete
 
 
-## Session 143: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand
+## Session 143: Fix codex sub-agent missing active task (#225)
+
+**Date**: 2026-05-04
+**Task**: Fix codex sub-agent missing active task (#225)
+**Branch**: `feat/v0.5.0-rc`
+
+### Summary
+
+Class-2 platform sub-agents (codex/copilot/gemini/qoder) couldn't find the active task because they run in separate sessions with different session ids. Three-layer fix: prelude reads 'Active task: <path>' from dispatch prompt, workflow.md in_progress breadcrumb mandates the protocol per turn, and resolve_active_task adds single-session fallback (with new session-fallback source type). 856 tests passing.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8a39265` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+---
+
+
+
+## Session 144: TRELLIS_HOOKS env var to disable Trellis hooks at runtime
+
+**Date**: 2026-05-05
+**Task**: Inline change — add env-var gate so hook scripts return early when host process opts out
+**Branch**: `feat/v0.5.0-rc`
+
+### Summary
+
+Added `TRELLIS_HOOKS=0` / `TRELLIS_DISABLE_HOOKS=1` early-return gate to every shipped Trellis hook (5 Python templates + 3 OpenCode JS plugins) plus their dogfood copies in this repo (12 files). When either env var is set on the host CLI process, all hooks emit empty stdout / no `additionalContext` so Claude/Codex/Cursor/Copilot/OpenCode see no Trellis injection. Use cases: (a) wrapper scripts (`TRELLIS_HOOKS=0 claude`) for casual chat sessions where the operator does not want the workflow breadcrumb / spec index / sub-agent context; (b) programmatic spawn of host CLIs as subprocesses where the parent orchestrator wants a clean session. Researched whether any of Claude Code / Codex / OpenCode / Cursor expose true mid-session hook toggles — none do (Claude Code has `disableAllHooks` in settings.json with file-watcher reload; Cursor has the rename-hooks.json hack; Codex / OpenCode require restart). Concluded env-var gate is the right ergonomic for this round; punted on a `.runtime/config.json` JSON toggle and `task.py hooks on|off` UX until demand is clearer. Also fixed three pre-existing regression test failures rooted in `test/setup.ts` not stripping `*_PROJECT_DIR` host-shell env vars — when a dev runs vitest from inside a Claude Code / Copilot session, those vars made the hooks read the *real* repo's `.trellis/` instead of the test tmpDir. Fix follows the SoT documented in `.trellis/spec/cli/unit-test/conventions.md` "Test Isolation" section.
+
+### Main Changes
+
+- `packages/cli/src/templates/shared-hooks/session-start.py` — extend existing `should_skip_injection()` with TRELLIS_HOOKS / TRELLIS_DISABLE_HOOKS checks
+- `packages/cli/src/templates/shared-hooks/inject-workflow-state.py` — early-return at `main()` head
+- `packages/cli/src/templates/shared-hooks/inject-subagent-context.py` — early-return at `main()` head
+- `packages/cli/src/templates/shared-hooks/inject-shell-session-context.py` — early-return at `main()` head
+- `packages/cli/src/templates/codex/hooks/session-start.py` — prepend gate to local `should_skip_injection()`
+- `packages/cli/src/templates/copilot/hooks/session-start.py` — prepend gate to local `should_skip_injection()`
+- `packages/cli/src/templates/opencode/plugins/session-start.js` — early-return in `chat.message` handler
+- `packages/cli/src/templates/opencode/plugins/inject-workflow-state.js` — early-return in `chat.message` handler
+- `packages/cli/src/templates/opencode/plugins/inject-subagent-context.js` — early-return in `tool.execute.before` handler
+- `.claude/hooks/*.py`, `.cursor/hooks/*.py`, `.codex/hooks/*.py`, `.opencode/plugins/*.js` — dogfood sync (12 files)
+- `packages/cli/test/setup.ts` — delete CLAUDE_/QODER_/CODEBUDDY_/FACTORY_/CURSOR_/GEMINI_/KIRO_/COPILOT_PROJECT_DIR before tests load
+- `packages/cli/test/regression.test.ts` — two new regression tests under "current-task path normalization" / end-of-file: string-level invariant (all 9 hook scripts contain the gate) + runtime integration (baseline emits content; TRELLIS_HOOKS=0 / TRELLIS_DISABLE_HOOKS=1 emit empty stdout)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| (pending) | feat(hooks): support TRELLIS_HOOKS=0 env var to disable hooks at runtime |
+
+### Testing
+
+- [OK] `pnpm vitest run` — 858 / 858 tests (was 853 / 856 before this work; 3 pre-existing failures fixed via test/setup.ts, +2 new TRELLIS_HOOKS regression tests)
+- [OK] `pnpm lint` clean
+- [OK] `pnpm typecheck` clean
+- [OK] `pnpm build` clean (templates copied to dist with gate verified via grep on dist/)
+- [OK] Python `py_compile` on all 5 modified template `.py` files
+- [OK] `node --check` on all 3 modified OpenCode `.js` plugins
+- [OK] Manual smoke test: shared-hooks templates emit 0 bytes stdout when invoked with `TRELLIS_HOOKS=0`
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Optional: README / docs-site mention of the new env vars (not done — punted per "fast push" instruction)
+- Optional: `.trellis/spec/cli/backend/hooks-runtime-toggle.md` documenting the env-var gate as the only supported runtime toggle and recording the upstream-CLI comparison from this session's research
+
+
+---
+
+
+
+## Session 145: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand
 
 **Date**: 2026-05-04
 **Task**: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand

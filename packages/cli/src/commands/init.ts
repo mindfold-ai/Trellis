@@ -63,19 +63,48 @@ export function isSupportedPythonVersion(versionOutput: string): boolean {
   );
 }
 
-function detectPythonVersion(command: string): string | null {
+// Sentinel returned when child_process spawn is blocked by a sandbox / kernel
+// policy (e.g. seccomp inside Codex's Linux sandbox). EPERM/EACCES here mean
+// "the kernel refused the spawn" — NOT "python3 isn't installed". The host
+// usually has python3 on PATH; we just can't probe it from this Node process.
+type PythonProbe = string | null | "sandbox-restricted";
+
+function detectPythonVersion(command: string): PythonProbe {
   try {
     return execSync(`${command} --version`, {
       encoding: "utf-8",
       stdio: "pipe",
     }).trim();
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "EPERM" || code === "EACCES") {
+      return "sandbox-restricted";
+    }
     return null;
   }
 }
 
 export function requireSupportedPython(command: string): string {
+  // Final escape hatch — set when the user knows python3 is on PATH but
+  // the probe keeps failing for environment-specific reasons.
+  if (process.env.TRELLIS_SKIP_PYTHON_CHECK === "1") {
+    return `version check skipped (TRELLIS_SKIP_PYTHON_CHECK=1)`;
+  }
+
   const versionOutput = detectPythonVersion(command);
+
+  if (versionOutput === "sandbox-restricted") {
+    console.warn(
+      chalk.yellow(
+        `⚠ Python version check skipped — sandboxed environment blocked ` +
+          `child_process spawn (EPERM/EACCES). Assuming "${command}" is on ` +
+          `PATH. If init fails later, re-run on the host or set ` +
+          `TRELLIS_SKIP_PYTHON_CHECK=1.`,
+      ),
+    );
+    return `version unknown (sandbox-restricted)`;
+  }
+
   if (!versionOutput) {
     throw new Error(
       `Python command "${command}" not found. Trellis init requires Python ≥ 3.9.`,

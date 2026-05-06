@@ -18,6 +18,52 @@ import sys
 from io import StringIO
 from pathlib import Path
 
+
+def _normalize_windows_shell_path(path_str: str) -> str:
+    """Normalize Unix-style shell paths to real Windows paths.
+
+    On Windows, shells like Git Bash / MSYS2 / Cygwin may report paths like
+    `/d/Users/...` or `/cygdrive/d/Users/...`. `Path.resolve()` will misinterpret
+    these as `D:/d/Users...` on drive D: (or similar), breaking repo root
+    detection.
+
+    This function is intentionally conservative: it only rewrites patterns that
+    unambiguously represent a drive letter mount.
+    """
+    if not isinstance(path_str, str) or not path_str:
+        return path_str
+
+    # Only relevant on Windows; keep other platforms untouched.
+    if not sys.platform.startswith("win"):
+        return path_str
+
+    p = path_str.strip()
+
+    # Already a Windows drive path (C:\... or C:/...)
+    if re.match(r"^[A-Za-z]:[\/]", p):
+        return p
+
+    # MSYS/Git-Bash style: /c/Users/... or /d/Work/...
+    m = re.match(r"^/([A-Za-z])/(.*)", p)
+    if m:
+        drive, rest = m.group(1).upper(), m.group(2)
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+
+    # Cygwin style: /cygdrive/c/Users/...
+    m = re.match(r"^/cygdrive/([A-Za-z])/(.*)", p)
+    if m:
+        drive, rest = m.group(1).upper(), m.group(2)
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+
+    # WSL mounted drive (sometimes leaked into env): /mnt/c/Users/...
+    m = re.match(r"^/mnt/([A-Za-z])/(.*)", p)
+    if m:
+        drive, rest = m.group(1).upper(), m.group(2)
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+
+    return path_str
+
+
 FIRST_REPLY_NOTICE = """<first-reply-notice>
 On the first visible assistant reply in this session, begin with exactly one short Chinese sentence:
 Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份、git 状态、active tasks、spec 索引已加载。
@@ -60,7 +106,13 @@ def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
 
 
 def should_skip_injection() -> bool:
-    """Check if any platform's non-interactive flag is set."""
+    """Check if any platform's non-interactive flag is set, or if Trellis
+    hooks are explicitly disabled via TRELLIS_HOOKS=0 / TRELLIS_DISABLE_HOOKS=1.
+    """
+    if os.environ.get("TRELLIS_HOOKS") == "0":
+        return True
+    if os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+        return True
     non_interactive_vars = [
         "CLAUDE_NON_INTERACTIVE",
         "QODER_NON_INTERACTIVE",
@@ -588,10 +640,10 @@ def main():
     for var in project_dir_env_vars:
         val = os.environ.get(var)
         if val:
-            project_dir = Path(val).resolve()
+            project_dir = Path(_normalize_windows_shell_path(val)).resolve()
             break
     if project_dir is None:
-        project_dir = Path(hook_input.get("cwd", ".")).resolve()
+        project_dir = Path(_normalize_windows_shell_path(hook_input.get("cwd", "."))).resolve()
 
     trellis_dir = project_dir / ".trellis"
     context_key = _resolve_context_key(trellis_dir, hook_input)

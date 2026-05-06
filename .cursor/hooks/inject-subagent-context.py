@@ -660,6 +660,9 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
 
 
 def main():
+    if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+        sys.exit(0)
+
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:

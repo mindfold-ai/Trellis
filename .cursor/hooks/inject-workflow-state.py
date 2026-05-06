@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Trellis UserPromptSubmit hook: inject per-turn workflow breadcrumb.
+"""Trellis per-turn breadcrumb hook (UserPromptSubmit / BeforeAgent equivalent).
 
 Runs on every user prompt. Resolves the active task through Trellis'
 session-aware active task resolver and emits a short <workflow-state>
 block reminding the main AI what task is active and its expected flow.
+
+The emitted ``hookEventName`` field is platform-aware: most hosts expect
+``UserPromptSubmit`` (Claude Code naming, also accepted by Cursor / Qoder /
+CodeBuddy / Droid / Codex / Copilot wiring), but Gemini CLI 0.40.x renamed
+its per-turn event to ``BeforeAgent`` and its schema validator rejects the
+legacy name. ``_detect_platform`` picks the right value at runtime.
 Breadcrumb text is pulled exclusively from workflow.md
 [workflow-state:STATUS] tag blocks — workflow.md is the single source of
 truth. There are no fallback dicts in this script: when workflow.md is
@@ -188,6 +194,9 @@ def build_breadcrumb(
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+        return 0
+
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
@@ -210,9 +219,16 @@ def main() -> int:
         task_id, status, source = task
         breadcrumb = build_breadcrumb(task_id, status, templates, source)
 
+    # Gemini CLI 0.40.x rejects "UserPromptSubmit" — its per-turn event is
+    # named "BeforeAgent". Other platforms (Claude/Cursor/Qoder/CodeBuddy/
+    # Droid/Codex/Copilot) accept the original Claude-style name.
+    hook_event_name = (
+        "BeforeAgent" if _detect_platform(data) == "gemini" else "UserPromptSubmit"
+    )
+
     output = {
         "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
+            "hookEventName": hook_event_name,
             "additionalContext": breadcrumb,
         }
     }

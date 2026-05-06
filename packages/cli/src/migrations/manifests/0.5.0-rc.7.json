@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0-rc.7",
+  "description": "Two field-reported fixes from issue #232: opencode plugin no longer downgraded by update; Codex Linux sandbox python3 EPERM tolerated. No new migrations.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(opencode): bump `@opencode-ai/plugin` template pin from `1.1.40` to `^1.14.39`. Previous hardcoded version caused `trellis update` to silently downgrade users who had manually upgraded the plugin to 1.14.x. The caret range matches the latest 1.x line on every install. (#232)\n- fix(cli): tolerate sandboxed `child_process` failures during the `python3 --version` probe in `requireSupportedPython`. Codex's Linux sandbox returns `EPERM` from `execSync` even when python3 is on the host PATH; the previous catch-all swallowed this as 'Python not found' and aborted `trellis init`. Now distinguishes `EPERM` / `EACCES` (sandbox-restricted spawn — warn and proceed, assuming python3 is available) from `ENOENT` and other errors (genuine missing command — throw as before). Adds `TRELLIS_SKIP_PYTHON_CHECK=1` env var as a final escape hatch. (#232)",
+  "migrations": [],
+  "notes": "RC install: `npm install -g @mindfoldhq/trellis@rc`. OpenCode users on previous 0.5.0 prereleases should run `bun install` (or pnpm/npm equivalent) inside `.opencode/` after `trellis update` to refresh the plugin to the latest 1.x version. Codex Linux users hitting the python3 EPERM error in init should re-run; if it still fails, set `TRELLIS_SKIP_PYTHON_CHECK=1`."
+}

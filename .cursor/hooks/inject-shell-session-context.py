@@ -142,6 +142,9 @@ def _write_ticket(
 
 
 def main() -> int:
+    if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+        return 0
+
     try:
         hook_input = json.loads(sys.stdin.read())
     except (json.JSONDecodeError, ValueError):

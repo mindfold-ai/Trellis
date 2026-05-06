@@ -16,7 +16,7 @@ Guide AI through collaborative requirements discovery **before implementation**,
 
 ## When to Use
 
-Triggered from $start when the user describes a development task, especially when:
+Triggered from `start` (Trellis command) when the user describes a development task, especially when:
 
 * requirements are unclear or evolving
 * there are multiple valid implementation paths
@@ -533,6 +533,6 @@ The task directory and PRD already exist from brainstorm, so Phase 1 of the Task
 
 | Command | When to Use |
 |---------|-------------|
-| `$start` | Entry point that triggers brainstorm |
-| `$finish-work` | After implementation is complete |
-| `$update-spec` | If new patterns emerge during work |
+| ``start` (Trellis command)` | Entry point that triggers brainstorm |
+| ``finish-work` (Trellis command)` | After implementation is complete |
+| ``update-spec` (Trellis command)` | If new patterns emerge during work |

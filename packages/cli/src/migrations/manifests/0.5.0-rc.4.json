@@ -1,0 +1,9 @@
+{
+  "version": "0.5.0-rc.4",
+  "description": "Adds TRELLIS_HOOKS env var to disable Trellis hooks at runtime. No new migrations.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(hooks): `TRELLIS_HOOKS=0` (or `TRELLIS_DISABLE_HOOKS=1`) early-returns every shipped Trellis hook before emitting `additionalContext`. Covers shared-hooks (`session-start.py`, `inject-workflow-state.py`, `inject-subagent-context.py`, `inject-shell-session-context.py`), platform-specific session-start (`codex`, `copilot`), and opencode plugins (`session-start.js`, `inject-workflow-state.js`, `inject-subagent-context.js`). Use `TRELLIS_HOOKS=0 claude` (or any host CLI) for sessions where the workflow breadcrumb / spec index / sub-agent context is unwanted.",
+  "migrations": [],
+  "notes": "RC install: `npm install -g @mindfoldhq/trellis@rc`."
+}

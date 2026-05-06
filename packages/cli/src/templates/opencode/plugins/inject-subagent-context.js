@@ -322,6 +322,9 @@ export default async ({ directory, platform: hostPlatform = process.platform }) 
   return {
       "tool.execute.before": async (input, output) => {
         try {
+          if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
+            return
+          }
           debugLog("inject", "tool.execute.before called, tool:", input?.tool)
 
           const toolName = input?.tool?.toLowerCase()

@@ -23,7 +23,7 @@ Trellis workflow skills usually share one semantic set: brainstorm, before-dev, 
 | Codex | `.agents/skills/`, `.codex/skills/` |
 | Kilo | `.kilocode/skills/`, `.kilocode/workflows/` |
 | Kiro | `.kiro/skills/` |
-| Gemini CLI | `.gemini/skills/`, `.gemini/commands/` |
+| Gemini CLI | `.agents/skills/`, `.gemini/commands/` |
 | Antigravity | `.agent/skills/`, `.agent/workflows/` |
 | Windsurf | `.windsurf/skills/`, `.windsurf/workflows/` |
 | Qoder | `.qoder/skills/`, `.qoder/commands/` |
