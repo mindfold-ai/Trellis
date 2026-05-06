@@ -261,7 +261,80 @@ Added `TRELLIS_HOOKS=0` / `TRELLIS_DISABLE_HOOKS=1` early-return gate to every s
 - Optional: `.trellis/spec/cli/backend/hooks-runtime-toggle.md` documenting the env-var gate as the only supported runtime toggle and recording the upstream-CLI comparison from this session's research
 
 
-## Session 144: Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks
+---
+
+
+
+## Session 145: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand
+
+**Date**: 2026-05-04
+**Task**: Integrate mem-poc into trellis CLI as 'trellis mem' subcommand
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Created feat/v0.6.0-beta branch and ported the mem-poc chat-history.ts POC into packages/cli as the 'trellis mem' subcommand group (projects/list/search/context/extract). Wired through commander as a passthrough; added zod ^4 dep; adapted code to Trellis ESLint rules (interface over type, no non-null assertions, 'unknown' callback return for readJsonl). All 847 existing tests pass; smoke-tested all 5 subcommands against real session data.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e1b368d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 144: Fix Codex sub-agent recursion (#234) + Cursor agent description format
+
+**Date**: 2026-05-06
+**Task**: Fix Codex sub-agent recursion (#234) + Cursor agent description format
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Two independent sub-agent template bugs fixed. (1) Codex multi_agent_v2: SessionStart hook indiscriminately injected 'dispatch trellis-implement' into every agent session, including spawned sub-agents — they re-read it and recursively spawned another same-name sub-agent, causing the outer wrapper to stay running forever and blocking wait_agent in the main session. Upstream openai/codex#16226 (no agent-identity field in SessionStart stdin) blocks the clean A-hard fix, so applied B + A-soft: Recursion guard at the top of trellis-implement.toml / trellis-check.toml developer_instructions, plus a Sub-agent self-exemption clause in both READY-state and <guidelines> blocks of codex/hooks/session-start.py and shared-hooks/session-start.py (Audit ALL Writers — covers Claude/Cursor/Gemini/Qoder/CodeBuddy/Droid/Kiro). (2) Cursor agent UI was leaving the Description field blank for trellis-research/implement/check because their .md frontmatters used YAML block scalar 'description: |' — Cursor's parser only recognizes inline literals; collapsed all three to single-line literals, body preserved verbatim. Tests: 3 keyword-assert tests in templates/codex.test.ts, 1 in shared-hooks.test.ts, new templates/cursor.test.ts (4 tests). 869/869 vitest green, lint clean. Research persisted to research/codex-sessionstart-subagent-signals.md documenting why A-hard isn't yet feasible.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9768b08` | (see git log) |
+| `0f3c706` | (see git log) |
+| `d8efcbc` | (see git log) |
+| `4cf0ab8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 146: Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks
 
 **Date**: 2026-05-06
 **Task**: Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks
@@ -284,6 +357,76 @@ Hotfix on top of 0.5.1. Trellis 0.5.0-rc.6 added a Windows MSYS/Cygwin/WSL path 
 | `601f213` | (see git log) |
 | `2468cb2` | (see git log) |
 | `5ad1e21` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 147: Release 0.5.3: class-1 sub-agent context fallback + non-blocking task.py start
+
+**Date**: 2026-05-06
+**Task**: Release 0.5.3: class-1 sub-agent context fallback + non-blocking task.py start
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Hotfix on top of 0.5.2 addressing two related Windows + Claude Code failure modes traced via two trellis-research dispatches. (1) Class-1 platform sub-agent context injection (claude/cursor/opencode/kiro/codebuddy/droid) goes through inject-subagent-context.py PreToolUse hook, but the hook silent-skips on Windows at v2.1.119 (upstream anthropics/claude-code#53254) and existing class-1 sub-agent definition files trusted hook to always fire (no fallback) — sub-agents ran without specs. Added marker-based dual-channel: hook prepends <!-- trellis-hook-injected --> sentinel to build_implement_prompt/build_check_prompt/build_finish_prompt outputs (success path only); each class-1 trellis-implement/trellis-check definition opens with Trellis Context Loading Protocol section that branches on marker (present → hook injected, proceed; absent → read Active task: line + Read prd.md + jsonl yourself). workflow.md dispatch protocol scope changed from class-2-only to all platforms except trellis-research. trellis-research intentionally not marker'd (decoupled from active task). class-2 platforms untouched (already use buildPullBasedPrelude). (2) task.py start hard-failed (return 1) when resolve_context_key returned None, blocking AI when CLAUDE_ENV_FILE not sourced (Windows + Claude Code, --continue resume, fork distributions). Replaced with yellow degraded-mode warning + still flips planning→in_progress + return 0; happy path byte-identical. 16 source files (1 hook + 12 sub-agent defs + workflow + task.py + 1 test) and 156 lines of regression coverage. 890/890 vitest, lint clean. Released via main → tag v0.5.3 → GitHub Actions Publish to npm.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6272a9e` | (see git log) |
+| `1adb7b0` | (see git log) |
+| `5b298ba` | (see git log) |
+| `a7d54ec` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 148: Workflow-state recursion guard
+
+**Date**: 2026-05-06
+**Task**: Workflow-state recursion guard
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Hardened workflow-state and implement/check agent prompts against recursive Trellis sub-agent dispatch; updated multi-platform templates, specs, and regression tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0db57e5` | (see git log) |
+| `48f966e` | (see git log) |
 
 ### Testing
 
