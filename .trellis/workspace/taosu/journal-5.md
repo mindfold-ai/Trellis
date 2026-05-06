@@ -369,3 +369,39 @@ Hotfix on top of 0.5.1. Trellis 0.5.0-rc.6 added a Windows MSYS/Cygwin/WSL path 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 147: Release 0.5.3: class-1 sub-agent context fallback + non-blocking task.py start
+
+**Date**: 2026-05-06
+**Task**: Release 0.5.3: class-1 sub-agent context fallback + non-blocking task.py start
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Hotfix on top of 0.5.2 addressing two related Windows + Claude Code failure modes traced via two trellis-research dispatches. (1) Class-1 platform sub-agent context injection (claude/cursor/opencode/kiro/codebuddy/droid) goes through inject-subagent-context.py PreToolUse hook, but the hook silent-skips on Windows at v2.1.119 (upstream anthropics/claude-code#53254) and existing class-1 sub-agent definition files trusted hook to always fire (no fallback) — sub-agents ran without specs. Added marker-based dual-channel: hook prepends <!-- trellis-hook-injected --> sentinel to build_implement_prompt/build_check_prompt/build_finish_prompt outputs (success path only); each class-1 trellis-implement/trellis-check definition opens with Trellis Context Loading Protocol section that branches on marker (present → hook injected, proceed; absent → read Active task: line + Read prd.md + jsonl yourself). workflow.md dispatch protocol scope changed from class-2-only to all platforms except trellis-research. trellis-research intentionally not marker'd (decoupled from active task). class-2 platforms untouched (already use buildPullBasedPrelude). (2) task.py start hard-failed (return 1) when resolve_context_key returned None, blocking AI when CLAUDE_ENV_FILE not sourced (Windows + Claude Code, --continue resume, fork distributions). Replaced with yellow degraded-mode warning + still flips planning→in_progress + return 0; happy path byte-identical. 16 source files (1 hook + 12 sub-agent defs + workflow + task.py + 1 test) and 156 lines of regression coverage. 890/890 vitest, lint clean. Released via main → tag v0.5.3 → GitHub Actions Publish to npm.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6272a9e` | (see git log) |
+| `1adb7b0` | (see git log) |
+| `5b298ba` | (see git log) |
+| `a7d54ec` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
