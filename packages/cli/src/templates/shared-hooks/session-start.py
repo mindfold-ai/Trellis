@@ -17,6 +17,8 @@ import subprocess
 import sys
 from io import StringIO
 from pathlib import Path
+
+
 def _normalize_windows_shell_path(path_str: str) -> str:
     """Normalize Unix-style shell paths to real Windows paths.
 
