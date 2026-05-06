@@ -191,7 +191,7 @@ trellis init --registry https://github.com/your-org/your-spec-templates
 ### 联系我们
 
 <p align="center">
-<img src="assets/wx_link5.jpg" alt="微信群" width="260" />
+<img src="assets/wx_link6.jpg" alt="微信群" width="260" />
 &nbsp;&nbsp;&nbsp;&nbsp;
 <img src="assets/wecom-group-qr.png" alt="企微话题群" width="260" />
 &nbsp;&nbsp;&nbsp;&nbsp;
