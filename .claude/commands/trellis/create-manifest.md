@@ -150,6 +150,49 @@ Use the format from previous changelog files (frontmatter with title + descripti
    - Add `"zh/changelog/v<version>"` to the Chinese changelog pages list (at the top)
    - Update the navbar changelog link `href` to point to the new version
 
+#### MDX gotcha — `<Note>` / `<Warning>` with markdown lists
+
+When a `<Note>` or `<Warning>` block contains a bullet list, the closing tag MUST be at column 0:
+
+```mdx
+<Note>
+- bullet
+  </Note>   ← BREAKS Mintlify parser: "Expected closing tag </Note> after end of listItem"
+</Note>     ← correct
+```
+
+prettier in `lint-staged` will auto-indent the closing tag — re-fix manually after each commit attempt and re-run `pnpm dev` (mintlify) before pushing.
+
+#### Lifecycle scripts (only at version transitions, not per-patch)
+
+The docs-site root path holds the current stable; dev cycles live under `beta/` or `rc/`. Three scripts in `docs-site/scripts/` handle structural transitions:
+
+| Transition         | Script                | When to run                                                                                            |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| start a new beta   | `docs-beta-start.sh`  | Before `pnpm release:beta` for the **first** beta of a new minor/major (e.g. `0.6.0-beta.0`)           |
+| beta → rc          | `docs-beta-to-rc.sh`  | Before `pnpm release:rc` for the **first** rc (e.g. `0.6.0-rc.0`); renames `beta/` → `rc/` and scrubs `@beta` → `@rc` content |
+| rc → release (GA)  | `docs-promote.sh`     | Before `pnpm release:promote`; folds `rc/*` content into root, removes `rc/` tree                       |
+
+**Per-patch releases** (`-beta.1` / `-rc.1` / patch GA `0.5.1`): no script run. Just write the changelog mdx, update `docs.json` page list and navbar href, commit, push.
+
+Each script's stdout prints a manual followup checklist (banner edit, version block add/remove, install command scrub) — apply those before committing the docs-site change.
+
+Full reference: `.trellis/spec/docs-site/docs/release-lifecycle.md`.
+
+#### Stash workflow when RC and GA prep overlap
+
+If you're staging GA content (`changelog/v<X.Y.0>.mdx` + scripts run) while still needing to ship one more rc.X:
+
+```bash
+cd docs-site
+git stash push -u -m "GA promote prep"   # park GA changes
+# ... write rc.X changelog mdx + docs.json bump for rc.X ...
+git commit && git push
+git stash pop                              # restore GA prep
+```
+
+The `docs.json` conflict on `pop` is expected: rc.X commit added `v<X.Y.0>-rc.<N>` at the top of pages list, while the stash had `v<X.Y.0>` (GA) at the top. Resolve by keeping BOTH, with the GA entry first (`v<X.Y.0>`), then the new rc (`v<X.Y.0>-rc.<N>`), then older entries.
+
 ### Step 8: Review and Confirm
 
 1. Read the generated manifest: `packages/cli/src/migrations/manifests/<version>.json`
