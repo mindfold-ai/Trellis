@@ -9,12 +9,15 @@
 ## Overview
 
 The breadcrumb is the **only** per-turn channel that fires while a Trellis task
-is active. Sub-agents don't see it (class-1 hook injection rewrites sub-agent
-prompts via `inject-subagent-context`; class-2 sub-agents pull a static prelude
-that does not include workflow-state). Therefore: **every `[required · once]`
+is active. It is intended for the main AI session, while sub-agent context
+normally arrives through `inject-subagent-context` on class-1 platforms or a
+pull-based prelude on class-2 platforms. Host behavior can still surface the
+breadcrumb inside sub-agent turns, though, and hooks do not currently expose a
+stable main-vs-sub-agent identity signal. Therefore: **every `[required · once]`
 step that the workflow-walkthrough mandates for a given phase must also be
-mentioned in that phase's breadcrumb tag block.** If it isn't, the AI in
-the main session will silently skip it. Two production bugs (Phase 1.3 jsonl
+mentioned in that phase's breadcrumb tag block, and breadcrumb text must be
+safe when read by a sub-agent.** If required steps are absent, the AI in the
+main session will silently skip them. Two production bugs (Phase 1.3 jsonl
 curation skip, Phase 3.4 commit skip) hit exactly this failure mode.
 
 This document is the source of truth for the runtime mechanics. The user-facing
@@ -201,24 +204,29 @@ Forks can define custom statuses. To do so:
 
 ## Hook reachability matrix
 
-The breadcrumb is **only visible to the main AI session.** Sub-agents have
-their own context loading paths.
+The breadcrumb is **intended** for the main AI session. Sub-agents have their
+own context loading paths, but host platforms may still run per-turn breadcrumb
+hooks for child turns or inherit main-session per-turn context. Trellis must not
+rely on categorical breadcrumb invisibility inside sub-agents.
 
-| Channel | Main session | Class-1 sub-agent (push hook) | Class-2 sub-agent (pull prelude) |
-|---------|:------------:|:-----------------------------:|:--------------------------------:|
-| `<workflow-state>` per-turn breadcrumb | ✅ | ❌ (sub-agents have their own UserPromptSubmit, but it does not inherit main-session breadcrumbs) | ❌ |
-| `inject-subagent-context` (`implement.jsonl`/`check.jsonl` injection) | ❌ | ✅ | ❌ |
-| Pull-based prelude (`shared.ts:buildPullBasedPrelude`) | N/A | N/A | ✅ |
+| Channel | Main session | Hook-inject sub-agent | Pull-prelude sub-agent | Extension-backed sub-agent |
+|---------|:------------:|:---------------------:|:----------------------:|:--------------------------:|
+| `<workflow-state>` per-turn breadcrumb | ✅ | ⚠️ possible host-dependent exposure | ⚠️ possible host-dependent exposure | ⚠️ possible host-dependent exposure |
+| `inject-subagent-context` (`implement.jsonl`/`check.jsonl` injection) | ❌ | ✅ | ❌ | ❌ |
+| Pull-based prelude (`shared.ts:buildPullBasedPrelude`) | N/A | N/A | ✅ | fallback |
 
-Class-1 platforms (push hooks): claude, cursor, codebuddy, droid, opencode (JS plugin), pi (TS extension).
-Class-2 platforms (pull prelude): codex, gemini, qoder, copilot.
+Hook-inject platforms: claude, cursor, codebuddy, droid, kiro (`agentSpawn`), opencode (JS plugin).
+Pull-prelude platforms: codex, gemini, qoder, copilot.
+Extension-backed platforms: pi.
 Hookless: kilo, antigravity, windsurf.
 
-**Implication**: any guidance the breadcrumb wants to give to sub-agents must
-either (a) be propagated through `inject-subagent-context` for class-1, or (b)
-be added to the `buildPullBasedPrelude` static text for class-2. The
-breadcrumb itself reaches **only** the main session driving the
-`Task` / `Agent` tool spawn.
+**Implication**: sub-agent-required guidance must still be propagated through
+`inject-subagent-context` for hook-inject platforms, `buildPullBasedPrelude` for
+pull-prelude platforms, or the Pi extension's prompt builder for
+extension-backed platforms. Breadcrumb text must additionally be safe if a
+sub-agent sees it: main-session dispatch guidance must self-exempt
+`trellis-implement` / `trellis-check` readers so they implement or check
+directly instead of spawning nested Trellis sub-agents.
 
 ---
 
@@ -242,8 +250,9 @@ breadcrumb itself reaches **only** the main session driving the
 - Don't silently re-route a writer to a different status without auditing
   every breadcrumb consumer (`session-start.py`, `inject-workflow-state.py`,
   `task.py list`, etc.).
-- Don't expect sub-agents to see the breadcrumb. If guidance is sub-agent
-  relevant, propagate it via the appropriate channel above.
+- Don't rely on sub-agents not seeing the breadcrumb. If guidance is sub-agent
+  relevant, propagate it via the appropriate channel above and keep the
+  breadcrumb wording self-exempting.
 
 ---
 

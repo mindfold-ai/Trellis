@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-5.md`
-- **Total Sessions**: 144
+- **Total Sessions**: 148
 - **Last Active**: 2026-05-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-5.md` | ~298 | Active |
+| `journal-5.md` | ~441 | Active |
 | `journal-4.md` | ~1975 | Archived |
 | `journal-3.md` | ~1988 | Archived |
 | `journal-2.md` | ~1963 | Archived |
@@ -33,7 +33,11 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
-| 144 | 2026-05-06 | Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks | `3f1711b`, `263c8c6`, `601f213`, `2468cb2`, `5ad1e21` | `main` |
+| 148 | 2026-05-06 | Workflow-state recursion guard | `0db57e5`, `48f966e` | `feat/v0.6.0-beta` |
+| 147 | 2026-05-06 | Release 0.5.3: class-1 sub-agent context fallback + non-blocking task.py start | `6272a9e`, `1adb7b0`, `5b298ba`, `a7d54ec` | `feat/v0.6.0-beta` |
+| 146 | 2026-05-06 | Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks | `3f1711b`, `263c8c6`, `601f213`, `2468cb2`, `5ad1e21` | `main` |
+| 144 | 2026-05-06 | Fix Codex sub-agent recursion (#234) + Cursor agent description format | `9768b08`, `0f3c706`, `d8efcbc`, `4cf0ab8` | `feat/v0.6.0-beta` |
+| 144 | 2026-05-04 | Integrate mem-poc into trellis CLI as 'trellis mem' subcommand | `e1b368d` | `feat/v0.6.0-beta` |
 | 143 | 2026-05-04 | Fix codex sub-agent missing active task (#225) | `8a39265` | `feat/v0.5.0-rc` |
 | 142 | 2026-05-03 | Fix Gemini CLI 0.40.x template compat (#224) | `9a4c53b` | `feat/v0.5.0-rc` |
 | 141 | 2026-05-02 | trellis uninstall command (#221) | `255d499` | `feat/v0.5.0-rc` |

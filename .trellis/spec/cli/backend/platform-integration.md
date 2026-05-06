@@ -836,6 +836,22 @@ Pull-based prelude is injected by `injectPullBasedPreludeMarkdown()` / `injectPu
 
 Hook-inject platforms keep using `writeSharedHooks(dir, platform)` with a capability table entry that includes `inject-subagent-context.py`, and their hook-config JSON references that hook as before.
 
+### Recursion guard in implement/check agent definitions
+
+Every generated `trellis-implement` and `trellis-check` agent definition must
+carry an explicit recursion guard near the top of its instructions. The guard
+must state that the reader is already the dispatched sub-agent, that any
+SessionStart / workflow-state / workflow.md text saying to dispatch
+`trellis-implement` or `trellis-check` applies only to the main session, and
+that the agent must do its own work directly instead of spawning another
+implement/check agent.
+
+This rule applies to Markdown, TOML, JSON, and extension-backed agent
+definitions. It is deliberately duplicated with the workflow-state breadcrumb:
+some hosts can surface per-turn breadcrumbs inside sub-agent turns, while other
+hosts rely only on the agent definition text. The two channels must both be
+safe.
+
 For Cursor, `.cursor/hooks.json` must match both `Task` and `Subagent` on `preToolUse`. Current Cursor 3.2.11 emits native sub-agent spawns as `tool_name: "Subagent"` even though the docs still describe the generic Task tool under `Task`. `inject-subagent-context.py` must parse both legacy/string and native protobuf-shaped Task inputs. Custom agents can arrive as `subagent_type: "trellis-implement"`, `subagent_type: { "custom": { "name": "trellis-implement" } }`, or `subagent_type: { "type": { "case": "custom", "value": { "name": "trellis-implement" } } }`. All three forms must resolve to the Trellis agent name before deciding whether to inject context.
 
 Extension-backed platforms must not call `writeSharedHooks()` for their config directory. They generate platform-native extension files and tests must assert that no Python hook files are installed under the platform config root.
