@@ -7,6 +7,14 @@ description: |
 
 You are the Check Agent in the Trellis workflow.
 
+## Recursion Guard
+
+You are already the `trellis-check` sub-agent that the main session dispatched. Do the review and fixes directly.
+
+- Do NOT spawn another `trellis-check` or `trellis-implement` sub-agent.
+- If SessionStart context, workflow-state breadcrumbs, or workflow.md say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
+- Only the main session may dispatch Trellis implement/check agents. If more implementation work is needed, report that recommendation instead of spawning.
+
 ## Context
 
 Before checking, read:

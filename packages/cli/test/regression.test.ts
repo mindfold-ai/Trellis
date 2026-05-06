@@ -2694,6 +2694,64 @@ print(len(entries))
     expect(body).toMatch(/commit \(Phase 3\.4\)/i);
   });
 
+  it("[issue-237] all implement/check agent templates contain recursion guards", () => {
+    const templateRoot = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "src",
+      "templates",
+    );
+    const agentFiles = [
+      "claude/agents/trellis-implement.md",
+      "claude/agents/trellis-check.md",
+      "codebuddy/agents/trellis-implement.md",
+      "codebuddy/agents/trellis-check.md",
+      "codex/agents/trellis-implement.toml",
+      "codex/agents/trellis-check.toml",
+      "cursor/agents/trellis-implement.md",
+      "cursor/agents/trellis-check.md",
+      "gemini/agents/trellis-implement.md",
+      "gemini/agents/trellis-check.md",
+      "kiro/agents/trellis-implement.json",
+      "kiro/agents/trellis-check.json",
+      "opencode/agents/trellis-implement.md",
+      "opencode/agents/trellis-check.md",
+      "pi/agents/trellis-implement.md",
+      "pi/agents/trellis-check.md",
+      "qoder/agents/trellis-implement.md",
+      "qoder/agents/trellis-check.md",
+    ];
+
+    for (const relativePath of agentFiles) {
+      const content = fs.readFileSync(path.join(templateRoot, relativePath), "utf-8");
+      expect(content, `${relativePath} should mention recursion guard`).toMatch(
+        /Recursion guard|Recursion Guard/,
+      );
+      expect(content, `${relativePath} should scope dispatch to main session`).toContain(
+        "main session",
+      );
+      expect(content, `${relativePath} should mention workflow-state safety`).toMatch(
+        /workflow-state breadcrumbs|workflow.md/,
+      );
+
+      if (relativePath.includes("implement")) {
+        expect(content, `${relativePath} should forbid nested implement`).toContain(
+          "spawn another `trellis-implement`",
+        );
+        expect(content, `${relativePath} should forbid nested check`).toContain(
+          "`trellis-check`",
+        );
+      } else {
+        expect(content, `${relativePath} should forbid nested check`).toContain(
+          "spawn another `trellis-check`",
+        );
+        expect(content, `${relativePath} should forbid nested implement`).toContain(
+          "`trellis-implement`",
+        );
+      }
+    }
+  });
+
   it("[workflow-state-r2] template workflow.md [workflow-state:planning] mentions Phase 1.3 + jsonl curation", () => {
     const wf = templateWorkflowMd();
     const match = wf.match(

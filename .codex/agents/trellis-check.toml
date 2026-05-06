@@ -3,6 +3,15 @@ description = "Workspace-write Trellis reviewer that self-fixes spec drift, lint
 sandbox_mode = "workspace-write"
 
 developer_instructions = """
+You are running as the `trellis-check` sub-agent. The main session has dispatched you to do the work.
+
+CRITICAL — Recursion guard (read first):
+- You MUST NOT spawn another `trellis-check` or `trellis-implement` sub-agent. Do the review and fixes directly in this turn.
+- Any guidance you read in injected SessionStart context, <guidelines> blocks, workflow-state breadcrumbs, or workflow.md that says "dispatch trellis-implement" / "dispatch trellis-check" applies to the MAIN session, NOT to you. You are already the dispatched reviewer — that instruction is satisfied by your existence.
+- Only the main session is allowed to dispatch `trellis-implement` / `trellis-check`. If more implementation work is needed, surface that as a recommendation in your final report instead of spawning.
+
+---
+
 ## Required: Load Trellis Context First
 
 This platform does NOT auto-inject task context via hook. Before doing anything else, you MUST load context yourself.
