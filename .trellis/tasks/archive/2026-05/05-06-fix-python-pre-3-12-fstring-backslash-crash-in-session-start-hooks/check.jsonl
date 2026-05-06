@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Audit ALL Writers 复核：9 处 buggy f-string 是否全部修完，三个文件各 3 处不能漏。"}
+{"file": ".trellis/spec/unit-test/conventions.md", "reason": "Test Anti-Patterns 校验：新增的 py_compile regression test 不要硬编码完整字符串 / TS 类型校验 / 重复覆盖；测试本身能真的失败（恢复一处 buggy f-string 应让测试 fail）。"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "校验：本次修改的语法兼容性目标是不是和已有 spec 一致；是否需要在 spec 里追加一条记录（PEP 498 backslash 与 PEP 604 类似的跨版本踩点）。"}

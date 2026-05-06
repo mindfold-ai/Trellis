@@ -1,0 +1,9 @@
+{
+  "version": "0.5.2",
+  "description": "Hotfix Python <=3.11 SyntaxError in SessionStart hook (f-string backslash).",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(hooks): SessionStart hook crashes at parse time on Python <=3.11. The Windows path normalizer added in 0.5.0-rc.6 used `f\"{drive}:\\\\{rest.replace('/', '\\\\')}\"`; PEP 498 forbids backslashes inside f-string expression parts, so Python <=3.11 raises `SyntaxError: f-string expression part cannot include a backslash` and the hook exits with code 1 before doing anything. PEP 701 in Python 3.12 lifted the restriction, hiding the bug from 3.12+ users. Codex CLI 0.128 + Trellis 0.5.0 reproduced it in the field. Fixed by lifting the `.replace(...)` out of each f-string expression into a local variable. 9 occurrences across `codex/hooks/session-start.py`, `copilot/hooks/session-start.py`, and `shared-hooks/session-start.py` (Claude Code / Cursor / Gemini CLI / Qoder / CodeBuddy / Factory Droid / Kiro).",
+  "migrations": [],
+  "notes": "Hotfix on top of 0.5.1. Run `trellis update` (no `--migrate` needed). Affects every Python <=3.11 user on a hook-capable platform; Python 3.12+ users were unaffected."
+}

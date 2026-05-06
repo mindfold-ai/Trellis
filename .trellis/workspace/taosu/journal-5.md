@@ -332,3 +332,40 @@ Two independent sub-agent template bugs fixed. (1) Codex multi_agent_v2: Session
 ### Next Steps
 
 - None - task complete
+
+
+## Session 146: Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks
+
+**Date**: 2026-05-06
+**Task**: Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks
+**Branch**: `main`
+
+### Summary
+
+Hotfix on top of 0.5.1. Trellis 0.5.0-rc.6 added a Windows MSYS/Cygwin/WSL path normalizer using f-string with .replace('/', '\\') inside the expression part. PEP 498 (Python <=3.11) forbids backslashes in f-string expression parts; the file failed to parse, the hook exited code 1 before running, and the user saw 'SessionStart hook (failed) — exited with code 1'. Codex CLI 0.128 + Trellis 0.5.0 reproduced in the field. PEP 701 (Python 3.12) lifted the restriction, hiding the bug from 3.12+ developers. Fix: lifted the .replace(...) call out of each f-string expression into a local variable across 9 occurrences in codex/hooks/session-start.py, copilot/hooks/session-start.py, and shared-hooks/session-start.py (Claude Code / Cursor / Gemini CLI / Qoder / CodeBuddy / Factory Droid / Kiro). Regression coverage in test/regression.test.ts: regex scan asserts no f-string contains a backslash inside any {...} expression, plus a best-effort python3 ast.parse check. 875/875 vitest green, lint clean. Released via main → tag v0.5.2 → GitHub Actions Publish to npm workflow (completed/success, 38s); npm @mindfoldhq/trellis@latest now resolves to 0.5.2.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3f1711b` | (see git log) |
+| `263c8c6` | (see git log) |
+| `601f213` | (see git log) |
+| `2468cb2` | (see git log) |
+| `5ad1e21` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

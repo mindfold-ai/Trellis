@@ -12,7 +12,7 @@
  * 5. Platform Registry (beta.9, beta.13, beta.16)
  */
 
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -4539,4 +4539,63 @@ describe("regression: Gemini CLI 0.40.x template compatibility (#224)", () => {
       /startsWith\(["']\.agents\/skills\/["']\)/,
     );
   });
+});
+
+describe("regression: session-start.py f-string Python <=3.11 compat (0.5.2)", () => {
+  // PEP 498 (Python <=3.11) forbids backslashes inside the *expression* part
+  // of an f-string. Trellis 0.5.0/0.5.1 shipped session-start hooks with
+  //   `f"{drive}:\\{rest.replace('/', '\\')}"`
+  // which crashes on parse with `SyntaxError: f-string expression part cannot
+  // include a backslash`. PEP 701 (Python 3.12+) lifted this restriction, so
+  // the bug only manifests for users on the macOS system Python 3.9 / older
+  // Linux distros. The fix moves the `.replace(...)` call to a separate
+  // statement before the f-string interpolation.
+  //
+  // This regression scans the source files (no Python runtime needed) and
+  // asserts no f-string contains a backslash inside its `{...}` expression.
+  const __dirname2 = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(__dirname2, "../../..");
+  const HOOK_FILES = [
+    "packages/cli/src/templates/codex/hooks/session-start.py",
+    "packages/cli/src/templates/copilot/hooks/session-start.py",
+    "packages/cli/src/templates/shared-hooks/session-start.py",
+  ];
+  // Match an f-string (f"..." or f'...') whose `{...}` body contains a `\`.
+  // Backslash inside expression part is illegal under PEP 498.
+  const F_STRING_BACKSLASH = /f(?:"[^"\n]*\{[^}\n]*\\[^}\n]*\}[^"\n]*"|'[^'\n]*\{[^}\n]*\\[^}\n]*\}[^'\n]*')/;
+
+  for (const rel of HOOK_FILES) {
+    it(`${rel} has no backslash inside any f-string expression part`, () => {
+      const content = fs.readFileSync(path.join(repoRoot, rel), "utf-8");
+      const m = content.match(F_STRING_BACKSLASH);
+      expect(
+        m,
+        `Found f-string with backslash in expression part — Python <=3.11 will fail to parse this file:\n  ${m?.[0] ?? ""}`,
+      ).toBeNull();
+    });
+
+    it(`${rel} parses cleanly with python3 -m py_compile`, () => {
+      // Belt-and-braces: ask the host Python to parse the file. On Python
+      // 3.12+ this won't catch the regression (PEP 701 allows it), so the
+      // regex test above is the primary gate. On macOS system Python 3.9 or
+      // any CI runner with python3 < 3.12 this is a hard catch.
+      const r = spawnSync(
+        "python3",
+        [
+          "-c",
+          `import ast,sys; ast.parse(open(sys.argv[1], encoding='utf-8').read()); print('OK')`,
+          path.join(repoRoot, rel),
+        ],
+        { encoding: "utf-8" },
+      );
+      // If python3 is unavailable on the runner, skip silently — the regex
+      // assertion above already covers the regression deterministically.
+      if (r.error && (r.error as NodeJS.ErrnoException).code === "ENOENT") return;
+      expect(
+        r.status,
+        `python3 ast.parse failed for ${rel}:\n${r.stderr ?? ""}`,
+      ).toBe(0);
+      expect(r.stdout ?? "").toContain("OK");
+    });
+  }
 });
