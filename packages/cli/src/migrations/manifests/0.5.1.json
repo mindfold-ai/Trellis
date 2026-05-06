@@ -1,0 +1,9 @@
+{
+  "version": "0.5.1",
+  "description": "Fix Codex sub-agent recursion via SessionStart injection (#234) and Cursor agent description rendering.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(codex): dispatch line in `SessionStart` reaches sub-agents under `multi_agent_v2`. `codex/hooks/session-start.py` injected a 'main session should dispatch trellis-implement' line at READY state; Codex runs `SessionStart` for every spawned session, so the line reached the freshly spawned `trellis-implement` sub-agent and it dispatched another `trellis-implement`. Outer sub-agent stayed `running`, `wait_agent` timed out. `SessionStart` stdin has no agent-identity field (`openai/codex#16226`), so patched at the prompt layer: `codex/agents/trellis-implement.toml` and `trellis-check.toml` open with a no-recursive-dispatch line; `codex/hooks/session-start.py` appends a sub-agent ignore-this clause after the dispatch wording in the READY-state block and the `<guidelines>` block. Resolves #234.\n- fix(shared-hooks): same exemption clause added to `shared-hooks/session-start.py` (Claude Code / Cursor / Gemini CLI / Qoder / CodeBuddy / Factory Droid / Kiro). Recursion not reported on those platforms; trigger condition is identical to Codex.\n- fix(cursor): `cursor/agents/trellis-{research,implement,check}.md` frontmatter `description` switched from YAML block scalar to single-line literal. Cursor's agent parser only reads single-line `description:`; block scalars left the UI Description field blank.",
+  "migrations": [],
+  "notes": "Hotfix on top of 0.5.0. Run `trellis update` (no `--migrate` needed)."
+}
