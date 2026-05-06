@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python 脚本规范。本任务改 3 个 session-start.py，需要遵守现有约定。spec 第 560 行明确记载了之前 PEP 604 那次 enterprise-fork 事故，本次 PEP 498 / 701 跨版本兼容是同类问题，PRD 决策依据。"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Audit ALL Writers 模式 —— 同款 buggy f-string 在 codex / copilot / shared-hooks 三个文件中各 3 处共 9 处，必须一次性全改完，避免漂移。"}
+{"file": ".trellis/spec/unit-test/conventions.md", "reason": "新增 regression test：用 py_compile 在低版本 Python 语法下编译三个 session-start.py，断言不抛 SyntaxError。避免硬编码字符串 / TS 类型校验 / regression.test.ts 重复覆盖等反模式。"}
