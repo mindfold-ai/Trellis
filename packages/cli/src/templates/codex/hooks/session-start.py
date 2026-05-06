@@ -18,6 +18,52 @@ import warnings
 from io import StringIO
 from pathlib import Path
 
+
+def _normalize_windows_shell_path(path_str: str) -> str:
+    """Normalize Unix-style shell paths to real Windows paths.
+
+    On Windows, shells like Git Bash / MSYS2 / Cygwin may report paths like
+    `/d/Users/...` or `/cygdrive/d/Users/...`. `Path.resolve()` will misinterpret
+    these as `D:/d/Users...` on drive D: (or similar), breaking repo root
+    detection.
+
+    This function is intentionally conservative: it only rewrites patterns that
+    unambiguously represent a drive letter mount.
+    """
+    if not isinstance(path_str, str) or not path_str:
+        return path_str
+
+    # Only relevant on Windows; keep other platforms untouched.
+    if not sys.platform.startswith("win"):
+        return path_str
+
+    p = path_str.strip()
+
+    # Already a Windows drive path (C:\... or C:/...)
+    if re.match(r"^[A-Za-z]:[\/]", p):
+        return p
+
+    # MSYS/Git-Bash style: /c/Users/... or /d/Work/...
+    m = re.match(r"^/([A-Za-z])/(.*)", p)
+    if m:
+        drive, rest = m.group(1).upper(), m.group(2)
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+
+    # Cygwin style: /cygdrive/c/Users/...
+    m = re.match(r"^/cygdrive/([A-Za-z])/(.*)", p)
+    if m:
+        drive, rest = m.group(1).upper(), m.group(2)
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+
+    # WSL mounted drive (sometimes leaked into env): /mnt/c/Users/...
+    m = re.match(r"^/mnt/([A-Za-z])/(.*)", p)
+    if m:
+        drive, rest = m.group(1).upper(), m.group(2)
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+
+    return path_str
+
+
 warnings.filterwarnings("ignore")
 
 FIRST_REPLY_NOTICE = """<first-reply-notice>
@@ -271,7 +317,7 @@ def main() -> None:
         hook_input = json.loads(sys.stdin.read())
         if not isinstance(hook_input, dict):
             hook_input = {}
-        project_dir = Path(hook_input.get("cwd", ".")).resolve()
+        project_dir = Path(_normalize_windows_shell_path(hook_input.get("cwd", "."))).resolve()
     except (json.JSONDecodeError, KeyError):
         hook_input = {}
         project_dir = Path(".").resolve()
