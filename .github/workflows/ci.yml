@@ -24,7 +24,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
+          registry-url: 'http://10.22.31.15:4873/'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -35,7 +36,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm --filter @mindfoldhq/trellis build
+        run: pnpm --filter @r2/trellis build
 
       - name: Verify build output
         run: |

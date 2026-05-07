@@ -5,7 +5,7 @@ on:
     types: [published]
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
   publish:
@@ -21,8 +21,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          node-version: '20'
+          registry-url: 'http://10.22.31.15:4873/'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm --filter @mindfoldhq/trellis build
+        run: pnpm --filter @r2/trellis build
 
       - name: Determine npm tag
         id: npm-tag
@@ -50,8 +50,13 @@ jobs:
           fi
           echo "Publishing version $VERSION with tag: $(cat $GITHUB_OUTPUT | grep tag | cut -d= -f2)"
 
+      - name: Configure npm for @r2 scope
+        run: |
+          echo "@r2:registry=http://10.22.31.15:4873/" >> .npmrc
+          echo "registry=http://10.22.31.15:4873/" >> .npmrc
+
       - name: Publish to npm
-        run: pnpm publish --access public --no-git-checks --tag ${{ steps.npm-tag.outputs.tag }}
+        run: pnpm publish --no-git-checks --tag ${{ steps.npm-tag.outputs.tag }}
         working-directory: packages/cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
