@@ -227,6 +227,7 @@ export function scrubOpencodePackageJson(content: string): ScrubResult {
 const PI_TRELLIS_EXTENSION = "./extensions/trellis/index.ts";
 const PI_TRELLIS_SKILLS = "./skills";
 const PI_TRELLIS_PROMPTS = "./prompts";
+const PI_SUBAGENTS_PACKAGE = "npm:pi-subagents";
 
 function isTrellisPiEntry(value: unknown, target: string): boolean {
   return typeof value === "string" && value === target;
@@ -236,6 +237,7 @@ function isTrellisPiEntry(value: unknown, target: string): boolean {
  * Scrub `.pi/settings.json`:
  * - drop `enableSkillCommands` (trellis-flagged)
  * - remove trellis entries from `extensions`/`skills`/`prompts` arrays
+ * - remove trellis-managed `packages["npm:pi-subagents"]` isolation override
  * - drop arrays that become empty
  */
 export function scrubPiSettings(content: string): ScrubResult {
@@ -269,6 +271,23 @@ export function scrubPiSettings(content: string): ScrubResult {
       delete root[key];
     } else {
       root[key] = filtered;
+    }
+  }
+
+  const packagesValue = root.packages;
+  if (
+    packagesValue !== null &&
+    typeof packagesValue === "object" &&
+    !Array.isArray(packagesValue)
+  ) {
+    const packagesObj = packagesValue as Record<string, unknown>;
+    if (PI_SUBAGENTS_PACKAGE in packagesObj) {
+      delete packagesObj[PI_SUBAGENTS_PACKAGE];
+    }
+    if (Object.keys(packagesObj).length === 0) {
+      delete root.packages;
+    } else {
+      root.packages = packagesObj;
     }
   }
 

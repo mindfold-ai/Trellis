@@ -337,6 +337,15 @@ describe("scrubPiSettings", () => {
       extensions: ["./extensions/trellis/index.ts"],
       skills: ["./skills"],
       prompts: ["./prompts"],
+      packages: {
+        "npm:pi-subagents": {
+          agents: [],
+          commands: [],
+          skills: [],
+          prompts: [],
+          extensions: [],
+        },
+      },
     };
     const { content, fullyEmpty } = scrubPiSettings(
       JSON.stringify(input, null, 2),
@@ -351,6 +360,18 @@ describe("scrubPiSettings", () => {
       extensions: ["./extensions/trellis/index.ts", "./extensions/my-ext"],
       skills: ["./skills", "./other-skills"],
       prompts: ["./prompts"],
+      packages: {
+        "npm:pi-subagents": {
+          agents: [],
+          commands: [],
+          skills: [],
+          prompts: [],
+          extensions: [],
+        },
+        "npm:user-package": {
+          skills: ["./pkg-skills"],
+        },
+      },
       otherField: "user-value",
     };
     const { content, fullyEmpty } = scrubPiSettings(
@@ -361,6 +382,11 @@ describe("scrubPiSettings", () => {
     expect(parsed.extensions).toEqual(["./extensions/my-ext"]);
     expect(parsed.skills).toEqual(["./other-skills"]);
     expect(parsed.prompts).toBeUndefined();
+    expect(parsed.packages).toEqual({
+      "npm:user-package": {
+        skills: ["./pkg-skills"],
+      },
+    });
     expect(parsed.otherField).toBe("user-value");
     expect(fullyEmpty).toBe(false);
   });

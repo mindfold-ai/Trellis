@@ -8,5 +8,14 @@
   ],
   "prompts": [
     "./prompts"
-  ]
+  ],
+  "packages": {
+    "npm:pi-subagents": {
+      "agents": [],
+      "commands": [],
+      "skills": [],
+      "prompts": [],
+      "extensions": []
+    }
+  }
 }

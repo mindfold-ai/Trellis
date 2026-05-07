@@ -787,7 +787,8 @@ describe("configurePlatform", () => {
       path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
       "utf-8",
     );
-    expect(extension).toContain('registerTool?.({\n    name: "subagent"');
+    expect(extension).toContain('registerTool?.({');
+    expect(extension).toContain('name: "subagent"');
     expect(extension).toContain('pi.on?.("session_start"');
     expect(extension).toContain('pi.on?.("tool_call"');
     expect(extension).toContain("function injectTrellisContextIntoBash");
@@ -821,8 +822,27 @@ describe("configurePlatform", () => {
 
     const settings = JSON.parse(
       fs.readFileSync(path.join(tmpDir, ".pi", "settings.json"), "utf-8"),
-    ) as { skills?: string[] };
+    ) as {
+      skills?: string[];
+      packages?: Record<
+        string,
+        {
+          agents?: unknown[];
+          commands?: unknown[];
+          skills?: unknown[];
+          prompts?: unknown[];
+          extensions?: unknown[];
+        }
+      >;
+    };
     expect(settings.skills).toEqual(["./skills"]);
+    expect(settings.packages?.["npm:pi-subagents"]).toEqual({
+      agents: [],
+      commands: [],
+      skills: [],
+      prompts: [],
+      extensions: [],
+    });
   });
 
   it("configurePlatform('pi') writes tracked templates exactly", async () => {
