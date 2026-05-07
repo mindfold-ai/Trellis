@@ -9,7 +9,8 @@
     "release": "pnpm --filter @mindfoldhq/trellis release",
     "release:minor": "pnpm --filter @mindfoldhq/trellis release:minor",
     "release:beta": "pnpm --filter @mindfoldhq/trellis release:beta",
-    "release:rc": "pnpm --filter @mindfoldhq/trellis release:rc"
+    "release:rc": "pnpm --filter @mindfoldhq/trellis release:rc",
+    "update-submodule": "git submodule update --remote"
   },
   "devDependencies": {
     "husky": "^9.1.7",

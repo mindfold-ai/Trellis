@@ -4,3 +4,6 @@
 [submodule "marketplace"]
 	path = marketplace
 	url = https://github.com/mindfold-ai/marketplace.git
+[submodule "packages/cli/src/templates/external-skills"]
+	path = packages/cli/src/templates/external-skills
+	url = https://github.com/R2-ai-inc/agent-skills.git

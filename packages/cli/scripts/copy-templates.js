@@ -72,4 +72,16 @@ console.log("Copied src/templates/ to dist/templates/");
 copyDir("src/migrations/manifests", "dist/migrations/manifests");
 console.log("Copied src/migrations/manifests/ to dist/migrations/manifests/");
 
+// Copy external skills if submodule exists
+const externalSkillsPath = "src/templates/external-skills";
+if (readdirSync("src/templates").includes("external-skills")) {
+  copyDir(
+    `${externalSkillsPath}/backend-skills`,
+    "dist/templates/common/external-skills",
+  );
+  console.log(
+    "Copied external-skills/backend-skills/ to dist/templates/common/external-skills/",
+  );
+}
+
 console.log("Template copy complete.");

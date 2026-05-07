@@ -204,6 +204,33 @@ const SKILL_DESCRIPTIONS: Record<string, string> = {
     "Deep bug analysis to break the fix-forget-repeat cycle. Analyzes root cause category, why fixes failed, prevention mechanisms, and captures knowledge into specs. Use after fixing a bug to prevent the same class of bugs.",
   "update-spec":
     "Captures executable contracts and coding conventions into .trellis/spec/ documents. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions.",
+  // External skills from agent-skills repository
+  "apifox-interface-uploader":
+    "Use Apifox HTTP MCP plus Spring code inspection to upload and maintain real API contracts for Java backends in Apifox. Trigger when Codex needs to create or upload interfaces in Apifox, sync existing Apifox API docs from Spring controllers, infer true request and response models from code, account for global advice or unified response wrappers, resolve controller methods that return Object, or add comments for every endpoint, object, and field.",
+  "code-review-skill":
+    "审查 Java 与 Spring 后端代码、代码差异或仓库，并输出代码评审结果、独立的安全评审报告以及可交付的 Excel 工作簿。适用于检查 controller、service、DAO、MyBatis、Shiro、文件上传、压缩包解析、认证鉴权、回归风险、测试覆盖率、编码一致性以及后端安全问题；当需要把 review 问题和安全审计结果沉淀为 .xlsx 报告时也使用本技能。",
+  "company-branch-governance":
+    "这是公司项目研发的前置分支治理 skill。凡是涉及项目所需的前端或后端代码开发、需求实现、缺陷修复、联调改造、提测准备、UAT 流转或上线发布判断，都必须先阅读并遵循本 skill，先完成分支流程推断以及本地 Git 分支检查、创建或切换，再进入后续开发与提交流程。适用于普通需求开发、普通 bug 修复、线上或 UAT 紧急修复、hotfix 提测、版本提测到 UAT、以及 UAT 通过后的发布流转判断。",
+  "design-api":
+    "用于 Java/Spring 后端项目的 API 设计、重构与评审。适用于定义或审查接口路径、controller 边界、请求与响应 VO、参数校验、异常处理、上传下载流程、异步任务 API 和命名规范，尤其适合数据审阅、数据整合、数据上传类服务。",
+  "ds-java-dev-spec":
+    "通用 Java 后端开发规范。只要编写或修改 Java 代码（Controller、Service、DAO/Mapper、Entity、VO/DTO/BO、Config、Filter、AOP、Enum、校验、异常、日志、数据库访问等）就必须使用本技能。",
+  "ds-web-dev-spec":
+    "React 前端项目开发规范指南。在 React + TypeScript 项目中新增页面、组件、接口调用、状态管理、样式编写时触发。涵盖技术栈（React 18、Rsbuild、Ant Design 5、react-router-dom@6、zustand/mobx、axios）、代码规范（ESLint/Prettier、TypeScript strict）、国际化（i18next）、UI/交互约定、API 接口管理、路由配置、埋点跟踪、代码风格、Hooks 使用规范（ahooks 优先）、React 最佳实践。确保产出符合项目规范、别名、i18n、Lint/Prettier 要求。",
+  "figma-implement-design":
+    "Translate Figma nodes into production-ready code with 1:1 visual fidelity using the Figma MCP workflow (design context, screenshots, assets, and project-convention translation). Trigger when the user provides Figma URLs or node IDs, or asks to implement designs or components that must match Figma specs. Requires a working Figma MCP server connection.",
+  "gitlab-flow-mcp":
+    "Use the bundled gitlab-flow CLI and GitLab MCP tools to initialize local Git/GitLab HTTPS credentials, verify repository readiness, create merge requests, inspect pipelines, comment on MRs/issues, and merge code through GitLab so every merge has an auditable GitLab record. Trigger when the user asks to configure GitLab credentials, check whether Git push is possible, push local commits for review, create or merge GitLab MRs, or route code integration through GitLab instead of direct local merging.",
+  "prd-readiness-checker":
+    "Analyze PRD documents to verify they meet the requirements for entering the development phase. Use when you need to validate a PRD before starting implementation. Triggers on: check prd readiness, validate prd, prd quality check, is this prd ready for dev.",
+  "prd-solution-review":
+    "当需要基于 PRD 反向评审技术方案，检查需求覆盖率、一致性、遗漏项、风险项，或需要输出结构化覆盖矩阵与评审结论时使用。",
+  "react-dev":
+    "This skill should be used when building React components with TypeScript, typing hooks, handling events, or when React TypeScript, React 19, Server Components are mentioned. Covers type-safe patterns for React 18-19 including generic components, proper event typing, routing integration (TanStack Router, React Router), and useEffect best practices (when to use vs avoid Effects).",
+  "teambition-task-mcp":
+    "Use the bundled tb-task Teambition CLI for Teambition or TB task work, especially when the user mentions a task short ID such as CD-1451, PROJ-42, or a similar short identifier with letters, a hyphen, and digits, or asks to inspect, search, update, close, reopen, comment on, or change the status, title, note, or due date of a Teambition task. This skill is the default path for low-context Teambition task operations including task detail lookup, status listing, status updates, title updates, note updates, due date updates, whoami, and searching a user's tasks without loading the full Teambition MCP tool schema. The skill includes prebuilt cross-platform binaries and launchers, so prefer the bundled launcher scripts instead of rebuilding unless the binaries are missing or stale.",
+  "tech-solution-generator":
+    '基于需求文档（PRD、需求说明、用户故事、原型说明、会议纪要）与项目上下文，生成可进入技术评审的标准化技术方案交付包。适用于输出 技术方案总文档.md、接口明细文档.md、数据库DDL.sql、模块功能点与工时评估.md，并基于工时文档继续派生 工时评估任务导入.xlsx，用于后续对接 Teambition MCP 自动创建任务。覆盖 0-1 项目、单项目迭代、以及"上游系统基础上新增下游系统"的多模块扩展场景。用户提及技术方案、详细设计、接口明细、DDL、模块拆分、工时评估、工时 Excel、任务导入表、Teambition 任务拆分、方案评审前文档时使用。',
 };
 
 /**

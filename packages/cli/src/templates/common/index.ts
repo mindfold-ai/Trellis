@@ -119,6 +119,29 @@ function listBundledSkillFiles(skillDir: string): CommonBundledSkillFile[] {
   return files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }
 
+function listExternalSkillFiles(skillDir: string): CommonBundledSkillFile[] {
+  const root = join(__dirname, "external-skills", skillDir);
+  const files: CommonBundledSkillFile[] = [];
+
+  function walk(dir: string): void {
+    for (const entry of readdirSync(dir)) {
+      const fullPath = join(dir, entry);
+      const stat = statSync(fullPath);
+      if (stat.isDirectory()) {
+        walk(fullPath);
+      } else {
+        files.push({
+          relativePath: toPosixRelativePath(root, fullPath),
+          content: readFileSync(fullPath, "utf-8"),
+        });
+      }
+    }
+  }
+
+  walk(root);
+  return files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+}
+
 /**
  * Get all multi-file built-in skills.
  *
@@ -126,9 +149,16 @@ function listBundledSkillFiles(skillDir: string): CommonBundledSkillFile[] {
  * lazy-loadable instead of being flattened into one oversized SKILL.md.
  */
 export function getBundledSkillTemplates(): CommonBundledSkill[] {
-  cachedBundledSkills ??= listDirectories("bundled-skills").map((name) => ({
-    name,
-    files: listBundledSkillFiles(name),
-  }));
+  cachedBundledSkills ??= [
+    ...listDirectories("bundled-skills").map((name) => ({
+      name,
+      files: listBundledSkillFiles(name),
+    })),
+    // Add external skills if the submodule exists
+    ...listDirectories("external-skills").map((name) => ({
+      name,
+      files: listExternalSkillFiles(name),
+    })),
+  ];
   return cachedBundledSkills;
 }
