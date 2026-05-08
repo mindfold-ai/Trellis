@@ -414,4 +414,27 @@ key = 1
     expect(content).not.toContain("project_doc_fallback_filenames");
     expect(content).toContain("[user_section]");
   });
+
+  it("strips the new `hooks = true` marker line (Codex 0.129+) alongside the legacy `codex_hooks` line", () => {
+    const newTemplate = `# Project-scoped Codex defaults for Trellis workflows.
+# Codex loads this after ~/.codex/config.toml when you work in this project.
+
+# Keep AGENTS.md as the primary project instruction file.
+project_doc_fallback_filenames = ["AGENTS.md"]
+
+# NOTE: Trellis's SessionStart + UserPromptSubmit hooks require opt-in.
+# Add the following to your USER-level config at ~/.codex/config.toml
+# (not this project file — features.* must be enabled globally):
+#
+#   [features]
+#   hooks = true
+#   codex_hooks = true
+#
+# Without this flag, hooks.json is ignored and Trellis context won't
+# be injected into Codex sessions.
+`;
+    const { content, fullyEmpty } = scrubCodexConfigToml(newTemplate);
+    expect(fullyEmpty).toBe(true);
+    expect(content.trim()).toBe("");
+  });
 });

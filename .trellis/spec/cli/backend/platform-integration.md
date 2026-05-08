@@ -126,7 +126,7 @@ When adding a new platform `{platform}`, update the following:
 > **Key rules:**
 > - Shared skills in `.agents/skills/` must NOT contain platform-specific references (no `--platform codex`, no `codex exec`)
 > - Agent TOML format: `name` + `description` + `developer_instructions` + optional `sandbox_mode` (NOT `[sandbox_read_only]` + `prompt`)
-> - Codex hooks require `features.codex_hooks = true` in user config (experimental as of v0.116.0)
+> - Codex hooks require `features.hooks = true` in user config (Codex 0.129+; older versions accept legacy `codex_hooks = true`); 0.129+ also gates per-hook activation behind a one-time `/hooks` TUI review
 > - Platform detection uses `.codex/` only — `.agents/skills/` alone does NOT trigger codex detection
 > - `configDir` is `".codex"`, with `supportsAgentSkills: true` to auto-include `.agents/skills` in managed paths
 
@@ -1062,7 +1062,7 @@ conversation:
 | Implementation | Include notice? | Reason |
 |---|---:|---|
 | `shared-hooks/session-start.py` | ✅ | Claude/Cursor/Gemini/Qoder/CodeBuddy/Droid-style shared hook context |
-| `codex/hooks/session-start.py` | ✅ | Codex accepts SessionStart stdout / `additionalContext` when `features.codex_hooks = true` |
+| `codex/hooks/session-start.py` | ✅ | Codex accepts SessionStart stdout / `additionalContext` when `features.hooks = true` (legacy: `codex_hooks = true`) |
 | `opencode/plugins/session-start.js` | ✅ | Plugin prepends Trellis context into the first user message and persists it |
 | `copilot/hooks/session-start.py` | ❌ | Copilot docs say `sessionStart` output is ignored; do not claim model-visible injection |
 
@@ -1183,7 +1183,7 @@ The same rule applies to every other hook that's positioned as "repeated reminde
 | Droid (Factory) | `UserPromptSubmit` | `.factory/settings.json` | Auto |
 | Gemini CLI | `UserPromptSubmit` | `.gemini/settings.json` | Auto |
 | Copilot CLI | `userPromptSubmitted` (camelCase) | `.github/copilot/hooks.json` | `bash` + `powershell` dual field |
-| Codex | `UserPromptSubmit` | `.codex/hooks.json` | **Requires `features.codex_hooks = true` in user's `~/.codex/config.toml`** — without this flag, hooks never fire |
+| Codex | `UserPromptSubmit` | `.codex/hooks.json` | **Requires `features.hooks = true` in user's `~/.codex/config.toml` (Codex 0.129+; legacy: `codex_hooks = true`).** Codex 0.129+ also requires running `/hooks` once to approve the installed hook before it activates — until approved, hooks never fire (the trellis-bootstrap fallback in inject-workflow-state.py covers the gap by directing the AI to read `trellis-start` skill manually) |
 | OpenCode | `chat.message` (Bun plugin) | `plugins/inject-workflow-state.js` | Equivalent JS implementation |
 | Kiro | ⚠️ Not supported | n/a | Kiro's only hook is `agentSpawn` (sub-agent lifecycle). No per-turn main-conversation hook exists; awaiting upstream. Sub-agent context injection still works via shared-hooks `inject-subagent-context.py` |
 

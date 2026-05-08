@@ -110,15 +110,22 @@ export async function configureCodex(cwd: string): Promise<void> {
     resolvePlaceholders(getHooksConfig()),
   );
 
-  // NOTE: Codex hooks require `features.codex_hooks = true` in the user's
-  // ~/.codex/config.toml. Without this flag the hooks.json is ignored and
-  // inject-workflow-state.py will never fire. This prerequisite is documented
-  // in spec/cli/backend/platform-integration.md.
+  // NOTE: Codex hooks require `features.hooks = true` in the user's
+  // ~/.codex/config.toml (Codex 0.129+). The legacy `features.codex_hooks = true`
+  // still works on 0.129+ but emits a deprecation warning; pre-0.129 only
+  // accepts `codex_hooks`. Without this flag the hooks.json is ignored and
+  // inject-workflow-state.py will never fire. Codex 0.129+ also gates each
+  // installed hook behind a one-time `/hooks` review — until the user approves
+  // it the workflow breadcrumb won't auto-inject (the trellis-bootstrap
+  // fallback in inject-workflow-state.py covers this case). Documented in
+  // spec/cli/backend/platform-integration.md.
   if (!process.env.VITEST && !process.env.TRELLIS_QUIET) {
     process.stderr.write(
-      "⚠️  Codex hooks require `features.codex_hooks = true` in your " +
-        "~/.codex/config.toml. Without it the Trellis workflow breadcrumb " +
-        "won't fire. See Trellis docs for details.\n",
+      "⚠️  Codex hooks require `features.hooks = true` in your " +
+        "~/.codex/config.toml (Codex 0.129+; older versions: `codex_hooks = true`). " +
+        "On Codex 0.129+ also run `/hooks` once to approve the Trellis " +
+        "UserPromptSubmit hook. Without these the Trellis workflow breadcrumb " +
+        "won't auto-inject. See Trellis docs for details.\n",
     );
   }
 

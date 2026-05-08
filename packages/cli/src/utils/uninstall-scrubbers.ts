@@ -308,6 +308,7 @@ export function scrubCodexConfigToml(content: string): ScrubResult {
     "Add the following to your USER-level config at ~/.codex/config.toml",
     "(not this project file — features.* must be enabled globally):",
     "[features]",
+    "hooks = true",
     "codex_hooks = true",
     "Without this flag, hooks.json is ignored and Trellis context won't",
     "be injected into Codex sessions.",
