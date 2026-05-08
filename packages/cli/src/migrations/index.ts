@@ -9,7 +9,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { MigrationItem, MigrationManifest } from "../types/migration.js";
+import type {
+  ConfigSectionAdded,
+  MigrationItem,
+  MigrationManifest,
+} from "../types/migration.js";
 import { compareVersions } from "../utils/compare-versions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -148,6 +152,35 @@ export function getAllMigrations(): MigrationItem[] {
  */
 export function clearManifestCache(): void {
   manifestCache = null;
+}
+
+/**
+ * Collect every `configSectionsAdded` entry from manifests strictly between
+ * `fromVersion` (exclusive) and `toVersion` (inclusive). Used by `update.ts`
+ * to apply additive config.yaml sections that were introduced after the
+ * user's installed version.
+ */
+export function getConfigSectionsAddedBetween(
+  fromVersion: string,
+  toVersion: string,
+): ConfigSectionAdded[] {
+  const manifests = loadManifests();
+  const versions = Object.keys(manifests).sort(compareVersions);
+
+  const applicableVersions = versions.filter((v) => {
+    const afterFrom = compareVersions(v, fromVersion) > 0;
+    const atOrBeforeTo = compareVersions(v, toVersion) <= 0;
+    return afterFrom && atOrBeforeTo;
+  });
+
+  const collected: ConfigSectionAdded[] = [];
+  for (const version of applicableVersions) {
+    const manifest = manifests[version];
+    if (manifest && Array.isArray(manifest.configSectionsAdded)) {
+      collected.push(...manifest.configSectionsAdded);
+    }
+  }
+  return collected;
 }
 
 /**

@@ -144,6 +144,21 @@ def _platform_matches(platform: str, block_names: list[str]) -> bool:
     return False
 
 
+def resolve_effective_platform(platform: str, config: dict) -> str:
+    """Map platform name through codex inline-mode opt-in.
+
+    When ``codex.dispatch_mode`` is set to ``"inline"`` in .trellis/config.yaml
+    and the caller is running with ``--platform codex``, swap the name to
+    ``"kilo"`` so ``filter_platform`` surfaces the inline workflow content
+    that already lives in the ``[Kilo, Antigravity, Windsurf]`` blocks.
+    """
+    if platform == "codex":
+        codex_cfg = config.get("codex") if isinstance(config, dict) else None
+        if isinstance(codex_cfg, dict) and codex_cfg.get("dispatch_mode") == "inline":
+            return "kilo"
+    return platform
+
+
 def filter_platform(content: str, platform: str) -> str:
     """Keep lines outside any `[...]` block + lines inside blocks that include platform.
 

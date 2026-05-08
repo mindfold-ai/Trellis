@@ -132,6 +132,33 @@ src/migrations/
 | `conflict` | 新旧路径都存在 | 跳过并提示手动解决 |
 | `skip` | 旧路径不存在 / 路径受保护 | 无需操作 |
 
+## `configSectionsAdded`（追加式 config.yaml 节）
+
+可选 manifest 字段，声明本版本在 `.trellis/config.yaml` 引入的新顶层 section。`trellis update` 走完文件写入循环后会再扫一遍 `getConfigSectionsAddedBetween(fromVersion, toVersion)`，每条 entry 命中"目标文件存在 + sentinel 不在文件里"才会从打包模板里抽对应 section 追加到末尾。仅追加，幂等（重跑时 sentinel 已在）。
+
+```jsonc
+{
+  "version": "0.5.7",
+  "configSectionsAdded": [
+    {
+      "file": ".trellis/config.yaml",
+      "sentinel": "codex:",                                 // 用户文件里出现这个 substring（注释或活配）就视为已存在
+      "sectionHeading": "Codex (sub-agent dispatch behavior)" // 模板里 #--- 分隔块内 `# <heading>` 行匹配此值
+    }
+  ]
+}
+```
+
+**字段语义**：
+
+- `file` —— 目标文件相对仓库根的路径（当前只用过 `.trellis/config.yaml`，机制本身不限定）
+- `sentinel` —— 幂等 gate：用户文件包含此 substring（live 或注释）就跳过。挑稳定的 token，比如新引入的顶层 YAML key
+- `sectionHeading` —— 模板里 `#---` 分隔块内 `# <heading>` 那一行的内容，extractor 从此分隔块开始抽到下一个 `#---` 分隔块（或 EOF）
+
+**为什么不直接覆盖 config.yaml**：用户基本都改过 `session_commit_message` / `packages` 等字段，hash 不匹配，常规 file-write 流程会触发 `y/n/d` 询问 —— `y` 丢自定义，`n` 拿不到新 section。`configSectionsAdded` 走 sentinel-gated 追加路径，绕过这个二选一。
+
+**未来加新 section**：在对应版本 manifest 加一条 entry 即可，`update.ts` 不需要改。`packages/cli/src/templates/trellis/config.yaml` 模板里加对应 `#---` 分隔块和 section 内容，`trellis init` 走默认写入路径自然会拿到新 section。
+
 ## 受保护路径
 
 以下路径不会被任何迁移操作修改或删除（用户数据）：

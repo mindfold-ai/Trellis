@@ -27,10 +27,12 @@ from .packages_context import (
     get_context_packages_text,
     get_context_packages_json,
 )
+from .trellis_config import read_trellis_config
 from .workflow_phase import (
     filter_platform,
     get_phase_index,
     get_step,
+    resolve_effective_platform,
 )
 
 # Backward-compatible alias — external modules import this name
@@ -88,7 +90,10 @@ def main() -> None:
             else:
                 parser.exit(2, "Phase Index section not found in workflow.md\n")
         if args.platform:
-            content = filter_platform(content, args.platform)
+            effective = resolve_effective_platform(
+                args.platform, read_trellis_config()
+            )
+            content = filter_platform(content, effective)
         print(content, end="")
     else:
         if args.json:

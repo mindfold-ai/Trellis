@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/05-08-configurable-dispatch-mode-for-class-2-platforms-sub-agent-vs-inline/prd.md", "reason": "Design doc — Acceptance Criteria + Test Plan sections drive the check pass."}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Quality Check pointer for cli backend — leads to quality-guidelines and downstream specs."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Quality bar (lint / typecheck / tests / spec-sync) for cli backend changes."}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Verify the new `[workflow-state:STATUS-inline]` blocks honor the existing contract (parser tags, injection format)."}
+{"file": ".trellis/spec/cli/backend/migrations.md", "reason": "Verify the new manifest `configSectionsAdded` field follows manifest schema conventions and idempotency requirements."}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Index for unit-test specs — points at conventions / integration-patterns / mock-strategies."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test-file conventions and anti-patterns. New regression tests (breadcrumb mode, configSectionsAdded idempotency, section extractor) must follow these."}

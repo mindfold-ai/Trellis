@@ -29,6 +29,31 @@ export interface MigrationItem {
 }
 
 /**
+ * A new top-level config.yaml section introduced by this release.
+ *
+ * Used by `trellis update` to append the section to existing user config files
+ * that pre-date the release, without overwriting their other customizations.
+ * Append is gated on `sentinel`: if the user file already contains the sentinel
+ * substring (live or commented), the section is treated as already present.
+ */
+export interface ConfigSectionAdded {
+  /** Target file relative to project root (e.g. `.trellis/config.yaml`). */
+  file: string;
+  /**
+   * Substring whose presence in the user file means this section already
+   * exists. Pick something stable (e.g. the new top-level YAML key like
+   * `codex:`).
+   */
+  sentinel: string;
+  /**
+   * The section heading text that appears on the `# <heading>` line inside the
+   * `#---` separator block in the bundled template. The extractor takes lines
+   * from that separator block until the next `#---` separator (or EOF).
+   */
+  sectionHeading: string;
+}
+
+/**
  * Migration manifest for a specific version
  */
 export interface MigrationManifest {
@@ -48,6 +73,12 @@ export interface MigrationManifest {
   migrationGuide?: string;
   /** Instructions for AI assistants on how to help with migration */
   aiInstructions?: string;
+  /**
+   * New top-level config.yaml sections introduced by this release. Applied
+   * additively to existing user files via sentinel-gated append, keeping their
+   * customizations intact while still surfacing newly-introduced knobs.
+   */
+  configSectionsAdded?: ConfigSectionAdded[];
 }
 
 /**

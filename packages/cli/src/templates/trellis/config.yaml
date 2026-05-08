@@ -57,3 +57,14 @@ max_journal_lines: 2000
 
 # Default package used when --package is not specified.
 # default_package: frontend
+
+#-------------------------------------------------------------------------------
+# Codex (sub-agent dispatch behavior)
+#-------------------------------------------------------------------------------
+# Opt out of "main session must dispatch trellis-implement / trellis-check
+# sub-agents" and let the main agent edit code inline. Codex-only knob;
+# other platforms ignore it. Default ("sub-agent") preserves existing
+# behavior, so nothing changes unless you uncomment the block below.
+#
+# codex:
+#   dispatch_mode: sub-agent  # or "inline" to let the main agent edit code directly

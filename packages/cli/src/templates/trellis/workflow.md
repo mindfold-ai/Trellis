@@ -172,6 +172,19 @@ Then run `task.py start <task-dir>` to flip status to in_progress.
 Research output **must** land in `{task_dir}/research/*.md`, written by `trellis-research` sub-agents. The main agent should not inline WebFetch / WebSearch — the PRD only links to research files.
 [/workflow-state:planning]
 
+<!-- Per-turn breadcrumb: shown throughout Phase 1 when codex.dispatch_mode=inline.
+     Codex-only opt-in alternate to [workflow-state:planning]. The main agent
+     edits code directly in Phase 2, so Phase 1.3 jsonl curation is skipped —
+     the inline workflow loads `trellis-before-dev` instead of injecting JSONL
+     into a sub-agent. -->
+
+[workflow-state:planning-inline]
+Load the `trellis-brainstorm` skill and iterate on prd.md with the user.
+Phase 1.3 jsonl curation is **skipped** in inline dispatch mode — the main session loads `trellis-before-dev` directly in Phase 2 and reads spec context itself, so there is no sub-agent to inject jsonl into.
+Then run `task.py start <task-dir>` to flip status to in_progress.
+Research output **must** land in `{task_dir}/research/*.md`. In inline mode the main session may do research itself or dispatch `trellis-research` sub-agents.
+[/workflow-state:planning-inline]
+
 ### Phase 2: Execute
 - 2.1 Implement `[required · repeatable]`
 - 2.2 Quality check `[required · repeatable]`
@@ -190,6 +203,17 @@ Research output **must** land in `{task_dir}/research/*.md`, written by `trellis
 **Sub-agent dispatch protocol (all platforms, all sub-agents EXCEPT trellis-research)**: When you spawn `trellis-implement` / `trellis-check`, your dispatch prompt **MUST** start with one line: `Active task: <task path from \`task.py current\`>`. No exceptions. On class-2 platforms (codex / copilot / gemini / qoder) the sub-agent depends on this line because there is no hook to inject task context. On class-1 platforms (claude / cursor / opencode / kiro / codebuddy / droid) the line is normally redundant — the hook injects context directly — but it serves as a critical fallback when the hook fails (Windows + Claude Code PreToolUse silent skip, `--continue` resume, fork distribution, hooks disabled, etc.). `trellis-research` does not need this line because it operates without a task binding.
 **Inline override** (per-turn only, escape hatch for sub-agent dispatch): the user's CURRENT message MUST explicitly contain one of: "do it inline" / "no sub-agent" / "你直接改" / "别派 sub-agent" / "main session 写就行" / "不用 sub-agent". **Without seeing one of these phrases you must NOT inline on your own**; do not invent an override the user never said.
 [/workflow-state:in_progress]
+
+<!-- Per-turn breadcrumb: shown while status='in_progress' when
+     codex.dispatch_mode=inline. Codex-only opt-in alternate to
+     [workflow-state:in_progress]. The main session edits code directly
+     instead of dispatching sub-agents. -->
+
+[workflow-state:in_progress-inline]
+**Flow** (inline mode): main session loads `trellis-before-dev` → main session edits code → main session loads `trellis-check` → run lint / type-check / tests → fix → `trellis-update-spec` → commit (Phase 3.4) → `/trellis:finish-work`.
+**Main-session default (inline dispatch_mode)**: the main agent edits code directly. Do NOT dispatch `trellis-implement` / `trellis-check` sub-agents. Load the `trellis-before-dev` skill before writing code; load the `trellis-check` skill before reporting completion.
+Phase 3.4 commit (required, once): after `trellis-update-spec`, or whenever implementation is verifiably complete, the main agent **drives the commit** — state the commit plan in user-facing text, then run `git commit` — BEFORE suggesting `/trellis:finish-work`. `/finish-work` refuses to run on a dirty working tree (paths outside `.trellis/workspace/` and `.trellis/tasks/`).
+[/workflow-state:in_progress-inline]
 
 ### Phase 3: Finish
 - 3.1 Quality verification `[required · repeatable]`

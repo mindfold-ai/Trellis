@@ -10,8 +10,10 @@ import {
   getMigrationsForVersion,
   getAllMigrations,
   getMigrationMetadata,
+  getConfigSectionsAddedBetween,
 } from "../migrations/index.js";
 import type {
+  ConfigSectionAdded,
   MigrationItem,
   ClassifiedMigrations,
   MigrationResult,
@@ -533,6 +535,110 @@ export function loadUpdateSkipPaths(cwd: string): string[] {
     );
     return [];
   }
+}
+
+/**
+ * Extract a "section" from a config.yaml-style template by sectionHeading.
+ *
+ * A section is delimited by `#---...---` separator lines (the same pattern
+ * used in the bundled `config.yaml` template). The first line inside the
+ * separator block whose `# ` content matches `sectionHeading` identifies the
+ * section; the section spans from that opening separator block through the
+ * line preceding the next `#---` separator block (or EOF).
+ *
+ * Returns the extracted text including its leading separator block, or `null`
+ * when no matching section is found.
+ *
+ * @internal Exported for testing only.
+ */
+export function extractConfigSection(
+  template: string,
+  sectionHeading: string,
+): string | null {
+  const lines = template.split("\n");
+  const isSeparator = (line: string): boolean =>
+    /^#-{3,}\s*$/.test(line.trimEnd());
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!isSeparator(lines[i])) continue;
+    // Look ahead for `# <heading>` then another separator that closes the
+    // heading block.
+    const headingLine = lines[i + 1];
+    const closingSeparator = lines[i + 2];
+    if (headingLine === undefined || closingSeparator === undefined) continue;
+    if (!headingLine.startsWith("# ")) continue;
+    if (!isSeparator(closingSeparator)) continue;
+    if (headingLine.slice(2).trim() !== sectionHeading) continue;
+
+    // Section starts at i; find the next separator block to bound it.
+    let end = lines.length;
+    for (let j = i + 3; j < lines.length; j++) {
+      if (isSeparator(lines[j])) {
+        end = j;
+        break;
+      }
+    }
+    return lines.slice(i, end).join("\n").replace(/\n+$/, "");
+  }
+  return null;
+}
+
+/**
+ * Apply additive config.yaml sections introduced between two versions.
+ *
+ * Walks the supplied entries, dedupes by `file+sentinel`, and for each unique
+ * entry: if the user file exists and lacks the sentinel, extracts the named
+ * section from `templateContent` and appends it. Idempotent — re-running the
+ * step on a file that already contains the sentinel is a no-op.
+ *
+ * @internal Exported for testing only.
+ */
+export function applyConfigSectionsAdded(
+  entries: ConfigSectionAdded[],
+  cwd: string,
+  bundledTemplates: Map<string, string>,
+): { appended: number } {
+  const seen = new Set<string>();
+  let appended = 0;
+
+  for (const entry of entries) {
+    const dedupeKey = `${entry.file}::${entry.sentinel}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    const targetPath = path.join(cwd, entry.file);
+    if (!fs.existsSync(targetPath)) continue;
+
+    let userContent: string;
+    try {
+      userContent = fs.readFileSync(targetPath, "utf-8");
+    } catch {
+      continue;
+    }
+    if (userContent.includes(entry.sentinel)) continue;
+
+    const template = bundledTemplates.get(entry.file);
+    if (!template) continue;
+
+    const section = extractConfigSection(template, entry.sectionHeading);
+    if (!section) continue;
+
+    const separator = userContent.endsWith("\n") ? "\n" : "\n\n";
+    const newContent = userContent + separator + section + "\n";
+    try {
+      fs.writeFileSync(targetPath, newContent);
+    } catch {
+      continue;
+    }
+    console.log(
+      chalk.green(
+        `  + Added config section "${entry.sectionHeading}" to ${entry.file}`,
+      ),
+    );
+    appended++;
+  }
+
+  return { appended };
 }
 
 /**
@@ -2248,6 +2354,25 @@ export async function update(options: UpdateOptions): Promise<void> {
     }
   }
 
+  // Append additive config.yaml sections introduced between versions.
+  // Sentinel-gated, so users keep their customizations and re-running update
+  // on already-migrated files is a no-op. Skipped on unknown / downgrade.
+  let configSectionsAppended = 0;
+  if (cliVsProject > 0 && projectVersion !== "unknown") {
+    const sectionEntries = getConfigSectionsAddedBetween(
+      projectVersion,
+      cliVersion,
+    );
+    if (sectionEntries.length > 0) {
+      const { appended } = applyConfigSectionsAdded(
+        sectionEntries,
+        cwd,
+        templates,
+      );
+      configSectionsAppended = appended;
+    }
+  }
+
   // Update version file
   updateVersionFile(cwd);
 
@@ -2293,6 +2418,9 @@ export async function update(options: UpdateOptions): Promise<void> {
   }
   if (safeDeleted > 0) {
     console.log(`  Cleaned up: ${safeDeleted} deprecated file(s)`);
+  }
+  if (configSectionsAppended > 0) {
+    console.log(`  Config sections added: ${configSectionsAppended}`);
   }
   if (backupDir) {
     console.log(`  Backup: ${path.relative(cwd, backupDir)}/`);

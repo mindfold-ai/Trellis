@@ -3264,6 +3264,218 @@ print(len(entries))
     // AGENTS_NO_PHASE_UPDATE constant was only used by the removed function
     expect(sharedInject).not.toContain("AGENTS_NO_PHASE_UPDATE");
   });
+
+  // ------------------------------------------------------------
+  // [issue-codex-dispatch-mode] config-driven dispatch mode for codex
+  // ------------------------------------------------------------
+
+  function writeCodexInjectHook(): string {
+    const rel = path.join(".codex", "hooks", "inject-workflow-state.py");
+    writeProjectFile(
+      rel,
+      expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
+    );
+    return rel;
+  }
+
+  function writeConfigYaml(content: string): void {
+    writeProjectFile(path.join(".trellis", "config.yaml"), content);
+  }
+
+  it("[issue-codex-dispatch-mode] codex breadcrumb defaults to sub-agent dispatch when config absent", () => {
+    setupTaskRepo();
+    writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
+    const codexHookPath = writeCodexInjectHook();
+    writeProjectFile(
+      path.join(".trellis", "workflow.md"),
+      "[workflow-state:in_progress]\n" +
+        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
+        "[/workflow-state:in_progress]\n" +
+        "[workflow-state:in_progress-inline]\n" +
+        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
+        "[/workflow-state:in_progress-inline]\n",
+    );
+
+    const parsed = JSON.parse(
+      runPython(codexHookPath, JSON.stringify({ cwd: tmpDir, session_id: "workflow-a" })),
+    ) as { hookSpecificOutput: { additionalContext: string } };
+    const ctx = parsed.hookSpecificOutput.additionalContext;
+    expect(ctx).toContain("DISPATCH the trellis-implement");
+    expect(ctx).not.toContain("MAIN SESSION edits code");
+  });
+
+  it("[issue-codex-dispatch-mode] codex breadcrumb routes to inline tag when codex.dispatch_mode=inline", () => {
+    setupTaskRepo();
+    writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
+    const codexHookPath = writeCodexInjectHook();
+    writeProjectFile(
+      path.join(".trellis", "workflow.md"),
+      "[workflow-state:in_progress]\n" +
+        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
+        "[/workflow-state:in_progress]\n" +
+        "[workflow-state:in_progress-inline]\n" +
+        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
+        "[/workflow-state:in_progress-inline]\n",
+    );
+    writeConfigYaml("codex:\n  dispatch_mode: inline\n");
+
+    const parsed = JSON.parse(
+      runPython(codexHookPath, JSON.stringify({ cwd: tmpDir, session_id: "workflow-a" })),
+    ) as { hookSpecificOutput: { additionalContext: string } };
+    const ctx = parsed.hookSpecificOutput.additionalContext;
+    expect(ctx).toContain("MAIN SESSION edits code");
+    expect(ctx).toContain("trellis-before-dev");
+    expect(ctx).not.toContain("DISPATCH the trellis-implement");
+  });
+
+  it("[issue-codex-dispatch-mode] non-codex platform ignores codex.dispatch_mode=inline", () => {
+    setupTaskRepo();
+    writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
+    // Hook installed under .claude/ — _detect_platform returns "claude".
+    const claudeHookPath = path.join(
+      ".claude",
+      "hooks",
+      "inject-workflow-state.py",
+    );
+    writeProjectFile(
+      claudeHookPath,
+      expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
+    );
+    writeProjectFile(
+      path.join(".trellis", "workflow.md"),
+      "[workflow-state:in_progress]\n" +
+        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
+        "[/workflow-state:in_progress]\n" +
+        "[workflow-state:in_progress-inline]\n" +
+        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
+        "[/workflow-state:in_progress-inline]\n",
+    );
+    writeConfigYaml("codex:\n  dispatch_mode: inline\n");
+
+    const parsed = JSON.parse(
+      runPython(claudeHookPath, JSON.stringify({ cwd: tmpDir, session_id: "workflow-a" })),
+    ) as { hookSpecificOutput: { additionalContext: string } };
+    const ctx = parsed.hookSpecificOutput.additionalContext;
+    expect(ctx).toContain("DISPATCH the trellis-implement");
+    expect(ctx).not.toContain("MAIN SESSION edits code");
+  });
+
+  it("[issue-codex-dispatch-mode] get_context.py --platform codex swaps to inline block content", () => {
+    writeTrellisScripts();
+    writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
+    writeProjectFile(
+      path.join(".trellis", "workflow.md"),
+      templateWorkflowMd(),
+    );
+    writeConfigYaml("codex:\n  dispatch_mode: inline\n");
+
+    const contextScript = path.join(
+      tmpDir,
+      ".trellis",
+      "scripts",
+      "get_context.py",
+    );
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(contextScript)} --mode phase --step 2.1 --platform codex`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    // The [Kilo, Antigravity, Windsurf] inline block content surfaces:
+    // it tells the main session to load trellis-before-dev directly.
+    expect(output).toContain("trellis-before-dev");
+    expect(output).toContain("Read `{TASK_DIR}/prd.md`");
+    // The Codex sub-agent dispatch text must NOT surface in inline mode.
+    expect(output).not.toMatch(/Active task: <task path>/);
+  });
+
+  it("[issue-codex-dispatch-mode] resolve_breadcrumb_key picks status-inline only for codex+inline", () => {
+    // Cover all four cases via the actual hook helper (imported from the
+    // installed shared-hooks template). This locks the helper's contract
+    // rather than retesting an inline copy.
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", "hooks", "inject-workflow-state.py"),
+      expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
+    );
+    const probePath = path.join(tmpDir, "probe_breadcrumb.py");
+    fs.writeFileSync(
+      probePath,
+      [
+        "import importlib.util, json, sys",
+        "from pathlib import Path",
+        `hook_path = Path(${JSON.stringify(
+          path.join(tmpDir, ".trellis", "hooks", "inject-workflow-state.py"),
+        )})`,
+        "spec = importlib.util.spec_from_file_location('iws', hook_path)",
+        "mod = importlib.util.module_from_spec(spec)",
+        "spec.loader.exec_module(mod)",
+        "result = {",
+        "  'codex_inline': mod.resolve_breadcrumb_key('in_progress', 'codex', {'codex': {'dispatch_mode': 'inline'}}),",
+        "  'codex_subagent': mod.resolve_breadcrumb_key('in_progress', 'codex', {'codex': {'dispatch_mode': 'sub-agent'}}),",
+        "  'codex_missing': mod.resolve_breadcrumb_key('in_progress', 'codex', {}),",
+        "  'claude_inline': mod.resolve_breadcrumb_key('in_progress', 'claude', {'codex': {'dispatch_mode': 'inline'}}),",
+        "}",
+        "print(json.dumps(result))",
+      ].join("\n"),
+    );
+    const output = execSync(`${pythonCmd} ${JSON.stringify(probePath)}`, {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    const result = JSON.parse(
+      output.split("\n").filter((l) => l.startsWith("{")).pop() ?? "{}",
+    ) as Record<string, string>;
+    expect(result.codex_inline).toBe("in_progress-inline");
+    expect(result.codex_subagent).toBe("in_progress");
+    expect(result.codex_missing).toBe("in_progress");
+    expect(result.claude_inline).toBe("in_progress");
+  });
+
+  it("[issue-codex-dispatch-mode] inline `#` comment after value is stripped (config.yaml uncomment leaves trailing hint)", () => {
+    // The shipped template has:
+    //   #   dispatch_mode: sub-agent  # or "inline" to let the main agent edit code directly
+    // Users uncomment by removing leading `#` and may change "sub-agent" to "inline"
+    // while leaving the trailing hint comment, producing:
+    //   codex:
+    //     dispatch_mode: inline  # or "inline" to let the main agent edit code directly
+    // The minimal YAML parser MUST treat the trailing ` # ...` as a comment, not as
+    // part of the value, otherwise resolve_breadcrumb_key sees an opaque string and
+    // falls back to sub-agent dispatch.
+    setupTaskRepo();
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", "hooks", "trellis_config.py"),
+      expectTemplateContent(
+        getAllScripts().get("common/trellis_config.py") ?? "",
+        "trellis_config",
+      ),
+    );
+    const probePath = path.join(tmpDir, "probe_inline_comment.py");
+    fs.writeFileSync(
+      probePath,
+      [
+        "import importlib.util, json, sys",
+        "from pathlib import Path",
+        `hook_path = Path(${JSON.stringify(
+          path.join(tmpDir, ".trellis", "hooks", "trellis_config.py"),
+        )})`,
+        "spec = importlib.util.spec_from_file_location('tc', hook_path)",
+        "mod = importlib.util.module_from_spec(spec)",
+        "spec.loader.exec_module(mod)",
+        "yaml = 'codex:\\n  dispatch_mode: inline  # or \"inline\" to let the main agent edit code directly\\n'",
+        "parsed = mod.parse_simple_yaml(yaml)",
+        "print(json.dumps(parsed))",
+      ].join("\n"),
+    );
+    const output = execSync(`${pythonCmd} ${JSON.stringify(probePath)}`, {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    const parsed = JSON.parse(
+      output.split("\n").filter((l) => l.startsWith("{")).pop() ?? "{}",
+    ) as { codex?: { dispatch_mode?: string } };
+    expect(parsed.codex?.dispatch_mode).toBe("inline");
+  });
 });
 
 describe("regression: backslash in markdown templates (beta.12)", () => {
@@ -4925,5 +5137,167 @@ describe("regression: sub-agent context injection fallback (0.5.3)", () => {
     expect(wf).not.toMatch(
       /Sub-agent dispatch protocol \(class-2 platforms[^)]*\)/,
     );
+  });
+});
+
+describe("regression: configSectionsAdded (issue-codex-dispatch-mode)", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-config-section-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("[config-sections] extractConfigSection returns content between matching separator and next separator", async () => {
+    const { extractConfigSection } = await import("../src/commands/update.js");
+    const fake = [
+      "# Header preamble",
+      "",
+      "#-------------------------------------------------------------------------------",
+      "# First Section",
+      "#-------------------------------------------------------------------------------",
+      "first_key: value",
+      "",
+      "#-------------------------------------------------------------------------------",
+      "# Second Section",
+      "#-------------------------------------------------------------------------------",
+      "# second_key: comment",
+      "second_key: 2",
+      "",
+      "#-------------------------------------------------------------------------------",
+      "# Third Section",
+      "#-------------------------------------------------------------------------------",
+      "third_key: 3",
+    ].join("\n");
+
+    const second = extractConfigSection(fake, "Second Section");
+    expect(second).not.toBeNull();
+    expect(second).toContain("# Second Section");
+    expect(second).toContain("second_key: 2");
+    // Must stop before the next separator block
+    expect(second).not.toContain("Third Section");
+    expect(second).not.toContain("third_key: 3");
+
+    // Last section runs to EOF
+    const third = extractConfigSection(fake, "Third Section");
+    expect(third).not.toBeNull();
+    expect(third).toContain("third_key: 3");
+
+    // Missing heading returns null
+    expect(extractConfigSection(fake, "Nonexistent Section")).toBeNull();
+  });
+
+  it("[config-sections] applyConfigSectionsAdded appends section when sentinel missing, idempotent on rerun", async () => {
+    const { applyConfigSectionsAdded } = await import(
+      "../src/commands/update.js"
+    );
+    const trellisDir = path.join(tmpDir, ".trellis");
+    fs.mkdirSync(trellisDir, { recursive: true });
+    const userConfigPath = path.join(trellisDir, "config.yaml");
+    const userConfig = [
+      "# Trellis Configuration",
+      "session_commit_message: \"chore: record journal\"",
+      "",
+    ].join("\n");
+    fs.writeFileSync(userConfigPath, userConfig);
+
+    const bundledTemplate = [
+      "# Trellis Configuration",
+      "session_commit_message: \"chore: record journal\"",
+      "",
+      "#-------------------------------------------------------------------------------",
+      "# Codex (sub-agent dispatch behavior)",
+      "#-------------------------------------------------------------------------------",
+      "# codex:",
+      "#   dispatch_mode: sub-agent",
+      "",
+    ].join("\n");
+
+    const entries = [
+      {
+        file: ".trellis/config.yaml",
+        sentinel: "codex:",
+        sectionHeading: "Codex (sub-agent dispatch behavior)",
+      },
+    ];
+    const bundled = new Map<string, string>([
+      [".trellis/config.yaml", bundledTemplate],
+    ]);
+
+    const first = applyConfigSectionsAdded(entries, tmpDir, bundled);
+    expect(first.appended).toBe(1);
+    const after = fs.readFileSync(userConfigPath, "utf-8");
+    expect(after).toContain("# Codex (sub-agent dispatch behavior)");
+    expect(after).toContain("codex:");
+    expect(after).toContain("dispatch_mode: sub-agent");
+
+    // Rerun: sentinel now present, no append.
+    const second = applyConfigSectionsAdded(entries, tmpDir, bundled);
+    expect(second.appended).toBe(0);
+    const after2 = fs.readFileSync(userConfigPath, "utf-8");
+    expect(after2).toBe(after);
+  });
+
+  it("[config-sections] applyConfigSectionsAdded skips when target file does not exist", async () => {
+    const { applyConfigSectionsAdded } = await import(
+      "../src/commands/update.js"
+    );
+    const result = applyConfigSectionsAdded(
+      [
+        {
+          file: ".trellis/config.yaml",
+          sentinel: "codex:",
+          sectionHeading: "Codex (sub-agent dispatch behavior)",
+        },
+      ],
+      tmpDir,
+      new Map<string, string>([[".trellis/config.yaml", "# fake template"]]),
+    );
+    expect(result.appended).toBe(0);
+  });
+
+  it("[config-sections] manifest 0.5.7 declares the codex dispatch_mode section", () => {
+    const manifestPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "src",
+      "migrations",
+      "manifests",
+      "0.5.7.json",
+    );
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as {
+      version: string;
+      configSectionsAdded?: {
+        file: string;
+        sentinel: string;
+        sectionHeading: string;
+      }[];
+    };
+    expect(manifest.version).toBe("0.5.7");
+    expect(manifest.configSectionsAdded).toBeDefined();
+    const entry = manifest.configSectionsAdded?.[0];
+    expect(entry?.file).toBe(".trellis/config.yaml");
+    expect(entry?.sentinel).toBe("codex:");
+    expect(entry?.sectionHeading).toBe("Codex (sub-agent dispatch behavior)");
+  });
+
+  it("[config-sections] bundled config.yaml template contains the new Codex section", () => {
+    // Ensures the section the manifest points at actually exists in the
+    // bundled template — protects against renaming heading without updating
+    // the manifest entry.
+    const tmplPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "src",
+      "templates",
+      "trellis",
+      "config.yaml",
+    );
+    const tmpl = fs.readFileSync(tmplPath, "utf-8");
+    expect(tmpl).toContain("# Codex (sub-agent dispatch behavior)");
+    expect(tmpl).toContain("dispatch_mode");
   });
 });
