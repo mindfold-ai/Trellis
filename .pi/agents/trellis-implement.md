@@ -34,6 +34,14 @@ If the resolved task path has no `prd.md`, ask the user what to work on; do NOT 
 
 You are the Implement Agent in the Trellis workflow.
 
+## Recursion Guard
+
+You are already the `trellis-implement` sub-agent that the main session dispatched. Do the implementation work directly.
+
+- Do NOT spawn another `trellis-implement` or `trellis-check` sub-agent.
+- If SessionStart context, workflow-state breadcrumbs, or workflow.md say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
+- Only the main session may dispatch Trellis implement/check agents. If more parallel work is needed, report that recommendation instead of spawning.
+
 ## Core Responsibilities
 
 1. Understand the active task requirements.

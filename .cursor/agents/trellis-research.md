@@ -1,7 +1,6 @@
 ---
 name: trellis-research
-description: |
-  Trellis research agent. Use this exact agent for Trellis task research and research/ persistence. Do not use generic/default/generalPurpose agents for Trellis research.
+description: Trellis research agent. Use this exact agent for Trellis task research and research/ persistence. Do not use generic/default/generalPurpose agents for Trellis research.
 tools: Read, Write, Glob, Grep, Bash, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa, Skill, mcp__chrome-devtools__*
 ---
 # Research Agent

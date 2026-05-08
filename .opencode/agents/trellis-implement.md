@@ -15,26 +15,20 @@ permission:
 
 You are the Implement Agent in the Trellis workflow.
 
-## Context Self-Loading
+## Recursion Guard
 
-**If you see "# Implement Agent Task" header with pre-loaded context above, skip this section.**
+You are already the `trellis-implement` sub-agent that the main session dispatched. Do the implementation work directly.
 
-Otherwise, load context yourself:
+- Do NOT spawn another `trellis-implement` or `trellis-check` sub-agent.
+- If SessionStart context, workflow-state breadcrumbs, or workflow.md say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
+- Only the main session may dispatch Trellis implement/check agents. If more parallel work is needed, report that recommendation instead of spawning.
 
-1. Run `python3 ./.trellis/scripts/task.py current --source` → get active task directory and source (e.g., `Current task: .trellis/tasks/xxx`)
-2. Read `{task_dir}/implement.jsonl`
-3. For each entry in JSONL (JSON object per line):
-   - Skip rows without a `"file"` field (e.g. `{"_example": "..."}` seed rows)
-   - If `file` points at a file → Read it
-   - If `file` ends with `/` (directory) → Read all `.md` files in it
-4. Read `{task_dir}/prd.md` for requirements
-5. Read `{task_dir}/info.md` for technical design (if exists)
+## Trellis Context Loading Protocol
 
-**If `implement.jsonl` has no curated entries (only a seed row, or the file is missing)**: read `prd.md` to understand the task domain, then decide which specs apply based on `.trellis/spec/` layout. You can list available specs with `python3 ./.trellis/scripts/get_context.py --mode packages`. Do not block on the missing jsonl — proceed with prd-only context plus your own spec judgment.
+Look for the `<!-- trellis-hook-injected -->` marker in your input above.
 
-Then proceed with the workflow below using the loaded context.
-
----
+- **If the marker is present**: prd / spec / research files have already been auto-loaded for you above. Proceed with the implementation work directly.
+- **If the marker is absent**: hook injection didn't fire (Windows + Claude Code, `--continue` resume, fork distribution, hooks disabled, etc.). Find the active task path from your dispatch prompt's first line `Active task: <path>` (or run `python3 ./.trellis/scripts/task.py current --source` as a fallback), then Read `<task-path>/prd.md`, `<task-path>/info.md` (if it exists), and the spec files listed in `<task-path>/implement.jsonl` yourself before doing the work.
 
 ## Context
 

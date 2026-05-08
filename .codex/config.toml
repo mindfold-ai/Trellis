@@ -11,10 +11,13 @@
 # Keep AGENTS.md as the primary project instruction file.
 project_doc_fallback_filenames = ["AGENTS.md"]
 
-# Codex hooks (`hooks.json` in this directory) load automatically once
-# the project is trusted — no feature flag needed. CodexHooks is Stable
-# and default_enabled: true in codex's feature registry; the legacy
-# `[features].codex_hooks = true` flag is no longer required.
+# Codex hooks (`hooks.json` in this directory) only fire when the user
+# has enabled them in their USER-level config: `[features].hooks = true`
+# in ~/.codex/config.toml (Codex 0.129+; legacy name: `codex_hooks = true`,
+# still works but emits a deprecation warning on 0.129+). Project-level
+# config.toml cannot set feature flags; they must be user-level.
+# Codex 0.129+ additionally gates each installed hook behind a one-time
+# `/hooks` TUI review; until the user approves it, the hook stays inactive.
 
 # multi_agent_v2 forces structured subagent orchestration with the
 # `wait` tool — parent must block on terminal status before acting,
