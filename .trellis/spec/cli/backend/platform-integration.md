@@ -102,6 +102,8 @@ When adding a new platform `{platform}`, update the following:
 | `src/templates/{platform}/settings.json` | Platform settings that enable extension, skills, and prompts |
 
 > Note: Pi Agent uses project-local TypeScript extensions instead of Trellis Python hooks. Keep generated hooks under `.pi/extensions/`, write prompt templates under `.pi/prompts/trellis-*.md`, write Agent Skills under `.pi/skills/`, and do not copy `shared-hooks/*.py` into `.pi/`. Do not redirect Pi to shared `.agents/skills` until shared Agent Skill text is platform-neutral; Codex and Pi command references can differ. For the nested Pi launcher contract, see "Scenario: Pi Sub-Agent Launcher".
+>
+> Project-local package isolation rule: when Trellis enables Pi for a project, `.pi/settings.json` must include a project-level `packages` array entry with `"source": "npm:pi-subagents"` and empty resource lists (`extensions`, `skills`, `prompts`, `themes`) to isolate global `npm:pi-subagents` effects from the repository while keeping the user's global Pi environment intact outside the project.
 
 **Skills pattern** (Codex, Kiro):
 

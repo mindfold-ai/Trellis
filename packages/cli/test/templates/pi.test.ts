@@ -76,6 +76,16 @@ describe("pi templates", () => {
       extensions?: string[];
       skills?: string[];
       prompts?: string[];
+      packages?: (
+        | string
+        | {
+            source?: string;
+            extensions?: unknown[];
+            skills?: unknown[];
+            prompts?: unknown[];
+            themes?: unknown[];
+          }
+      )[];
     };
 
     expect(settings.enableSkillCommands).toBe(true);
@@ -83,6 +93,16 @@ describe("pi templates", () => {
     expect(settings.skills).toEqual(["./skills"]);
     expect(settings.skills).not.toEqual(["../.agents/skills"]);
     expect(settings.prompts).toEqual(["./prompts"]);
+    const subagentsPkg = settings.packages?.find(
+      (p) => typeof p === "object" && p.source === "npm:pi-subagents",
+    );
+    expect(subagentsPkg).toEqual({
+      source: "npm:pi-subagents",
+      extensions: [],
+      skills: [],
+      prompts: [],
+      themes: [],
+    });
   });
 
   it("extension exposes subagent tool and hook-equivalent Pi events", () => {
@@ -164,7 +184,8 @@ describe("pi templates", () => {
   it("extension sends subagent prompts through stdin with bounded output buffers", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain('"--mode",\n        "text"');
+    expect(extension).toContain('"--mode"');
+    expect(extension).toContain('"text"');
     expect(extension).toContain('stdio: ["pipe", "pipe", "pipe"]');
     expect(extension).toContain("child.stdin?.end(prompt)");
     expect(extension).toContain("class BoundedBufferCollector");
@@ -315,7 +336,8 @@ fallbackModels:
 
     expect(extension).toContain("Promise<PiToolResult>");
     expect(extension).toContain('content: [{ type: "text", text: output }]');
-    expect(extension).toContain("details: {\n          agent: input.agent");
+    expect(extension).toContain("details: {");
+    expect(extension).toContain("agent: input.agent");
     expect(extension).toContain("ctx?.ui?.notify?.(");
     expect(extension).toContain("systemPrompt:");
     expect(extension).toContain('pi.on?.("input", (event, ctx) => {');
