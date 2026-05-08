@@ -275,19 +275,23 @@ export function scrubPiSettings(content: string): ScrubResult {
   }
 
   const packagesValue = root.packages;
-  if (
-    packagesValue !== null &&
-    typeof packagesValue === "object" &&
-    !Array.isArray(packagesValue)
-  ) {
-    const packagesObj = packagesValue as Record<string, unknown>;
-    if (PI_SUBAGENTS_PACKAGE in packagesObj) {
-      delete packagesObj[PI_SUBAGENTS_PACKAGE];
-    }
-    if (Object.keys(packagesObj).length === 0) {
+  if (Array.isArray(packagesValue)) {
+    const filtered = packagesValue.filter((entry) => {
+      if (
+        entry !== null &&
+        typeof entry === "object" &&
+        !Array.isArray(entry)
+      ) {
+        const obj = entry as Record<string, unknown>;
+        return obj.source !== PI_SUBAGENTS_PACKAGE;
+      }
+      // String entries — keep unless they exactly match the package name
+      return entry !== PI_SUBAGENTS_PACKAGE;
+    });
+    if (filtered.length === 0) {
       delete root.packages;
     } else {
-      root.packages = packagesObj;
+      root.packages = filtered;
     }
   }
 

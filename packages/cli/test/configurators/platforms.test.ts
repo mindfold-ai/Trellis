@@ -824,24 +824,27 @@ describe("configurePlatform", () => {
       fs.readFileSync(path.join(tmpDir, ".pi", "settings.json"), "utf-8"),
     ) as {
       skills?: string[];
-      packages?: Record<
-        string,
-        {
-          agents?: unknown[];
-          commands?: unknown[];
-          skills?: unknown[];
-          prompts?: unknown[];
-          extensions?: unknown[];
-        }
-      >;
+      packages?: (
+        | string
+        | {
+            source?: string;
+            extensions?: unknown[];
+            skills?: unknown[];
+            prompts?: unknown[];
+            themes?: unknown[];
+          }
+      )[];
     };
     expect(settings.skills).toEqual(["./skills"]);
-    expect(settings.packages?.["npm:pi-subagents"]).toEqual({
-      agents: [],
-      commands: [],
+    const subagentsPkg = settings.packages?.find(
+      (p) => typeof p === "object" && p.source === "npm:pi-subagents",
+    );
+    expect(subagentsPkg).toEqual({
+      source: "npm:pi-subagents",
+      extensions: [],
       skills: [],
       prompts: [],
-      extensions: [],
+      themes: [],
     });
   });
 

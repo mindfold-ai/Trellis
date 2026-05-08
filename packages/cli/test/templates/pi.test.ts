@@ -76,16 +76,16 @@ describe("pi templates", () => {
       extensions?: string[];
       skills?: string[];
       prompts?: string[];
-      packages?: Record<
-        string,
-        {
-          agents?: unknown[];
-          commands?: unknown[];
-          skills?: unknown[];
-          prompts?: unknown[];
-          extensions?: unknown[];
-        }
-      >;
+      packages?: (
+        | string
+        | {
+            source?: string;
+            extensions?: unknown[];
+            skills?: unknown[];
+            prompts?: unknown[];
+            themes?: unknown[];
+          }
+      )[];
     };
 
     expect(settings.enableSkillCommands).toBe(true);
@@ -93,12 +93,15 @@ describe("pi templates", () => {
     expect(settings.skills).toEqual(["./skills"]);
     expect(settings.skills).not.toEqual(["../.agents/skills"]);
     expect(settings.prompts).toEqual(["./prompts"]);
-    expect(settings.packages?.["npm:pi-subagents"]).toEqual({
-      agents: [],
-      commands: [],
+    const subagentsPkg = settings.packages?.find(
+      (p) => typeof p === "object" && p.source === "npm:pi-subagents",
+    );
+    expect(subagentsPkg).toEqual({
+      source: "npm:pi-subagents",
+      extensions: [],
       skills: [],
       prompts: [],
-      extensions: [],
+      themes: [],
     });
   });
 
