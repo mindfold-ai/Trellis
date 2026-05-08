@@ -1,0 +1,9 @@
+{
+  "version": "0.5.8",
+  "description": "Bug fixes for Codex sub-agent behavior. AI no longer gets stuck waiting on sub-agents that don't exist; `trellis-research` on Codex no longer silently exits without producing files. Pure prompt-layer trim.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- **Removing the sub-agent guidance in `AGENTS.md` stops Codex from calling / waiting on research agents.** Deleted the `## Subagents` section (36 lines, including the \"ALWAYS wait for every spawned subagent\" rule).\n- **Sub-agent mode fix: `trellis-research` on Codex no longer exits prematurely / produces no research files due to missing task context** (the main agent now includes the `Active task:` line when dispatching to research agents too).\n\n**Added:**\n- `CoreRule` block prepended to the `trellis-brainstorm` skill (adapted from https://github.com/mattpocock/skills/blob/main/skills/productivity/grill-me/SKILL.md ).\n\nNon-Codex platforms (Claude Code, Cursor, OpenCode, Kiro, CodeBuddy, Droid) unchanged.",
+  "migrations": [],
+  "notes": "Pure prompt-layer trim. No Python or TypeScript edits. `trellis update` refreshes AGENTS.md / workflow.md / brainstorm skill content."
+}

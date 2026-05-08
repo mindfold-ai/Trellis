@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/05-08-0-5-8-prompt-layer-cleanup/prd.md", "reason": "Acceptance criteria checklist."}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Verify Sub-agent dispatch protocol description stays consistent with workflow.md after edit."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Lint / typecheck / test bar."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test conventions (anti-patterns)."}

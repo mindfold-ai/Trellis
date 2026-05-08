@@ -5127,11 +5127,14 @@ describe("regression: sub-agent context injection fallback (0.5.3)", () => {
       "packages/cli/src/templates/trellis/workflow.md",
     );
     const wf = fs.readFileSync(workflowPath, "utf-8");
-    // The protocol must enforce `Active task: <path>` for trellis-implement
-    // and trellis-check, with trellis-research explicitly excluded.
+    // The protocol enforces `Active task: <path>` for ALL sub-agents (no
+    // trellis-research carve-out as of 0.5.8 — research sub-agents need the
+    // task path to know which `{task_dir}/research/` to write into).
     expect(wf).toContain("Sub-agent dispatch protocol");
     expect(wf).toContain("all platforms");
-    expect(wf).toContain("EXCEPT trellis-research");
+    expect(wf).toContain("all sub-agents");
+    expect(wf).not.toContain("EXCEPT trellis-research");
+    expect(wf).toContain("trellis-research");
     expect(wf).toContain("Active task:");
     // Must NOT scope the rule to class-2 only — that was the pre-0.5.3 limit.
     expect(wf).not.toMatch(
