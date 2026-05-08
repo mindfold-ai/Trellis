@@ -176,12 +176,14 @@ describe("init() integration", () => {
     await init({ yes: true, codex: true });
 
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(true);
-    // Codex is agent-capable → trellis-start skill not emitted.
+    // Codex SessionStart hook was removed (de-recursion fix); the
+    // <trellis-bootstrap> notice in inject-workflow-state.py invokes
+    // `$trellis-start` to load workflow context, so the skill is emitted.
     expect(
       fs.existsSync(
         path.join(tmpDir, ".agents", "skills", "trellis-start", "SKILL.md"),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       fs.existsSync(
         path.join(

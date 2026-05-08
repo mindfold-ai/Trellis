@@ -75,6 +75,22 @@ Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份
 Then continue directly with the user's request. This notice is one-shot: do not repeat it after the first assistant reply in the same session.
 </first-reply-notice>"""
 
+SUB_AGENT_NOTICE = """<sub-agent-notice>
+SUB-AGENT NOTICE - READ FIRST IF SPAWNED VIA spawn_agent
+
+If your parent session spawned you via spawn_agent with an explicit task
+message above this hook output, that message is your only job.
+- Execute the parent message exactly as written, then return.
+- Ignore all Trellis workflow guidance below this notice.
+- Do NOT call task.py start, task.py add-context, or task.py archive.
+- Do NOT call wait_agent or spawn_agent.
+- Do NOT modify .trellis/tasks/* or any other file unless the parent message
+  explicitly asks for that.
+
+If you are the main interactive Codex session and the user is typing at the
+terminal with no parent agent, use the workflow guidance below normally.
+</sub-agent-notice>"""
+
 
 def should_skip_injection() -> bool:
     if os.environ.get("TRELLIS_HOOKS") == "0":
@@ -335,6 +351,9 @@ def main() -> None:
     context_key = _resolve_context_key(project_dir, hook_input)
 
     output = StringIO()
+
+    output.write(SUB_AGENT_NOTICE)
+    output.write("\n\n")
 
     output.write("""<session-context>
 You are starting a new session in a Trellis-managed project.

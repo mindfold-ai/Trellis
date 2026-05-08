@@ -1,17 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "{{PYTHON_CMD}} .codex/hooks/session-start.py",
-            "timeout": 15,
-            "statusMessage": "Loading Trellis context..."
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [

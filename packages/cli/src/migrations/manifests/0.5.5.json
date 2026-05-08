@@ -1,0 +1,9 @@
+{
+  "version": "0.5.5",
+  "description": "Patch: structural fix for Codex sub-agent recursion (#240, #242) — drop SessionStart hook, bootstrap via trellis-start skill.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(codex): drop SessionStart hook, bootstrap via `trellis-start` skill (#240, #242). Codex fires SessionStart for every spawn, and its hook input exposes no `agent_id` / `agent_type` field (`openai/codex#16226`) — so the dispatch directive in `codex/hooks/session-start.py` kept reaching sub-agent sessions, the sub-agent mistook itself for the main session and re-dispatched its own sub-agent (recursive turtles). The 0.5.4 patch (`#237`) added a self-exemption clause but it sat alongside the dispatch directive in the same prompt block; LLMs kept picking the command-style instruction. Structural fix: removed the `SessionStart` entry from `codex/hooks.json`. `inject-workflow-state.py` (UserPromptSubmit hook) now injects a `<trellis-bootstrap>` block on `no_task` turns telling the AI to invoke `$trellis-start` once to load workflow context. Codex configurator additionally writes the new skill to `.agents/skills/trellis-start/SKILL.md` (other agent-capable platforms keep their working SessionStart hooks). Sub-agent sessions only see the existing `<sub-agent-notice>` — no command-style \"must dispatch\" text exists anywhere in the new injection, so the recursion vector is gone at source.",
+  "migrations": [],
+  "notes": "Patch on top of 0.5.4. Run `trellis update` (no `--migrate` needed). Codex users get a new `.agents/skills/trellis-start/SKILL.md` and a `hooks.json` without `SessionStart` wiring; other platforms unchanged."
+}

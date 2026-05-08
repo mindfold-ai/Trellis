@@ -1,0 +1,9 @@
+{
+  "version": "0.5.6",
+  "description": "Patch: Codex multi_agent_v2 spawn-loop guidance — fork_turns=\"none\" + completion close-loop algorithm.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(agents): document `fork_turns=\"none\"` requirement on Codex `spawn_agent` calls (#240 follow-up). 0.5.5 removed the SessionStart injection vector that hijacked sub-agent sessions, but [Marsor707's local verification](https://github.com/mindfold-ai/Trellis/issues/240#issuecomment-4393264022) showed a second vector remained: with default `fork_turns=\"all\"`, the child inherits the parent transcript and sees prior `spawn_agent(...)` records, then applies the \"wait for spawned subagents\" rule to itself — `wait_agent` self-deadlock. `markdown/agents.md` now documents the rule under a new \"Codex-only — `spawn_agent` parameters\" subsection.\n- fix(agents): document multi-subagent close-loop algorithm (#241). The existing rule \"ALWAYS wait for every spawned subagent to reach a terminal status\" was ambiguous — LLMs read it as \"received completed → wait again\" instead of \"received completed → `list_agents` / verify deliverables / `close_agent` / remove from expected set / wait only on still-running\". `markdown/agents.md` now has a \"Codex-only — multi-subagent close-loop\" subsection with the deterministic algorithm proposed in the issue.\n\nBoth changes are prompt-layer-only — no script / hook / configurator behavior changed.",
+  "migrations": [],
+  "notes": "Patch on top of 0.5.5. Run `trellis update` (no `--migrate` needed). Updates `AGENTS.md` only — Codex users get clearer multi_agent_v2 guidance; other platforms see the new subsections labeled `Codex-only` and can ignore them."
+}

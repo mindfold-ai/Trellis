@@ -254,6 +254,9 @@ describe("configurePlatform", () => {
     // Codex writes shared skills under `.agents/skills/` using the neutral
     // placeholder resolver so the rendered files are byte-identical to
     // Gemini's writes for the same skill names — see issue #224 fix.
+    // Plus a Codex-specific `trellis-start` skill referenced by the
+    // <trellis-bootstrap> notice in inject-workflow-state.py (the SessionStart
+    // hook was removed for de-recursion).
     const expected = resolveAllAsSkillsNeutral(AI_TOOLS.codex.templateContext);
     const skillsRoot = path.join(tmpDir, ".agents", "skills");
     const actualNames = fs
@@ -263,7 +266,11 @@ describe("configurePlatform", () => {
       .sort();
 
     expect(actualNames).toEqual(
-      [...expected.map((s) => s.name), BUNDLED_SKILL_NAME].sort(),
+      [
+        ...expected.map((s) => s.name),
+        BUNDLED_SKILL_NAME,
+        "trellis-start",
+      ].sort(),
     );
 
     for (const skill of expected) {
@@ -272,6 +279,9 @@ describe("configurePlatform", () => {
       expect(fs.readFileSync(skillPath, "utf-8")).toBe(skill.content);
     }
     expect(fs.existsSync(path.join(skillsRoot, BUNDLED_REFERENCE))).toBe(true);
+    expect(
+      fs.existsSync(path.join(skillsRoot, "trellis-start", "SKILL.md")),
+    ).toBe(true);
   });
 
   it("configurePlatform('codex') writes custom agents and config", async () => {
@@ -332,7 +342,7 @@ describe("configurePlatform", () => {
     const expectedPythonCmd =
       process.platform === "win32" ? "python" : "python3";
     expect(content).toContain(
-      `"command": "${expectedPythonCmd} .codex/hooks/session-start.py"`,
+      `"command": "${expectedPythonCmd} .codex/hooks/inject-workflow-state.py"`,
     );
     expect(content).not.toContain("{{PYTHON_CMD}}");
   });
@@ -916,7 +926,7 @@ describe("configurePlatform", () => {
   it("codex hooks.json template keeps PYTHON_CMD placeholder", () => {
     const rawTemplate = getCodexHooksConfig();
     expect(rawTemplate).toContain(
-      "{{PYTHON_CMD}} .codex/hooks/session-start.py",
+      "{{PYTHON_CMD}} .codex/hooks/inject-workflow-state.py",
     );
   });
 

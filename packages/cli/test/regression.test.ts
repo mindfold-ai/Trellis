@@ -1006,6 +1006,18 @@ describe("regression: current-task path normalization", () => {
     return content ?? "";
   }
 
+  function expectCodexSubAgentNotice(context: string): void {
+    expect(context.startsWith("<sub-agent-notice>")).toBe(true);
+    expect(context).toContain("SUB-AGENT NOTICE");
+    expect(context).toContain("spawn_agent");
+    expect(context).toContain("that message is your only job");
+    expect(context).toContain("Do NOT call task.py start");
+    expect(context).toContain("task.py add-context");
+    expect(context).toContain("Do NOT call wait_agent or spawn_agent");
+    expect(context).toContain(".trellis/tasks/*");
+    expect(context).toContain("main interactive Codex session");
+  }
+
   it("[session-current-task] task.py start without context key enters degraded mode (returns 0, no pointer)", () => {
     // 0.5.3 hotfix: task.py start no longer hard-fails when no session identity
     // is available (Windows + Claude Code, --continue resume, etc.). Instead it
@@ -1999,6 +2011,30 @@ describe("regression: current-task path normalization", () => {
     }
   });
 
+  it("[#240] Codex SessionStart output starts with the generic sub-agent notice", () => {
+    setupTaskRepo();
+    writeProjectFile(
+      path.join(".codex", "hooks", "session-start.py"),
+      expectTemplateContent(codexSessionStart, "codex session-start"),
+    );
+
+    const payload = JSON.parse(
+      runPython(
+        path.join(".codex", "hooks", "session-start.py"),
+        JSON.stringify({ cwd: tmpDir }),
+      ),
+    ) as {
+      hookSpecificOutput: { hookEventName: string; additionalContext: string };
+    };
+
+    const ctx = payload.hookSpecificOutput.additionalContext;
+    expect(payload.hookSpecificOutput.hookEventName).toBe("SessionStart");
+    expectCodexSubAgentNotice(ctx);
+    expect(ctx.indexOf("</sub-agent-notice>")).toBeLessThan(
+      ctx.indexOf("<session-context>"),
+    );
+  });
+
   it("[session-start-proof] Copilot template does not promise model-visible SessionStart injection", () => {
     const content = expectTemplateContent(
       copilotSessionStart,
@@ -2435,6 +2471,30 @@ describe("regression: current-task path normalization", () => {
     );
     expect(parsed.hookSpecificOutput.additionalContext).toContain(
       "trellis-brainstorm",
+    );
+  });
+
+  it("[#240] Codex workflow-state output starts with the generic sub-agent notice", () => {
+    setupTaskRepo();
+    writeProjectFile(
+      path.join(".codex", "hooks", "inject-workflow-state.py"),
+      expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
+    );
+
+    const parsed = JSON.parse(
+      runPython(
+        path.join(".codex", "hooks", "inject-workflow-state.py"),
+        JSON.stringify({ cwd: tmpDir, session_id: "workflow-a" }),
+      ),
+    ) as {
+      hookSpecificOutput: { hookEventName: string; additionalContext: string };
+    };
+
+    const ctx = parsed.hookSpecificOutput.additionalContext;
+    expect(parsed.hookSpecificOutput.hookEventName).toBe("UserPromptSubmit");
+    expectCodexSubAgentNotice(ctx);
+    expect(ctx.indexOf("</sub-agent-notice>")).toBeLessThan(
+      ctx.indexOf("<workflow-state>"),
     );
   });
 
@@ -4513,9 +4573,10 @@ describe("regression: Gemini CLI 0.40.x template compatibility (#224)", () => {
       "packages/cli/src/templates/shared-hooks/inject-workflow-state.py",
     );
     const content = fs.readFileSync(hookPath, "utf-8");
-    // The platform branch: `"BeforeAgent" if _detect_platform(...) == "gemini"`
+    // The platform branch: `"BeforeAgent" if platform == "gemini"`
+    expect(content).toContain("platform = _detect_platform(data)");
     expect(content).toMatch(
-      /"BeforeAgent"\s+if\s+_detect_platform\([^)]*\)\s*==\s*"gemini"\s+else\s+"UserPromptSubmit"/,
+      /"BeforeAgent"\s+if\s+platform\s*==\s*"gemini"\s+else\s+"UserPromptSubmit"/,
     );
   });
 

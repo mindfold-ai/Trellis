@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Backend Pre-Development Checklist + spec map"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Per-turn breadcrumb contract; explicitly states Codex hooks deliver to sub-agent turns (updated in 0.5.4)"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Codex SessionStart + UserPromptSubmit semantics; multi_agent_v2 fires per-spawn"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python hook script conventions (encoding, signal handling, error handling)"}

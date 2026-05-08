@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Backend spec map for context check"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Verify hook output matches the contract that sub-agent breadcrumbs are inert"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Verify Codex-only scope; other platforms unchanged"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test anti-patterns; assert source-file content rather than tautological registry lookups"}
