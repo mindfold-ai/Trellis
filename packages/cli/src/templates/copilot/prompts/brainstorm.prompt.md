@@ -4,12 +4,20 @@ description: "Trellis Copilot prompt: Brainstorm - Requirements Discovery (AI Co
 
 # Brainstorm - Requirements Discovery (AI Coding Enhanced)
 
+**CoreRule**: Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+---
+
 Guide AI through collaborative requirements discovery **before implementation**, optimized for AI coding workflows:
 
 * **Task-first** (capture ideas immediately)
 * **Action-before-asking** (reduce low-value questions)
 * **Research-first** for technical choices (avoid asking users to invent options)
-* **Diverge â†?Converge** (expand thinking, then lock MVP)
+* **Diverge ï¿½?Converge** (expand thinking, then lock MVP)
 
 ---
 
@@ -30,19 +38,19 @@ Triggered from `/` when the user describes a development task, especially when:
    Always ensure a task exists at the start so the user's ideas are recorded immediately.
 
 2. **Action before asking**
-   If you can derive the answer from repo code, docs, configs, conventions, or quick research â€?do that first.
+   If you can derive the answer from repo code, docs, configs, conventions, or quick research ï¿½?do that first.
 
 3. **One question per message**
    Never overwhelm the user with a list of questions. Ask one, update PRD, repeat.
 
 4. **Prefer concrete options**
-   For preference/decision questions, present 2â€? feasible, specific approaches with trade-offs.
+   For preference/decision questions, present 2ï¿½? feasible, specific approaches with trade-offs.
 
 5. **Research-first for technical choices**
    If the decision depends on industry conventions / similar tools / established patterns, do research first, then propose options.
 
-6. **Diverge â†?Converge**
-   After initial understanding, proactively consider future evolution, related scenarios, and failure/edge cases â€?then converge to an MVP with explicit out-of-scope.
+6. **Diverge ï¿½?Converge**
+   After initial understanding, proactively consider future evolution, related scenarios, and failure/edge cases ï¿½?then converge to an MVP with explicit out-of-scope.
 
 7. **No meta questions**
    Do not ask "should I search?" or "can you paste the code so I can continue?"
@@ -55,7 +63,7 @@ Triggered from `/` when the user describes a development task, especially when:
 Before any Q&A, ensure a task exists. If none exists, create one immediately.
 
 * Use a **temporary working title** derived from the user's message.
-* It's OK if the title is imperfect â€?refine later in PRD.
+* It's OK if the title is imperfect ï¿½?refine later in PRD.
 
 ```bash
 TASK_DIR=$(python3 ./.trellis/scripts/task.py create "brainstorm: <short goal>" --slug <auto>)
@@ -138,8 +146,8 @@ Write findings into PRD:
 | Complexity   | Criteria                                               | Action                                      |
 | ------------ | ------------------------------------------------------ | ------------------------------------------- |
 | **Trivial**  | Single-line fix, typo, obvious change                  | Skip brainstorm, implement directly         |
-| **Simple**   | Clear goal, 1â€? files, scope well-defined              | Ask 1 confirm question, then implement      |
-| **Moderate** | Multiple files, some ambiguity                         | Light brainstorm (2â€? high-value questions) |
+| **Simple**   | Clear goal, 1ï¿½? files, scope well-defined              | Ask 1 confirm question, then implement      |
+| **Moderate** | Multiple files, some ambiguity                         | Light brainstorm (2ï¿½? high-value questions) |
 | **Complex**  | Vague goal, architectural choices, multiple approaches | Full brainstorm                             |
 
 > Note: Task already exists from Step 0. Classification only affects depth of brainstorming.
@@ -150,7 +158,7 @@ Write findings into PRD:
 
 Before asking ANY question, run the following gate:
 
-### Gate A â€?Can I derive this without the user?
+### Gate A ï¿½?Can I derive this without the user?
 
 If answer is available via:
 
@@ -158,9 +166,9 @@ If answer is available via:
 * docs/specs/conventions
 * quick market/OSS research
 
-â†?**Do not ask.** Fetch it, summarize, update PRD.
+ï¿½?**Do not ask.** Fetch it, summarize, update PRD.
 
-### Gate B â€?Is this a meta/lazy question?
+### Gate B ï¿½?Is this a meta/lazy question?
 
 Examples:
 
@@ -168,21 +176,21 @@ Examples:
 * "Can you paste the code so I can proceed?"
 * "What does the code look like?" (when repo is available)
 
-â†?**Do not ask.** Take action.
+ï¿½?**Do not ask.** Take action.
 
-### Gate C â€?What type of question is it?
+### Gate C ï¿½?What type of question is it?
 
 * **Blocking**: cannot proceed without user input
 * **Preference**: multiple valid choices, depends on product/UX/risk preference
 * **Derivable**: should be answered by inspection/research
 
-â†?Only ask **Blocking** or **Preference**.
+ï¿½?Only ask **Blocking** or **Preference**.
 
 ---
 
 ## Step 4: Research-first Mode (Mandatory for technical choices)
 
-### Trigger conditions (any â†?research-first)
+### Trigger conditions (any ï¿½?research-first)
 
 * The task involves selecting an approach, library, protocol, framework, template system, plugin mechanism, or CLI UX convention
 * The user asks for "best practice", "how others do it", "recommendation"
@@ -190,10 +198,10 @@ Examples:
 
 ### Research steps
 
-1. Identify 2â€? comparable tools/patterns
+1. Identify 2ï¿½? comparable tools/patterns
 2. Summarize common conventions and why they exist
 3. Map conventions onto our repo constraints
-4. Produce **2â€? feasible approaches** for our project
+4. Produce **2ï¿½? feasible approaches** for our project
 
 ### Research output format (PRD)
 
@@ -236,15 +244,15 @@ Then ask **one** preference question:
 
 ---
 
-## Step 5: Expansion Sweep (DIVERGE) â€?Required after initial understanding
+## Step 5: Expansion Sweep (DIVERGE) ï¿½?Required after initial understanding
 
 After you can summarize the goal, proactively broaden thinking before converging.
 
-### Expansion categories (keep to 1â€? bullets each)
+### Expansion categories (keep to 1ï¿½? bullets each)
 
 1. **Future evolution**
 
-   * What might this feature become in 1â€? months?
+   * What might this feature become in 1ï¿½? months?
    * What extension points are worth preserving now?
 
 2. **Related scenarios**
@@ -264,9 +272,9 @@ I understand you want to implement: <current goal>.
 
 Before diving into design, let me quickly diverge to consider three categories (to avoid rework later):
 
-1. Future evolution: <1â€? bullets>
-2. Related scenarios: <1â€? bullets>
-3. Failure/edge cases: <1â€? bullets>
+1. Future evolution: <1ï¿½? bullets>
+2. Related scenarios: <1ï¿½? bullets>
+3. Failure/edge cases: <1ï¿½? bullets>
 
 For this MVP, which would you like to include (or none)?
 
@@ -278,8 +286,8 @@ For this MVP, which would you like to include (or none)?
 
 Then update PRD:
 
-* What's in MVP â†?`Requirements`
-* What's excluded â†?`Out of Scope`
+* What's in MVP ï¿½?`Requirements`
+* What's excluded ï¿½?`Out of Scope`
 
 ---
 
@@ -292,7 +300,7 @@ Then update PRD:
 * After each user answer:
 
   * Update PRD immediately
-  * Move answered items from `Open Questions` â†?`Requirements`
+  * Move answered items from `Open Questions` ï¿½?`Requirements`
   * Update `Acceptance Criteria` with testable checkboxes
   * Clarify `Out of Scope`
 
@@ -308,20 +316,20 @@ Then update PRD:
 ```markdown
 For <topic>, which approach do you prefer?
 
-1. **Option A** â€?<what it means + trade-off>
-2. **Option B** â€?<what it means + trade-off>
-3. **Option C** â€?<what it means + trade-off>
-4. **Other** â€?describe your preference
+1. **Option A** ï¿½?<what it means + trade-off>
+2. **Option B** ï¿½?<what it means + trade-off>
+3. **Option C** ï¿½?<what it means + trade-off>
+4. **Other** ï¿½?describe your preference
 ```
 
 ---
 
 ## Step 7: Propose Approaches + Record Decisions (Complex tasks)
 
-After requirements are clear enough, propose 2â€? approaches (if not already done via research-first):
+After requirements are clear enough, propose 2ï¿½? approaches (if not already done via research-first):
 
 ```markdown
-Based on current information, here are 2â€? feasible approaches:
+Based on current information, here are 2ï¿½? feasible approaches:
 
 **Approach A: <name>** (Recommended)
 
@@ -465,17 +473,17 @@ After brainstorm completes (Step 8 confirmation approved), the flow continues to
 ```text
 Brainstorm
   Step 0: Create task directory + seed PRD
-  Step 1â€?: Discover requirements, research, converge
-  Step 8: Final confirmation â†?user approves
-  â†?
+  Step 1ï¿½?: Discover requirements, research, converge
+  Step 8: Final confirmation ï¿½?user approves
+  ï¿½?
 Task Workflow Phase 2 (Prepare for Implementation)
   Code-Spec Depth Check (if applicable)
-  â†?Research codebase (based on confirmed PRD)
-  â†?Configure code-spec context (jsonl files)
-  â†?Activate task
-  â†?
+  ï¿½?Research codebase (based on confirmed PRD)
+  ï¿½?Configure code-spec context (jsonl files)
+  ï¿½?Activate task
+  ï¿½?
 Task Workflow Phase 3 (Execute)
-  Implement â†?Check â†?Complete
+  Implement ï¿½?Check ï¿½?Complete
 ```
 
 The task directory and PRD already exist from brainstorm, so Phase 1 of the Task Workflow is skipped entirely.

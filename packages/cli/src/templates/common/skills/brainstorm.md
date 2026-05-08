@@ -1,5 +1,13 @@
 # Brainstorm - Requirements Discovery (AI Coding Enhanced)
 
+**CoreRule**: Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+---
+
 Guide AI through collaborative requirements discovery **before implementation**, optimized for AI coding workflows:
 
 * **Task-first** (capture ideas immediately)
@@ -196,6 +204,8 @@ Why:
 - It persists findings to `{TASK_DIR}/research/<topic>.md` (the contract — see `workflow.md` Phase 1.2)
 - It returns only `{file path, one-line summary}` to the main agent
 - Independent topics can be **parallelized** — spawn multiple sub-agents in one tool call
+
+> **Codex exception**: on Codex CLI, do NOT dispatch `trellis-research` for research-first mode — do the research inline (WebFetch / WebSearch in the main session) and write findings to `{TASK_DIR}/research/<topic>.md` yourself. Reason: Codex `spawn_agent` runs sub-agents with `fork_turns="none"` (isolated context, no parent session inheritance), so the research sub-agent cannot resolve the active task path via `task.py current` and silently aborts without producing files. Inline research on Codex avoids this failure mode. The 3+ inline research calls limit (B rule in `workflow.md`) is relaxed for Codex specifically.
 
 Agent type: `trellis-research`
 Task description template: "Research <specific question>; persist findings to `{TASK_DIR}/research/<topic-slug>.md`."
