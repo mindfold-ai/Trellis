@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-5.md`
-- **Total Sessions**: 148
-- **Last Active**: 2026-05-06
+- **Total Sessions**: 149
+- **Last Active**: 2026-05-08
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-5.md` | ~441 | Active |
+| `journal-5.md` | ~480 | Active |
 | `journal-4.md` | ~1975 | Archived |
 | `journal-3.md` | ~1988 | Archived |
 | `journal-2.md` | ~1963 | Archived |
@@ -33,6 +33,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 149 | 2026-05-08 | 0.5.7 release + Codex dispatch mode + mem unit tests + 0.6 beta sync | `278b40a`, `b5b23fb`, `b02faf1`, `b829b14`, `1ac65c2`, `1222f36`, `c10ded7` | `feat/v0.6.0-beta` |
 | 148 | 2026-05-06 | Workflow-state recursion guard | `0db57e5`, `48f966e` | `feat/v0.6.0-beta` |
 | 147 | 2026-05-06 | Release 0.5.3: class-1 sub-agent context fallback + non-blocking task.py start | `6272a9e`, `1adb7b0`, `5b298ba`, `a7d54ec` | `feat/v0.6.0-beta` |
 | 146 | 2026-05-06 | Release 0.5.2: Python <=3.11 f-string SyntaxError hotfix in session-start hooks | `3f1711b`, `263c8c6`, `601f213`, `2468cb2`, `5ad1e21` | `main` |

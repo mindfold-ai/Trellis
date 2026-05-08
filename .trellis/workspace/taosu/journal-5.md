@@ -439,3 +439,42 @@ Hardened workflow-state and implement/check agent prompts against recursive Trel
 ### Next Steps
 
 - None - task complete
+
+
+## Session 149: 0.5.7 release + Codex dispatch mode + mem unit tests + 0.6 beta sync
+
+**Date**: 2026-05-08
+**Task**: 0.5.7 release + Codex dispatch mode + mem unit tests + 0.6 beta sync
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Shipped 0.5.7 with Codex configurable dispatch mode (codex.dispatch_mode=sub-agent|inline) + new configSectionsAdded manifest field (generic mechanism for future config additions, append-only / idempotent). Tracked Codex 0.129 features.codex_hooks→features.hooks rename + new /hooks TUI approval gate across docs / spec / runtime warning / uninstall scrubber. Found and fixed parser bug in trellis_config.py during dogfood (inline # comments not stripped, breaking inline-mode detection). Merged main into feat/v0.6.0-beta to bring 0.5.5/0.5.6/0.5.7 into beta. Added 84 unit tests for trellis mem command (1461 LoC POC integrated to v0.6.0-beta with 0 coverage); 81.89% statement coverage achieved; only export annotations on mem.ts (no logic edits). Vitest 1019/1019, lint+typecheck green. npm 0.5.7 published as latest tag.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `278b40a` | (see git log) |
+| `b5b23fb` | (see git log) |
+| `b02faf1` | (see git log) |
+| `b829b14` | (see git log) |
+| `1ac65c2` | (see git log) |
+| `1222f36` | (see git log) |
+| `c10ded7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
