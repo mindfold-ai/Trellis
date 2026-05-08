@@ -4468,11 +4468,11 @@ describe("regression: research agent persists findings to task dir", () => {
     );
     const data = JSON.parse(content) as {
       tools: string[];
-      instructions: string;
+      prompt: string;
     };
     expect(data.tools).toContain("write");
-    expect(data.instructions).toContain("{TASK_DIR}/research/");
-    expect(data.instructions).toMatch(/PERSIST|persist/);
+    expect(data.prompt).toContain("{TASK_DIR}/research/");
+    expect(data.prompt).toMatch(/PERSIST|persist/);
   });
 
   it("opencode research.md grants write/edit permission and has persist instruction", () => {
@@ -4858,21 +4858,56 @@ describe("regression: sub-agent context injection fallback (0.5.3)", () => {
   }
 
   for (const agent of ["implement", "check"] as const) {
-    it(`kiro/${agent} JSON agent carries marker + fallback protocol in instructions`, () => {
+    it(`kiro/${agent} JSON agent carries marker + fallback protocol in prompt`, () => {
+      // 0.5.7 (#247): Kiro CLI renamed `instructions` → `prompt` in agent JSON.
       const filePath = path.join(
         repoRootFb,
         `packages/cli/src/templates/kiro/agents/trellis-${agent}.json`,
       );
       const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-      const instructions: string = json.instructions ?? "";
-      expect(instructions).toContain(HOOK_INJECTED_MARKER);
-      expect(instructions).toContain("Trellis Context Loading Protocol");
-      expect(instructions).toContain("Active task:");
-      expect(instructions).toContain("prd.md");
+      const prompt: string = json.prompt ?? "";
+      expect(prompt).toContain(HOOK_INJECTED_MARKER);
+      expect(prompt).toContain("Trellis Context Loading Protocol");
+      expect(prompt).toContain("Active task:");
+      expect(prompt).toContain("prd.md");
       const expectedJsonl = agent === "implement" ? "implement.jsonl" : "check.jsonl";
-      expect(instructions).toContain(expectedJsonl);
+      expect(prompt).toContain(expectedJsonl);
     });
   }
+
+  it("[issue-247] kiro agent JSON files use Kiro CLI's current schema (prompt / hooks-object)", () => {
+    // Kiro CLI rejected Trellis's pre-0.5.7 agent JSON with "invalid agent"
+    // because the schema drifted: `instructions` → `prompt`, `tools` field
+    // gained a sibling `allowedTools`, and `hooks` switched from an array of
+    // `{on, command, timeout_ms}` entries to an object keyed by event name.
+    // See https://kiro.dev/docs/cli/custom-agents/configuration-reference.
+    for (const agent of ["implement", "check", "research"] as const) {
+      const filePath = path.join(
+        repoRootFb,
+        `packages/cli/src/templates/kiro/agents/trellis-${agent}.json`,
+      );
+      const data = JSON.parse(fs.readFileSync(filePath, "utf-8")) as {
+        prompt?: unknown;
+        instructions?: unknown;
+        tools?: unknown;
+        allowedTools?: unknown;
+        hooks?: unknown;
+      };
+
+      expect(data.prompt, `${agent}: prompt field present`).toBeTypeOf("string");
+      expect(data.instructions, `${agent}: instructions field removed`).toBeUndefined();
+      expect(Array.isArray(data.tools), `${agent}: tools is array`).toBe(true);
+      expect(Array.isArray(data.allowedTools), `${agent}: allowedTools is array`).toBe(true);
+
+      // hooks must be an OBJECT keyed by event name, not an array.
+      expect(
+        data.hooks !== null &&
+          typeof data.hooks === "object" &&
+          !Array.isArray(data.hooks),
+        `${agent}: hooks is object (not array)`,
+      ).toBe(true);
+    }
+  });
 
   it("workflow.md dispatch protocol covers all platforms (not class-2 only)", () => {
     const workflowPath = path.join(
