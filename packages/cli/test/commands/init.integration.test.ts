@@ -90,6 +90,7 @@ describe("init() integration", () => {
 
     // Root files
     expect(fs.existsSync(path.join(tmpDir, "AGENTS.md"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(true);
 
     // Built-in multi-file skill is installed for default platforms.
     expect(
@@ -150,6 +151,8 @@ describe("init() integration", () => {
         path.join(tmpDir, ".claude", "skills", "trellis-meta", "SKILL.md"),
       ),
     ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.AGENTS))).toBe(false);
   });
 
   it("#3 multi platform creates all selected platform directories", async () => {
@@ -170,12 +173,16 @@ describe("init() integration", () => {
     );
     expect(fs.existsSync(path.join(tmpDir, ".github", "copilot"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".pi"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.AGENTS))).toBe(true);
   });
 
   it("#3b codex platform creates skills plus .codex assets", async () => {
     await init({ yes: true, codex: true });
 
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.AGENTS))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(false);
     // Codex SessionStart hook was removed (de-recursion fix); the
     // <trellis-bootstrap> notice in inject-workflow-state.py invokes
     // `$trellis-start` to load workflow context, so the skill is emitted.
@@ -257,7 +264,19 @@ describe("init() integration", () => {
     );
   });
 
-  it("#3c kiro platform creates .kiro/skills", async () => {
+  it("#3c re-init adding Claude Code creates CLAUDE.md", async () => {
+    await init({ yes: true, codex: true, force: true });
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.AGENTS))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(false);
+
+    await init({ yes: true, claude: true });
+
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.AGENTS))).toBe(true);
+  });
+
+  it("#3d kiro platform creates .kiro/skills", async () => {
     await init({ yes: true, kiro: true });
 
     expect(fs.existsSync(path.join(tmpDir, ".kiro", "skills"))).toBe(true);
@@ -656,7 +675,12 @@ describe("init() integration", () => {
       path.join(tmpDir, FILE_NAMES.AGENTS),
       "utf-8",
     );
+    const claudeContent = fs.readFileSync(
+      path.join(tmpDir, FILE_NAMES.CLAUDE),
+      "utf-8",
+    );
     expect(hashes[FILE_NAMES.AGENTS]).toBe(computeHash(agentsContent));
+    expect(hashes[FILE_NAMES.CLAUDE]).toBe(computeHash(claudeContent));
     expect(Object.keys(hashes).length).toBeGreaterThan(0);
   });
 

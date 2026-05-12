@@ -17,7 +17,11 @@ import {
   getPythonCommandForPlatform,
   setResolvedPythonCommand,
 } from "../configurators/shared.js";
-import { AI_TOOLS, type CliFlag } from "../types/ai-tools.js";
+import {
+  AI_TOOLS,
+  type CliFlag,
+  type RootInstructionFile,
+} from "../types/ai-tools.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
 import { VERSION } from "../constants/version.js";
 import { agentsMdContent } from "../templates/markdown/index.js";
@@ -843,6 +847,8 @@ async function handleReinit(
         }
       }
     }
+
+    await createRootFiles(cwd, getRootInstructionFilesForTools(platformsToAdd));
 
     // Update template hashes
     const hashedCount = initializeHashes(cwd);
@@ -1763,8 +1769,8 @@ export async function init(options: InitOptions): Promise<void> {
     logPythonAdaptationNotice(pythonCmd);
   }
 
-  // Create root files (skip if exists)
-  await createRootFiles(cwd);
+  // Create root instruction files required by selected platforms.
+  await createRootFiles(cwd, getRootInstructionFilesForTools(tools));
 
   // Initialize template hashes for modification tracking
   const hashedCount = initializeHashes(cwd);
@@ -1848,12 +1854,28 @@ function askInput(prompt: string): Promise<string> {
   });
 }
 
-async function createRootFiles(cwd: string): Promise<void> {
-  const agentsPath = path.join(cwd, FILE_NAMES.AGENTS);
+function getRootInstructionFilesForTools(
+  tools: string[],
+): RootInstructionFile[] {
+  const files = new Set<RootInstructionFile>();
+  for (const tool of tools) {
+    const platformId = resolveCliFlag(tool);
+    if (platformId) {
+      files.add(AI_TOOLS[platformId].rootInstructionFile);
+    }
+  }
+  return [...files];
+}
 
-  // Write AGENTS.md from template
-  const agentsWritten = await writeFile(agentsPath, agentsMdContent);
-  if (agentsWritten) {
-    console.log(chalk.blue("📄 Created AGENTS.md"));
+async function createRootFiles(
+  cwd: string,
+  rootInstructionFiles: RootInstructionFile[],
+): Promise<void> {
+  for (const fileName of rootInstructionFiles) {
+    const filePath = path.join(cwd, fileName);
+    const written = await writeFile(filePath, agentsMdContent);
+    if (written) {
+      console.log(chalk.blue(`📄 Created ${fileName}`));
+    }
   }
 }

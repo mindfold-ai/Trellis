@@ -264,7 +264,7 @@ export function getModificationStatus(
 const TEMPLATE_DIRS = ALL_MANAGED_DIRS;
 
 /** Root-level template files written by init and managed by update. */
-const TEMPLATE_FILES = [FILE_NAMES.AGENTS] as const;
+const TEMPLATE_FILES = [FILE_NAMES.AGENTS, FILE_NAMES.CLAUDE] as const;
 
 /**
  * Patterns to exclude from hash tracking

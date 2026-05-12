@@ -374,6 +374,35 @@ describe("update() integration", () => {
     expect(result.endsWith(templateContent.trimEnd() + "\n")).toBe(true);
   });
 
+  it("#4e auto-updates Claude Code CLAUDE.md and preserves outside content", async () => {
+    await init({ yes: true, claude: true, force: true });
+
+    const targetRelative = FILE_NAMES.CLAUDE;
+    const targetFull = path.join(tmpDir, targetRelative);
+    const templateContent = fs.readFileSync(targetFull, "utf-8");
+    const oldContent = removeSubagentsSection(templateContent);
+    const existingContent = `# Claude local notes\n\n${oldContent}\n\n## Project Notes\n\nKeep this.`;
+    const expectedContent = `# Claude local notes\n\n${templateContent}\n\n## Project Notes\n\nKeep this.`;
+
+    fs.writeFileSync(targetFull, existingContent);
+
+    const hashFile = path.join(
+      tmpDir,
+      DIR_NAMES.WORKFLOW,
+      ".template-hashes.json",
+    );
+    const hashes = readHashesV2(hashFile);
+    hashes[targetRelative] = computeHash(existingContent);
+    writeHashesV2(hashFile, hashes);
+
+    await update({});
+
+    expect(fs.readFileSync(targetFull, "utf-8")).toBe(expectedContent);
+    expect(readHashesV2(hashFile)[targetRelative]).toBe(
+      computeHash(expectedContent),
+    );
+  });
+
   it("#5 force overwrites user-modified files", async () => {
     await setupProject();
 

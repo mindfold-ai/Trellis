@@ -63,6 +63,8 @@ export type CliFlag =
   | "droid"
   | "pi";
 
+export type RootInstructionFile = "AGENTS.md" | "CLAUDE.md";
+
 /**
  * Template context for placeholder resolution.
  * Controls how common templates are rendered per platform.
@@ -102,6 +104,8 @@ export interface AIToolConfig {
   templateDirs: TemplateDir[];
   /** Config directory name in the project root (e.g., ".claude") */
   configDir: string;
+  /** Root instructions file managed for this platform */
+  rootInstructionFile: RootInstructionFile;
   /**
    * Whether the platform supports the shared `.agents/skills/` layer
    * (agentskills.io open standard). When true, `.agents/skills` is added
@@ -136,6 +140,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Claude Code",
     templateDirs: ["common", "claude"],
     configDir: ".claude",
+    rootInstructionFile: "CLAUDE.md",
     cliFlag: "claude",
     defaultChecked: true,
     hasPythonHooks: true,
@@ -152,6 +157,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Cursor",
     templateDirs: ["common", "cursor"],
     configDir: ".cursor",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "cursor",
     defaultChecked: true,
     hasPythonHooks: true,
@@ -168,6 +174,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "OpenCode",
     templateDirs: ["common", "opencode"],
     configDir: ".opencode",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "opencode",
     defaultChecked: false,
     hasPythonHooks: false,
@@ -184,6 +191,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Codex (also writes .agents/skills/ — read by Cursor, Gemini CLI, GitHub Copilot, Amp, Kimi Code)",
     templateDirs: ["common", "codex"],
     configDir: ".codex",
+    rootInstructionFile: "AGENTS.md",
     supportsAgentSkills: true,
     cliFlag: "codex",
     defaultChecked: false,
@@ -201,6 +209,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Kilo CLI",
     templateDirs: ["common", "kilo"],
     configDir: ".kilocode",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "kilo",
     defaultChecked: false,
     hasPythonHooks: false,
@@ -217,6 +226,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Kiro Code",
     templateDirs: ["common", "kiro"],
     configDir: ".kiro/skills",
+    rootInstructionFile: "AGENTS.md",
     extraManagedPaths: [".kiro/agents", ".kiro/hooks"],
     cliFlag: "kiro",
     defaultChecked: false,
@@ -234,6 +244,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Gemini CLI",
     templateDirs: ["common", "gemini"],
     configDir: ".gemini",
+    rootInstructionFile: "AGENTS.md",
     supportsAgentSkills: true,
     cliFlag: "gemini",
     defaultChecked: false,
@@ -251,6 +262,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Antigravity",
     templateDirs: ["common", "antigravity"],
     configDir: ".agent/workflows",
+    rootInstructionFile: "AGENTS.md",
     extraManagedPaths: [".agent/skills"],
     cliFlag: "antigravity",
     defaultChecked: false,
@@ -268,6 +280,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Windsurf",
     templateDirs: ["common", "windsurf"],
     configDir: ".windsurf/workflows",
+    rootInstructionFile: "AGENTS.md",
     extraManagedPaths: [".windsurf/skills"],
     cliFlag: "windsurf",
     defaultChecked: false,
@@ -285,6 +298,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Qoder",
     templateDirs: ["common", "qoder"],
     configDir: ".qoder",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "qoder",
     defaultChecked: false,
     hasPythonHooks: true,
@@ -301,6 +315,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "CodeBuddy",
     templateDirs: ["common", "codebuddy"],
     configDir: ".codebuddy",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "codebuddy",
     defaultChecked: false,
     hasPythonHooks: true,
@@ -317,6 +332,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "GitHub Copilot",
     templateDirs: ["common", "copilot"],
     configDir: ".github/copilot",
+    rootInstructionFile: "AGENTS.md",
     extraManagedPaths: [
       ".github/agents",
       ".github/hooks",
@@ -339,6 +355,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Factory Droid",
     templateDirs: ["common", "droid"],
     configDir: ".factory",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "droid",
     defaultChecked: false,
     hasPythonHooks: true,
@@ -355,6 +372,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "Pi Agent",
     templateDirs: ["common", "pi"],
     configDir: ".pi",
+    rootInstructionFile: "AGENTS.md",
     cliFlag: "pi",
     defaultChecked: false,
     hasPythonHooks: false,
@@ -396,4 +414,8 @@ export function getManagedPaths(tool: AITool): string[] {
  */
 export function getTemplateDirs(tool: AITool): TemplateDir[] {
   return AI_TOOLS[tool].templateDirs;
+}
+
+export function getRootInstructionFile(tool: AITool): RootInstructionFile {
+  return AI_TOOLS[tool].rootInstructionFile;
 }

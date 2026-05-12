@@ -4,7 +4,11 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
-import type { AITool } from "../types/ai-tools.js";
+import {
+  AI_TOOLS,
+  type AITool,
+  type RootInstructionFile,
+} from "../types/ai-tools.js";
 import { VERSION, PACKAGE_NAME } from "../constants/version.js";
 import {
   getMigrationsForVersion,
@@ -141,8 +145,8 @@ function replaceTrellisManagedBlock(
   );
 }
 
-function buildAgentsMdTemplate(cwd: string): string {
-  const fullPath = path.join(cwd, FILE_NAMES.AGENTS);
+function buildRootInstructionTemplate(cwd: string, fileName: string): string {
+  const fullPath = path.join(cwd, fileName);
   if (!fs.existsSync(fullPath)) {
     return agentsMdContent;
   }
@@ -182,6 +186,16 @@ function isKnownUntrackedTemplate(
   }
 
   return LEGACY_UNTRACKED_AGENTS_MD_BLOCK_HASHES.has(computeHash(managedBlock));
+}
+
+function getRootInstructionFilesForPlatforms(
+  platforms: Set<AITool>,
+): RootInstructionFile[] {
+  const files = new Set<RootInstructionFile>();
+  for (const platform of platforms) {
+    files.add(AI_TOOLS[platform].rootInstructionFile);
+  }
+  return [...files];
 }
 
 /**
@@ -626,6 +640,7 @@ function collectTemplateFiles(
       platforms.add(p);
     }
   }
+  const rootInstructionFiles = getRootInstructionFilesForPlatforms(platforms);
 
   // Python scripts (single source of truth: getAllScripts())
   for (const [scriptPath, content] of getAllScripts()) {
@@ -645,7 +660,9 @@ function collectTemplateFiles(
   files.set(`${DIR_NAMES.WORKFLOW}/workflow.md`, workflowMdTemplate);
   // workspace/index.md stays excluded — it's runtime-appended by add_session.py
   // (journal index) and has no script-parsed structure.
-  files.set(FILE_NAMES.AGENTS, buildAgentsMdTemplate(cwd));
+  for (const fileName of rootInstructionFiles) {
+    files.set(fileName, buildRootInstructionTemplate(cwd, fileName));
+  }
 
   // Platform-specific templates (only for configured platforms)
   for (const platformId of platforms) {
@@ -760,14 +777,18 @@ function analyzeChanges(
   return result;
 }
 
-function collectMissingAgentsMdHash(
+function collectMissingRootInstructionHashes(
   changes: ChangeAnalysis,
   hashes: TemplateHashes,
 ): Map<string, string> {
   const files = new Map<string, string>();
 
   for (const file of changes.unchangedFiles) {
-    if (file.relativePath === FILE_NAMES.AGENTS && !hashes[file.relativePath]) {
+    if (
+      (file.relativePath === FILE_NAMES.AGENTS ||
+        file.relativePath === FILE_NAMES.CLAUDE) &&
+      !hashes[file.relativePath]
+    ) {
       files.set(file.relativePath, file.newContent);
     }
   }
@@ -935,7 +956,7 @@ function backupFile(
 const BACKUP_DIRS = ALL_MANAGED_DIRS;
 
 /** Root-level managed files to include in update backups. */
-const BACKUP_FILES = [FILE_NAMES.AGENTS] as const;
+const BACKUP_FILES = [FILE_NAMES.AGENTS, FILE_NAMES.CLAUDE] as const;
 
 /**
  * Patterns to exclude from backup (user data that shouldn't be backed up)
@@ -1944,7 +1965,10 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Analyze changes (pass hashes for modification detection)
   const changes = analyzeChanges(cwd, hashes, templates);
-  const missingAgentsMdHash = collectMissingAgentsMdHash(changes, hashes);
+  const missingRootInstructionHashes = collectMissingRootInstructionHashes(
+    changes,
+    hashes,
+  );
 
   // Print summary
   printChangeSummary(changes);
@@ -1983,8 +2007,8 @@ export async function update(options: UpdateOptions): Promise<void> {
     !hasPendingMigrations &&
     !hasSafeDeletes
   ) {
-    if (!options.dryRun && missingAgentsMdHash.size > 0) {
-      updateHashes(cwd, missingAgentsMdHash);
+    if (!options.dryRun && missingRootInstructionHashes.size > 0) {
+      updateHashes(cwd, missingRootInstructionHashes);
     }
 
     if (isSameVersion) {
@@ -2257,7 +2281,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   updateVersionFile(cwd);
 
   // Update template hashes for new, auto-updated, and overwritten files
-  const filesToHash = new Map<string, string>(missingAgentsMdHash);
+  const filesToHash = new Map<string, string>(missingRootInstructionHashes);
   for (const file of changes.newFiles) {
     filesToHash.set(file.relativePath, file.newContent);
   }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { FILE_NAMES } from "../../src/constants/paths.js";
 import {
   computeHash,
   loadHashes,
@@ -416,6 +417,19 @@ describe("initializeHashes", () => {
     const hashes = loadHashes(tmpDir);
     expect(hashes).toHaveProperty(".trellis/scripts/task.py");
     expect(hashes).toHaveProperty(".claude/commands/start.md");
+  });
+
+  it("hashes existing root instruction files", () => {
+    fs.mkdirSync(path.join(tmpDir, ".trellis"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "# Agents\n");
+    fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "# Claude\n");
+
+    const count = initializeHashes(tmpDir);
+    const hashes = loadHashes(tmpDir);
+
+    expect(hashes[FILE_NAMES.AGENTS]).toBe(computeHash("# Agents\n"));
+    expect(hashes[FILE_NAMES.CLAUDE]).toBe(computeHash("# Claude\n"));
+    expect(count).toBe(2);
   });
 
   it("excludes workspace and tasks directories", () => {

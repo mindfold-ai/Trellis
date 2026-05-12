@@ -19,6 +19,16 @@ describe("AI_TOOLS registry", () => {
       expect(config.configDir.startsWith(".")).toBe(true);
       expect(config.cliFlag.length).toBeGreaterThan(0);
       expect(config.templateDirs).toContain("common");
+      expect(["AGENTS.md", "CLAUDE.md"]).toContain(
+        config.rootInstructionFile,
+      );
+    }
+  });
+
+  it("uses CLAUDE.md only for Claude Code root instructions", () => {
+    for (const id of ALL_TOOL_IDS) {
+      const expected = id === "claude-code" ? "CLAUDE.md" : "AGENTS.md";
+      expect(AI_TOOLS[id].rootInstructionFile).toBe(expected);
     }
   });
 });
