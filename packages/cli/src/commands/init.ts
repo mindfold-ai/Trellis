@@ -848,10 +848,16 @@ async function handleReinit(
       }
     }
 
-    await createRootFiles(cwd, getRootInstructionFilesForTools(platformsToAdd));
+    const rootInstructionFilesToCreate =
+      getRootInstructionFilesForTools(platformsToAdd);
+    const rootInstructionFilesToHash = getRootInstructionFilesForTools([
+      ...[...configuredPlatforms].map((id) => AI_TOOLS[id].cliFlag),
+      ...platformsToAdd,
+    ]);
+    await createRootFiles(cwd, rootInstructionFilesToCreate);
 
     // Update template hashes
-    const hashedCount = initializeHashes(cwd);
+    const hashedCount = initializeHashes(cwd, rootInstructionFilesToHash);
     if (hashedCount > 0) {
       console.log(
         chalk.gray(`📋 Tracking ${hashedCount} template files for updates`),
@@ -1770,10 +1776,11 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   // Create root instruction files required by selected platforms.
-  await createRootFiles(cwd, getRootInstructionFilesForTools(tools));
+  const rootInstructionFiles = getRootInstructionFilesForTools(tools);
+  await createRootFiles(cwd, rootInstructionFiles);
 
   // Initialize template hashes for modification tracking
-  const hashedCount = initializeHashes(cwd);
+  const hashedCount = initializeHashes(cwd, rootInstructionFiles);
   if (hashedCount > 0) {
     console.log(
       chalk.gray(`📋 Tracking ${hashedCount} template files for updates`),

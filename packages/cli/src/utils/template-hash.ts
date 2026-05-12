@@ -263,8 +263,8 @@ export function getModificationStatus(
  */
 const TEMPLATE_DIRS = ALL_MANAGED_DIRS;
 
-/** Root-level template files written by init and managed by update. */
-const TEMPLATE_FILES = [FILE_NAMES.AGENTS, FILE_NAMES.CLAUDE] as const;
+/** Root-level template files that may be managed by init/update. */
+const TEMPLATE_FILES = new Set<string>([FILE_NAMES.AGENTS, FILE_NAMES.CLAUDE]);
 
 /**
  * Patterns to exclude from hash tracking
@@ -340,10 +340,16 @@ function collectFiles(
  * @param cwd - Working directory
  * @returns Number of files hashed
  */
-export function initializeHashes(cwd: string): number {
+export function initializeHashes(
+  cwd: string,
+  rootTemplateFiles: readonly string[] = [],
+): number {
   const hashes: TemplateHashes = {};
 
-  for (const relativePath of TEMPLATE_FILES) {
+  for (const relativePath of new Set(rootTemplateFiles)) {
+    if (!TEMPLATE_FILES.has(relativePath)) {
+      continue;
+    }
     if (shouldExcludeFromHash(relativePath)) {
       continue;
     }

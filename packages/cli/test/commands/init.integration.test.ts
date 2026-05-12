@@ -30,7 +30,7 @@ import { init } from "../../src/commands/init.js";
 import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { collectPlatformTemplates } from "../../src/configurators/index.js";
-import { computeHash } from "../../src/utils/template-hash.js";
+import { computeHash, loadHashes } from "../../src/utils/template-hash.js";
 import { execSync } from "node:child_process";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -153,6 +153,26 @@ describe("init() integration", () => {
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.AGENTS))).toBe(false);
+  });
+
+  it("#2b Claude-only init does not hash-track a pre-existing AGENTS.md", async () => {
+    const userAgentsContent = "# Existing agent notes\n";
+    fs.writeFileSync(path.join(tmpDir, FILE_NAMES.AGENTS), userAgentsContent);
+
+    await init({ yes: true, claude: true });
+
+    expect(fs.readFileSync(path.join(tmpDir, FILE_NAMES.AGENTS), "utf-8")).toBe(
+      userAgentsContent,
+    );
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(true);
+
+    const hashes = loadHashes(tmpDir);
+    expect(hashes[FILE_NAMES.AGENTS]).toBeUndefined();
+    expect(hashes[FILE_NAMES.CLAUDE]).toBe(
+      computeHash(
+        fs.readFileSync(path.join(tmpDir, FILE_NAMES.CLAUDE), "utf-8"),
+      ),
+    );
   });
 
   it("#3 multi platform creates all selected platform directories", async () => {

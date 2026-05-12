@@ -28,7 +28,7 @@ vi.mock("node:child_process", () => ({
 
 import { init } from "../../src/commands/init.js";
 import { uninstall } from "../../src/commands/uninstall.js";
-import { DIR_NAMES } from "../../src/constants/paths.js";
+import { DIR_NAMES, FILE_NAMES } from "../../src/constants/paths.js";
 import { loadHashes } from "../../src/utils/template-hash.js";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -65,11 +65,11 @@ describe("uninstall() integration", () => {
 
   it("#2 errors when manifest is missing but .trellis/ exists", async () => {
     fs.mkdirSync(path.join(tmpDir, DIR_NAMES.WORKFLOW));
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(((code?: number) => {
-        throw new Error(`process.exit(${code ?? 0})`);
-      }) as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
+      code?: number,
+    ) => {
+      throw new Error(`process.exit(${code ?? 0})`);
+    }) as never);
 
     await expect(uninstall({ yes: true })).rejects.toThrow("process.exit(1)");
     expect(exitSpy).toHaveBeenCalledWith(1);
@@ -126,6 +126,23 @@ describe("uninstall() integration", () => {
         expect(text).not.toContain(otherPath);
       }
     }
+  });
+
+  it("#3b Claude-only uninstall preserves a pre-existing untracked AGENTS.md", async () => {
+    const userAgentsContent = "# Existing agent notes\n";
+    fs.writeFileSync(path.join(tmpDir, FILE_NAMES.AGENTS), userAgentsContent);
+
+    await init({ yes: true, claude: true });
+    const hashesBefore = loadHashes(tmpDir);
+    expect(hashesBefore[FILE_NAMES.AGENTS]).toBeUndefined();
+    expect(hashesBefore[FILE_NAMES.CLAUDE]).toBeDefined();
+
+    await uninstall({ yes: true });
+
+    expect(fs.readFileSync(path.join(tmpDir, FILE_NAMES.AGENTS), "utf-8")).toBe(
+      userAgentsContent,
+    );
+    expect(fs.existsSync(path.join(tmpDir, FILE_NAMES.CLAUDE))).toBe(false);
   });
 
   it("#4 dry-run does not modify anything", async () => {
@@ -308,7 +325,9 @@ describe("uninstall() integration", () => {
     // We need this file in the manifest for it to be processed. If init
     // didn't track it, add it manually so the scrubber path runs.
     const hashes = loadHashes(tmpDir);
-    if (!Object.prototype.hasOwnProperty.call(hashes, ".claude/settings.json")) {
+    if (
+      !Object.prototype.hasOwnProperty.call(hashes, ".claude/settings.json")
+    ) {
       hashes[".claude/settings.json"] = "synthetic-hash";
       const hashFile = path.join(
         tmpDir,
@@ -325,10 +344,9 @@ describe("uninstall() integration", () => {
 
     // .trellis/ is gone, but settings.json should remain (had user fields).
     if (fs.existsSync(settingsPath)) {
-      const after = JSON.parse(fs.readFileSync(settingsPath, "utf-8")) as Record<
-        string,
-        unknown
-      >;
+      const after = JSON.parse(
+        fs.readFileSync(settingsPath, "utf-8"),
+      ) as Record<string, unknown>;
       expect(after.model).toBe("claude-sonnet-4");
       expect(after.permissions).toEqual({ allow: ["Bash(git:*)"] });
 
