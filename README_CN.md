@@ -8,7 +8,7 @@
 
 <p align="center">
 <strong>给 AI 立规矩的开源框架</strong><br/>
-<sub>支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity、Windsurf、Qoder、CodeBuddy、GitHub Copilot、Factory Droid 和 Pi Agent。</sub>
+<sub>支持 Claude Code、Cursor、OpenCode、Codex、Kiro、Kilo、Gemini CLI、Antigravity、Windsurf、Qoder、CodeBuddy、GitHub Copilot、Droid 和 Pi Agent。</sub>
 </p>
 
 <p align="center">

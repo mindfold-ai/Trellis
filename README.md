@@ -8,7 +8,7 @@
 
 <p align="center">
 <strong>Make AI coding reliable at team scale.</strong><br/>
-<sub>A team AI coding harness for progressive specs, custom workflows, task context, and memory across Claude Code, Cursor, Codex, OpenCode, Pi Agent, and more.</sub>
+<sub>A team AI coding harness for progressive specs, custom workflows, task context, and memory across Claude Code, Cursor, OpenCode, Codex, Kiro, Kilo, Gemini CLI, Antigravity, Windsurf, Qoder, CodeBuddy, GitHub Copilot, Droid, and Pi Agent.</sub>
 </p>
 
 <p align="center">
