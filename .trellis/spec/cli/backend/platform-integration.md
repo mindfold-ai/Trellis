@@ -103,7 +103,7 @@ When adding a new platform `{platform}`, update the following:
 
 > Note: Pi Agent uses project-local TypeScript extensions instead of Trellis Python hooks. Keep generated hooks under `.pi/extensions/`, write prompt templates under `.pi/prompts/trellis-*.md`, write Agent Skills under `.pi/skills/`, and do not copy `shared-hooks/*.py` into `.pi/`. Do not redirect Pi to shared `.agents/skills` until shared Agent Skill text is platform-neutral; Codex and Pi command references can differ. For the nested Pi launcher contract, see "Scenario: Pi Sub-Agent Launcher".
 >
-> Project-local package isolation rule: when Trellis enables Pi for a project, `.pi/settings.json` must include a project-level `packages` array entry with `"source": "npm:pi-subagents"` and empty resource lists (`extensions`, `skills`, `prompts`, `themes`) to isolate global `npm:pi-subagents` effects from the repository while keeping the user's global Pi environment intact outside the project.
+> Project-local package isolation rule: when Trellis enables Pi for a project, `.pi/settings.json` does not include `npm:pi-subagents` in `packages` — Trellis's own tool is named `trellis_subagent`, so no name collision with community `subagent` tool exists. Users may install community sub-agent packages (nicobailon/pi-subagents or tintinweb/pi-subagents) independently.
 
 **Skills pattern** (Codex, Kiro):
 
@@ -406,7 +406,7 @@ described above. Without one of these session signals, `task.py start` must
 fail with a clear session identity hint and must not write
 `.trellis/.current-task`.
 Pi is extension-backed rather than Python-hook-backed: `tool_call` must mutate
-`event.input.command` before Bash execution, and the custom `subagent` tool must
+`event.input.command` before Bash execution, and the custom `trellis_subagent` tool must
 spawn child `pi` processes with `TRELLIS_CONTEXT_ID` in `env`.
 
 Hook or plugin output that mentions an active task should include the source
@@ -528,7 +528,7 @@ For Pi Agent:
 | Per-turn workflow-state breadcrumb | `input` extension event — emits `<workflow-state>` + `<session-overview>` via `buildPerTurnInjection()` |
 | Per-agent-invocation context | `before_agent_start` extension event — appends `buildTrellisContext()` (PRD + jsonl) **and** the same per-turn breadcrumb to `systemPrompt` so sub-agent first turns see workflow state |
 | Per-Bash-tool session identity | `tool_call` extension event; mutates `event.input.command` in place via `injectTrellisContextIntoBash()` to prefix `export TRELLIS_CONTEXT_ID=<context-key>;` |
-| Sub-agent dispatch | custom `subagent` tool with `promptSnippet`/`promptGuidelines = SUBAGENT_DISPATCH_PROTOCOL`; resolves the Pi CLI JS entrypoint when possible, runs `--mode text -p --no-session`, sends the delegated prompt through stdin, and forwards `TRELLIS_CONTEXT_ID` |
+| Sub-agent dispatch | custom `trellis_subagent` tool with `promptSnippet`/`promptGuidelines = SUBAGENT_DISPATCH_PROTOCOL`; resolves the Pi CLI JS entrypoint when possible, runs `--mode text -p --no-session`, sends the delegated prompt through stdin, and forwards `TRELLIS_CONTEXT_ID` |
 
 The three injection points (`input` / `before_agent_start` / `tool_call`) are coordinated through `TurnContextCache` so the same turn doesn't re-spawn `get_context.py --mode session-overview`. See "Class-3 injection points (Pi extension)" below the modes table for the runtime contract.
 
@@ -654,7 +654,8 @@ spawn(invocation.command, [
 | Output mode | Use `--mode text`; keep final-output formatter tolerant of structured or diagnostic output |
 | Context | Forward `TRELLIS_CONTEXT_ID` into the child env when available |
 | Agent config | Parse `model`, `thinking`, and `fallbackModels` from `.pi/agents/*.md` frontmatter |
-| Per-call overrides | `subagent` tool input may override frontmatter with `model` and `thinking` |
+| Per-call overrides | `trellis_subagent` tool input may override frontmatter with `model` and `thinking` |
+| Agent validation | `isTrellisAgent()` checks `existsSync(.pi/agents/trellis-{agent}.md)` before spawn; invalid → returns error text listing community alternatives |
 | Model/thinking args | If model and thinking are present and model has no thinking suffix, pass `--model <model>:<thinking>`; if model already has a suffix, pass it unchanged; if thinking exists without model, pass `--thinking <level>` |
 | Output buffers | Bound stdout and stderr collection separately; keep the tail plus truncation notice |
 
@@ -883,7 +884,7 @@ Platform can expose hook-equivalent events and custom tools through a project-lo
 
 | Platform | Extension surface | Context delivery |
 |---|---|---|
-| Pi Agent | `.pi/extensions/trellis/index.ts` events + `subagent` tool | extension builds prompt from `.pi/agents/*.md`, `prd.md`, `design.md` if present, `implement.md` if present, and JSONL-referenced files via `buildTrellisContext()`; injects per-turn `<workflow-state>` + `<session-overview>` via `buildPerTurnInjection()`; agent definitions also receive the pull-based prelude as a fallback |
+| Pi Agent | `.pi/extensions/trellis/index.ts` events + `trellis_subagent` tool | extension builds prompt from `.pi/agents/*.md`, `prd.md`, `design.md` if present, `implement.md` if present, and JSONL-referenced files via `buildTrellisContext()`; injects per-turn `<workflow-state>` + `<session-overview>` via `buildPerTurnInjection()`; agent definitions also receive the pull-based prelude as a fallback |
 
 See **"Class-3 injection points (Pi extension)"** and **"Cross-platform consistency invariant"** below for the runtime contract details.
 
@@ -896,7 +897,7 @@ See **"Class-3 injection points (Pi extension)"** and **"Cross-platform consiste
 | `input` | `pi.on?.("input", …)` | every user turn (pre-LLM) | per-turn `<workflow-state>` + `<session-overview>` via `buildPerTurnInjection()`; same content goes into both `additionalContext` and `systemPrompt` so the breadcrumb survives whichever the model surface honors |
 | `before_agent_start` | `pi.on?.("before_agent_start", …)` | every agent invocation (main + sub-agents) | full Trellis context via `buildTrellisContext()` (PRD + jsonl-referenced specs + agent definition) **appended to** the existing systemPrompt, plus the same per-turn breadcrumb so a sub-agent's first turn still sees workflow state |
 | `tool_call` (Bash) | `pi.on?.("tool_call", …)` | every Bash tool call | mutates `event.input.command` in place via `injectTrellisContextIntoBash()` to prefix `export TRELLIS_CONTEXT_ID=<context-key>;` so child Python scripts (e.g. `task.py current`) inherit session identity |
-| `subagent` tool | `pi.registerTool?.({ name: "subagent", … })` | extension load time (once) | `promptSnippet` and `promptGuidelines` carry `SUBAGENT_DISPATCH_PROTOCOL` so the model sees the dispatch contract before it ever calls the tool |
+| `trellis_subagent` tool | `pi.registerTool?.({ name: "trellis_subagent", … })` | extension load time (once) | `promptSnippet` and `promptGuidelines` carry `SUBAGENT_DISPATCH_PROTOCOL` so the model sees the dispatch contract before it ever calls the tool |
 
 `TurnContextCache` (in `index.ts.txt`) memoizes the per-turn context-key → `{workflowState, sessionOverview}` pair so the **same** turn's `input` and `before_agent_start` handlers don't double-spawn `get_context.py --mode session-overview`. The cache key is the resolved context key; entries are short-lived (one turn).
 
@@ -952,7 +953,7 @@ The dispatch protocol text (the `Active task: <path>` first-line rule plus the c
 | Writer | Location | Consumed by |
 |---|---|---|
 | Workflow breadcrumb | `templates/trellis/workflow.md` `[workflow-state:in_progress]` block | Python `inject-workflow-state.py` and the Pi TS port — surfaced per-turn while a task is in progress |
-| Pi extension constant | `templates/pi/extensions/trellis/index.ts.txt:SUBAGENT_DISPATCH_PROTOCOL` | Pi `subagent` tool's `promptSnippet` / `promptGuidelines` — surfaced at extension load and on each tool description render |
+| Pi extension constant | `templates/pi/extensions/trellis/index.ts.txt:SUBAGENT_DISPATCH_PROTOCOL` | Pi `trellis_subagent` tool's `promptSnippet` / `promptGuidelines` — surfaced at extension load and on each tool description render |
 
 When you change one, change both. The two channels exist because:
 

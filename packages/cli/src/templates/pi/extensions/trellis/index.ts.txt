@@ -783,7 +783,7 @@ class TurnContextCache {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-agent dispatch protocol snippet (registered with the `subagent` tool).
+// Sub-agent dispatch protocol snippet (registered with the `trellis_subagent` tool).
 // Mirrors the [workflow-state:in_progress] dispatch protocol text in
 // trellis/workflow.md so the AI sees the same `Active task: <path>` rule
 // whether it reads workflow.md, the per-turn breadcrumb, or the tool prompt.
@@ -796,6 +796,11 @@ Correct: prompt: "Active task: .trellis/tasks/05-09-pi-workflow-state-injection\
 
 function normalizeAgentName(agent: string): string {
   return agent.startsWith("trellis-") ? agent : `trellis-${agent}`;
+}
+
+function isTrellisAgent(projectRoot: string, agent: string): boolean {
+  // agent is already normalized to trellis-* by the caller
+  return existsSync(join(projectRoot, ".pi", "agents", `${agent}.md`));
 }
 
 function readAgentDefinition(
@@ -1072,8 +1077,8 @@ export default function trellisExtension(pi: {
   };
 
   pi.registerTool?.({
-    name: "subagent",
-    label: "Subagent",
+    name: "trellis_subagent",
+    label: "Trellis Subagent",
     description: "Run a Trellis project sub-agent with active task context.",
     promptSnippet: SUBAGENT_DISPATCH_PROTOCOL,
     promptGuidelines: SUBAGENT_DISPATCH_PROTOCOL,
@@ -1083,7 +1088,7 @@ export default function trellisExtension(pi: {
         agent: {
           type: "string",
           description:
-            "Agent name, such as trellis-implement or trellis-check.",
+            "Agent name, such as trellis-implement, trellis-check, or trellis-research.",
         },
         prompt: {
           type: "string",
@@ -1120,6 +1125,26 @@ export default function trellisExtension(pi: {
       _onUpdate?: (partialResult: PiToolResult) => void,
       ctx?: PiExtensionContext,
     ): Promise<PiToolResult> => {
+      const agentName = normalizeAgentName(input.agent ?? "trellis-implement");
+      if (!isTrellisAgent(projectRoot, agentName)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                "`trellis_subagent` is only for Trellis workflow agents with a definition file in .pi/agents/.\\n\\n" +
+                `No definition found for: ${agentName}\\n\\n` +
+                "For general-purpose sub-agents, use one of these community tools:\\n" +
+                "- `subagent` tool from npm:pi-subagents (nicobailon/pi-subagents)\\n" +
+                "- `Agent` tool from npm:@tintinweb/pi-subagents\\n\\n" +
+                "If neither is installed, ask the user to either:\\n" +
+                `- Create .pi/agents/${agentName}.md for your custom Trellis agent\\n` +
+                "- Install a community subagent package: pi install -l npm:@tintinweb/pi-subagents",
+            },
+          ],
+          details: { agent: agentName, error: "not a trellis workflow agent" },
+        };
+      }
       const contextKey = getContextKey(input, ctx);
       const output = await runSubagent(projectRoot, input, contextKey, _signal);
       return {

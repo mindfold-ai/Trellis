@@ -5054,7 +5054,7 @@ describe("regression: pi uses TypeScript extension assets instead of Python hook
       path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
       "utf-8",
     );
-    expect(extension).toContain('name: "subagent"');
+    expect(extension).toContain('name: "trellis_subagent"');
     expect(extension).toContain('pi.on?.("before_agent_start"');
     expect(extension).toContain('pi.on?.("tool_call"');
 
