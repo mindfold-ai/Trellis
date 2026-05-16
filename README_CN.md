@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-<strong>让 AI Agent 真正具备生产力的 Coding Harness</strong><br/>
-<sub>用 Gemini 写前端，Claude Code 写后端，Codex 代码审查，或者交给团队接力开发 —— Trellis 将上下文、规范与标准在所有平台和团队内部之间共享，无需 handoff 就可以接着之前的进度继续开发，而且任何人的最佳实践都能提升整个团队的能力。</sub>
+<strong>给 AI 立规矩的开源框架</strong><br/>
+<sub>支持 Claude Code、Cursor、OpenCode、Codex、Kiro、Kilo、Gemini CLI、Antigravity、Windsurf、Qoder、CodeBuddy、GitHub Copilot、Droid 和 Pi Agent。</sub>
 </p>
 
 <p align="center">

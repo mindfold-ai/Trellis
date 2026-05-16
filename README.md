@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-<strong>The harness that makes coding agents production-ready</strong><br/>
-<sub>Start a feature in Gemini, continue in Claude Code, ship it with Codex — or hand it off to a teammate at any step. Context, specs, and standards are shared across every agent and every teammate, so anyone's best spec lifts the whole team.</sub>
+<strong>Make AI coding reliable at team scale.</strong><br/>
+<sub>A team AI coding harness for progressive specs, custom workflows, task context, and memory across Claude Code, Cursor, OpenCode, Codex, Kiro, Kilo, Gemini CLI, Antigravity, Windsurf, Qoder, CodeBuddy, GitHub Copilot, Droid, and Pi Agent.</sub>
 </p>
 
 <p align="center">
