@@ -56,3 +56,36 @@ Renamed Trellis Pi extension subagent tool from `subagent` to `trellis_subagent`
 
 - Manual e2e test per prd.md Manual Verification section
 - Test with community pi-subagents package installed side-by-side
+
+
+## Session 2: Verify trellis_subagent rename in Pi
+
+**Date**: 2026-05-17
+**Task**: Verify trellis_subagent rename in Pi
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Ran end-to-end verification of trellis_subagent tool rename. All 10 acceptance criteria passed: build, init, tool registration, invocation, context injection, agent validation, non-Trellis routing, context isolation, and parent output reception. Tested with community pi-subagents package installed side-by-side.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3ab1089` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
