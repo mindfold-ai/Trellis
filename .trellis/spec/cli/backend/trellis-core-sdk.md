@@ -97,6 +97,9 @@ For channel and thread work:
 
 - event file format belongs to core
 - event append and sequence allocation belong to core
+- durable idempotency for keyed mutation replays belongs to core; keyed
+  writes must check the persisted channel event log inside the append lock and
+  return the original same-kind event instead of duplicating JSONL rows
 - reducers that compute channel/thread summaries belong to core
 - CLI commands call core APIs and render results
 

@@ -256,6 +256,9 @@ resolveExistingChannelRef(name, opts?): ChannelRef           // resolves --scope
 appendEvent(name, partial: Omit<ChannelEvent,'seq'|'ts'>, project?): Promise<ChannelEvent>
   // Atomic under withLock(lockPath(name)).
   // Assigns seq through `.seq` sidecar with JSONL tail validation/repair.
+  // If partial.idempotencyKey is present, checks the durable JSONL inside
+  // the same channel lock and returns the original same-kind event without
+  // appending a duplicate. Empty keys and cross-kind key reuse are errors.
   // Must not full-scan events.jsonl on the normal append path.
   // Returns event with ts (ISO) and seq (monotonic).
 readChannelEvents(name, project?): Promise<ChannelEvent[]>
@@ -403,6 +406,127 @@ type ChannelEventKind = "create" | "join" | "leave" | "message" | "thread" | "co
   is intentionally deferred — adapter readiness, stdin encoding, turn
   queueing, interrupt compatibility, and `<worker>.inbox-cursor` remain
   CLI-local concerns.
+
+### Core channel durable idempotency
+
+#### 1. Scope / Trigger
+
+- Trigger: `@mindfoldhq/trellis-core` mutation APIs need replay safety for
+  daemon/API callers that may retry a logical command after a crash or lost
+  receipt.
+- This is an event-log storage contract: the physical `events.jsonl` append
+  and seq allocation boundary must decide whether a keyed write is new or a
+  replay.
+- Scope: core channel mutation APIs and the append primitive. CLI flags and
+  worker lifecycle behavior are not part of this contract.
+
+#### 2. Signatures
+
+```ts
+interface BaseChannelEvent {
+  seq: number;
+  ts: string;
+  kind: ChannelEventKind;
+  by: string;
+  idempotencyKey?: string;
+}
+
+interface SendMessageOptions {
+  idempotencyKey?: string;
+  text: string;
+  to?: string | string[];
+}
+
+interface PostThreadOptions {
+  idempotencyKey?: string;
+  action: ThreadAction;
+  thread: string;
+}
+
+appendEvent(
+  name: string,
+  partial: Omit<ChannelEvent, "seq" | "ts">,
+  project?: string,
+): Promise<ChannelEvent>;
+```
+
+`idempotencyKey` is explicit on the public mutation options that persist it.
+Do not add it to a shared mutation option type unless every inheriting mutation
+API writes the key and has replay tests.
+
+#### 3. Contracts
+
+- Idempotency is scoped to one resolved channel event log. The same key in a
+  different channel is independent.
+- `appendEvent` validates the key, enters the channel lock, reads the durable
+  event log when a key is present, and returns an existing same-kind event
+  without appending.
+- Calls without `idempotencyKey` preserve append-only behavior.
+- Returned replay events keep their original `seq` and `ts`; callers must use
+  that returned event as the authoritative receipt.
+- `sendMessage` strict delivery modes still append the message event first.
+  Replays classify delivery from the returned persistent event (`event.to`),
+  not from the retry payload (`opts.to`).
+  When the message call has an idempotency key, generated `undeliverable`
+  side-effect events use deterministic derived keys:
+  `` `${idempotencyKey}:undeliverable:${targetWorker}` ``.
+
+#### 4. Validation & Error Matrix
+
+| Condition | Behavior |
+|-----------|----------|
+| `idempotencyKey` omitted | Append a new event exactly as before. |
+| `idempotencyKey` is `""` or whitespace-only | Throw `idempotencyKey must be a non-empty string`. |
+| Same channel/key/kind already exists | Return the existing event; do not append or advance seq. |
+| Same channel/key exists with another kind | Throw a cross-kind reuse error naming the existing kind. |
+| Same key used in another channel | Treat as independent; append according to that channel's log. |
+| `sendMessage` strict replay for same failed target | Return original message and do not duplicate `undeliverable`. |
+| `sendMessage` strict replay with different retry `to` | Ignore retry target drift; classify only the persisted message `to`. |
+
+#### 5. Good/Base/Bad Cases
+
+- Good: a daemon retries `sendMessage({ idempotencyKey: "cmd-123" })` after
+  restart; core reads JSONL, returns the original `message` event, and the
+  caller commits the original `seq`.
+- Base: a normal CLI/user `sendMessage` does not pass a key; each call appends
+  a distinct `message`.
+- Bad: a caller uses key `cmd-123` for a `message` and later for a `thread`
+  event in the same channel; core rejects the second write.
+
+#### 6. Tests Required
+
+- Unit: duplicate keyed `sendMessage` returns original `seq` / `ts` and only
+  one `message` event exists.
+- Unit: duplicate keyed `postThread` returns original `seq` / `ts` and only
+  one `thread` event exists.
+- Unit: unkeyed calls still append distinct events.
+- Unit: empty / whitespace-only keys reject.
+- Unit: cross-kind key reuse rejects.
+- Unit: strict delivery replay does not duplicate `undeliverable` events.
+- Unit: strict delivery replay with target drift does not append side effects
+  for targets absent from the original persisted message.
+- Unit: direct `appendEvent` keyed replay returns the persisted event.
+
+#### 7. Wrong vs Correct
+
+**Wrong** (process-local idempotency only; restart loses the key):
+
+```ts
+if (seenKeys.has(key)) return seenKeys.get(key);
+const event = await appendEvent(channel, partial);
+seenKeys.set(key, event);
+return event;
+```
+
+**Correct** (the event log is the source of truth):
+
+```ts
+return withLock(lockPath(channel), async () => {
+  const existing = findByIdempotencyKey(eventsPath(channel), key);
+  if (existing) return existing;
+  return appendJsonlWithNextSeq(channel, partial);
+});
+```
 
 ### Worker OOM guard
 
