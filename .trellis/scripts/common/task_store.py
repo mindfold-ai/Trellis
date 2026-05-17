@@ -77,6 +77,30 @@ def ensure_tasks_dir(repo_root: Path) -> Path:
     return tasks_dir
 
 
+def _find_archived_task_by_dir_name(tasks_dir: Path, dir_name: str) -> Path | None:
+    """Find an archived task directory with the exact active-task dir name."""
+    archive_dir = tasks_dir / DIR_ARCHIVE
+    if not archive_dir.is_dir():
+        return None
+
+    for month_dir in sorted(archive_dir.iterdir()):
+        if not month_dir.is_dir():
+            continue
+        candidate = month_dir / dir_name
+        if candidate.is_dir():
+            return candidate
+
+    return None
+
+
+def _repo_relative_path(path: Path, repo_root: Path) -> str:
+    """Format a path relative to the repo root when possible."""
+    try:
+        return path.relative_to(repo_root).as_posix()
+    except ValueError:
+        return str(path)
+
+
 # =============================================================================
 # Sub-agent platform detection + JSONL seeding
 # =============================================================================
@@ -186,6 +210,13 @@ def cmd_create(args: argparse.Namespace) -> int:
     dir_name = f"{date_prefix}-{slug}"
     task_dir = tasks_dir / dir_name
     task_json_path = task_dir / FILE_TASK_JSON
+
+    archived_task_dir = _find_archived_task_by_dir_name(tasks_dir, dir_name)
+    if archived_task_dir:
+        print(colored(f"Error: Task already archived: {dir_name}", Colors.RED), file=sys.stderr)
+        print(f"Archived at: {_repo_relative_path(archived_task_dir, repo_root)}", file=sys.stderr)
+        print("Use a new slug if you intend to create a new task.", file=sys.stderr)
+        return 1
 
     if task_dir.exists():
         print(colored(f"Warning: Task directory already exists: {dir_name}", Colors.YELLOW), file=sys.stderr)

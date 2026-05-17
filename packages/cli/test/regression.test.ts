@@ -1692,6 +1692,105 @@ describe("regression: current-task path normalization", () => {
     expect(fs.existsSync(contextOther)).toBe(true);
   });
 
+  it("[task-lifecycle] task.py create refuses an archived task dir-name collision", () => {
+    writeTrellisScripts();
+    writeProjectFile(
+      path.join(".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
+    );
+    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const createArgs = [
+      taskScriptPath,
+      "create",
+      "web auth retry",
+      "--slug",
+      "web-auth-retry",
+      "--assignee",
+      "test-dev",
+    ];
+    const env = sessionEnv({ TRELLIS_CONTEXT_ID: "archive-collision" });
+
+    execSync(
+      `${pythonCmd} ${createArgs.map((arg) => JSON.stringify(arg)).join(" ")}`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env,
+      },
+    );
+
+    const tasksDir = path.join(tmpDir, ".trellis", "tasks");
+    const taskDirName = fs
+      .readdirSync(tasksDir)
+      .find((entry) => entry.endsWith("-web-auth-retry"));
+    expect(taskDirName).toBeDefined();
+    const activeTaskDir = path.join(tasksDir, taskDirName as string);
+    fs.writeFileSync(path.join(activeTaskDir, "prd.md"), "# PRD\n", "utf-8");
+
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} archive ${JSON.stringify(taskDirName)} --no-commit`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env,
+      },
+    );
+
+    const archiveRoot = path.join(tasksDir, "archive");
+    let archivedTaskDir: string | undefined;
+    for (const monthDir of fs.readdirSync(archiveRoot)) {
+      const candidate = path.join(archiveRoot, monthDir, taskDirName as string);
+      if (fs.existsSync(candidate)) {
+        archivedTaskDir = candidate;
+      }
+    }
+    expect(archivedTaskDir).toBeDefined();
+    const archivedTaskJsonPath = path.join(
+      archivedTaskDir as string,
+      "task.json",
+    );
+    const archivedPrdPath = path.join(archivedTaskDir as string, "prd.md");
+    const archivedTaskJsonBefore = fs.readFileSync(archivedTaskJsonPath, "utf-8");
+    const archivedPrdBefore = fs.readFileSync(archivedPrdPath, "utf-8");
+    const archivedTaskJson = JSON.parse(archivedTaskJsonBefore) as {
+      status: string;
+      completedAt: string | null;
+    };
+    expect(archivedTaskJson.status).toBe("completed");
+    expect(archivedTaskJson.completedAt).not.toBeNull();
+
+    const contextPath = path.join(
+      tmpDir,
+      ".trellis",
+      ".runtime",
+      "sessions",
+      "archive-collision.json",
+    );
+    expect(fs.existsSync(contextPath)).toBe(false);
+
+    const result = spawnSync(pythonCmd, createArgs, {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      env,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Task already archived");
+    expect(result.stderr).toContain(taskDirName as string);
+    expect(result.stderr).toContain(".trellis/tasks/archive/");
+    expect(fs.existsSync(path.join(tasksDir, taskDirName as string))).toBe(
+      false,
+    );
+    expect(fs.readFileSync(archivedTaskJsonPath, "utf-8")).toBe(
+      archivedTaskJsonBefore,
+    );
+    expect(fs.readFileSync(archivedPrdPath, "utf-8")).toBe(archivedPrdBefore);
+    expect(fs.existsSync(contextPath)).toBe(false);
+  });
+
   it("[task-input-contract] task.py archive accepts task name, relative path, and absolute path", () => {
     setupTaskRepo();
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
