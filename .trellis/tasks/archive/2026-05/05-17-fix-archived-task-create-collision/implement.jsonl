@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script conventions for task.py changes"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Task lifecycle status and active-pointer contract"}
