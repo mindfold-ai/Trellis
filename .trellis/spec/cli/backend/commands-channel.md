@@ -51,6 +51,7 @@ trellis channel spawn <name> [opts]
   --model <id>           : model override
   --resume <id>          : resume an existing session/thread id
   --timeout <duration>   : auto-kill after duration (e.g. "30m", "1h", "7200s")
+                           — no default; opt-in hard cutoff
   --warn-before <duration>: emit `supervisor_warning` before timeout
                            (default "5m"; "0ms" disables warning)
   --file <path>          : context file (repeatable, glob OK)
@@ -58,8 +59,17 @@ trellis channel spawn <name> [opts]
   --by <agent>           : caller identity recorded on `spawned` event
   --inbox-policy <policy>: explicitOnly | broadcastAndExplicit (default explicitOnly)
                            — durable worker inbox delivery policy recorded on `spawned`
+  --idle-timeout <duration>: OOM-guard idle-cleanup TTL for this worker
+                           (default 5m from .trellis/config.yaml; "0" disables idle cleanup;
+                           supervisor self-terminates with `killed{reason:"idle-timeout"}`
+                           when continuously idle past the TTL — never mid-turn)
+  --max-live-workers <n> : spawn-time live-worker budget for this project/scope
+                           (default 6 from .trellis/config.yaml; "0" disables the
+                           budget check; expired idle workers are cleaned first,
+                           then `spawn` rejects with an actionable error if still over)
   → stdout (one line, JSON): {"pid": number, "log": string, "worker": string}
-  → throws if worker name in use, agent not found, provider missing, channel not found
+  → throws if worker name in use, agent not found, provider missing, channel not found,
+    or live-worker budget exhausted after expired idle cleanup
 
 trellis channel send <name> [text] [opts]
   --as <agent>           : sender identity (REQUIRED)
@@ -290,7 +300,7 @@ interface WorkerAdapter {
 
 // supervisor/shutdown.ts
 interface ShutdownController {
-  request(signal: NodeJS.Signals, reason: "explicit-kill"|"timeout"|"crash"): Promise<void>;
+  request(signal: NodeJS.Signals, reason: "explicit-kill"|"timeout"|"crash"|"idle-timeout"): Promise<void>;
   claim(reason): boolean;                                   // sync intent latch (no ladder)
   isShuttingDown(): boolean;
   reason(): ShutdownReason | null;
@@ -329,7 +339,7 @@ type ChannelEventKind = "create" | "join" | "leave" | "message" | "thread" | "co
 | `progress` | `detail: object` (free-form) | — | adapter |
 | `done` | — | `duration_ms: number`, `total_cost_usd: number`, `num_turns: number`, `synthesized: true`, `exit_code: number` | adapter (real) / supervisor (synthesised) |
 | `error` | `message: string` | `detail: object`, `provider: string`, `synthesized: true`, `exit_code`, `exit_signal` | supervisor / adapter |
-| `killed` | `reason: "explicit-kill"\|"timeout"\|"crash"`, `signal: NodeJS.Signals` | `timeout_ms: number` (if reason="timeout"), `worker: string` | supervisor / cli:kill |
+| `killed` | `reason: "explicit-kill"\|"timeout"\|"crash"\|"idle-timeout"`, `signal: NodeJS.Signals` | `timeout_ms: number` (if reason="timeout"), `idle_timeout_ms: number` (if reason="idle-timeout"), `worker: string` | supervisor / cli:kill |
 | `supervisor_warning` | `worker: string`, `reason: "approaching_timeout"`, `timeout_ms: number`, `remaining_ms: number` | — | supervisor |
 | `respawned` | (reserved, no fields yet) | — | (future) |
 | `undeliverable` | `targetWorker: string`, `messageSeq: number`, `reason: "worker-terminal"\|"worker-unknown"` | — | core `sendMessage` (strict delivery modes only) |
@@ -393,6 +403,139 @@ type ChannelEventKind = "create" | "join" | "leave" | "message" | "thread" | "co
   is intentionally deferred — adapter readiness, stdin encoding, turn
   queueing, interrupt compatibility, and `<worker>.inbox-cursor` remain
   CLI-local concerns.
+
+### Worker OOM guard
+
+CLI-owned safeguard against unbounded resident-worker accumulation.
+
+#### 1. Scope / Trigger
+
+- Trigger: `spawn` now enforces process-lifecycle limits before forking a
+  long-lived worker supervisor.
+- This is infra code: it reads config/env, scans durable event state plus
+  worker sidecars, verifies OS pids, signals supervisors, and writes terminal
+  channel events through the normal shutdown path.
+- Boundary: core only projects `WorkerState.idleSince`; CLI owns budget
+  enforcement, pid verification, idle cleanup, and supervisor idle timers.
+
+#### 2. Signatures
+
+```ts
+type WorkerGuardConfig = {
+  idleTimeoutMs: number;    // default 300_000; 0 disables idle cleanup
+  maxLiveWorkers: number;   // default 6; 0 disables spawn budget
+};
+```
+
+CLI additions:
+
+```
+trellis channel spawn <name>
+  --idle-timeout <duration>  # "5m" default; "0" disables idle cleanup
+  --max-live-workers <n>     # 6 default; 0 disables live-worker budget
+```
+
+Config:
+
+```yaml
+channel:
+  worker_guard:
+    idle_timeout: 5m
+    max_live_workers: 6
+```
+
+Env:
+
+```
+TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT=5m
+TRELLIS_CHANNEL_MAX_LIVE_WORKERS=6
+```
+
+#### 3. Contracts
+
+- Configuration precedence is CLI flag → env → `.trellis/config.yaml` →
+  built-in default. `0` disables the corresponding guard at every layer.
+- The live-worker budget is per project bucket. `spawn` scans every channel
+  in that bucket and counts non-terminal workers with live pids. It also
+  counts `<worker>.reservation` sidecars as `lifecycle:"starting"` live
+  workers until the supervisor appends `spawned`.
+- The budget scan, expired-idle cleanup, reservation write, supervisor fork,
+  and parent pid-file write run under `<projectBucket>/.worker-guard.lock`.
+  The per-worker spawn lock is still used inside that project lock.
+- A worker becomes idle-cleanup eligible only when projected as
+  `activity:"idle"` and `idleSince` is present. `turn_started` clears
+  `idleSince`; `turn_finished` and `interrupted` set it. Mid-turn workers and
+  workers without `idleSince` are never killed by the idle guard.
+- Automatic cleanup may only signal a pid whose command line verifies as
+  `channel __supervisor <exact-channel> <exact-worker>`. Alive but unverified
+  pids remain counted in the overflow list and are not auto-killed.
+- Spawn-time idle cleanup writes a one-shot `<worker>.shutdown-reason` sidecar
+  with `idle-timeout` before sending `SIGTERM`. The supervisor consumes that
+  sidecar and emits the single terminal event:
+  `killed{reason:"idle-timeout", idle_timeout_ms:N}`.
+- Each supervisor also schedules its own idle timer after `spawned` is
+  durable. The timer pauses on `turn_started`, resets on idle enter, and calls
+  `shutdown.request("SIGTERM", "idle-timeout")` after continuous idle expiry.
+- There is no default hard TTL. Explicit `--timeout` keeps its existing
+  opt-in hard cutoff behavior and is independent from idle cleanup.
+
+#### 4. Validation & Error Matrix
+
+| Condition | Behavior |
+|-----------|----------|
+| `--idle-timeout` invalid duration | commander rejects using the existing duration parser |
+| `--max-live-workers <n>` is negative / non-integer | commander rejects with an argument error |
+| `idle_timeout: 0` or `TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT=0` | idle cleanup disabled; workers are still counted for budget unless budget is also disabled |
+| `max_live_workers: 0` or `TRELLIS_CHANNEL_MAX_LIVE_WORKERS=0` | budget check disabled; supervisor idle self-termination still works if TTL > 0 |
+| Live count after expired-idle cleanup is `>= maxLiveWorkers` | reject `spawn` with live worker list, `trellis channel kill` hints, and override hint |
+| Idle worker pid is live but command line is unverified | count it; do not auto-signal it |
+| Worker is running a turn when idle TTL expires | do nothing until it returns to idle |
+| Supervisor receives external SIGTERM with `shutdown-reason=idle-timeout` | append `killed` with `reason:"idle-timeout"` and `idle_timeout_ms` |
+| Supervisor receives SIGTERM without sidecar | append `killed` with `reason:"explicit-kill"` |
+
+#### 5. Good/Base/Bad Cases
+
+- Good: six resident idle workers exist, three are past `idle_timeout`; a
+  seventh `spawn` cleans the expired workers and proceeds.
+- Base: six live workers are all active or not expired; a seventh `spawn`
+  rejects and prints the live workers plus kill hints.
+- Bad: a stale pid file points at an unrelated process; the guard counts it
+  as a live blocker but does not signal that process.
+
+#### 6. Tests Required
+
+- Core reducer: `spawned` initializes `idleSince`, `turn_started` clears it,
+  `turn_finished` / `interrupted` restore it, and terminal events clear it.
+- CLI guard: config/env/flag precedence, default `5m` / `6`, disable via `0`,
+  budget rejection, idle cleanup, reservation counting, and exact pid-command
+  verification.
+- Supervisor: idle timer starts only after durable `spawned`, pauses mid-turn,
+  emits `idle-timeout` through the normal shutdown controller, and cleans pid /
+  reservation / shutdown-reason sidecars.
+
+#### 7. Wrong vs Correct
+
+**Wrong** (hard-kills arbitrary idle-looking pids):
+
+```ts
+if (Date.now() - Date.parse(worker.lastSeen) > ttl) {
+  process.kill(worker.pid, "SIGTERM");
+}
+```
+
+**Correct** (uses projected idle state plus verified supervisor ownership):
+
+```ts
+if (
+  worker.activity === "idle" &&
+  worker.idleSince &&
+  isExpired(worker.idleSince, ttl) &&
+  worker.supervisorVerified
+) {
+  writeShutdownReason(worker, "idle-timeout");
+  process.kill(worker.pid, "SIGTERM");
+}
+```
 
 ### Codex progress stream metadata
 
@@ -595,7 +738,10 @@ Legacy event logs may still contain `linkedContext`; readers normalize it to
         ├── <worker>.session-id      # claude resume key (persists across cleanup)
         ├── <worker>.thread-id       # codex resume key (persists across cleanup)
         ├── <worker>.inbox-cursor    # last seq forwarded to worker stdin (persists)
-        └── <worker>.spawnlock       # spawn-time mutex
+        ├── <worker>.shutdown-reason # one-shot external shutdown reason sidecar
+        ├── <worker>.reservation     # pre-spawn budget reservation sidecar
+        ├── <worker>.spawnlock       # per-worker spawn mutex
+        └── .worker-guard.lock       # project-bucket live-worker budget mutex
 ```
 
 **Bucket discovery rules**:
@@ -604,7 +750,8 @@ Legacy event logs may still contain `linkedContext`; readers normalize it to
 - Reserved bucket names: `_legacy`, `_default`, `_global` (never written as projectKey output because projectKey never starts with `_`)
 
 **Cleanup contract** (`cleanup(channel, worker)` in supervisor.ts):
-- ALWAYS removes: `pid`, `worker-pid`, `config`, `spawnlock`
+- ALWAYS removes: `pid`, `worker-pid`, `config`, `spawnlock`,
+  `shutdown-reason`, `reservation`
 - NEVER removes: `log`, `session-id`, `thread-id`, `inbox-cursor`, `events.jsonl`, `.seq`
 
 `channel rm` deletes the entire channel directory; the cleanup contract above
@@ -617,6 +764,8 @@ only applies to per-worker supervisor cleanup.
 | `TRELLIS_CHANNEL_ROOT` | optional | `~/.trellis/channels` | `channelRoot()` — override storage root |
 | `TRELLIS_CHANNEL_PROJECT` | optional | `projectKey(process.cwd())` | `currentProjectKey()` — lock current project bucket |
 | `TRELLIS_CHANNEL_AS` | optional | `"main"` | `spawn.ts` — default for `spawnedBy` on `spawned` event (lets workers spawning workers record correct lineage) |
+| `TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT` | optional | `.trellis/config.yaml` then `5m` | worker OOM guard idle-cleanup TTL; duration string, `0` disables |
+| `TRELLIS_CHANNEL_MAX_LIVE_WORKERS` | optional | `.trellis/config.yaml` then `6` | worker OOM guard live-worker budget; non-negative integer, `0` disables |
 | `TRELLIS_HOOKS` | set to `"0"` by supervisor | n/a | supervised workers — disables trellis hooks inside the worker process (prevents recursive hook injection) |
 
 **Env precedence**:
@@ -961,6 +1110,8 @@ commands/channel/
 ├── supervisor/shutdown.ts    ShutdownController state machine
 ├── supervisor/stdout.ts      line-pump + applyParseResult
 ├── supervisor/inbox.ts       inbox watcher + cursor
+├── supervisor/idle.ts        OOM-guard idle timer (pause / reset / cancel)
+├── guard.ts                  OOM-guard policy + spawn-time scan + idle cleanup
 ├── adapters/index.ts         WorkerAdapter REGISTRY + Provider type
 ├── adapters/types.ts         AdapterEvent / ParseResult shapes
 ├── adapters/claude.ts        Claude stream-JSON adapter
