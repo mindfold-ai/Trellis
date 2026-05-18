@@ -919,14 +919,21 @@ function buildContext(root: string, agent: string, key: string | null): string {
   ].join("\n");
 }
 
+function normalizeAgent(agent: string | undefined): string {
+  const name = agent ?? "trellis-implement";
+  return name.startsWith("trellis-") ? name : `trellis-${name}`;
+}
+
+function isTrellisAgent(root: string, agent: string): boolean {
+  return existsSync(join(root, ".pi", "agents", `${agent}.md`));
+}
+
 function buildPrompt(
   root: string,
   input: SubagentInput,
   key: string | null,
 ): string {
-  const agent = (input.agent ?? "trellis-implement").startsWith("trellis-")
-    ? input.agent!
-    : `trellis-${input.agent ?? "trellis-implement"}`;
+  const agent = normalizeAgent(input.agent);
   const raw = readText(join(root, ".pi", "agents", `${agent}.md`));
   const def = stripFM(raw);
   const ctx = buildContext(root, agent, key);
@@ -1192,9 +1199,7 @@ async function runSubagent(
   onUpdate?: (r: PiToolResult) => void,
   inheritedThinking?: string,
 ): Promise<{ output: string; details: ProgressDetails; failed: boolean }> {
-  const agentName = (input.agent ?? "trellis-implement").startsWith("trellis-")
-    ? input.agent!
-    : `trellis-${input.agent ?? "trellis-implement"}`;
+  const agentName = normalizeAgent(input.agent);
   const agentRaw = readText(join(root, ".pi", "agents", `${agentName}.md`));
   const agentCfg = parseAgentFM(agentRaw);
   const runCfg = resolveRunCfg(input, agentCfg, inheritedThinking);
@@ -1387,8 +1392,8 @@ export default function trellisExtension(pi: {
 
   // Tool registration
   pi.registerTool?.({
-    name: "subagent",
-    label: "Subagent",
+    name: "trellis_subagent",
+    label: "Trellis Subagent",
     description: "Run a Trellis project sub-agent with active task context.",
     promptSnippet:
       'Sub-agent dispatch protocol (Trellis): your dispatch prompt MUST start with one line "Active task: <task path from `task.py current`>" before any other instructions.',
@@ -1434,6 +1439,26 @@ export default function trellisExtension(pi: {
       ctx?: PiExtensionContext,
     ) => {
       activeSubagentToolCallId = id;
+      const agentName = normalizeAgent(input.agent);
+      if (!isTrellisAgent(root, agentName)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                "`trellis_subagent` is only for Trellis workflow agents with a definition file in .pi/agents/.\n\n" +
+                `No definition found for: ${agentName}\n\n` +
+                "For general-purpose sub-agents, use one of these community tools:\n" +
+                "- `subagent` tool from npm:pi-subagents (nicobailon/pi-subagents)\n" +
+                "- `Agent` tool from npm:@tintinweb/pi-subagents\n\n" +
+                "If neither is installed, ask the user to either:\n" +
+                `- Create .pi/agents/${agentName}.md for your custom Trellis agent\n` +
+                "- Install a community subagent package: pi install -l npm:@tintinweb/pi-subagents",
+            },
+          ],
+          details: { agent: agentName, error: "not a trellis workflow agent" },
+        };
+      }
       const mode = input.mode ?? "single";
       const prompt = input.prompt?.trim();
       const prompts = input.prompts?.map((p) => p.trim()).filter(Boolean);
@@ -1549,7 +1574,7 @@ export default function trellisExtension(pi: {
   pi.on?.("tool_result", (event) => {
     const ev = event as { toolName?: string; details?: unknown };
     if (
-      ev.toolName === "subagent" &&
+      ev.toolName === "trellis_subagent" &&
       isObj(ev.details) &&
       ev.details.kind === "trellis-subagent-progress" &&
       Array.isArray(ev.details.runs) &&
