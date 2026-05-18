@@ -30,7 +30,6 @@ export interface MessagesOptions {
   from?: string;
   to?: string;
   noProgress?: boolean;
-  tag?: string;
   scope?: string;
   thread?: string;
   action?: string;
@@ -71,7 +70,6 @@ export async function channelMessages(
     kind: kindFilter,
     from: fromList,
     to: opts.to,
-    tag: opts.tag,
     thread: threadFilter,
     action: actionFilter,
     includeProgress: !opts.noProgress,
@@ -90,8 +88,7 @@ export async function channelMessages(
     !kindFilter &&
     !actionFilter &&
     !opts.from &&
-    !opts.to &&
-    !opts.tag;
+    !opts.to;
   if (threadBoardView) {
     console.log(
       "Forum channel: showing threads. Use --thread <key> for timeline, --raw for event log.",
@@ -166,13 +163,11 @@ function printEvent(ev: ChannelEvent, raw: boolean): void {
     }
     case "message": {
       const text = (ev.text ?? "").replace(/\n/g, "\n         ");
-      const tag = ev.tag;
       const to = ev.to;
       const toStr = to
         ? `  to=${colorTo(Array.isArray(to) ? to.join(",") : to)}`
         : "";
-      const tagStr = tag ? `  ${chalk.yellow(`<${tag}>`)}` : "";
-      printLine(`${kindTag("message")} by=${by}${toStr}${tagStr}`, ts);
+      printLine(`${kindTag("message")} by=${by}${toStr}`, ts);
       console.log(`         ${text}`);
       break;
     }

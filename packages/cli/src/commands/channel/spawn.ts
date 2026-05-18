@@ -8,9 +8,15 @@ import type { InboxPolicy } from "@mindfoldhq/trellis-core/channel";
 import { loadAgent } from "./agent-loader.js";
 import type { Provider } from "./adapters/index.js";
 import { assembleContext } from "./context-loader.js";
+import {
+  enforceSpawnBudget,
+  formatBudgetOverflowError,
+  resolveWorkerGuardConfig,
+} from "./guard.js";
 import { withLock } from "./store/lock.js";
 import {
   channelDir,
+  projectDir,
   resolveExistingChannelRef,
   workerFile,
   workerLockPath,
@@ -39,6 +45,16 @@ export interface SpawnOptions {
   by?: string;
   /** Worker inbox delivery policy (default `explicitOnly`). */
   inboxPolicy?: InboxPolicy;
+  /**
+   * OOM-guard idle-cleanup TTL for this worker, in ms. `0` disables
+   * idle cleanup. Overrides env / config / built-in default.
+   */
+  idleTimeoutMs?: number;
+  /**
+   * OOM-guard live-worker budget for this spawn. `0` disables the
+   * spawn-time budget check. Overrides env / config / built-in default.
+   */
+  maxLiveWorkers?: number;
 }
 
 interface ResolvedSpawn {
@@ -152,13 +168,60 @@ export async function channelSpawn(
 
   const resolved = resolveSpawn(channelName, opts);
 
-  // Acquire the worker-level lock so a concurrent spawn / kill can't race
-  // with us. The lock is released as soon as we've handed off to a detached
-  // supervisor (pid file in place).
+  // OOM guard: enforce live-worker budget for this project/scope before
+  // forking a supervisor. Expired idle workers are cleaned first; if the
+  // budget is still exhausted we reject rather than guess which non-
+  // expired worker to kill.
+  const guardPolicy = resolveWorkerGuardConfig({
+    ...(opts.idleTimeoutMs !== undefined
+      ? { flagIdleTimeoutMs: opts.idleTimeoutMs }
+      : {}),
+    ...(opts.maxLiveWorkers !== undefined
+      ? { flagMaxLiveWorkers: opts.maxLiveWorkers }
+      : {}),
+  });
+  // Serialize the budget check across the whole project bucket. A per-worker
+  // lock is not enough: two different worker names could otherwise both see
+  // a free slot and fork supervisors at the same time.
   return withLock(
-    workerLockPath(channelName, resolved.as, ref.project),
+    path.join(projectDir(ref.project), ".worker-guard.lock"),
     async () => {
-      return spawnLocked(channelName, resolved, opts, ref.project);
+      const guard = await enforceSpawnBudget({
+        projectKey: ref.project,
+        policy: guardPolicy,
+      });
+      if (guard.cleaned.length > 0) {
+        process.stderr.write(
+          `[channel guard] cleaned ${guard.cleaned.length} idle worker(s) past TTL ${guardPolicy.idleTimeoutMs}ms: ${guard.cleaned
+            .map((w) => `${w.channel}/${w.workerId}`)
+            .join(", ")}\n`,
+        );
+      }
+      if (!guard.allowed) {
+        throw new Error(
+          formatBudgetOverflowError({
+            projectKey: ref.project,
+            live: guard.remaining,
+            limit: guardPolicy.maxLiveWorkers,
+          }),
+        );
+      }
+
+      // Acquire the worker-level lock so a concurrent spawn / kill can't race
+      // with us. The lock is released as soon as we've handed off to a detached
+      // supervisor (pid file in place).
+      return withLock(
+        workerLockPath(channelName, resolved.as, ref.project),
+        async () => {
+          return spawnLocked(
+            channelName,
+            resolved,
+            opts,
+            ref.project,
+            guardPolicy.idleTimeoutMs,
+          );
+        },
+      );
     },
   );
 }
@@ -168,6 +231,7 @@ async function spawnLocked(
   resolved: ResolvedSpawn,
   opts: SpawnOptions,
   project: string,
+  idleTimeoutMs: number,
 ): Promise<{ pid: number; log: string; worker: string }> {
   // Re-check worker name not already busy (now safe under the lock).
   const pidPath = workerFile(channelName, resolved.as, "pid", project);
@@ -198,6 +262,7 @@ async function spawnLocked(
       resume: opts.resume,
       timeoutMs: opts.timeoutMs,
       warnBeforeMs: opts.warnBeforeMs,
+      idleTimeoutMs,
       spawnedBy,
       ...(opts.inboxPolicy ? { inboxPolicy: opts.inboxPolicy } : {}),
       ...(opts.agent ? { agent: opts.agent } : {}),
@@ -212,6 +277,21 @@ async function spawnLocked(
   );
 
   const supervisorBinary = resolveCliEntry();
+  const reservationPath = workerFile(
+    channelName,
+    resolved.as,
+    "reservation",
+    project,
+  );
+  fs.writeFileSync(
+    reservationPath,
+    JSON.stringify({
+      channel: channelName,
+      worker: resolved.as,
+      createdAt: new Date().toISOString(),
+    }),
+    "utf-8",
+  );
   const child = spawn(
     process.execPath,
     [
@@ -254,6 +334,11 @@ async function spawnLocked(
       } catch {
         // ignore
       }
+      try {
+        fs.unlinkSync(reservationPath);
+      } catch {
+        // ignore
+      }
       reject(
         new Error(
           `Failed to launch supervisor for worker '${resolved.as}': ${err.message}`,
@@ -261,6 +346,9 @@ async function spawnLocked(
       );
     });
   });
+  if (child.pid !== undefined) {
+    fs.writeFileSync(pidPath, String(child.pid));
+  }
   child.unref();
 
   const result = {

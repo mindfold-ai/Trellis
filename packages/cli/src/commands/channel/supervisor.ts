@@ -25,8 +25,9 @@ import {
 import { getAdapter, type Provider } from "./adapters/index.js";
 import { appendEvent } from "./store/events.js";
 import { workerFile } from "./store/paths.js";
+import { scheduleSupervisorIdleTimer } from "./supervisor/idle.js";
 import { runInboxWatcher } from "./supervisor/inbox.js";
-import { createShutdown } from "./supervisor/shutdown.js";
+import { createShutdown, type ShutdownReason } from "./supervisor/shutdown.js";
 import { startStdoutPump } from "./supervisor/stdout.js";
 import { TurnTracker } from "./supervisor/turns.js";
 import { scheduleSupervisorTimeoutWarning } from "./supervisor/warning.js";
@@ -49,6 +50,12 @@ export interface SupervisorConfig {
   timeoutMs?: number;
   /** Emit supervisor_warning this many ms before timeout. `<=0` disables it. */
   warnBeforeMs?: number;
+  /**
+   * OOM-guard idle-cleanup TTL in ms. When a running worker stays idle
+   * for this long (no active turn), the supervisor self-terminates with
+   * `killed{reason:"idle-timeout"}`. `<=0` or undefined disables.
+   */
+  idleTimeoutMs?: number;
   /** Caller identity recorded on the `spawned` event (default "main"). */
   spawnedBy?: string;
   /** Agent definition name loaded for this worker, if any (recorded on `spawned`). */
@@ -125,6 +132,9 @@ export async function runSupervisor(
     getChild: () => child,
     graceMs: SHUTDOWN_GRACE_MS,
     timeoutMs: config.timeoutMs,
+    ...(config.idleTimeoutMs !== undefined
+      ? { idleTimeoutMs: config.idleTimeoutMs }
+      : {}),
   });
 
   // Gate the `spawned` event behind whichever child lifecycle event fires
@@ -224,10 +234,12 @@ export async function runSupervisor(
   // arriving during the spawn-settle / spawned-append window funnels
   // into `shutdown.request` instead of using Node's default behaviour
   // (which would orphan the child and skip the `killed` event).
-  process.on(
-    "SIGTERM",
-    () => void shutdown.request("SIGTERM", "explicit-kill"),
-  );
+  process.on("SIGTERM", () => {
+    void shutdown.request(
+      "SIGTERM",
+      readExternalShutdownReason(channelName, workerName, project),
+    );
+  });
   process.on("SIGINT", () => void shutdown.request("SIGINT", "explicit-kill"));
   // SIGHUP arrives when the parent terminal closes — without this
   // handler Node's default behaviour exits the supervisor before the
@@ -252,7 +264,6 @@ export async function runSupervisor(
     workerFile(channelName, workerName, "worker-pid", project),
     String(child.pid),
   );
-  const turnTracker = new TurnTracker();
 
   await appendEvent(
     channelName,
@@ -273,6 +284,22 @@ export async function runSupervisor(
     },
     project,
   );
+
+  // OOM-guard idle timer: start only after `spawned` is durable. Hooks
+  // wired through the TurnTracker pause it mid-turn and reset it on
+  // turn finish / interrupted (the same transitions that drive durable
+  // `idleSince`). `<=0` short-circuits the timer to a no-op.
+  const idleTimer = scheduleSupervisorIdleTimer({
+    idleTimeoutMs: config.idleTimeoutMs ?? 0,
+    shutdown,
+    isChildExited: () => child.exitCode !== null || child.signalCode !== null,
+    log,
+  });
+  const turnTracker = new TurnTracker({
+    onIdleExit: () => idleTimer.pause(),
+    onIdleEnter: () => idleTimer.reset(),
+  });
+  process.on("exit", () => idleTimer.cancel());
 
   // ── 1. stdout reader ──
   startStdoutPump({
@@ -369,7 +396,14 @@ async function cleanup(channelName: string, workerName: string): Promise<void> {
   // Keep `log` (forensic), `session-id` / `thread-id` (future resume).
   // `inbox-cursor` is kept so a respawn (same worker name without
   // killing the channel) doesn't replay messages.
-  for (const suffix of ["pid", "worker-pid", "config", "spawnlock"]) {
+  for (const suffix of [
+    "pid",
+    "worker-pid",
+    "config",
+    "spawnlock",
+    "shutdown-reason",
+    "reservation",
+  ]) {
     try {
       fs.unlinkSync(
         workerFile(
@@ -383,6 +417,22 @@ async function cleanup(channelName: string, workerName: string): Promise<void> {
       // already gone
     }
   }
+}
+
+function readExternalShutdownReason(
+  channelName: string,
+  workerName: string,
+  project?: string,
+): ShutdownReason {
+  const file = workerFile(channelName, workerName, "shutdown-reason", project);
+  try {
+    const reason = fs.readFileSync(file, "utf-8").trim();
+    fs.unlinkSync(file);
+    if (reason === "idle-timeout") return "idle-timeout";
+  } catch {
+    // No sidecar: ordinary external SIGTERM remains an explicit kill.
+  }
+  return "explicit-kill";
 }
 
 function readConfig(p: string): SupervisorConfig {

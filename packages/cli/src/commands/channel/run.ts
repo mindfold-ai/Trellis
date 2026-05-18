@@ -35,7 +35,6 @@ export interface RunOptions {
   message?: string;
   textFile?: string;
   stdin?: boolean;
-  tag?: string;
   /** Per-worker timeout (defaults to 5m if not specified). */
   timeoutMs?: number;
 }
@@ -72,7 +71,6 @@ export async function channelRun(opts: RunOptions): Promise<void> {
       text: opts.message,
       textFile: opts.textFile,
       stdin: opts.stdin,
-      tag: opts.tag,
     });
 
     await waitForDone(name, workerName, timeoutMs);
@@ -133,9 +131,8 @@ async function waitForDone(
 }
 
 /**
- * Print the worker's final user-visible message — for codex, the
- * `final_answer`-tagged message; for claude, the last `message` from
- * the worker. Stdout is reserved for the body so callers can pipe it.
+ * Print the worker's final user-visible message. Stdout is reserved for
+ * the body so callers can pipe it.
  */
 async function printFinalMessage(
   channelName: string,
@@ -155,18 +152,9 @@ async function printFinalMessage(
       // ignore
     }
   }
-  // Prefer the tagged final_answer (codex pattern); fall back to the
-  // last `message` from the worker (claude pattern).
-  const tagged = events.filter(
-    (e) =>
-      e.kind === "message" &&
-      e.by === workerName &&
-      (e as { tag?: string }).tag === "final_answer",
-  );
-  const candidate =
-    tagged.length > 0
-      ? tagged[tagged.length - 1]
-      : events.filter((e) => e.kind === "message" && e.by === workerName).pop();
+  const candidate = events
+    .filter((e) => e.kind === "message" && e.by === workerName)
+    .pop();
   if (!candidate) return;
   const text = (candidate as { text?: string }).text ?? "";
   process.stdout.write(text);

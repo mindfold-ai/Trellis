@@ -1,0 +1,5 @@
+{"file":"packages/core/test/channel/worker-state.test.ts","reason":"worker projection unit tests"}
+{"file":"packages/core/test/channel/channel-runtime.test.ts","reason":"worker API regression tests"}
+{"file":"packages/cli/test/commands/channel.test.ts","reason":"channel spawn/kill/list command tests"}
+{"file":"packages/cli/test/commands/channel-wait-warning.test.ts","reason":"timeout warning and killed event regression tests"}
+{"file":".trellis/spec/cli/backend/commands-channel.md","reason":"spec must match implemented behavior"}

@@ -27,7 +27,11 @@ import { appendEvent } from "../store/events.js";
 
 type Child = ChildProcessByStdio<Writable, Readable, Readable>;
 
-export type ShutdownReason = "explicit-kill" | "timeout" | "crash";
+export type ShutdownReason =
+  | "explicit-kill"
+  | "timeout"
+  | "crash"
+  | "idle-timeout";
 
 export interface ShutdownController {
   /** Idempotent: only the first call wins. Returns the killed-append
@@ -71,10 +75,20 @@ export interface CreateShutdownArgs {
   graceMs: number;
   /** Recorded on the `killed` event for the timeout reason. */
   timeoutMs?: number;
+  /** Recorded on the `killed` event when reason is `"idle-timeout"`. */
+  idleTimeoutMs?: number;
 }
 
 export function createShutdown(args: CreateShutdownArgs): ShutdownController {
-  const { channelName, workerName, log, getChild, graceMs, timeoutMs } = args;
+  const {
+    channelName,
+    workerName,
+    log,
+    getChild,
+    graceMs,
+    timeoutMs,
+    idleTimeoutMs,
+  } = args;
 
   let shutdownReason: ShutdownReason | null = null;
   let requestSignal: NodeJS.Signals | null = null;
@@ -122,6 +136,9 @@ export function createShutdown(args: CreateShutdownArgs): ShutdownController {
       reason,
       signal,
       ...(reason === "timeout" && timeoutMs ? { timeout_ms: timeoutMs } : {}),
+      ...(reason === "idle-timeout" && idleTimeoutMs
+        ? { idle_timeout_ms: idleTimeoutMs }
+        : {}),
     });
   };
 

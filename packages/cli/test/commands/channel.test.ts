@@ -10,6 +10,7 @@ import {
   channelContextAdd,
   channelContextList,
 } from "../../src/commands/channel/context.js";
+import { channelInterrupt } from "../../src/commands/channel/interrupt.js";
 import { channelMessages } from "../../src/commands/channel/messages.js";
 import { channelSend } from "../../src/commands/channel/send.js";
 import { runInboxWatcher } from "../../src/commands/channel/supervisor/inbox.js";
@@ -408,8 +409,9 @@ describe("channel storage and forum channels", () => {
       createCtx: vi.fn(),
       isReady: vi.fn(() => true),
       parseLine: vi.fn(() => ({ events: [] })),
-      encodeUserMessage: vi.fn((text: string, tag: string | undefined) =>
-        JSON.stringify({ text, tag }),
+      encodeUserMessage: vi.fn((text: string) => JSON.stringify({ text })),
+      encodeInterruptMessage: vi.fn((text: string) =>
+        JSON.stringify({ interrupt: text }),
       ),
     };
 
@@ -423,11 +425,10 @@ describe("channel storage and forum channels", () => {
       turnTracker: tracker,
     });
 
-    await channelSend("interrupt-turns", {
+    await channelInterrupt("interrupt-turns", {
       as: "main",
       text: "stop",
       to: "worker",
-      tag: "interrupt",
     });
     await vi.waitUntil(() => stdinWrite.mock.calls.length > 0, {
       timeout: 1000,
@@ -439,8 +440,7 @@ describe("channel storage and forum channels", () => {
       "interrupt-turns",
       projectKey(projectDir),
     );
-    expect(events.slice(-5)).toMatchObject([
-      { kind: "message", tag: "interrupt", seq: 3 },
+    expect(events.slice(-4)).toMatchObject([
       {
         kind: "interrupt_requested",
         by: "main",
@@ -469,7 +469,7 @@ describe("channel storage and forum channels", () => {
       },
     ]);
     expect(stdinWrite).toHaveBeenCalledWith(
-      JSON.stringify({ text: "stop", tag: "interrupt" }),
+      JSON.stringify({ interrupt: "stop" }),
     );
   });
 
@@ -494,8 +494,9 @@ describe("channel storage and forum channels", () => {
       createCtx: vi.fn(),
       isReady: vi.fn(() => true),
       parseLine: vi.fn(() => ({ events: [] })),
-      encodeUserMessage: vi.fn((text: string, tag: string | undefined) =>
-        JSON.stringify({ text, tag }),
+      encodeUserMessage: vi.fn((text: string) => JSON.stringify({ text })),
+      encodeInterruptMessage: vi.fn((text: string) =>
+        JSON.stringify({ interrupt: text }),
       ),
     };
     const shutdown = {
@@ -540,9 +541,7 @@ describe("channel storage and forum channels", () => {
       { kind: "turn_finished", inputSeq: 2, turnId: "msg:2" },
       { kind: "turn_started", inputSeq: 3, turnId: "msg:3" },
     ]);
-    expect(stdinWrite).toHaveBeenCalledWith(
-      JSON.stringify({ text: "second", tag: undefined }),
-    );
+    expect(stdinWrite).toHaveBeenCalledWith(JSON.stringify({ text: "second" }));
   });
 });
 

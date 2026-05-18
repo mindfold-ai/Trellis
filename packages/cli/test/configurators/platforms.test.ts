@@ -798,7 +798,7 @@ describe("configurePlatform", () => {
       "utf-8",
     );
     expect(extension).toContain('registerTool?.({');
-    expect(extension).toContain('name: "subagent"');
+    expect(extension).toContain('name: "trellis_subagent"');
     expect(extension).toContain('pi.on?.("session_start"');
     expect(extension).toContain('pi.on?.("tool_call"');
     expect(extension).toContain("function injectTrellisContextIntoBash");
@@ -854,16 +854,6 @@ describe("configurePlatform", () => {
       )[];
     };
     expect(settings.skills).toEqual(["./skills"]);
-    const subagentsPkg = settings.packages?.find(
-      (p) => typeof p === "object" && p.source === "npm:pi-subagents",
-    );
-    expect(subagentsPkg).toEqual({
-      source: "npm:pi-subagents",
-      extensions: [],
-      skills: [],
-      prompts: [],
-      themes: [],
-    });
   });
 
   it("configurePlatform('pi') writes tracked templates exactly", async () => {

@@ -93,22 +93,12 @@ describe("pi templates", () => {
     expect(settings.skills).toEqual(["./skills"]);
     expect(settings.skills).not.toEqual(["../.agents/skills"]);
     expect(settings.prompts).toEqual(["./prompts"]);
-    const subagentsPkg = settings.packages?.find(
-      (p) => typeof p === "object" && p.source === "npm:pi-subagents",
-    );
-    expect(subagentsPkg).toEqual({
-      source: "npm:pi-subagents",
-      extensions: [],
-      skills: [],
-      prompts: [],
-      themes: [],
-    });
   });
 
   it("extension exposes subagent tool and hook-equivalent Pi events", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain('name: "subagent"');
+    expect(extension).toContain('name: "trellis_subagent"');
     expect(extension).not.toContain(
       '["--mode", "json", "-p", "--no-session", toPiPromptArgument(prompt)]',
     );

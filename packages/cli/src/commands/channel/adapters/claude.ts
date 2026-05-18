@@ -194,35 +194,9 @@ function handleResult(msg: ClaudeRawMsg): ParseResult {
 
 /**
  * Encode a channel user message into Claude stream-json stdin line(s).
- *
- * - Normal `message`: one line, `{type:"user", message:{...}}`
- * - `tag === "interrupt"`: TWO lines —
- *     1. `{type:"control_request", subtype:"interrupt"}`
- *     2. `{type:"user", message:{...}}`
- *
- *   The control_request IS accepted by Claude SDK (returns success), but
- *   probe tests show it does **not** reliably preempt in-flight LLM
- *   response generation — turn 1 still completes fully, then turn 2 picks
- *   up the new user message. So effective behavior on Claude is "next-turn
- *   redirect" not "mid-stream abort". For hard preempt use `channel kill`.
- *
- *   Sending the control_request anyway is harmless and may abort tool
- *   calls / partial-message streams; future SDK fixes apply automatically.
- *   See research/probe-findings.md for the experimental evidence.
  */
-export function encodeClaudeUserMessage(text: string, tag?: string): string {
+export function encodeClaudeUserMessage(text: string): string {
   const lines: string[] = [];
-  if (tag === "interrupt") {
-    lines.push(
-      JSON.stringify({
-        type: "control_request",
-        request_id: `trellis-int-${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2, 8)}`,
-        request: { subtype: "interrupt" },
-      }),
-    );
-  }
   lines.push(
     JSON.stringify({
       type: "user",
@@ -232,6 +206,25 @@ export function encodeClaudeUserMessage(text: string, tag?: string): string {
       },
     }),
   );
+  return lines.join("\n") + "\n";
+}
+
+/**
+ * Send Claude's provider-level interrupt control request before the
+ * replacement prompt. Current SDK behavior is best-effort, but keeping it
+ * separate from channel message metadata makes interrupt an explicit command path.
+ */
+export function encodeClaudeInterruptMessage(text: string): string {
+  const lines = [
+    JSON.stringify({
+      type: "control_request",
+      request_id: `trellis-int-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
+      request: { subtype: "interrupt" },
+    }),
+    encodeClaudeUserMessage(text).trimEnd(),
+  ];
   return lines.join("\n") + "\n";
 }
 

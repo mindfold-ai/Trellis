@@ -3,20 +3,20 @@
   "hooks": {
     "preToolUse": [
       {
-        "command": "{{PYTHON_CMD}} .cursor/hooks/inject-subagent-context.py",
+        "command": "python .cursor/hooks/inject-subagent-context.py",
         "matcher": "Task|Subagent",
         "timeout": 30
       }
     ],
     "sessionStart": [
       {
-        "command": "{{PYTHON_CMD}} .cursor/hooks/session-start.py",
+        "command": "python .cursor/hooks/session-start.py",
         "timeout": 30
       }
     ],
     "beforeShellExecution": [
       {
-        "command": "{{PYTHON_CMD}} .cursor/hooks/inject-shell-session-context.py",
+        "command": "python .cursor/hooks/inject-shell-session-context.py",
         "timeout": 5
       }
     ]

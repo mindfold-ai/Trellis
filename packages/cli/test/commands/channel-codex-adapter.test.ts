@@ -166,7 +166,7 @@ describe("Codex channel adapter", () => {
     expect(final.events).toEqual([
       {
         kind: "message",
-        payload: { text: "DONE", tag: "final_answer" },
+        payload: { text: "DONE" },
       },
       { kind: "done", payload: {} },
     ]);

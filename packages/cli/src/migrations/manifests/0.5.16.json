@@ -1,0 +1,9 @@
+{
+  "version": "0.5.16",
+  "description": "Patch: align Cursor sessionStart hook output with Cursor's supported schema and remove the unsupported beforeSubmitPrompt injector.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(hooks): Cursor `sessionStart` hooks now emit top-level `additional_context`, matching Cursor's supported hook schema.\n- fix(hooks): Cursor templates no longer install the unsupported `beforeSubmitPrompt` workflow-state injector or `.cursor/hooks/inject-workflow-state.py`.",
+  "migrations": [],
+  "notes": "Run `trellis update` to refresh Cursor hook templates. No migration required because Trellis removes the unsupported Cursor workflow-state hook from generated templates."
+}

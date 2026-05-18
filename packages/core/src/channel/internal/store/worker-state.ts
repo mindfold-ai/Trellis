@@ -51,6 +51,13 @@ export interface WorkerState {
   signal?: string;
   reason?: string;
   error?: string;
+  /**
+   * ISO timestamp of the latest durable event that put this worker into
+   * the `idle` activity (spawn, turn finish, or interrupt). Cleared while
+   * the worker is `mid-turn`, and on terminal lifecycles. Derived purely
+   * from the event log — never from pid files or host clocks.
+   */
+  idleSince?: string;
   /** Seq of the last event applied to this worker. */
   lastSeq: number;
 }
@@ -167,6 +174,7 @@ export function reduceWorkerRegistry(
         delete w.reason;
         delete w.error;
         w.spawnedAt = ev.ts;
+        w.idleSince = ev.ts;
         w.startedBy = ev.by;
         w.provider = strField(ev, "provider") ?? w.provider;
         w.agent = strField(ev, "agent") ?? w.agent;
@@ -179,6 +187,7 @@ export function reduceWorkerRegistry(
         w.activity = "mid-turn";
         w.activeTurnId = strField(ev, "turnId");
         w.activeTurnStartedAt = ev.ts;
+        delete w.idleSince;
         const inputSeq = numField(ev, "inputSeq");
         if (inputSeq !== undefined && inputSeq > w.consumedInputSeq) {
           w.consumedInputSeq = inputSeq;
@@ -189,6 +198,7 @@ export function reduceWorkerRegistry(
         w.activity = "idle";
         delete w.activeTurnId;
         delete w.activeTurnStartedAt;
+        w.idleSince = ev.ts;
         break;
       }
       case "interrupted": {
@@ -196,6 +206,7 @@ export function reduceWorkerRegistry(
         w.activity = "idle";
         delete w.activeTurnId;
         delete w.activeTurnStartedAt;
+        w.idleSince = ev.ts;
         break;
       }
       case "interrupt_requested":
@@ -209,6 +220,9 @@ export function reduceWorkerRegistry(
           w.lifecycle = "done";
           w.terminal = true;
           w.exitCode = numField(ev, "exit_code") ?? w.exitCode;
+          delete w.idleSince;
+        } else {
+          w.idleSince = ev.ts;
         }
         break;
       }
@@ -225,6 +239,9 @@ export function reduceWorkerRegistry(
           w.terminal = true;
           w.exitCode = numField(ev, "exit_code") ?? w.exitCode;
           w.signal = strField(ev, "exit_signal") ?? w.signal;
+          delete w.idleSince;
+        } else {
+          w.idleSince = ev.ts;
         }
         break;
       }
@@ -235,6 +252,7 @@ export function reduceWorkerRegistry(
         w.activity = "idle";
         delete w.activeTurnId;
         delete w.activeTurnStartedAt;
+        delete w.idleSince;
         w.reason = reason ?? w.reason;
         w.signal = strField(ev, "signal") ?? w.signal;
         break;

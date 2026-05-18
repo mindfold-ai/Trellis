@@ -23,7 +23,6 @@ export async function sendMessage(
       kind: "message",
       by: opts.by,
       text: opts.text,
-      ...(opts.tag !== undefined ? { tag: opts.tag } : {}),
       ...(opts.to !== undefined ? { to: opts.to } : {}),
       ...(opts.origin !== undefined ? { origin: opts.origin } : {}),
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),

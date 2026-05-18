@@ -424,7 +424,7 @@ function handleItemCompleted(msg: JsonRpcInbound, ctx: CodexCtx): ParseResult {
       const phase = item.phase as string | undefined;
       // Codex emits `commentary` agentMessages as inline narration / thinking
       // during a turn; the actual user-visible answer is the `final_answer`
-      // (or an untagged agentMessage). Map commentary onto `progress` so the
+      // (or an agentMessage without a phase). Map commentary onto `progress` so the
       // log's `kind:message` stays "one turn-answer per event" and
       // `--no-progress` / `wait --kind message` behave as expected.
       if (phase === "commentary") {
@@ -446,12 +446,7 @@ function handleItemCompleted(msg: JsonRpcInbound, ctx: CodexCtx): ParseResult {
         };
       }
       ctx.finalMessageSeen = true;
-      const events: AdapterEvent[] = [
-        {
-          kind: "message",
-          payload: phase ? { text, tag: phase } : { text },
-        },
-      ];
+      const events: AdapterEvent[] = [{ kind: "message", payload: { text } }];
       if (ctx.pendingDone) {
         ctx.pendingDone = false;
         events.push({ kind: "done", payload: {} });
@@ -577,18 +572,11 @@ export function encodeCodexRequest(
 export function encodeCodexUserMessage(
   ctx: CodexCtx,
   text: string,
-  tag?: string,
 ): { id: number; line: string } {
   if (!ctx.threadId) {
     throw new Error(
       "Codex adapter: thread/start has not completed; cannot send user message yet",
     );
-  }
-  let body = text;
-  if (tag === "interrupt") {
-    body =
-      "[GRID INTERRUPT — drop current work and follow this new instruction]\n" +
-      text;
   }
   ctx.finalMessageSeen = false;
   ctx.pendingDone = false;
@@ -597,9 +585,20 @@ export function encodeCodexUserMessage(
     "turn/start",
     {
       threadId: ctx.threadId,
-      input: [{ type: "text", text: body }],
+      input: [{ type: "text", text }],
     },
     "turn/start",
+  );
+}
+
+export function encodeCodexInterruptMessage(
+  ctx: CodexCtx,
+  text: string,
+): { id: number; line: string } {
+  return encodeCodexUserMessage(
+    ctx,
+    "[GRID INTERRUPT - drop current work and follow this new instruction]\n" +
+      text,
   );
 }
 

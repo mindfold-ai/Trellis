@@ -983,3 +983,36 @@ Cursor's sessionStart expects top-level additional_context, not Claude's nested 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 165: Channel Worker OOM Guard
+
+**Date**: 2026-05-17
+**Task**: Channel Worker OOM Guard
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Added default idle cleanup and live-worker budget controls for channel workers, with config/env/CLI overrides, supervisor idle termination, core idle projection, tests, and channel command spec updates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e7d626b0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

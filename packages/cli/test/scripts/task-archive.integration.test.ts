@@ -11,6 +11,9 @@
  *   2. Phantom-delete — after `shutil.move` of a tracked task dir, the
  *      source-side deletions must land in the archive commit (so the
  *      working tree stays clean against HEAD).
+ *   3. Commit-failure visibility — if the archive move succeeds but git
+ *      cannot create the bookkeeping commit, `task.py archive` must fail
+ *      loudly so callers do not continue to journal over dirty deletes.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -198,5 +201,35 @@ describe.skipIf(!hasPython())(
       },
       30_000, // python startup + 100-file ops can be slow
     );
+
+    it("fails when archive auto-commit cannot record tracked source deletes", () => {
+      makeTask(tmp, "tracked", "# tracked task\n");
+      git(tmp, "add", "-A");
+      git(tmp, "commit", "-q", "-m", "initial");
+
+      // Simulate a repo where git can stage the archive move but cannot
+      // create the commit. A failing hook is deterministic even when the
+      // developer machine has global git identity configured.
+      const hookPath = path.join(tmp, ".git", "hooks", "pre-commit");
+      fs.writeFileSync(
+        hookPath,
+        "#!/bin/sh\necho archive commit blocked >&2\nexit 1\n",
+      );
+      fs.chmodSync(hookPath, 0o755);
+
+      const r = spawnSync(
+        "python3",
+        [".trellis/scripts/task.py", "archive", "tracked"],
+        { cwd: tmp, encoding: "utf-8" },
+      );
+
+      expect(r.status).not.toBe(0);
+      expect(r.stderr).toContain("Archive moved on disk");
+      expect(r.stderr).toContain("Auto-commit failed");
+
+      const status = git(tmp, "status", "--porcelain");
+      expect(status).toContain(".trellis/tasks/tracked/");
+      expect(status).toContain(".trellis/tasks/archive/");
+    });
   },
 );

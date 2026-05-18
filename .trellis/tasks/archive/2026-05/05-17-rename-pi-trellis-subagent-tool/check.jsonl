@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Verify renamed tool still satisfies Pi extension contract (registerTool, promptSnippet, injection points). Verify no Python hooks leaked into .pi/."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Verify test assertion changes follow conventions. Check no tautological assertions, no hardcoded counts."}

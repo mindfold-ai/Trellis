@@ -8,7 +8,7 @@
 
 <p align="center">
 <strong>给 AI 立规矩的开源框架</strong><br/>
-<sub>支持 Claude Code、Cursor、OpenCode、iFlow、Codex、Kilo、Kiro、Gemini CLI、Antigravity、Windsurf、Qoder、CodeBuddy、GitHub Copilot、Factory Droid 和 Pi Agent。</sub>
+<sub>支持 Claude Code、Cursor、OpenCode、Codex、Kiro、Kilo、Gemini CLI、Antigravity、Windsurf、Qoder、CodeBuddy、GitHub Copilot、Droid 和 Pi Agent。</sub>
 </p>
 
 <p align="center">
@@ -193,9 +193,7 @@ trellis init --registry https://github.com/your-org/your-spec-templates
 <p align="center">
 <img src="assets/wx_link6.jpg" alt="微信群" width="260" />
 &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="assets/wecom-group-qr.png" alt="企微话题群" width="260" />
-&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="assets/qq-group-qr.jpg" alt="QQ群" width="260" />
+<img src="assets/feishu-group-qr.jpg" alt="飞书话题群" width="260" />
 </p>
 
 <p align="center">

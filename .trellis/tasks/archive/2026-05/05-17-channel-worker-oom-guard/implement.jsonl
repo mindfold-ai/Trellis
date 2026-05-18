@@ -1,0 +1,13 @@
+{"file":".trellis/tasks/05-17-channel-worker-oom-guard/prd.md","reason":"task requirements and accepted product decisions"}
+{"file":".trellis/tasks/05-17-channel-worker-oom-guard/design.md","reason":"technical design and guard policy"}
+{"file":".trellis/tasks/05-17-channel-worker-oom-guard/implement.md","reason":"implementation checklist and validation plan"}
+{"file":".trellis/spec/cli/backend/commands-channel.md","reason":"channel CLI/runtime behavior spec to update"}
+{"file":"packages/cli/src/templates/trellis/config.yaml","reason":"persistent project configuration defaults for worker guard"}
+{"file":"packages/cli/src/commands/update.ts","reason":"existing additive config-section update mechanism"}
+{"file":"packages/core/src/channel/internal/store/worker-state.ts","reason":"worker activity projection and idleSince source"}
+{"file":"packages/core/src/channel/internal/store/events.ts","reason":"killed reason event type"}
+{"file":"packages/core/src/channel/api/workers.ts","reason":"worker listing and runtime liveness helpers"}
+{"file":"packages/cli/src/commands/channel/spawn.ts","reason":"spawn defaults and guard integration"}
+{"file":"packages/cli/src/commands/channel/supervisor.ts","reason":"supervisor timeout and idle cleanup integration"}
+{"file":"packages/cli/src/commands/channel/supervisor/shutdown.ts","reason":"shutdown reason and killed event writer"}
+{"file":"packages/cli/src/commands/channel/index.ts","reason":"CLI flags and option parsing"}

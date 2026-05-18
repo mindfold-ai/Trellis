@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Section 3.3 Pi extension contract: subagent tool, registerTool, promptSnippet, injection points. Must follow this contract when modifying the tool registration."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test assertion patterns, when to update existing tests, DO/DON'Ts. Three test files need assertion updates."}

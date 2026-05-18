@@ -411,7 +411,16 @@ def cmd_archive(args: argparse.Namespace) -> int:
 
         # Auto-commit unless --no-commit
         if not getattr(args, "no_commit", False):
-            _auto_commit_archive(dir_name, repo_root, modified_children)
+            if not _auto_commit_archive(dir_name, repo_root, modified_children):
+                print(
+                    colored(
+                        "Archive moved on disk, but git auto-commit did not complete. "
+                        "Resolve `git status` before continuing.",
+                        Colors.RED,
+                    ),
+                    file=sys.stderr,
+                )
+                return 1
 
         # Return the archive path
         print(f"{DIR_WORKFLOW}/{DIR_TASKS}/{DIR_ARCHIVE}/{year_month}/{dir_name}")
@@ -428,7 +437,7 @@ def _auto_commit_archive(
     task_name: str,
     repo_root: Path,
     modified_children: list[str] | None = None,
-) -> None:
+) -> bool:
     """Stage Trellis-owned task paths and commit after archive.
 
     Scoped narrowly to the archived task's source + destination paths
@@ -450,14 +459,21 @@ def _auto_commit_archive(
             "[OK] session_auto_commit: false — skipping git stage/commit.",
             file=sys.stderr,
         )
-        return
+        return True
+
+    source_rel = f"{DIR_WORKFLOW}/{DIR_TASKS}/{task_name}"
+    rc, tracked_out, _ = run_git(
+        ["ls-files", "--", source_rel],
+        cwd=repo_root,
+    )
+    source_was_tracked = rc == 0 and bool(tracked_out.strip())
 
     paths = safe_archive_paths_to_add(
         repo_root, task_name=task_name, modified_children=modified_children
     )
     if not paths:
         print("[OK] No task changes to commit.", file=sys.stderr)
-        return
+        return True
 
     success, _, err = safe_git_add(paths, repo_root)
     if not success:
@@ -468,7 +484,7 @@ def _auto_commit_archive(
                 f"[WARN] git add failed: {err.strip() if err else 'unknown error'}",
                 file=sys.stderr,
             )
-        return
+        return not source_was_tracked
 
     # Belt-and-suspenders for the phantom-delete bug: `safe_git_add` uses
     # `git add` (no -A) which only stages additions/modifications. The
@@ -479,7 +495,6 @@ def _auto_commit_archive(
     #
     # `--ignore-unmatch` makes this a no-op when the task was never tracked
     # (e.g. archiving a task that lived only in working tree).
-    source_rel = f"{DIR_WORKFLOW}/{DIR_TASKS}/{task_name}"
     run_git(
         ["rm", "-r", "--cached", "--ignore-unmatch", "--", source_rel],
         cwd=repo_root,
@@ -491,14 +506,16 @@ def _auto_commit_archive(
     )
     if rc == 0:
         print("[OK] No task changes to commit.", file=sys.stderr)
-        return
+        return True
 
     commit_msg = f"chore(task): archive {task_name}"
     rc, _, err = run_git(["commit", "-m", commit_msg], cwd=repo_root)
     if rc == 0:
         print(f"[OK] Auto-committed: {commit_msg}", file=sys.stderr)
+        return True
     else:
         print(f"[WARN] Auto-commit failed: {err.strip()}", file=sys.stderr)
+        return not source_was_tracked
 
 
 # =============================================================================

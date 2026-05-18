@@ -1,8 +1,8 @@
 /**
- * Inbox watcher: tails events.jsonl for `kind:message` events addressed
- * to this worker and forwards them into the worker's stdin via the
- * adapter's `encodeUserMessage`. A persisted cursor file keeps respawns
- * from replaying messages the previous supervisor already delivered.
+ * Inbox watcher: tails events.jsonl for worker-addressed messages and
+ * interrupt requests, then forwards accepted input into the worker's stdin.
+ * A persisted cursor file keeps respawns from replaying events the previous
+ * supervisor already delivered.
  *
  * Step 3 of the supervisor refactor: pulled out of supervisor.ts so the
  * orchestrator only needs to call `runInboxWatcher(...)`. Cursor
@@ -50,8 +50,7 @@ export async function runInboxWatcher(args: InboxWatcherArgs): Promise<void> {
     channelName,
     {
       self: workerName, // ignore our own events
-      to: workerName, // explicit-to-other is filtered here; broadcasts pass
-      kind: "message",
+      kind: ["message", "interrupt_requested"],
     },
     // First run with cursor=0 reads backlog from start; subsequent runs
     // use sinceSeq to skip already-processed events. Both cases tail
@@ -59,14 +58,19 @@ export async function runInboxWatcher(args: InboxWatcherArgs): Promise<void> {
     { signal, sinceSeq: cursor, fromStart: cursor === 0 ? true : undefined },
   )) {
     if (signal.aborted) return;
-    // Core decides delivery from the worker's inbox policy: explicitOnly
-    // (default) consumes only targeted messages; broadcastAndExplicit
-    // also consumes broadcasts.
-    if (!matchesInboxPolicy(ev, workerName, inboxPolicy)) continue;
+    if (ev.kind === "message") {
+      // Core decides delivery from the worker's inbox policy: explicitOnly
+      // (default) consumes only targeted messages; broadcastAndExplicit
+      // also consumes broadcasts.
+      if (!matchesInboxPolicy(ev, workerName, inboxPolicy)) continue;
+    } else if ((ev as { worker?: string }).worker !== workerName) {
+      continue;
+    }
 
     const text = ((ev as { text?: string }).text ?? "").trim();
-    if (!text) continue;
-    const tag = (ev as { tag?: string }).tag;
+    const interruptText = ((ev as { message?: string }).message ?? "").trim();
+    const isInterrupt = ev.kind === "interrupt_requested";
+    if (!text && (!isInterrupt || !interruptText)) continue;
 
     // Block until the adapter says it can accept input (e.g. codex
     // thread/start has produced a threadId). Drop the message if we
@@ -89,19 +93,12 @@ export async function runInboxWatcher(args: InboxWatcherArgs): Promise<void> {
       }
     }
 
-    if (tag !== "interrupt") {
+    if (!isInterrupt) {
       await waitForActiveTurnToFinish(args.turnTracker, signal);
       if (signal.aborted) return;
     }
 
-    if (tag === "interrupt") {
-      await appendEvent(channelName, {
-        kind: "interrupt_requested",
-        by: ev.by,
-        worker: workerName,
-        reason: "user",
-        message: text,
-      });
+    if (isInterrupt) {
       const aborted = args.turnTracker?.abortCurrent();
       if (aborted) {
         await appendEvent(channelName, {
@@ -134,7 +131,11 @@ export async function runInboxWatcher(args: InboxWatcherArgs): Promise<void> {
           turnId: turn.turnId,
         });
       }
-      child.stdin.write(adapter.encodeUserMessage(text, tag, ctx));
+      child.stdin.write(
+        isInterrupt
+          ? adapter.encodeInterruptMessage(interruptText, ctx)
+          : adapter.encodeUserMessage(text, ctx),
+      );
       cursor = ev.seq;
       writeInboxCursor(channelName, workerName, cursor);
     } catch {

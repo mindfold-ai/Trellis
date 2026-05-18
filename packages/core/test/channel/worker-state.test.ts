@@ -246,6 +246,77 @@ describe("reduceWorkerRegistry", () => {
     expect(reg.workers).toHaveLength(0);
   });
 
+  it("sets idleSince on spawn and clears it mid-turn", () => {
+    reset();
+    const reg = reduceWorkerRegistry([
+      ev("spawned", { as: "w", provider: "claude" }), // seq 1
+    ]);
+    expect(reg.workers[0].idleSince).toBe(
+      "2026-05-14T00:00:01.000Z",
+    );
+    expect(reg.workers[0].activity).toBe("idle");
+
+    reset();
+    const reg2 = reduceWorkerRegistry([
+      ev("spawned", { as: "w" }), // seq 1
+      ev("turn_started", { by: "w", worker: "w", inputSeq: 0, turnId: "t" }), // seq 2
+    ]);
+    expect(reg2.workers[0].activity).toBe("mid-turn");
+    expect(reg2.workers[0].idleSince).toBeUndefined();
+  });
+
+  it("turn_finished and interrupted reset idleSince to event ts", () => {
+    reset();
+    const reg = reduceWorkerRegistry([
+      ev("spawned", { as: "w" }), // seq 1
+      ev("turn_started", { by: "w", worker: "w", inputSeq: 0, turnId: "t" }), // seq 2
+      ev("turn_finished", { by: "w", worker: "w", turnId: "t" }), // seq 3
+    ]);
+    expect(reg.workers[0].idleSince).toBe("2026-05-14T00:00:03.000Z");
+
+    reset();
+    const reg2 = reduceWorkerRegistry([
+      ev("spawned", { as: "w" }), // seq 1
+      ev("turn_started", { by: "w", worker: "w", inputSeq: 0, turnId: "t" }), // seq 2
+      ev("interrupted", {
+        by: "main",
+        worker: "w",
+        method: "provider",
+        outcome: "interrupted",
+      }), // seq 3
+    ]);
+    expect(reg2.workers[0].idleSince).toBe("2026-05-14T00:00:03.000Z");
+  });
+
+  it("clears idleSince on terminal events", () => {
+    reset();
+    const reg = reduceWorkerRegistry([
+      ev("spawned", { as: "w" }),
+      ev("killed", { by: "cli:kill", worker: "w", reason: "explicit-kill" }),
+    ]);
+    expect(reg.workers[0].terminal).toBe(true);
+    expect(reg.workers[0].idleSince).toBeUndefined();
+
+    reset();
+    const reg2 = reduceWorkerRegistry([
+      ev("spawned", { as: "w" }),
+      ev("done", { by: "w", synthesized: true, exit_code: 0 }),
+    ]);
+    expect(reg2.workers[0].terminal).toBe(true);
+    expect(reg2.workers[0].idleSince).toBeUndefined();
+  });
+
+  it("respawn after termination reseeds idleSince from the new spawn", () => {
+    reset();
+    const reg = reduceWorkerRegistry([
+      ev("spawned", { as: "w" }), // seq 1
+      ev("killed", { by: "cli:kill", worker: "w", reason: "explicit-kill" }), // seq 2
+      ev("spawned", { as: "w" }), // seq 3
+    ]);
+    expect(reg.workers[0].terminal).toBe(false);
+    expect(reg.workers[0].idleSince).toBe("2026-05-14T00:00:03.000Z");
+  });
+
   it("tracks lastSeq per worker", () => {
     reset();
     const reg = reduceWorkerRegistry([

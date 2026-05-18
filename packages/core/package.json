@@ -1,6 +1,6 @@
 {
   "name": "@mindfoldhq/trellis-core",
-  "version": "0.6.0-beta.17",
+  "version": "0.6.0-beta.18",
   "description": "Trellis core SDK — channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",

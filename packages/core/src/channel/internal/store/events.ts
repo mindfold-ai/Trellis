@@ -144,7 +144,6 @@ export interface CreateChannelEvent extends BaseChannelEvent<"create"> {
 
 export interface MessageChannelEvent extends BaseChannelEvent<"message"> {
   text?: string;
-  tag?: string;
 }
 
 export interface ThreadChannelEvent extends BaseChannelEvent<"thread"> {
@@ -192,11 +191,22 @@ export interface SpawnedChannelEvent extends BaseChannelEvent<"spawned"> {
 }
 
 export interface KilledChannelEvent extends BaseChannelEvent<"killed"> {
+  /**
+   * Why the worker was killed. Well-known supervisor / CLI reasons:
+   * `"explicit-kill"` (CLI `channel kill` or signal),
+   * `"timeout"` (explicit `--timeout`), `"crash"` (post-spawn worker
+   * error — projected to the `crashed` lifecycle), and
+   * `"idle-timeout"` (OOM-guard idle TTL). Additional string values may
+   * appear from custom runtimes; consumers should treat unknown reasons
+   * as opaque.
+   */
   reason?: string;
   signal?: string;
   /** Worker the kill targeted (when written by the CLI kill path). */
   worker?: string;
   timeout_ms?: number;
+  /** Idle TTL in ms that the worker exceeded, when `reason="idle-timeout"`. */
+  idle_timeout_ms?: number;
 }
 
 export interface DoneChannelEvent extends BaseChannelEvent<"done"> {

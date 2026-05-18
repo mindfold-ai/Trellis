@@ -21,6 +21,7 @@ import type { Readable, Writable } from "node:stream";
 
 import {
   buildClaudeArgs,
+  encodeClaudeInterruptMessage,
   encodeClaudeUserMessage,
   parseClaudeLine,
 } from "./claude.js";
@@ -28,6 +29,7 @@ import {
   buildCodexArgs,
   buildCodexThreadStartParams,
   createCodexCtx,
+  encodeCodexInterruptMessage,
   encodeCodexRequest,
   encodeCodexUserMessage,
   parseCodexLine,
@@ -81,7 +83,12 @@ export interface WorkerAdapter<Ctx = AdapterCtx> {
    * Encode a channel-side user message into the bytes that should be
    * written to the worker's stdin (may include multiple lines).
    */
-  encodeUserMessage(text: string, tag: string | undefined, ctx: Ctx): string;
+  encodeUserMessage(text: string, ctx: Ctx): string;
+  /**
+   * Encode an interrupt redirect. Adapters may add provider-specific
+   * control frames before the replacement user message.
+   */
+  encodeInterruptMessage(text: string, ctx: Ctx): string;
 }
 
 /** Claude adapter — stream-json over stdio, no handshake. */
@@ -103,8 +110,11 @@ const claudeAdapter: WorkerAdapter<undefined> = {
   parseLine(line) {
     return parseClaudeLine(line);
   },
-  encodeUserMessage(text, tag) {
-    return encodeClaudeUserMessage(text, tag);
+  encodeUserMessage(text) {
+    return encodeClaudeUserMessage(text);
+  },
+  encodeInterruptMessage(text) {
+    return encodeClaudeInterruptMessage(text);
   },
 };
 
@@ -155,8 +165,11 @@ const codexAdapter: WorkerAdapter<CodexCtx> = {
   parseLine(line, ctx) {
     return parseCodexLine(line, ctx);
   },
-  encodeUserMessage(text, tag, ctx) {
-    return encodeCodexUserMessage(ctx, text, tag).line;
+  encodeUserMessage(text, ctx) {
+    return encodeCodexUserMessage(ctx, text).line;
+  },
+  encodeInterruptMessage(text, ctx) {
+    return encodeCodexInterruptMessage(ctx, text).line;
   },
 };
 

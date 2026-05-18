@@ -39,7 +39,6 @@ export interface SendMessageOptions
     MutationCommonOptions {
   text: string;
   to?: string | string[];
-  tag?: string;
   /**
    * Delivery validation mode. Defaults to `appendOnly`, which preserves
    * append-only / pre-spawn backlog behavior. Strict modes append the

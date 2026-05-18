@@ -1,0 +1,16 @@
+{
+  "version": "0.6.0-beta.18",
+  "description": "Beta patch: channel worker OOM guard, simplified channel message routing, bundled Trellis spec bootstrap skill docs, and safer task archive auto-commit failures.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(channel): default OOM guard for `trellis channel spawn`. Workers that stay continuously idle past `channel.worker_guard.idle_timeout` (default `5m`) are self-terminated with `killed{reason:\"idle-timeout\"}`. Mid-turn workers are not killed by idle cleanup.\n- feat(channel): spawn-time live-worker budget per project/scope. Default `channel.worker_guard.max_live_workers: 6`. Expired idle workers are cleaned first; if the budget is still exhausted, `spawn` rejects with live-worker details and kill / override hints.\n- feat(channel): simplified worker message routing by removing message tags from channel send/wait/run internals.\n- feat(config): `.trellis/config.yaml` gains a `channel.worker_guard` section via `trellis update`.\n- feat(skills): Trellis beta bundle includes the built-in `trellis-spec-bootstarp` skill for bootstrapping `.trellis/spec/` from the real codebase.\n**Bug Fixes:**\n- fix(cli): `task.py archive` now fails when its auto-commit fails instead of reporting a successful archive with uncommitted changes.",
+  "migrations": [],
+  "configSectionsAdded": [
+    {
+      "file": ".trellis/config.yaml",
+      "sentinel": "worker_guard:",
+      "sectionHeading": "Channel worker OOM guard"
+    }
+  ],
+  "notes": "Beta patch on top of 0.6.0-beta.17. `trellis update` appends `channel.worker_guard` defaults for existing projects. To opt out, set `channel.worker_guard.idle_timeout: 0` and / or `channel.worker_guard.max_live_workers: 0`, or pass `--idle-timeout 0` / `--max-live-workers 0` per spawn."
+}
