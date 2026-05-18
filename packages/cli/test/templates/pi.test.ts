@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
 import {
@@ -14,24 +18,36 @@ interface AgentConfig {
   fallbackModels: string[];
 }
 
+interface PiRunConfig {
+  model?: string;
+  thinking?: string;
+}
+
 interface PiExtensionInternals {
-  parseAgentConfig: (content: string) => AgentConfig;
-  buildPiModelArgs: (config: { model?: string; thinking?: string }) => string[];
-  resolveSubagentRunConfig: (
+  normalizeAgent: (agent: string | undefined) => string;
+  isTrellisAgent: (root: string, agent: string) => boolean;
+  parseAgentFM: (content: string) => AgentConfig;
+  buildPiArgs: (config: PiRunConfig) => string[];
+  resolveRunCfg: (
     input: { model?: string; thinking?: string },
-    agentConfig: AgentConfig,
-  ) => { model?: string; thinking?: string };
-  extractFinalAssistantText: (output: string) => string | null;
+    agentCfg: AgentConfig,
+    inheritedThinking?: string,
+  ) => PiRunConfig;
+  cmdHasTrellisCtx: (cmd: string) => boolean;
+  shellQuote: (v: string) => string;
 }
 
 function loadExtensionInternals(): PiExtensionInternals {
   const source = `${getExtensionTemplate()}
 
 export {
-  parseAgentConfig,
-  buildPiModelArgs,
-  resolveSubagentRunConfig,
-  extractFinalAssistantText,
+  normalizeAgent,
+  isTrellisAgent,
+  parseAgentFM,
+  buildPiArgs,
+  resolveRunCfg,
+  cmdHasTrellisCtx,
+  shellQuote,
 };
 `;
   const compiled = ts.transpileModule(source, {
@@ -76,159 +92,97 @@ describe("pi templates", () => {
       extensions?: string[];
       skills?: string[];
       prompts?: string[];
-      packages?: (
-        | string
-        | {
-            source?: string;
-            extensions?: unknown[];
-            skills?: unknown[];
-            prompts?: unknown[];
-            themes?: unknown[];
-          }
-      )[];
+      packages?: unknown[];
     };
 
     expect(settings.enableSkillCommands).toBe(true);
     expect(settings.extensions).toEqual(["./extensions/trellis/index.ts"]);
     expect(settings.skills).toEqual(["./skills"]);
-    expect(settings.skills).not.toEqual(["../.agents/skills"]);
     expect(settings.prompts).toEqual(["./prompts"]);
+    expect(settings.packages).toBeUndefined();
   });
 
-  it("extension exposes subagent tool and hook-equivalent Pi events", () => {
+  it("extension registers the trellis_subagent tool with mode+thinking schema", () => {
     const extension = getExtensionTemplate();
 
+    // Tool name + label avoid collision with community subagent packages.
     expect(extension).toContain('name: "trellis_subagent"');
-    expect(extension).not.toContain(
-      '["--mode", "json", "-p", "--no-session", toPiPromptArgument(prompt)]',
+    expect(extension).toContain('label: "Trellis Subagent"');
+
+    // Schema must declare the three dispatch modes and the thinking enum so the LLM
+    // can pick a valid mode and override thinking per call.
+    expect(extension).toContain(
+      'enum: ["single", "parallel", "chain"]',
     );
-    expect(extension).toContain("sessionManager?:");
-    expect(extension).toContain("getSessionId?: () => string");
+    expect(extension).toContain(
+      'enum: ["off", "minimal", "low", "medium", "high", "xhigh"]',
+    );
+
+    // Dispatch protocol carries the "Active task: <path>" prefix rule.
+    expect(extension).toContain("Active task:");
+  });
+
+  it("extension wires the four Pi events Trellis needs for context flow", () => {
+    const extension = getExtensionTemplate();
+
+    // session_start: notify-only welcome
     expect(extension).toContain('pi.on?.("session_start"');
-    expect(extension).toContain('pi.on?.("input"');
+    // before_agent_start: inject Trellis task context + per-turn breadcrumb
     expect(extension).toContain('pi.on?.("before_agent_start"');
-    expect(extension).toContain('pi.on?.("context"');
+    // tool_call: inject TRELLIS_CONTEXT_ID into bash commands
     expect(extension).toContain('pi.on?.("tool_call"');
-    expect(extension).not.toContain("inject-subagent-context.py");
+    // tool_result: mark failed/cancelled subagent runs as errors
+    expect(extension).toContain('pi.on?.("tool_result"');
   });
 
-  it("extension resolves active task from session runtime only", () => {
+  it("extension bash tool_call handler prefixes TRELLIS_CONTEXT_ID", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain('".runtime", "sessions"');
-    expect(extension).toContain("function resolveContextKey");
-    expect(extension).toContain("ctx?.sessionManager?.getSessionId");
-    expect(extension).toContain("process.env.PI_SESSIONID");
-    expect(extension).toContain("function adoptExistingContextKey");
-    expect(extension).toContain("function activeRuntimeContextKeys");
-    expect(extension).toContain('key.startsWith("pi_process_")');
-    expect(extension).not.toContain(".current-task");
-    expect(extension).not.toContain("global fallback");
+    // Bash tool calls get TRELLIS_CONTEXT_ID exported in front so spawned
+    // python scripts (e.g. task.py current) inherit session identity.
+    expect(extension).toContain('ev.toolName === "bash"');
+    expect(extension).toContain("export TRELLIS_CONTEXT_ID=");
+    expect(extension).toContain("cmdHasTrellisCtx");
   });
 
-  it("extension injects Trellis context into Pi bash tool calls", () => {
+  it("extension tool_result handler marks failed/cancelled subagent runs as errors", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain("function injectTrellisContextIntoBash");
-    expect(extension).toContain('toolCall.toolName !== "bash"');
-    expect(extension).toContain(
-      "toolCall.input.command = `export TRELLIS_CONTEXT_ID=",
+    expect(extension).toContain('ev.toolName === "trellis_subagent"');
+    expect(extension).toContain('r.status === "failed"');
+    expect(extension).toContain('r.status === "cancelled"');
+    expect(extension).toContain("isError: true");
+  });
+
+  it("normalizeAgent prefixes bare names with trellis- and leaves prefixed names alone", () => {
+    const { normalizeAgent } = loadExtensionInternals();
+
+    expect(normalizeAgent("implement")).toBe("trellis-implement");
+    expect(normalizeAgent("check")).toBe("trellis-check");
+    expect(normalizeAgent("trellis-research")).toBe("trellis-research");
+    expect(normalizeAgent(undefined)).toBe("trellis-implement");
+    expect(normalizeAgent("trellis-custom")).toBe("trellis-custom");
+  });
+
+  it("isTrellisAgent gates on a real .pi/agents/*.md definition file", () => {
+    const { isTrellisAgent } = loadExtensionInternals();
+
+    const root = mkdtempSync(join(tmpdir(), "trellis-pi-test-"));
+    mkdirSync(join(root, ".pi", "agents"), { recursive: true });
+    writeFileSync(
+      join(root, ".pi", "agents", "trellis-implement.md"),
+      "---\nname: trellis-implement\n---\n",
     );
-    expect(extension).toContain("function commandStartsWithTrellisContext");
-    expect(extension).toContain("function shellQuote");
-    expect(extension).toContain(
-      "injectTrellisContextIntoBash(event, contextKey)",
-    );
+
+    expect(isTrellisAgent(root, "trellis-implement")).toBe(true);
+    expect(isTrellisAgent(root, "trellis-foo")).toBe(false);
+    expect(existsSync(root)).toBe(true);
   });
 
-  it("extension resolves Windows npm-shim Pi installs through the CLI JS entrypoint", () => {
-    const extension = getExtensionTemplate();
+  it("parseAgentFM reads model/thinking/fallbackModels from agent frontmatter", () => {
+    const { parseAgentFM } = loadExtensionInternals();
 
-    expect(extension).toContain("function resolvePiInvocation");
-    expect(extension).toContain("TRELLIS_PI_CLI_JS");
-    expect(extension).toContain("TRELLIS_PI_CLI_JS points to a missing file");
-    expect(extension).toContain("process.execPath");
-    expect(extension).toContain("PI_CLI_JS_SEGMENTS");
-    expect(extension).toContain("process.env.APPDATA");
-    expect(extension).toContain("process.env.npm_config_prefix");
-    expect(extension).toContain("pathValue.split(delimiter)");
-    expect(extension).toContain('return { command: "pi", argsPrefix: [] }');
-  });
-
-  it("extension forwards Trellis context into spawned Pi subagents", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain(
-      "runSubagent(projectRoot, input, contextKey, _signal)",
-    );
-    expect(extension).toContain("buildSubagentPrompt(");
-    expect(extension).toContain("runConfig");
-    expect(extension).toContain(
-      "{ ...process.env, TRELLIS_CONTEXT_ID: contextKey }",
-    );
-    expect(extension).toContain("signal?: AbortSignal");
-    expect(extension).toContain("child.kill()");
-    expect(extension).toContain('new Error("pi subagent cancelled")');
-  });
-
-  it("extension sends subagent prompts through stdin with bounded output buffers", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain('"--mode"');
-    expect(extension).toContain('"text"');
-    expect(extension).toContain('stdio: ["pipe", "pipe", "pipe"]');
-    expect(extension).toContain("child.stdin?.end(prompt)");
-    expect(extension).toContain("class BoundedBufferCollector");
-    expect(extension).toContain("MAX_SUBAGENT_STDOUT_BYTES");
-    expect(extension).toContain("MAX_SUBAGENT_STDERR_BYTES");
-    expect(extension).not.toContain("toPiPromptArgument");
-  });
-
-  it("extension builds subagent prompts from Trellis agent context", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain("function stripMarkdownFrontmatter");
-    expect(extension).toContain("content: stripMarkdownFrontmatter(raw)");
-    expect(extension).toContain("parseAgentConfig(raw)");
-    expect(extension).toContain('"## Trellis Agent Definition"');
-  });
-
-  it("extension parses agent frontmatter and per-call model/thinking overrides", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain("type ThinkingLevel");
-    expect(extension).toContain("interface AgentConfig");
-    expect(extension).toContain("fallbackModels: string[]");
-    expect(extension).toContain("function parseAgentConfig");
-    expect(extension).toContain('key === "model"');
-    expect(extension).toContain('key === "thinking"');
-    expect(extension).toContain('key === "fallbackModels"');
-    expect(extension).toContain("function resolveSubagentRunConfig");
-    expect(extension).toContain(
-      "model: stringValue(input.model) ?? agentConfig.model",
-    );
-    expect(extension).toContain(
-      "thinking: normalizeThinking(input.thinking) ?? agentConfig.thinking",
-    );
-  });
-
-  it("extension maps model/thinking config onto Pi CLI args", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain("function buildPiModelArgs");
-    expect(extension).toContain("THINKING_SUFFIX_RE");
-    expect(extension).toContain("modelHasThinkingSuffix(model)");
-    expect(extension).toContain('"--model"');
-    expect(extension).toContain("`${model}:${thinking}`");
-    expect(extension).toContain(
-      'return thinking ? ["--thinking", thinking] : []',
-    );
-    expect(extension).toContain("...modelArgs");
-  });
-
-  it("extension model/thinking helpers behave correctly", () => {
-    const internals = loadExtensionInternals();
-    const agentConfig = internals.parseAgentConfig(`---
+    const cfg = parseAgentFM(`---
 name: reviewer
 model: anthropic/claude-sonnet-4
 thinking: high
@@ -239,158 +193,127 @@ fallbackModels:
 # Reviewer
 `);
 
-    expect(agentConfig).toEqual({
+    expect(cfg).toEqual({
       model: "anthropic/claude-sonnet-4",
       thinking: "high",
       fallbackModels: ["openai/gpt-5-mini", "google/gemini-2.5-pro"],
     });
-    expect(internals.buildPiModelArgs(agentConfig)).toEqual([
+  });
+
+  it("buildPiArgs maps PiRunConfig onto Pi CLI args", () => {
+    const { buildPiArgs } = loadExtensionInternals();
+
+    // model + thinking → composes "model:thinking" suffix when not already present
+    expect(buildPiArgs({ model: "anthropic/claude-sonnet-4", thinking: "high" })).toEqual([
+      "--mode",
+      "json",
+      "-p",
+      "--no-session",
       "--model",
       "anthropic/claude-sonnet-4:high",
     ]);
+
+    // model already has thinking suffix → passed through unchanged
     expect(
-      internals.buildPiModelArgs({
-        model: "anthropic/claude-sonnet-4:low",
-        thinking: "high",
-      }),
-    ).toEqual(["--model", "anthropic/claude-sonnet-4:low"]);
-    expect(internals.buildPiModelArgs({ thinking: "minimal" })).toEqual([
+      buildPiArgs({ model: "anthropic/claude-sonnet-4:low", thinking: "high" }),
+    ).toEqual([
+      "--mode",
+      "json",
+      "-p",
+      "--no-session",
+      "--model",
+      "anthropic/claude-sonnet-4:low",
+    ]);
+
+    // thinking-only (no model) → standalone --thinking flag
+    expect(buildPiArgs({ thinking: "minimal" })).toEqual([
+      "--mode",
+      "json",
+      "-p",
+      "--no-session",
       "--thinking",
       "minimal",
     ]);
+
+    // thinking=off is suppressed
+    expect(buildPiArgs({ model: "gpt-5", thinking: "off" })).toEqual([
+      "--mode",
+      "json",
+      "-p",
+      "--no-session",
+      "--model",
+      "gpt-5",
+    ]);
+  });
+
+  it("resolveRunCfg lets per-call input override agent frontmatter defaults", () => {
+    const { resolveRunCfg } = loadExtensionInternals();
+
+    const agentCfg: AgentConfig = {
+      model: "anthropic/claude-sonnet-4",
+      thinking: "high",
+      fallbackModels: [],
+    };
+
+    // Per-call model + thinking win over agent config
     expect(
-      internals.resolveSubagentRunConfig(
+      resolveRunCfg(
         { model: "openai/gpt-5", thinking: "xhigh" },
-        agentConfig,
+        agentCfg,
       ),
-    ).toEqual({ model: "openai/gpt-5", thinking: "xhigh" });
+    ).toEqual({ model: "openai/gpt-5:xhigh", thinking: "xhigh" });
+
+    // No overrides → fall back to agent config
+    expect(resolveRunCfg({}, agentCfg)).toEqual({
+      model: "anthropic/claude-sonnet-4:high",
+      thinking: "high",
+    });
+
+    // Inherited thinking is the last fallback
+    expect(
+      resolveRunCfg(
+        {},
+        { model: "gpt-5", fallbackModels: [] },
+        "medium",
+      ),
+    ).toEqual({ model: "gpt-5:medium", thinking: "medium" });
   });
 
-  it("subagent tool schema accepts model and thinking overrides", () => {
+  it("cmdHasTrellisCtx detects already-prefixed bash commands", () => {
+    const { cmdHasTrellisCtx } = loadExtensionInternals();
+
+    expect(cmdHasTrellisCtx("export TRELLIS_CONTEXT_ID=foo; ls")).toBe(true);
+    expect(cmdHasTrellisCtx("TRELLIS_CONTEXT_ID=foo ls")).toBe(true);
+    expect(cmdHasTrellisCtx("env TRELLIS_CONTEXT_ID=foo ls")).toBe(true);
+    expect(cmdHasTrellisCtx("ls -la")).toBe(false);
+    expect(cmdHasTrellisCtx("")).toBe(false);
+  });
+
+  it("shellQuote single-quotes values and escapes embedded single quotes", () => {
+    const { shellQuote } = loadExtensionInternals();
+
+    expect(shellQuote("simple")).toBe("'simple'");
+    expect(shellQuote("with space")).toBe("'with space'");
+    expect(shellQuote("with 'quote'")).toBe("'with '\\''quote'\\'''");
+  });
+
+  it("extension forwards TRELLIS_CONTEXT_ID into spawned Pi child env", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain(
-      "Optional Pi model override for the child sub-agent process.",
-    );
-    expect(extension).toContain(
-      "Optional Pi thinking level override for the child sub-agent process.",
-    );
-    expect(extension).toContain(
-      'enum: ["off", "minimal", "low", "medium", "high", "xhigh"]',
-    );
+    // The child pi process must inherit TRELLIS_CONTEXT_ID so sub-agent
+    // task.py current resolves to the same task.
+    expect(extension).toContain("TRELLIS_CONTEXT_ID:");
+    expect(extension).toContain("...process.env");
   });
 
-  it("extension preserves final assistant text extraction for structured Pi output", () => {
+  it("extension validates agent definition before spawning a child pi process", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain("function extractFinalAssistantText");
-    expect(extension).toContain("function extractTextContent");
-    expect(extension).toContain(
-      "return extractFinalAssistantText(stdout) ?? (stdout || stderr)",
-    );
-    expect(extension).toContain('message?.role !== "assistant"');
-    expect(extension).toContain(
-      "Pi can print non-JSON diagnostics around structured output",
-    );
-  });
-
-  it("extension extracts the last assistant text from diagnostic-wrapped structured output", () => {
-    const internals = loadExtensionInternals();
-    const output = [
-      "Warning: diagnostic before JSON",
-      JSON.stringify({
-        message: {
-          role: "assistant",
-          content: [{ type: "text", text: "first" }],
-        },
-      }),
-      JSON.stringify({
-        message: {
-          role: "user",
-          content: [{ type: "text", text: "ignored" }],
-        },
-      }),
-      JSON.stringify({
-        message: {
-          role: "assistant",
-          content: [{ type: "text", text: "final" }],
-        },
-      }),
-    ].join("\n");
-
-    expect(internals.extractFinalAssistantText(output)).toBe("final");
-  });
-
-  it("extension uses Pi runtime-safe event and tool result shapes", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain("Promise<PiToolResult>");
-    expect(extension).toContain('content: [{ type: "text", text: output }]');
-    expect(extension).toContain("details: {");
-    expect(extension).toContain("agent: input.agent");
-    expect(extension).toContain("ctx?.ui?.notify?.(");
-    expect(extension).toContain("systemPrompt:");
-    expect(extension).toContain('pi.on?.("input", (event, ctx) => {');
-    expect(extension).toContain('action: "continue"');
-    expect(extension).not.toContain("message: buildTrellisContext");
-    expect(extension).not.toContain('message:\n      "Trellis project context');
-    expect(extension).not.toContain("persistent: true");
-  });
-
-  it("extension injects per-turn workflow-state breadcrumb from workflow.md tags", () => {
-    const extension = getExtensionTemplate();
-
-    // TS port of shared-hooks/inject-workflow-state.py — Pi is extension-backed
-    // and must not receive Python hook files, so the parser lives inline.
-    expect(extension).toContain("WORKFLOW_STATE_TAG_RE");
-    expect(extension).toContain("workflow-state:([A-Za-z0-9_-]+)");
-    expect(extension).toContain("function loadWorkflowBreadcrumbs");
-    expect(extension).toContain("function buildWorkflowStateBreadcrumb");
-    expect(extension).toContain("<workflow-state>");
-    expect(extension).toContain("Refer to workflow.md for current step.");
-    expect(extension).toContain("no_task");
-  });
-
-  it("extension injects per-turn session-overview via get_context.py", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain("function buildSessionOverview");
-    expect(extension).toContain('"get_context.py"');
-    expect(extension).toContain("<session-overview>");
-    expect(extension).toContain("spawnSync");
-    expect(extension).toContain("class TurnContextCache");
-    expect(extension).toContain("buildPerTurnInjection");
-    expect(extension).toContain("turnContextCache.get");
-  });
-
-  it("input and before_agent_start hooks both surface workflow-state breadcrumb", () => {
-    const extension = getExtensionTemplate();
-
-    // before_agent_start: workflow-state appended to systemPrompt alongside
-    // the existing PRD / jsonl context (must not replace, must not skip).
-    expect(extension).toContain(
-      "[current, context, perTurn].filter(Boolean).join",
-    );
-    // input hook must inject the same per-turn block (UserPromptSubmit equivalent).
-    expect(extension).toContain(
-      "additionalContext, systemPrompt: additionalContext",
-    );
-    // Existing PRD + jsonl injection must still happen.
-    expect(extension).toContain('buildTrellisContext(\n      projectRoot,\n      "trellis-implement"');
-  });
-
-  it("subagent tool registration carries dispatch protocol prompt snippet", () => {
-    const extension = getExtensionTemplate();
-
-    expect(extension).toContain("SUBAGENT_DISPATCH_PROTOCOL");
-    expect(extension).toContain("promptSnippet: SUBAGENT_DISPATCH_PROTOCOL");
-    expect(extension).toContain("promptGuidelines: SUBAGENT_DISPATCH_PROTOCOL");
-    // The protocol body must instruct the AI to start dispatch with the
-    // canonical "Active task: <path>" line — same wording as
-    // `[workflow-state:in_progress]` in trellis/workflow.md.
-    expect(extension).toContain("Active task:");
-    expect(extension).toContain("class-1");
-    expect(extension).toContain("class-2");
-    expect(extension).toContain("trellis-research");
+    // Non-Trellis agent calls must short-circuit and point users to community
+    // subagent packages instead of silently spawning a child pi process with
+    // a missing agent definition.
+    expect(extension).toContain("isTrellisAgent(root, agentName)");
+    expect(extension).toContain("npm:@tintinweb/pi-subagents");
+    expect(extension).toContain("npm:pi-subagents");
   });
 });
