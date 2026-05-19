@@ -26,10 +26,12 @@ project_doc_fallback_filenames = ["AGENTS.md"]
 # `enabled = true` is required inside the table — the table form does
 # NOT auto-enable the feature without it.
 # - max_concurrent_threads_per_session: bumps default 4 → 6.
-# - min_wait_timeout_ms: 480000 ms = 8 min. Codex default is 10 s, too
-#   short for Trellis subagents that routinely take 2-10 min. Hard
-#   ceiling is 3,600,000 (1 h).
+# - min/default/max_wait_timeout_ms: keep Codex's merged timeout config
+#   valid while raising the default wait to 8 min. Codex 0.131+ validates
+#   min <= default <= max.
 [features.multi_agent_v2]
 enabled = true
 max_concurrent_threads_per_session = 6
 min_wait_timeout_ms = 480000
+default_wait_timeout_ms = 480000
+max_wait_timeout_ms = 3600000

@@ -1,0 +1,9 @@
+{
+  "version": "0.6.0-beta.19",
+  "description": "Beta patch: Pi trellis_subagent native progress cards, durable channel idempotency, task create/archive collision guard, workflow breadcrumb clarification, and Codex 0.131 timeout bounds.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(pi): Pi extension now exposes `trellis_subagent` with native progress cards, `single` / `parallel` / `chain` dispatch modes, throttled live updates, and Trellis-agent validation (#286, #290).\n**Bug Fixes:**\n- fix(core): channel `sendMessage` and `postThread` accept durable `idempotencyKey` values so retries return the original JSONL event and do not duplicate strict-delivery `undeliverable` events.\n- fix(cli): `task.py create` now rejects slugs that already exist under `.trellis/tasks/archive/**` and prints the archived path (#291).\n- fix(workflow): `[workflow-state:in_progress]` now distinguishes sub-agent types from skills so agents do not call missing `trellis-implement` / `trellis-research` skills (#283).\n- fix(codex): `.codex/config.toml` emits `min_wait_timeout_ms`, `default_wait_timeout_ms`, and `max_wait_timeout_ms` together so Codex CLI 0.131+ accepts merged multi_agent_v2 timeout config (#294).\n**Internal:**\n- chore(release): restore the shipped `0.5.17` migration manifest so manifest continuity and update-chain checks pass for the beta release.",
+  "migrations": [],
+  "notes": "Beta patch on top of 0.6.0-beta.18. Run `trellis update` to refresh Pi, Codex, workflow, and task templates. No migration command is required."
+}

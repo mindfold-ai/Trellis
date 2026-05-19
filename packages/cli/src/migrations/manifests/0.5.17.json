@@ -1,0 +1,9 @@
+{
+  "version": "0.5.17",
+  "description": "Patch: bundle the Trellis spec bootstrap skill and update the marketplace/docs entry for project-specific spec generation.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(skills): `trellis-spec-bootstarp` is now a built-in bundled skill installed by `trellis init` and refreshed by `trellis update` for supported AI platforms.\n- feat(skills): the bundled skill helps AI bootstrap `.trellis/spec/` from the real repository with source-backed references for repository analysis, spec task planning, spec writing, and MCP setup.\n- docs(skills): replace the older marketplace-only `cc-codex-spec-bootstrap` docs entry with the built-in `trellis-spec-bootstarp` flow.",
+  "migrations": [],
+  "notes": "Run `trellis update` to install or refresh the bundled `trellis-spec-bootstarp` skill. No migration command is required."
+}
