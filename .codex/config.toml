@@ -30,7 +30,7 @@ project_doc_fallback_filenames = ["AGENTS.md"]
 #   valid while raising the default wait to 8 min. Codex 0.131+ validates
 #   min <= default <= max.
 [features.multi_agent_v2]
-enabled = false
+enabled = true
 max_concurrent_threads_per_session = 6
 min_wait_timeout_ms = 480000
 default_wait_timeout_ms = 480000

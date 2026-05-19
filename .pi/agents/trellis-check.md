@@ -45,10 +45,11 @@ You are already the `trellis-check` sub-agent that the main session dispatched. 
 ## Core Responsibilities
 
 1. Inspect the current git diff.
-2. Read and follow the spec and research files listed in the task's `check.jsonl`.
-3. Review all changed code against the task PRD and project specs.
-4. Fix issues directly when they are within scope.
-5. Run the relevant lint, typecheck, and focused tests available for the touched code.
+2. Read `prd.md`, `design.md` if present, and `implement.md` if present.
+3. Read and follow the spec and research files listed in the task's `check.jsonl`.
+4. Review all changed code against the task artifacts and project specs.
+5. Fix issues directly when they are within scope.
+6. Run the relevant lint, typecheck, and focused tests available for the touched code.
 
 ## Review Priorities
 

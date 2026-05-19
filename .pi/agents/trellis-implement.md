@@ -45,10 +45,11 @@ You are already the `trellis-implement` sub-agent that the main session dispatch
 ## Core Responsibilities
 
 1. Understand the active task requirements.
-2. Read and follow the spec and research files listed in the task's `implement.jsonl`.
-3. Implement the requested change using existing project patterns.
-4. Run the relevant lint, typecheck, and focused tests available for the touched code.
-5. Report files changed and verification results.
+2. Read `prd.md`, `design.md` if present, and `implement.md` if present.
+3. Read and follow the spec and research files listed in the task's `implement.jsonl`.
+4. Implement the requested change using existing project patterns.
+5. Run the relevant lint, typecheck, and focused tests available for the touched code.
+6. Report files changed and verification results.
 
 ## Forbidden Operations
 
