@@ -36,7 +36,7 @@ import {
   replacePythonCommandLiterals,
 } from "../../src/configurators/shared.js";
 
-const BUNDLED_SKILL_NAMES = ["trellis-meta", "trellis-spec-bootstarp"];
+const BUNDLED_SKILL_NAMES = ["trellis-meta", "trellis-spec-bootstrap"];
 const BUNDLED_SKILL_NAME = BUNDLED_SKILL_NAMES[0];
 const BUNDLED_REFERENCE = path.join(
   BUNDLED_SKILL_NAME,
@@ -44,8 +44,8 @@ const BUNDLED_REFERENCE = path.join(
   "local-architecture",
   "overview.md",
 );
-const SPEC_BOOTSTARP_REFERENCE = path.join(
-  "trellis-spec-bootstarp",
+const SPEC_BOOTSTRAP_REFERENCE = path.join(
+  "trellis-spec-bootstrap",
   "references",
   "spec-writing.md",
 );
@@ -785,7 +785,7 @@ describe("configurePlatform", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".pi", "skills", SPEC_BOOTSTARP_REFERENCE),
+        path.join(tmpDir, ".pi", "skills", SPEC_BOOTSTRAP_REFERENCE),
       ),
     ).toBe(true);
     expect(
@@ -919,7 +919,7 @@ describe("configurePlatform", () => {
     ).toBeDefined();
     expect(
       templates?.get(
-        ".pi/skills/trellis-spec-bootstarp/references/spec-writing.md",
+        ".pi/skills/trellis-spec-bootstrap/references/spec-writing.md",
       ),
     ).toBeDefined();
     expect(templates?.get(".pi/agents/trellis-implement.md")).toContain(
