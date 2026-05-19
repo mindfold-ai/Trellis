@@ -1051,3 +1051,40 @@ Added durable idempotency keys to core channel send/thread writes, documented th
 ### Next Steps
 
 - None - task complete
+
+
+## Session 167: Bundle spec bootstrap skill
+
+**Date**: 2026-05-19
+**Task**: Bundle spec bootstrap skill
+**Branch**: `feat/v0.6.0-beta`
+
+### Summary
+
+Investigated why v0.6.0-beta.18/19 did not install trellis-spec-bootstarp after trellis init. Ported the bundled spec bootstrap skill into the beta CLI templates, added init/update tracking tests, verified the built CLI through npm pack dry-run and a fresh temp-directory init/update smoke test, documented release artifact smoke-test requirements, updated docs-site changelog notes for Codex timeout bounds, and committed Trellis local platform/template refreshes in separate batches.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6a8a9049` | (see git log) |
+| `99f87d1c` | (see git log) |
+| `3a296287` | (see git log) |
+| `247d85c1` | (see git log) |
+| `8bed2de5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
