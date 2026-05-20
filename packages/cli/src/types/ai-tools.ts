@@ -179,7 +179,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
-      hasHooks: false,
+      hasHooks: true,
       cliFlag: "opencode",
     },
   },
