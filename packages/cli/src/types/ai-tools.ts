@@ -21,7 +21,8 @@ export type AITool =
   | "codebuddy"
   | "copilot"
   | "droid"
-  | "pi";
+  | "pi"
+  | "reasonix";
 
 /**
  * Template directory categories
@@ -41,7 +42,8 @@ export type TemplateDir =
   | "codebuddy"
   | "copilot"
   | "droid"
-  | "pi";
+  | "pi"
+  | "reasonix";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -61,7 +63,8 @@ export type CliFlag =
   | "codebuddy"
   | "copilot"
   | "droid"
-  | "pi";
+  | "pi"
+  | "reasonix";
 
 /**
  * Template context for placeholder resolution.
@@ -69,7 +72,7 @@ export type CliFlag =
  */
 export interface TemplateContext {
   /** Prefix for cross-referencing other commands/skills */
-  cmdRefPrefix: "/trellis:" | "/trellis-" | "$" | "/";
+  cmdRefPrefix: "/trellis:" | "/trellis-" | "$" | "/" | "/skill trellis-";
   /** Description of AI executor actions shown in role tables */
   executorAI:
     | "Bash scripts or Task calls"
@@ -365,6 +368,22 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: true,
       cliFlag: "pi",
+    },
+  },
+  reasonix: {
+    name: "Reasonix",
+    templateDirs: ["common", "reasonix"],
+    configDir: ".reasonix",
+    cliFlag: "reasonix",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "/skill trellis-",
+      executorAI: "Bash scripts or tool calls",
+      userActionLabel: "Skills",
+      agentCapable: true,
+      hasHooks: false,
+      cliFlag: "reasonix",
     },
   },
 };
