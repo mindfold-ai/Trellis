@@ -24,17 +24,17 @@ function findProjectRoot(startDir: string): string | null {
 
 function resolveActiveTaskStatus(
    projectRoot: string,
-): { status: string; taskDir: string | null } {
+): { status: string; taskDir: string | null; taskTitle: string | null } {
    const sessionsDir = join(projectRoot, ".trellis", ".runtime", "sessions");
-   if (!existsSync(sessionsDir)) return { status: "no_task", taskDir: null };
+   if (!existsSync(sessionsDir)) return { status: "no_task", taskDir: null, taskTitle: null };
 
    let sessionFiles: string[];
    try {
       sessionFiles = readdirSync(sessionsDir).filter((f) => f.endsWith(".json"));
    } catch {
-      return { status: "no_task", taskDir: null };
+      return { status: "no_task", taskDir: null, taskTitle: null };
    }
-   if (sessionFiles.length === 0) return { status: "no_task", taskDir: null };
+   if (sessionFiles.length === 0) return { status: "no_task", taskDir: null, taskTitle: null };
 
    if (sessionFiles.length > 1) {
       sessionFiles.sort((a, b) => {
@@ -51,37 +51,67 @@ function resolveActiveTaskStatus(
          readFileSync(join(sessionsDir, sessionFile), "utf-8"),
       );
    } catch {
-      return { status: "no_task", taskDir: null };
+      return { status: "no_task", taskDir: null, taskTitle: null };
    }
 
    const currentTask = sessionData.current_task;
    if (typeof currentTask !== "string" || !currentTask)
-      return { status: "no_task", taskDir: null };
+      return { status: "no_task", taskDir: null, taskTitle: null };
 
    const taskDir = join(projectRoot, currentTask);
    const taskJsonPath = join(taskDir, "task.json");
-   if (!existsSync(taskJsonPath)) return { status: "no_task", taskDir: null };
+   if (!existsSync(taskJsonPath)) return { status: "no_task", taskDir: null, taskTitle: null };
 
    let taskData: Record<string, unknown>;
    try {
       taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
    } catch {
-      return { status: "no_task", taskDir: null };
+      return { status: "no_task", taskDir: null, taskTitle: null };
    }
 
    return {
       status: typeof taskData.status === "string" ? taskData.status : "planning",
       taskDir,
+      taskTitle: typeof taskData.title === "string" ? taskData.title : null,
    };
+}
+
+// ---------------------------------------------------------------------------
+// Session context — spawns get_context.py default mode (same as Claude hook)
+// ---------------------------------------------------------------------------
+
+const SESSION_CONTEXT_TIMEOUT_MS = 5000;
+
+function buildSessionContext(projectRoot: string): string {
+   const script = join(projectRoot, ".trellis", "scripts", "get_context.py");
+   if (!existsSync(script)) return "";
+
+   try {
+      const result = spawnSync("python3", [script], {
+         cwd: projectRoot,
+         encoding: "utf-8",
+         timeout: SESSION_CONTEXT_TIMEOUT_MS,
+         windowsHide: true,
+      });
+      if (result.status !== 0 || !result.stdout?.trim()) {
+         return "";
+      }
+      return `<session-context>\n${result.stdout.trim()}\n</session-context>`;
+   } catch {
+      return "";
+   }
 }
 
 // ---------------------------------------------------------------------------
 // Task context — prd.md, info.md, and jsonl-referenced spec/research files
 // ---------------------------------------------------------------------------
 
-function buildTaskContext(projectRoot: string, taskDir: string): string {
+type AgentType = "trellis-implement" | "trellis-check" | "trellis-research" | null;
+
+function buildTaskContext(projectRoot: string, taskDir: string, agentType?: AgentType): string {
    const parts: string[] = [];
 
+   // prd.md and info.md — always included
    let prd = "";
    try { prd = readFileSync(join(taskDir, "prd.md"), "utf-8"); } catch { }
    if (prd.trim()) parts.push(`## PRD\n\n${prd.trim()}`);
@@ -90,7 +120,19 @@ function buildTaskContext(projectRoot: string, taskDir: string): string {
    try { info = readFileSync(join(taskDir, "info.md"), "utf-8"); } catch { }
    if (info.trim()) parts.push(`## Info\n\n${info.trim()}`);
 
-   for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
+   // Determine which jsonl files to read based on agent type
+   let jsonlNames: string[];
+   if (agentType === "trellis-implement") {
+      jsonlNames = ["implement.jsonl"];
+   } else if (agentType === "trellis-check") {
+      jsonlNames = ["check.jsonl"];
+   } else if (agentType === "trellis-research") {
+      jsonlNames = []; // research agent gets only prd + info
+   } else {
+      jsonlNames = ["implement.jsonl", "check.jsonl"]; // main session: all
+   }
+
+   for (const jsonlName of jsonlNames) {
       const jsonlPath = join(taskDir, jsonlName);
       if (!existsSync(jsonlPath)) continue;
 
@@ -130,55 +172,29 @@ function buildTaskContext(projectRoot: string, taskDir: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Session overview — spawns get_context.py; non-fatal fallback on failure
-// ---------------------------------------------------------------------------
-
-const SESSION_OVERVIEW_TIMEOUT_MS = 5000;
-const SESSION_OVERVIEW_FALLBACK =
-   "Trellis workflow system active. Use skills and agents as directed by the workflow state.";
-
-function buildSessionOverview(projectRoot: string): string {
-   const script = join(projectRoot, ".trellis", "scripts", "get_context.py");
-   if (!existsSync(script)) return SESSION_OVERVIEW_FALLBACK;
-
-   try {
-      const result = spawnSync("python3", [script, "--mode", "session-overview"], {
-         cwd: projectRoot,
-         encoding: "utf-8",
-         timeout: SESSION_OVERVIEW_TIMEOUT_MS,
-         windowsHide: true,
-      });
-      if (result.status !== 0 || !result.stdout?.trim()) {
-         return SESSION_OVERVIEW_FALLBACK;
-      }
-      return result.stdout.trim();
-   } catch {
-      return SESSION_OVERVIEW_FALLBACK;
-   }
-}
-
-// ---------------------------------------------------------------------------
 // Per-turn cache — prevents double-spawn when input + before_agent_start
 // fire in the same turn
 // ---------------------------------------------------------------------------
+
+const SESSION_OVERVIEW_TEXT =
+   "Trellis workflow system active. Use skills and agents as directed by the workflow state.";
 
 class TurnContextCache {
    private key: string | null = null;
    private timestamp = 0;
    private workflowMsg = "";
-   private taskContext = "";
    private static readonly TTL_MS = 1500;
 
-   get(projectRoot: string): { workflowMsg: string; taskContext: string } {
+   get(projectRoot: string): { workflowMsg: string } {
       const now = Date.now();
       if (
          this.key === projectRoot &&
          now - this.timestamp < TurnContextCache.TTL_MS
       ) {
-         return { workflowMsg: this.workflowMsg, taskContext: this.taskContext };
+         return { workflowMsg: this.workflowMsg };
       }
 
-      const { status, taskDir } = resolveActiveTaskStatus(projectRoot);
+      const { status } = resolveActiveTaskStatus(projectRoot);
 
       const workflowPath = join(projectRoot, ".trellis", "workflow.md");
       let workflowMd = "";
@@ -196,13 +212,11 @@ class TurnContextCache {
          workflowBody = "Refer to workflow.md for current step.";
       }
 
-      const overview = buildSessionOverview(projectRoot);
-      this.workflowMsg = `<workflow-state>\n${workflowBody}\n</workflow-state>\n\n<session-overview>\n${overview}\n</session-overview>`;
-      this.taskContext = taskDir ? buildTaskContext(projectRoot, taskDir) : "";
+      this.workflowMsg = `<workflow-state>\n${workflowBody}\n</workflow-state>\n\n<session-overview>\n${SESSION_OVERVIEW_TEXT}\n</session-overview>`;
 
       this.key = projectRoot;
       this.timestamp = now;
-      return { workflowMsg: this.workflowMsg, taskContext: this.taskContext };
+      return { workflowMsg: this.workflowMsg };
    }
 }
 
@@ -230,6 +244,20 @@ function parseWorkflowStateBlocks(markdown: string): WorkflowStateBlock[] {
 }
 
 // ---------------------------------------------------------------------------
+// Sub-agent detection
+// ---------------------------------------------------------------------------
+
+const TRELLIS_AGENTS = new Set(["trellis-implement", "trellis-check", "trellis-research"]);
+
+function detectAgentType(): AgentType {
+   const blocked = process.env.PI_BLOCKED_AGENT;
+   if (blocked && TRELLIS_AGENTS.has(blocked)) {
+      return blocked as AgentType;
+   }
+   return null;
+}
+
+// ---------------------------------------------------------------------------
 // Extension entry point
 // ---------------------------------------------------------------------------
 
@@ -238,10 +266,49 @@ export default function(pi: ExtensionAPI): void {
 
    let projectRoot: string | null = null;
    const turnCache = new TurnContextCache();
+   const agentType = detectAgentType();
+   const isSubAgent = agentType !== null;
 
    pi.on("session_start", async (_event, ctx) => {
       projectRoot = findProjectRoot(ctx.cwd);
-      if (projectRoot) {
+      if (!projectRoot) return;
+
+      if (isSubAgent) {
+         // Sub-agent: inject precise task context once
+         const { taskDir } = resolveActiveTaskStatus(projectRoot);
+         if (taskDir) {
+            const taskContext = buildTaskContext(projectRoot, taskDir, agentType);
+            if (taskContext) {
+               await pi.sendMessage({
+                  customType: "trellis-task-context",
+                  content: taskContext,
+                  display: false,
+               });
+            }
+         }
+      } else {
+         // Main session: inject session context (global map) + task context
+         const sessionContext = buildSessionContext(projectRoot);
+         if (sessionContext) {
+            await pi.sendMessage({
+               customType: "trellis-session-context",
+               content: sessionContext,
+               display: false,
+            });
+         }
+
+         const { taskDir } = resolveActiveTaskStatus(projectRoot);
+         if (taskDir) {
+            const taskContext = buildTaskContext(projectRoot, taskDir);
+            if (taskContext) {
+               await pi.sendMessage({
+                  customType: "trellis-task-context",
+                  content: taskContext,
+                  display: false,
+               });
+            }
+         }
+
          ctx.ui.notify("Trellis workflow system available", "info");
       }
    });
@@ -252,15 +319,8 @@ export default function(pi: ExtensionAPI): void {
       }
       if (!projectRoot) return;
 
+      // Lightweight: workflow state only (no task context — already injected in session_start)
       const cached = turnCache.get(projectRoot);
-
-      if (cached.taskContext) {
-         await pi.sendMessage({
-            customType: "trellis-task-context",
-            content: cached.taskContext,
-            display: false,
-         });
-      }
 
       return {
          message: {
