@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Verify command format matches OMP spec and doesn't break collectTemplates hash comparison"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Verify test follows project conventions"}

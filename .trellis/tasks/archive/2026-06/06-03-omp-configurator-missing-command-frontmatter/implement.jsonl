@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Platform configurator architecture, command format table, wrapWithCommandFrontmatter pattern"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Unit test conventions for writing configurator tests"}
