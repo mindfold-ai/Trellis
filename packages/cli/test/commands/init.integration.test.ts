@@ -24,6 +24,26 @@ vi.mock("node:child_process", () => ({
   execSync: vi.fn().mockReturnValue(""),
 }));
 
+const registryDownload = vi.hoisted(() => ({
+  files: new Map<string, string>(),
+}));
+
+vi.mock("giget", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  return {
+    downloadTemplate: vi.fn(
+      async (_source: string, options: { dir: string }) => {
+        for (const [relativePath, content] of registryDownload.files) {
+          const targetPath = path.join(options.dir, relativePath);
+          fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+          fs.writeFileSync(targetPath, content, "utf-8");
+        }
+      },
+    ),
+  };
+});
+
 // === Imports ===
 
 import { init } from "../../src/commands/init.js";
@@ -44,6 +64,7 @@ describe("init() integration", () => {
     vi.spyOn(process, "cwd").mockReturnValue(tmpDir);
     vi.spyOn(console, "log").mockImplementation(noop);
     vi.spyOn(console, "error").mockImplementation(noop);
+    registryDownload.files.clear();
     vi.mocked(execSync).mockClear();
     vi.mocked(execSync).mockImplementation(((cmd: string) => {
       const expectedPythonCmd =
@@ -912,6 +933,141 @@ describe("init() integration", () => {
 
     expect(logOutput).toContain("Error: Could not reach registry index");
     expect(fs.existsSync(path.join(tmpDir, DIR_NAMES.WORKFLOW))).toBe(false);
+  });
+
+  it("#21 -y --registry records direct spec registry source and tracks downloaded spec files", async () => {
+    registryDownload.files.set("index.md", "# remote spec\n");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 404,
+        ok: false,
+      }),
+    );
+
+    await init({
+      yes: true,
+      registry: `gitlab:local/registry/spec`,
+      overwrite: true,
+    });
+
+    const config = fs.readFileSync(
+      path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+      "utf-8",
+    );
+    expect(config).toContain("registry:");
+    expect(config).toContain("spec:");
+    expect(config).toContain("source: gitlab:local/registry/spec");
+
+    const hashFile = JSON.parse(
+      fs.readFileSync(
+        path.join(tmpDir, DIR_NAMES.WORKFLOW, ".template-hashes.json"),
+        "utf-8",
+      ),
+    ) as { hashes?: Record<string, string> };
+    expect(hashFile.hashes?.[".trellis/spec/index.md"]).toBe(
+      computeHash("# remote spec\n"),
+    );
+  });
+
+  it("#22 -y --registry --template records marketplace template source and tracks downloaded spec files", async () => {
+    registryDownload.files.set("index.md", "# golang spec\n");
+    const index = JSON.stringify({
+      version: 1,
+      templates: [
+        {
+          id: "golang-spec",
+          type: "spec",
+          name: "Golang",
+          path: "backend",
+        },
+      ],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(index),
+      }),
+    );
+
+    await init({
+      yes: true,
+      registry: "gitlab:local/registry/marketplace",
+      template: "golang-spec",
+      overwrite: true,
+    });
+
+    const config = fs.readFileSync(
+      path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+      "utf-8",
+    );
+    expect(config).toContain("registry:");
+    expect(config).toContain("spec:");
+    expect(config).toContain("source: gitlab:local/registry/marketplace");
+    expect(config).toContain("template: golang-spec");
+
+    const hashFile = JSON.parse(
+      fs.readFileSync(
+        path.join(tmpDir, DIR_NAMES.WORKFLOW, ".template-hashes.json"),
+        "utf-8",
+      ),
+    ) as { hashes?: Record<string, string> };
+    expect(hashFile.hashes?.[".trellis/spec/index.md"]).toBe(
+      computeHash("# golang spec\n"),
+    );
+  });
+
+  it("#23 existing project --registry --template still refreshes spec and records source", async () => {
+    await init({ yes: true, user: "alice" });
+
+    registryDownload.files.set("index.md", "# refreshed golang spec\n");
+    const index = JSON.stringify({
+      version: 1,
+      templates: [
+        {
+          id: "golang-spec",
+          type: "spec",
+          name: "Golang",
+          path: "backend",
+        },
+      ],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(index),
+      }),
+    );
+
+    await init({
+      yes: true,
+      user: "alice",
+      registry: "gitlab:local/registry/marketplace",
+      template: "golang-spec",
+      overwrite: true,
+    });
+
+    const config = fs.readFileSync(
+      path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+      "utf-8",
+    );
+    expect(config).toContain("source: gitlab:local/registry/marketplace");
+    expect(config).toContain("template: golang-spec");
+    expect(
+      fs.readFileSync(path.join(tmpDir, PATHS.SPEC, "index.md"), "utf-8"),
+    ).toBe("# refreshed golang spec\n");
+
+    const hashFile = JSON.parse(
+      fs.readFileSync(
+        path.join(tmpDir, DIR_NAMES.WORKFLOW, ".template-hashes.json"),
+        "utf-8",
+      ),
+    ) as { hashes?: Record<string, string> };
+    expect(hashFile.hashes?.[".trellis/spec/index.md"]).toBe(
+      computeHash("# refreshed golang spec\n"),
+    );
   });
 
   it("#19 polyrepo: writes git: true for sibling .git packages", async () => {

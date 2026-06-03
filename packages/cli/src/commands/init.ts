@@ -43,6 +43,10 @@ import {
   homedirBypassEnabled,
 } from "../utils/cwd-guard.js";
 import {
+  writeSpecRegistryConfig,
+  type SpecRegistryConfig,
+} from "../utils/registry-config.js";
+import {
   fetchTemplateIndex,
   probeRegistryIndex,
   downloadTemplateById,
@@ -56,10 +60,31 @@ import {
   type RegistryBackend,
 } from "../utils/template-fetcher.js";
 import { setupProxy, maskProxyUrl } from "../utils/proxy.js";
+import { toPosix } from "../utils/posix.js";
+import { updateHashes } from "../utils/template-hash.js";
 
 const MIN_PYTHON_MAJOR = 3;
 const MIN_PYTHON_MINOR = 9;
 const PYTHON_VERSION_RE = /Python (\d+)\.(\d+)/;
+
+function collectSpecPaths(cwd: string): Set<string> {
+  const specRoot = path.join(cwd, PATHS.SPEC);
+  const paths = new Set<string>();
+  if (!fs.existsSync(specRoot)) return paths;
+
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile()) {
+        paths.add(toPosix(path.relative(cwd, fullPath)));
+      }
+    }
+  };
+  walk(specRoot);
+  return paths;
+}
 
 export function isSupportedPythonVersion(versionOutput: string): boolean {
   const match = versionOutput.match(PYTHON_VERSION_RE);
@@ -1095,12 +1120,14 @@ export async function init(options: InitOptions): Promise<void> {
   const tasksDirEarly = path.join(cwd, PATHS.TASKS);
   const tasksEmptyEarly =
     !fs.existsSync(tasksDirEarly) || fs.readdirSync(tasksDirEarly).length === 0;
+  const hasTemplateRequest = !!options.template || !!options.registry;
 
   if (
     !isFirstInit &&
     !options.force &&
     !options.skipExisting &&
-    !tasksEmptyEarly
+    !tasksEmptyEarly &&
+    !hasTemplateRequest
   ) {
     const reinitDone = await handleReinit(
       cwd,
@@ -1134,9 +1161,11 @@ export async function init(options: InitOptions): Promise<void> {
 
   // Parse custom registry source early (needed by both monorepo + single-repo flows)
   let registry: RegistrySource | undefined;
+  let registrySourceForConfig: string | undefined;
   if (options.registry) {
     try {
       registry = parseRegistrySource(options.registry);
+      registrySourceForConfig = options.registry;
     } catch (error) {
       console.log(
         chalk.red(
@@ -1393,6 +1422,23 @@ export async function init(options: InitOptions): Promise<void> {
   } else if (options.template) {
     // Template specified via --template flag
     selectedTemplate = options.template;
+    if (registry) {
+      const probeResult = await probeRegistryIndex(indexUrl, registry);
+      registryBackend = probeResult.backend;
+      if (probeResult.error) {
+        console.log(chalk.red(`Error: ${probeResult.error.message}`));
+        return;
+      }
+      if (probeResult.isNotFound) {
+        console.log(
+          chalk.red(
+            "Error: Registry has no index.json. Remove --template to use direct download mode.",
+          ),
+        );
+        return;
+      }
+      fetchedTemplates = probeResult.templates;
+    }
   } else if (!options.yes) {
     // Interactive mode: show template selection
     const timeoutSec = TIMEOUTS.INDEX_FETCH_MS / 1000;
@@ -1495,6 +1541,7 @@ export async function init(options: InitOptions): Promise<void> {
           }
           try {
             registry = parseRegistrySource(customSource);
+            registrySourceForConfig = customSource;
             fetchedTemplates = []; // Reset so direct-download guard works correctly
             // Probe index.json to detect marketplace vs direct download
             const customIndexUrl = `${registry.rawBaseUrl}/index.json`;
@@ -1574,6 +1621,7 @@ export async function init(options: InitOptions): Promise<void> {
                 ),
               );
               registry = undefined; // Reset so we don't fall through to direct download
+              registrySourceForConfig = undefined;
             }
           } catch (error) {
             console.log(
@@ -1657,6 +1705,7 @@ export async function init(options: InitOptions): Promise<void> {
   // ==========================================================================
 
   let useRemoteTemplate = false;
+  let registrySpecConfigToPersist: SpecRegistryConfig | null = null;
 
   if (selectedTemplate) {
     // Marketplace mode: download specific template by ID
@@ -1682,6 +1731,12 @@ export async function init(options: InitOptions): Promise<void> {
       } else {
         console.log(chalk.green(`   ${result.message}`));
         useRemoteTemplate = true;
+        if (registry) {
+          registrySpecConfigToPersist = {
+            source: registrySourceForConfig ?? registry.gigetSource,
+            template: selectedTemplate,
+          };
+        }
       }
     } else {
       console.log(chalk.yellow(`   ${result.message}`));
@@ -1735,6 +1790,9 @@ export async function init(options: InitOptions): Promise<void> {
       } else {
         console.log(chalk.green(`   ${result.message}`));
         useRemoteTemplate = true;
+        registrySpecConfigToPersist = {
+          source: registrySourceForConfig ?? registry.gigetSource,
+        };
       }
     } else {
       console.log(chalk.yellow(`   ${result.message}`));
@@ -1802,8 +1860,22 @@ export async function init(options: InitOptions): Promise<void> {
     stopRecordingWrites();
   }
 
+  if (registrySpecConfigToPersist) {
+    writeSpecRegistryConfig(cwd, registrySpecConfigToPersist);
+  }
+
   // Initialize template hashes for modification tracking
   const hashedCount = initializeHashes(cwd, { trackedPaths: writtenPaths });
+  if (useRemoteTemplate) {
+    const specFilesToHash = new Map<string, string>();
+    for (const relativePath of collectSpecPaths(cwd)) {
+      const content = fs.readFileSync(path.join(cwd, relativePath), "utf-8");
+      specFilesToHash.set(relativePath, content);
+    }
+    if (specFilesToHash.size > 0) {
+      updateHashes(cwd, specFilesToHash);
+    }
+  }
   if (hashedCount > 0) {
     console.log(
       chalk.gray(`📋 Tracking ${hashedCount} template files for updates`),

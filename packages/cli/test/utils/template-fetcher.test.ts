@@ -531,6 +531,10 @@ async function withGitRegistry<T>(
 
   try {
     execFileSync("git", ["init"], { cwd: repoDir, stdio: "pipe" });
+    execFileSync("git", ["config", "core.autocrlf", "false"], {
+      cwd: repoDir,
+      stdio: "pipe",
+    });
     execFileSync("git", ["checkout", "-b", "main"], {
       cwd: repoDir,
       stdio: "pipe",
@@ -566,7 +570,12 @@ async function withGitRegistry<T>(
 
     return await callback({ tmpDir, repoDir, registry });
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await fs.promises.rm(tmpDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   }
 }
 

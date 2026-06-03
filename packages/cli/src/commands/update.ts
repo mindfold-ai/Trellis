@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import chalk from "chalk";
 import inquirer from "inquirer";
@@ -53,6 +54,16 @@ import {
 } from "../configurators/index.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
+import {
+  fetchRegistrySpecTemplates,
+  collectDirectoryFiles,
+  removeDirectory,
+  parseRegistrySource,
+  probeRegistryIndex,
+  downloadTemplateById,
+  type RegistrySource,
+} from "../utils/template-fetcher.js";
+import { loadSpecRegistryConfig } from "../utils/registry-config.js";
 
 export interface UpdateOptions {
   dryRun?: boolean;
@@ -607,7 +618,119 @@ function preserveExistingClaudeStatusLine(
   }
 }
 
-function collectTemplateFiles(
+function preserveExistingRegistryConfig(cwd: string, template: string): string {
+  const registry = loadSpecRegistryConfig(cwd);
+  if (!registry) return template;
+  return (
+    template.trimEnd() +
+    "\n\n" +
+    "#-------------------------------------------------------------------------------\n" +
+    "# Registry\n" +
+    "#-------------------------------------------------------------------------------\n\n" +
+    "# Source used to install .trellis/spec. trellis update refreshes this\n" +
+    "# hash-tracked spec template while preserving local edits through the\n" +
+    "# normal update conflict flow.\n" +
+    "registry:\n" +
+    "  spec:\n" +
+    `    source: ${registry.source}\n` +
+    (registry.template ? `    template: ${registry.template}\n` : "")
+  );
+}
+
+async function collectRegistrySpecTemplates(
+  cwd: string,
+): Promise<Map<string, string>> {
+  const config = loadSpecRegistryConfig(cwd);
+  if (!config) return new Map();
+
+  let registry: RegistrySource;
+  try {
+    registry = parseRegistrySource(config.source);
+  } catch (error) {
+    console.log(
+      chalk.yellow(
+        `Warning: invalid registry.spec.source in .trellis/config.yaml: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      ),
+    );
+    return new Map();
+  }
+
+  const probe = await probeRegistryIndex(
+    `${registry.rawBaseUrl}/index.json`,
+    registry,
+  );
+  if (probe.templates.length > 0) {
+    if (!config.template) {
+      console.log(
+        chalk.gray(
+          "Registry spec update skipped: marketplace registries require registry.spec.template.",
+        ),
+      );
+      return new Map();
+    }
+    const template = probe.templates.find(
+      (candidate) => candidate.id === config.template,
+    );
+    if (!template) {
+      console.log(
+        chalk.yellow(
+          `Warning: registry spec update skipped: template "${config.template}" was not found in registry index.`,
+        ),
+      );
+      return new Map();
+    }
+    const tempRoot = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), "trellis-registry-template-"),
+    );
+    try {
+      const result = await downloadTemplateById(
+        tempRoot,
+        config.template,
+        "overwrite",
+        template,
+        registry,
+        undefined,
+        probe.backend,
+      );
+      if (!result.success) {
+        console.log(
+          chalk.yellow(
+            `Warning: registry spec update skipped: ${result.message}`,
+          ),
+        );
+        return new Map();
+      }
+      return collectDirectoryFiles(path.join(tempRoot, PATHS.SPEC), PATHS.SPEC);
+    } finally {
+      await removeDirectory(tempRoot);
+    }
+  }
+  if (!probe.isNotFound) {
+    console.log(
+      chalk.yellow(
+        `Warning: registry spec update skipped: ${
+          probe.error?.message ?? "could not reach registry"
+        }`,
+      ),
+    );
+    return new Map();
+  }
+
+  const result = await fetchRegistrySpecTemplates(registry, probe.backend);
+  if (!result.success) {
+    console.log(
+      chalk.yellow(
+        `Warning: registry spec update skipped: ${result.message ?? "download failed"}`,
+      ),
+    );
+    return new Map();
+  }
+  return result.files;
+}
+
+async function collectTemplateFiles(
   cwd: string,
   extraPlatforms?: Set<AITool>,
   /**
@@ -619,7 +742,7 @@ function collectTemplateFiles(
    * "Modified by you" conflict prompt — they can skip per-file there.
    */
   bypassUpdateSkip = false,
-): Map<string, string> {
+): Promise<Map<string, string>> {
   const files = new Map<string, string>();
   const platforms = getConfiguredPlatforms(cwd);
   if (extraPlatforms) {
@@ -634,7 +757,10 @@ function collectTemplateFiles(
   }
 
   // Configuration
-  files.set(`${DIR_NAMES.WORKFLOW}/config.yaml`, configYamlTemplate);
+  files.set(
+    `${DIR_NAMES.WORKFLOW}/config.yaml`,
+    preserveExistingRegistryConfig(cwd, configYamlTemplate),
+  );
   files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
   // workflow.md is included here because it is runtime-parsed by
   // get_context.py and shared hooks. Keep it on the normal template update
@@ -659,6 +785,10 @@ function collectTemplateFiles(
   }
 
   preserveExistingClaudeStatusLine(cwd, files);
+
+  for (const [filePath, content] of await collectRegistrySpecTemplates(cwd)) {
+    files.set(filePath, content);
+  }
 
   // Apply update.skip from config.yaml (unless bypassed for breaking release)
   if (!bypassUpdateSkip) {
@@ -1827,7 +1957,7 @@ export async function update(options: UpdateOptions): Promise<void> {
     })();
 
   // Collect templates (used for both migration classification and change analysis)
-  const templates = collectTemplateFiles(
+  const templates = await collectTemplateFiles(
     cwd,
     codexUpgradeNeeded ? new Set<AITool>(["codex"]) : undefined,
     breakingBypass,
