@@ -19,7 +19,7 @@ import {
 /**
  * Configure Gemini CLI (pull-based class-2 platform):
  * - commands/trellis/ — start + finish-work as TOML slash commands
- * - .agents/skills/trellis-{name}/SKILL.md — 5 auto-triggered shared skills
+ * - .agents/skills/trellis-{name}/SKILL.md — auto-triggered shared skills
  *   written to the cross-platform `.agents/skills/` workspace alias (Gemini
  *   CLI 0.40+ reads it natively; previously `.gemini/skills/` was used,
  *   which collided with Codex's identical write target and caused

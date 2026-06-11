@@ -64,6 +64,49 @@ Each question must include:
 
 Do not ask process questions such as whether to search, inspect files, or continue brainstorming. Do the evidence work directly. Ask the user only when the remaining issue is a product decision, preference, scope boundary, or risk tolerance choice.
 
+## Thinking Framework: First Principles Analysis
+
+When requirements are vague, solutions feel over-engineered, or you're about to add complexity "because everyone does" — decompose to fundamental truths before reasoning upward.
+
+### Step 1: Restate the Problem
+
+Strip away implementation details to one sentence.
+
+> Bad: "We need to add Redis caching to the user profile endpoint"
+> Good: "User profile data takes too long to load"
+
+### Step 2: List Fundamental Truths
+
+What is absolutely true (not opinion or convention)?
+
+| Category | Examples |
+|----------|----------|
+| **Physical constraints** | Network latency ≥ 0, disk I/O has limits |
+| **Business rules** | "Users must see their own data" |
+| **Technical invariants** | "Data must be consistent" |
+| **User needs** | "The user wants X within Y seconds" |
+
+### Step 3: Challenge Assumptions
+
+For each component of the current plan:
+
+- **Fact or convention?** "We always use REST" — why?
+- **What if we removed this?** If nothing breaks, it's unnecessary.
+- **Solving the actual problem or a symptom?** Trace the causal chain.
+- **Who benefits from this complexity?** If "nobody", simplify.
+
+### Step 4: Build Up from Truths
+
+1. Start with the minimum viable mechanism satisfying all truths
+2. Add complexity only when a specific truth demands it
+3. Each addition must answer: "Which truth requires this?"
+
+### Step 5: Validate
+
+- Does the solution solve the original problem?
+- What assumptions need verification?
+- What's the simplest experiment to test this?
+
 ## Artifact Rules
 
 `prd.md` records requirements and acceptance:

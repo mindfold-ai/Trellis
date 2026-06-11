@@ -5655,7 +5655,7 @@ describe("regression: Gemini CLI 0.40.x template compatibility (#224)", () => {
         `Codex and Gemini disagree on ${filePath} — last-writer-wins would corrupt the shared skill`,
       ).toBe(codexContent);
     }
-    // At least the 5 shared workflow skills + bundled trellis-meta files must
+    // At least the shared common skills + bundled trellis-meta files must
     // overlap. If this drops to 0 the assertion above is silently passing.
     expect(overlapCount).toBeGreaterThan(0);
   });
@@ -5707,8 +5707,8 @@ describe("regression: Gemini CLI 0.40.x template compatibility (#224)", () => {
   });
 
   it("[#224] needsCodexUpgrade looks for Codex-only command-as-skill markers, not bare `.agents/skills/` prefix", () => {
-    // Regression: with Gemini also writing to `.agents/skills/` (5 shared
-    // workflow skills only), the legacy-Codex detector previously triggered
+    // Regression: with Gemini also writing to `.agents/skills/` (shared common
+    // skills only), the legacy-Codex detector previously triggered
     // a false-positive `.codex/` install on every fresh `init --gemini` +
     // `update` cycle. The fix narrows detection to Codex-only files
     // (`trellis-continue/SKILL.md`, `trellis-finish-work/SKILL.md`) which

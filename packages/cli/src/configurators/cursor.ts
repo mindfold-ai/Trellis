@@ -15,7 +15,7 @@ import { getAllAgents, getHooksConfig } from "../templates/cursor/index.js";
 /**
  * Configure Cursor:
  * - commands/ — start + finish-work as slash commands (trellis- prefix, flat)
- * - skills/trellis-{name}/SKILL.md — other 5 as auto-triggered skills
+ * - skills/trellis-{name}/SKILL.md — auto-triggered skills from `common/skills/`
  * - agents/{name}.md — sub-agent definitions
  * - hooks/*.py — shared hook scripts
  * - hooks.json — hook configuration (separate file, not settings.json)

@@ -555,15 +555,15 @@ describe("resolveSkillsNeutral / resolveAllAsSkillsNeutral", () => {
     }
   });
 
-  it("resolveAllAsSkillsNeutral keeps the 5 shared skills byte-identical to resolveSkillsNeutral", () => {
+  it("resolveAllAsSkillsNeutral keeps shared common skills byte-identical to resolveSkillsNeutral", () => {
     const all = resolveAllAsSkillsNeutral(AI_TOOLS.codex.templateContext);
-    const fiveOnly = resolveSkillsNeutral(AI_TOOLS.codex.templateContext);
-    const sharedNames = new Set(fiveOnly.map((s) => s.name));
+    const commonSkills = resolveSkillsNeutral(AI_TOOLS.codex.templateContext);
+    const sharedNames = new Set(commonSkills.map((s) => s.name));
     const allShared = all.filter((s) => sharedNames.has(s.name));
-    expect(allShared.length).toBe(fiveOnly.length);
-    for (const five of fiveOnly) {
-      const match = allShared.find((s) => s.name === five.name);
-      expect(match?.content).toBe(five.content);
+    expect(allShared.length).toBe(commonSkills.length);
+    for (const skill of commonSkills) {
+      const match = allShared.find((s) => s.name === skill.name);
+      expect(match?.content).toBe(skill.content);
     }
   });
 });

@@ -18,7 +18,7 @@ import {
 /**
  * Configure CodeBuddy:
  * - commands/trellis/ — start + finish-work as slash commands
- * - skills/trellis-{name}/SKILL.md — other 5 as auto-triggered skills
+ * - skills/trellis-{name}/SKILL.md — auto-triggered skills from `common/skills/`
  * - agents/{name}.md — sub-agent definitions
  * - hooks/*.py — shared hook scripts
  * - settings.json — hook configuration

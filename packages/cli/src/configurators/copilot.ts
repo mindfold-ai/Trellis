@@ -17,7 +17,7 @@ import {
 /**
  * Configure GitHub Copilot:
  * - prompts/ — start + finish-work as prompt files
- * - skills/trellis-{name}/SKILL.md — other 5 as auto-triggered skills
+ * - skills/trellis-{name}/SKILL.md — auto-triggered skills from `common/skills/`
  * - agents/{name}.agent.md — sub-agent definitions (note .agent.md suffix)
  * - copilot/hooks/ — platform-specific + shared hook scripts
  * - hooks config — hooks.json

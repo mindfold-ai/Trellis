@@ -15,7 +15,7 @@ import { getAllDroids, getSettingsTemplate } from "../templates/droid/index.js";
 /**
  * Configure Factory Droid:
  * - commands/trellis/ — start + finish-work as slash commands
- * - skills/trellis-{name}/SKILL.md — other 5 as auto-triggered skills
+ * - skills/trellis-{name}/SKILL.md — auto-triggered skills from `common/skills/`
  * - droids/{name}.md — sub-agent definitions (Droid calls them "droids")
  * - hooks/*.py — shared hook scripts
  * - settings.json — hook configuration

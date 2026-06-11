@@ -176,15 +176,15 @@ export function resolvePlaceholders(
  * Identical to {@link resolvePlaceholders} except that {@link CMD_REF} is
  * rendered in a platform-neutral form (`` `name` (Trellis command) ``)
  * instead of substituting a platform-specific prefix. This is the only
- * placeholder that varies between platforms in the 5 shared workflow skills
- * (`brainstorm`, `before-dev`, `check`, `break-loop`, `update-spec`), so
+ * placeholder that varies between platforms in the auto-triggered skill templates
+ * from `common/skills/`, so
  * neutralizing it makes the rendered SKILL.md files byte-identical regardless
  * of which Trellis configurator wrote them — eliminating the
  * "last-writer-wins" collision when both Codex and Gemini target
  * `.agents/skills/`.
  *
  * `{{CLI_FLAG}}`, `{{EXECUTOR_AI}}`, `{{USER_ACTION_LABEL}}`, conditionals,
- * and `{{PYTHON_CMD}}` are still resolved from the platform context. The 5
+ * and `{{PYTHON_CMD}}` are still resolved from the platform context. The
  * shared skills do not use those placeholders, so they remain platform-
  * neutral. Codex-only skill files (e.g. `trellis-continue/SKILL.md`,
  * `trellis-finish-work/SKILL.md` written via `resolveAllAsSkillsNeutral`) DO
@@ -210,8 +210,8 @@ export function resolvePlaceholdersNeutral(
   result = result.replace(RE_USER_ACTION_LABEL, context.userActionLabel);
   result = result.replace(RE_CLI_FLAG, context.cliFlag);
 
-  // Conditional blocks (resolved per platform — none of the 5 shared skills
-  // use conditionals, but Codex-only command-as-skill files might in future).
+  // Conditional blocks (resolved per platform — none of the auto-triggered
+  // shared skills use conditionals, but Codex-only command-as-skill files might in future).
   const flagValues: Record<(typeof CONDITIONAL_FLAGS)[number], boolean> = {
     AGENT_CAPABLE: context.agentCapable,
     HAS_HOOKS: context.hasHooks,
@@ -379,7 +379,7 @@ export function resolveCommands(ctx: TemplateContext): ResolvedTemplate[] {
 }
 
 /**
- * Resolve only the 5 skill templates with trellis- prefix + SKILL.md frontmatter.
+ * Resolve the auto-triggered skill templates from `common/skills/` with trellis- prefix + SKILL.md frontmatter.
  * Used by "both" platforms for the auto-triggered skills.
  */
 export function resolveSkills(ctx: TemplateContext): ResolvedTemplate[] {
@@ -411,7 +411,7 @@ export function resolveSkillsNeutral(ctx: TemplateContext): ResolvedTemplate[] {
 
 /**
  * Same as {@link resolveAllAsSkills} but uses
- * {@link resolvePlaceholdersNeutral} for the 5 shared skills. The 2 command
+ * {@link resolvePlaceholdersNeutral} for the shared common skills. The 2 command
  * templates (continue, finish-work) folded into the skill set still resolve
  * `{{CLI_FLAG}}` / `{{PYTHON_CMD}}` per platform — only Codex writes those
  * files into `.agents/skills/`, so byte-identity isn't required there.
