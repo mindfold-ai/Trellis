@@ -1,0 +1,88 @@
+{
+  "version": "0.6.0-beta.23",
+  "description": "Beta patch: dispatch channel runtime agent definitions, refresh registry-backed spec via update, add Reasonix platform support, ship trellis-session-insight bundled skill, and rename trellis-spec-bootstarp → trellis-spec-bootstrap.",
+  "breaking": false,
+  "recommendMigrate": true,
+  "changelog": "**Enhancements:**\n- feat(cli): `trellis init` and `trellis update` now ship `.trellis/agents/{check,implement}.md`, so switching to a channel-driven workflow no longer fails with \"Agent 'check' not found\" (#323).\n- feat(cli): `trellis update` refreshes registry-backed `.trellis/spec` templates through the existing hash/conflict flow. `trellis init --template <id>` persists the spec source/template in `.trellis/config.yaml` so subsequent updates can re-fetch it. Supports direct spec registries and marketplace-style registries (#324).\n- feat(platform): add **Reasonix** (DeepSeek-Reasonix) as the 15th supported AI coding tool via `trellis init --reasonix`. Subagent skills (`trellis-implement`, `trellis-check`) carry `runAs: subagent` frontmatter so Reasonix spawns them as isolated subagent loops (#301).\n- feat(skills): bundle `trellis-session-insight` skill that teaches the AI how and when to reach for `trellis mem` to recall past conversations across Claude Code and Codex sessions. Auto-dispatched to every supported platform on init/update.\n- feat(workflow): `trellis workflow --template <id>` and `trellis init --workflow <id>` print a stderr warning when the resolved workflow references `.trellis/agents/<name>.md` files that are missing on disk, pointing the user at `trellis update`.\n\n**Bug Fixes:**\n- fix(skills): rename bundled `trellis-spec-bootstarp` → `trellis-spec-bootstrap` (typo). `trellis update --migrate` ships a `rename-dir` migration that renames the installed directory across 13 platform skill roots; missing roots are silently skipped. Historical migration manifests `0.5.17.json` and `0.6.0-beta.18.json` keep the typoed text because they describe what already shipped to users on those versions (#296).",
+  "migrations": [
+    {
+      "type": "rename-dir",
+      "from": ".claude/skills/trellis-spec-bootstarp",
+      "to": ".claude/skills/trellis-spec-bootstrap",
+      "description": "Claude Code: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".cursor/skills/trellis-spec-bootstarp",
+      "to": ".cursor/skills/trellis-spec-bootstrap",
+      "description": "Cursor: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".opencode/skills/trellis-spec-bootstarp",
+      "to": ".opencode/skills/trellis-spec-bootstrap",
+      "description": "OpenCode: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".agents/skills/trellis-spec-bootstarp",
+      "to": ".agents/skills/trellis-spec-bootstrap",
+      "description": "Codex / Gemini CLI (shared): rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".kiro/skills/trellis-spec-bootstarp",
+      "to": ".kiro/skills/trellis-spec-bootstrap",
+      "description": "Kiro: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".qoder/skills/trellis-spec-bootstarp",
+      "to": ".qoder/skills/trellis-spec-bootstrap",
+      "description": "Qoder: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".codebuddy/skills/trellis-spec-bootstarp",
+      "to": ".codebuddy/skills/trellis-spec-bootstrap",
+      "description": "CodeBuddy: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".github/skills/trellis-spec-bootstarp",
+      "to": ".github/skills/trellis-spec-bootstrap",
+      "description": "GitHub Copilot: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".factory/skills/trellis-spec-bootstarp",
+      "to": ".factory/skills/trellis-spec-bootstrap",
+      "description": "Droid: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".pi/skills/trellis-spec-bootstarp",
+      "to": ".pi/skills/trellis-spec-bootstrap",
+      "description": "Pi Agent: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".agent/skills/trellis-spec-bootstarp",
+      "to": ".agent/skills/trellis-spec-bootstrap",
+      "description": "Antigravity: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".windsurf/skills/trellis-spec-bootstarp",
+      "to": ".windsurf/skills/trellis-spec-bootstrap",
+      "description": "Windsurf: rename installed bundled skill directory from typoed name to corrected name."
+    },
+    {
+      "type": "rename-dir",
+      "from": ".kilocode/skills/trellis-spec-bootstarp",
+      "to": ".kilocode/skills/trellis-spec-bootstrap",
+      "description": "Kilo: rename installed bundled skill directory from typoed name to corrected name."
+    }
+  ],
+  "notes": "Beta patch on top of 0.6.0-beta.22. Run `trellis update --migrate` to rename installed `trellis-spec-bootstarp/` skill directories to `trellis-spec-bootstrap/` across every platform you have configured (silently skips ones you do not). Plain `trellis update` also installs the new `trellis-session-insight` bundled skill and the `.trellis/agents/{check,implement}.md` channel runtime files."
+}
