@@ -370,7 +370,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
             "files (`{TASK_DIR}/research/*.md`) — no code paths. Run "
             "`python3 ./.trellis/scripts/get_context.py --mode packages` to list available specs, "
             "then edit the jsonl files or use `python3 ./.trellis/scripts/task.py add-context`. "
-            "See `.trellis/workflow.md` Phase 1.3 for details."
+            "See `.trellis/workflow.yaml` Phase 1.3 for details."
         )
 
     # Case 5: PRD + curated jsonl (or agent-less platform with no jsonl) — enter Execute phase
@@ -543,95 +543,19 @@ def _resolve_spec_scope(
     return None  # Unknown scope type: full scan
 
 
-def _extract_range(content: str, start_header: str, end_header: str) -> str:
-    """Extract lines starting at `## start_header` up to (but excluding) `## end_header`.
-
-    Both parameters are full header lines WITHOUT the `## ` prefix (e.g. "Phase Index").
-    Returns empty string if start header is not found.
-    End header missing → extracts to end of file.
-    """
-    lines = content.splitlines()
-    start: int | None = None
-    end: int = len(lines)
-    start_match = f"## {start_header}"
-    end_match = f"## {end_header}"
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if start is None and stripped == start_match:
-            start = i
-            continue
-        if start is not None and stripped == end_match:
-            end = i
-            break
-    if start is None:
-        return ""
-    return "\n".join(lines[start:end]).rstrip()
-
-
-_BREADCRUMB_TAG_RE = re.compile(
-    r"\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n.*?\n\s*\[/workflow-state:\1\]",
-    re.DOTALL,
-)
-
-
-def _strip_breadcrumb_tag_blocks(content: str) -> str:
-    """Remove `[workflow-state:STATUS]...[/workflow-state:STATUS]` blocks.
-
-    The tag blocks live inside `## Phase Index` (since v0.5.0-rc.0, when
-    they were colocated with their phase summaries) and are consumed by the
-    UserPromptSubmit hook (`inject-workflow-state.py`). The session-start
-    payload already covers the full step bodies, so re-inlining the
-    breadcrumbs here would just duplicate context.
-    """
-    return _BREADCRUMB_TAG_RE.sub("", content)
-
-
-def _build_workflow_overview(workflow_path: Path) -> str:
-    """Inject the workflow guide for the session.
-
-    Contents:
-      1. Section index (all `## ` headings — navigation)
-      2. Phase Index section (rules, skill routing table, anti-rationalization table)
-      3. Phase 1/2/3 step-level details (the actual how-to for each step)
-
-    The meta sections (Core Principles / Trellis System / Customizing
-    Trellis) are NOT injected — Core Principles is short prose the AI can
-    Read on demand; Trellis System lists reference commands duplicated in
-    step bodies; Customizing Trellis is for forks. Workflow-state breadcrumb
-    tag blocks (which now live inside Phase Index since v0.5.0-rc.0) are
-    stripped from the extracted range — they're consumed by the
-    UserPromptSubmit hook, not the session-start preamble.
-
-    Total budget: Phase Index ~2 KB + Phase 1/2/3 ~7 KB = ~9 KB.
-    """
-    content = read_file(workflow_path)
-    if not content:
-        return "No workflow.md found"
-
-    out_lines = [
-        "# Development Workflow — Section Index",
-        "Full guide: .trellis/workflow.md  (read on demand)",
-        "",
-        "## Table of Contents",
-    ]
-    for line in content.splitlines():
-        if line.startswith("## "):
-            out_lines.append(line)
-    out_lines += ["", "---", ""]
-
-    # Extract Phase Index through the end of Phase 3 (before "Customizing
-    # Trellis" — the docs-for-forks footer added in v0.5.0-rc.0). Since
-    # sections appear in order Phase Index → Phase 1 → Phase 2 → Phase 3 →
-    # Customizing Trellis, a single range grab captures all four. The
-    # breadcrumb tag blocks now embedded inside Phase Index are stripped so
-    # they don't duplicate the per-turn UserPromptSubmit injection.
-    phases = _extract_range(
-        content, "Phase Index", "Customizing Trellis (for forks)"
-    )
-    if phases:
-        out_lines.append(_strip_breadcrumb_tag_blocks(phases).rstrip())
-
-    return "\n".join(out_lines).rstrip()
+def _build_workflow_overview(trellis_dir: Path) -> str:
+    """Inject the workflow guide from workflow.yaml and body files."""
+    scripts_dir = trellis_dir / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.workflow_model import render_workflow_toc  # type: ignore[import-not-found]
+    except Exception:
+        return "No workflow.yaml found"
+    try:
+        return render_workflow_toc(trellis_dir.parent)
+    except Exception:
+        return "No workflow.yaml found"
 
 
 def main():
@@ -698,7 +622,7 @@ Read and follow all instructions below carefully.
     output.write("\n</current-state>\n\n")
 
     output.write("<workflow>\n")
-    output.write(_build_workflow_overview(trellis_dir / "workflow.md"))
+    output.write(_build_workflow_overview(trellis_dir))
     output.write("\n</workflow>\n\n")
 
     output.write("<guidelines>\n")

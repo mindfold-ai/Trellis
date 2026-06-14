@@ -665,7 +665,7 @@ agents consistent with project-specific conventions instead of writing generic
 code every session.
 
 - **Three phases**: Plan (brainstorm → \`prd.md\`) → Execute (code + check) →
-  Finish (capture + wrap). Full reference: \`.trellis/workflow.md\`.
+  Finish (capture + wrap). Full reference: \`.trellis/workflow.yaml\`.
 - **Task lifecycle**: planning → in_progress → done → archive, under
   \`.trellis/tasks/\`.
 - **Core slash commands**:

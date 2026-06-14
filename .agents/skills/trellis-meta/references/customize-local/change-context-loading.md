@@ -4,7 +4,7 @@ Context loading determines when AI reads workflow, task, spec, research, workspa
 
 ## Read These Files First
 
-1. `.trellis/workflow.md`
+1. `.trellis/workflow.yaml`
 2. `.trellis/scripts/get_context.py`
 3. `.trellis/scripts/common/session_context.py`
 4. `.trellis/scripts/common/task_context.py`
@@ -16,7 +16,7 @@ Context loading determines when AI reads workflow, task, spec, research, workspa
 
 | Source | Purpose |
 | --- | --- |
-| `.trellis/workflow.md` | Workflow and next-action hints. |
+| `.trellis/workflow.yaml` | Workflow and next-action hints. |
 | `.trellis/tasks/<task>/prd.md` | Current task requirements. |
 | `.trellis/tasks/<task>/implement.jsonl` | Spec/research to read before implementation. |
 | `.trellis/tasks/<task>/check.jsonl` | Spec/research to read during checking. |
@@ -29,7 +29,7 @@ Context loading determines when AI reads workflow, task, spec, research, workspa
 | Need | Edit point |
 | --- | --- |
 | Inject more/less information in new sessions | `session_context.py` or the platform `session-start` hook. |
-| Change hints on each user input | `[workflow-state:STATUS]` block in `.trellis/workflow.md`. The `inject-workflow-state` hook is parser-only and reads the block verbatim. |
+| Change hints on each user input | `workflow_states.<status>.body_file` in `.trellis/workflow.yaml` and the referenced `.trellis/workflow/states/*.md` file. The `inject-workflow-state` hook is loader-only and embeds no fallback body text. |
 | Agent did not read specs | Task JSONL, agent prelude, `inject-subagent-context` hook. |
 | Active task is lost | `active_task.py` and platform session identity propagation. |
 | Change JSONL validation rules | `task_context.py`. |

@@ -5,7 +5,8 @@ import { copyTrellisDir } from "../templates/extract.js";
 
 // Import trellis templates (generic, not project-specific)
 import {
-  workflowMdTemplate,
+  workflowYamlTemplate,
+  getWorkflowBodyFiles,
   configYamlTemplate,
   gitignoreTemplate,
 } from "../templates/trellis/index.js";
@@ -66,7 +67,7 @@ export interface WorkflowOptions {
  *
  * This function creates the .trellis/ directory structure by:
  * 1. Copying scripts/ directory directly (dogfooding)
- * 2. Copying workflow.md and .gitignore (dogfooding)
+ * 2. Copying workflow.yaml, workflow/ body files, and .gitignore (dogfooding)
  * 3. Creating workspace/ with index.md
  * 4. Creating tasks/ directory
  * 5. Creating spec/ with templates (not dogfooded - generic templates)
@@ -91,11 +92,20 @@ export async function createWorkflowStructure(
     executable: true,
   });
 
-  // Copy workflow.md from templates
+  // Copy workflow.yaml + body files from templates
   await writeFile(
-    path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE),
-    replacePythonCommandLiterals(workflowMdTemplate),
+    path.join(cwd, PATHS.WORKFLOW_MANIFEST_FILE),
+    replacePythonCommandLiterals(workflowYamlTemplate),
   );
+  for (const [relativePath, content] of getWorkflowBodyFiles()) {
+    ensureDir(
+      path.join(cwd, PATHS.WORKFLOW_BODY_DIR, path.dirname(relativePath)),
+    );
+    await writeFile(
+      path.join(cwd, PATHS.WORKFLOW_BODY_DIR, relativePath),
+      replacePythonCommandLiterals(content),
+    );
+  }
 
   // Copy .gitignore from templates
   await writeFile(

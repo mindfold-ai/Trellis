@@ -563,24 +563,26 @@ describe("init() integration", () => {
   it("#4 force mode overwrites previously modified files", async () => {
     await init({ yes: true, force: true });
 
-    const workflowMd = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
-    const original = fs.readFileSync(workflowMd, "utf-8");
-    fs.writeFileSync(workflowMd, "user modified content");
+    const workflowManifest = path.join(tmpDir, PATHS.WORKFLOW_MANIFEST_FILE);
+    const original = fs.readFileSync(workflowManifest, "utf-8");
+    fs.writeFileSync(workflowManifest, "user modified content");
 
     await init({ yes: true, force: true });
 
-    expect(fs.readFileSync(workflowMd, "utf-8")).toBe(original);
+    expect(fs.readFileSync(workflowManifest, "utf-8")).toBe(original);
   });
 
   it("#5 skip mode preserves previously modified files", async () => {
     await init({ yes: true, force: true });
 
-    const workflowMd = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
-    fs.writeFileSync(workflowMd, "user modified content");
+    const workflowManifest = path.join(tmpDir, PATHS.WORKFLOW_MANIFEST_FILE);
+    fs.writeFileSync(workflowManifest, "user modified content");
 
     await init({ yes: true, skipExisting: true });
 
-    expect(fs.readFileSync(workflowMd, "utf-8")).toBe("user modified content");
+    expect(fs.readFileSync(workflowManifest, "utf-8")).toBe(
+      "user modified content",
+    );
   });
 
   it("#6 re-init with force produces identical file set", async () => {

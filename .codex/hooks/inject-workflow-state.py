@@ -10,12 +10,12 @@ The emitted ``hookEventName`` field is platform-aware: most hosts expect
 CodeBuddy / Droid / Codex / Copilot wiring), but Gemini CLI 0.40.x renamed
 its per-turn event to ``BeforeAgent`` and its schema validator rejects the
 legacy name. ``_detect_platform`` picks the right value at runtime.
-Breadcrumb text is pulled exclusively from workflow.md
-[workflow-state:STATUS] tag blocks — workflow.md is the single source of
-truth. There are no fallback dicts in this script: when workflow.md is
-missing or a tag is absent, the breadcrumb degrades to a generic
-"Refer to workflow.md for current step." line so users see (and fix)
-the broken state instead of the hook silently masking it.
+Breadcrumb text is pulled exclusively from ``.trellis/workflow.yaml`` and
+the ``workflow_states`` body files it references. There are no fallback dicts
+in this script: when workflow.yaml is missing or a state body is absent, the
+breadcrumb degrades to a generic "Refer to workflow.yaml for current step."
+line so users see (and fix) the broken state instead of the hook silently
+masking it.
 
 Shared across all hook-capable platforms (Claude, Cursor, Codex, Qoder,
 CodeBuddy, Droid, Gemini, Copilot). Kiro is not wired (no per-turn
@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -68,7 +67,7 @@ If you have not already loaded Trellis context this session, read the `trellis-s
 
 (equivalent to reading `.agents/skills/trellis-start/SKILL.md` and following its Steps 1-3)
 
-The skill walks you through workflow.md, dev profile, git status, active tasks, and spec
+The skill walks you through workflow.yaml, dev profile, git status, active tasks, and spec
 indexes. Then route the user's request per the <workflow-state> A/B/C rules below.
 
 Sub-agent exemption: if you are a sub-agent (spawned via spawn_agent with a parent task
@@ -172,40 +171,22 @@ def get_active_task(root: Path, input_data: dict) -> Optional[tuple[str, str, st
 
 
 # ---------------------------------------------------------------------------
-# Breadcrumb loading: parse workflow.md, fall back to hardcoded defaults
+# Breadcrumb loading: read workflow.yaml, fall back to a broken-state notice
 # ---------------------------------------------------------------------------
 
-# Supports STATUS values with letters, digits, underscores, hyphens
-# (so "in-review" / "blocked-by-team" work alongside "in_progress").
-_TAG_RE = re.compile(
-    r"\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n(.*?)\n\s*\[/workflow-state:\1\]",
-    re.DOTALL,
-)
-
 def load_breadcrumbs(root: Path) -> dict[str, str]:
-    """Parse workflow.md for [workflow-state:STATUS] blocks.
-
-    Returns {status: body_text}. workflow.md is the single source of
-    truth — there are no fallback dicts in this script. Missing tags
-    (or a missing/unreadable workflow.md) fall back to a generic line
-    in build_breadcrumb so users see the broken state and fix
-    workflow.md, rather than the hook silently masking the issue.
-    """
-    workflow = root / ".trellis" / "workflow.md"
-    if not workflow.is_file():
+    """Return {status: body_text} from workflow.yaml workflow_states."""
+    scripts_dir = root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.workflow_model import get_workflow_state_bodies  # type: ignore[import-not-found]
+    except Exception:
         return {}
     try:
-        content = workflow.read_text(encoding="utf-8")
-    except OSError:
+        return get_workflow_state_bodies(root)
+    except Exception:
         return {}
-
-    result: dict[str, str] = {}
-    for match in _TAG_RE.finditer(content):
-        status = match.group(1)
-        body = match.group(2).strip()
-        if body:
-            result[status] = body
-    return result
 
 
 def _read_trellis_config(root: Path) -> dict:
@@ -282,9 +263,8 @@ def build_breadcrumb(
 ) -> str:
     """Build the <workflow-state>...</workflow-state> block.
 
-    - Known status (tag present in workflow.md) → detailed template body
-    - Unknown status (no tag, or workflow.md missing) → generic
-      "Refer to workflow.md for current step." line
+    - Known status (body_file present in workflow.yaml) -> detailed body
+    - Unknown status (or workflow.yaml missing) -> generic broken-state line
     - `no_task` pseudo-status (task_id is None) → header omits task info
     """
     lookup_key = breadcrumb_key or status
@@ -292,7 +272,7 @@ def build_breadcrumb(
     if body is None and lookup_key != status:
         body = templates.get(status)
     if body is None:
-        body = "Refer to workflow.md for current step."
+        body = "Refer to workflow.yaml for current step."
     header = f"Status: {status}" if task_id is None else f"Task: {task_id} ({status})"
     if source:
         header = f"{header}\nSource: {source}"

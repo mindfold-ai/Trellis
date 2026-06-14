@@ -38,10 +38,11 @@ import { emptyTaskJson } from "../utils/task-json.js";
 // Import templates for comparison
 import {
   getAllScripts,
+  getWorkflowBodyFiles,
   // Configuration
   configYamlTemplate,
   gitignoreTemplate,
-  workflowMdTemplate,
+  workflowYamlTemplate,
 } from "../templates/trellis/index.js";
 import { agentsMdContent } from "../templates/markdown/index.js";
 
@@ -762,14 +763,20 @@ async function collectTemplateFiles(
     preserveExistingRegistryConfig(cwd, configYamlTemplate),
   );
   files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
-  // workflow.md is included here because it is runtime-parsed by
-  // get_context.py and shared hooks. Keep it on the normal template update
-  // path: if the installed file still matches the tracked hash, update the
-  // whole file. If the user edited it, the standard modified-file prompt /
-  // --force behavior applies. Partial tag-block merging is unsafe because
-  // platform routing markers outside [workflow-state:*] blocks are also
-  // script-consumed.
-  files.set(`${DIR_NAMES.WORKFLOW}/workflow.md`, workflowMdTemplate);
+  // workflow.yaml + workflow/ body files are runtime-parsed by get_context.py
+  // and shared hooks. Keep them on the normal template update path: pristine
+  // installed files update automatically; user-edited files go through the
+  // standard modified-file prompt / --force behavior.
+  files.set(
+    PATHS.WORKFLOW_MANIFEST_FILE,
+    replacePythonCommandLiterals(workflowYamlTemplate),
+  );
+  for (const [relativePath, content] of getWorkflowBodyFiles()) {
+    files.set(
+      `${PATHS.WORKFLOW_BODY_DIR}/${relativePath}`,
+      replacePythonCommandLiterals(content),
+    );
+  }
   // workspace/index.md stays excluded — it's runtime-appended by add_session.py
   // (journal index) and has no script-parsed structure.
   files.set(FILE_NAMES.AGENTS, buildAgentsMdTemplate(cwd));

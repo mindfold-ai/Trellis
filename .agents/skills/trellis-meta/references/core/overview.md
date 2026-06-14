@@ -48,7 +48,7 @@ All core systems work automatically with hook integration.
 
 ### Cursor
 Read files manually at session start:
-1. Read `.trellis/workflow.md`
+1. Read `.trellis/workflow.yaml`
 2. Read relevant specs from `.trellis/spec/`
 3. Run `python3 .trellis/scripts/task.py current --source` for active work
 4. Read JSONL files for context

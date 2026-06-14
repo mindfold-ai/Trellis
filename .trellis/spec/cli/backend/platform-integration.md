@@ -580,7 +580,7 @@ Add or update tests that assert:
 - `get_context.py --mode phase --platform <platform>` routes to sub-agent-capable workflow blocks when `agentCapable` is true.
 - Runtime script copies (`src/templates/trellis/scripts/**` and live `.trellis/scripts/**`) both recognize the platform.
 - The generated extension registers handlers for the three injection points (`input`, `before_agent_start`, `tool_call`) plus the `subagent` custom tool with `promptSnippet`/`promptGuidelines` set to the dispatch protocol constant.
-- The TS-port workflow-state regex (`WORKFLOW_STATE_TAG_RE`) matches the same status names and body content as the Python `_TAG_RE` on a shared fixture from `templates/trellis/workflow.md`.
+- The TS-port workflow-state loader reads the same `workflow_states.<status>.body_file` entries from `templates/trellis/workflow.yaml` as the Python loader.
 
 ### 7. Wrong vs Correct
 
@@ -803,7 +803,7 @@ Commands emitted by `resolveCommands(ctx)` / `resolveAllAsSkills(ctx)` in `src/c
 
 ## Subagent Context Injection: Hook-based vs Pull-based vs Extension-backed
 
-Trellis sub-agents (implement / check / research) need task context (`prd.md` + spec files listed in `implement.jsonl` / `check.jsonl`) at startup. There are **three** delivery classes depending on the platform's hook capabilities. The class-1 / class-2 / class-3 labels below are also used by the `[workflow-state:in_progress]` breadcrumb body and by the Pi `SUBAGENT_DISPATCH_PROTOCOL` constant — keep terminology stable across all three writers.
+Trellis sub-agents (implement / check / research) need task context (`prd.md` + spec files listed in `implement.jsonl` / `check.jsonl`) at startup. There are **three** delivery classes depending on the platform's hook capabilities. The class-1 / class-2 / class-3 labels below are also used by the `in_progress` workflow-state breadcrumb body and by the Pi `SUBAGENT_DISPATCH_PROTOCOL` constant — keep terminology stable across all three writers.
 
 | Class | Mechanism | Platforms |
 |---|---|---|
@@ -871,11 +871,11 @@ Platform's hook either doesn't expose a sub-agent spawn event or can't modify th
 
 Sub-agents on class-2 platforms run as **separate sessions** with their own session ids — they do not inherit the parent's `<PLATFORM>_SESSION_ID` env, so the session-scoped active-task resolver (see `### Active Task Resolution` above) returns `None` for the sub-agent's own session key. To bridge that gap the prelude (`buildPullBasedPrelude` in `src/configurators/shared.ts`) tells sub-agents to discover the active task in this order:
 
-1. **`Active task: <path>` line in dispatch prompt** — primary path. The main agent is required by `workflow.md`'s `[workflow-state:in_progress]` breadcrumb to prefix every sub-agent dispatch (including `trellis-research`, since 0.5.8) with `Active task: <path from task.py current>`. The breadcrumb fires on every `UserPromptSubmit` while `task.json.status == in_progress`, so the rule is reinjected per turn.
+1. **`Active task: <path>` line in dispatch prompt** — primary path. The main agent is required by the `workflow_states.in_progress.body_file` breadcrumb to prefix every sub-agent dispatch (including `trellis-research`, since 0.5.8) with `Active task: <path from task.py current>`. The breadcrumb fires on every `UserPromptSubmit` while `task.json.status == in_progress`, so the rule is reinjected per turn.
 2. **`task.py current --source`** — secondary. Resolves via the session-scoped runtime store. Returns `Source: session:<key>` on a precise match, or `Source: session-fallback:<key>` when the runtime contains exactly one session file (single-window inference; see `_resolve_single_session_fallback` in `active_task.py`). Returns nothing when ≥2 session files exist — refuses to guess across windows so 04-21's multi-session isolation contract holds.
 3. **Ask the user** — terminal fallback when both above yield nothing.
 
-When changing the prelude, the dispatch protocol, or the `session-fallback` semantics, all three layers must stay aligned. `regression.test.ts > [issue-225]` and `regression.test.ts > [session-fallback]` are the contract tests; `templates/trellis.test.ts > [issue-225]` asserts the workflow.md breadcrumb still carries the protocol. Manual e2e runbook lives in the historical task `.trellis/tasks/<archive>/05-04-fix-codex-subagent-missing-active-task/manual-verify.md`.
+When changing the prelude, the dispatch protocol, or the `session-fallback` semantics, all three layers must stay aligned. `regression.test.ts > [issue-225]` and `regression.test.ts > [session-fallback]` are the contract tests; `templates/trellis.test.ts > [issue-225]` asserts the in_progress workflow body still carries the protocol. Manual e2e runbook lives in the historical task `.trellis/tasks/<archive>/05-04-fix-codex-subagent-missing-active-task/manual-verify.md`.
 
 ### Class-3 — Extension-backed (1 platform)
 
@@ -906,16 +906,16 @@ The body of the `<workflow-state>` breadcrumb MUST be byte-identical across clas
 
 Concrete rules:
 
-- **Regex parity**: `templates/pi/extensions/trellis/index.ts.txt:WORKFLOW_STATE_TAG_RE` MUST mirror `templates/shared-hooks/inject-workflow-state.py:_TAG_RE` byte-for-byte. Both use the closing-tag backreference `\1` (or its TS equivalent in `[\/workflow-state:\1\]`) so a tag block parses identically in Python and TypeScript.
-- **Breadcrumb body source**: `loadWorkflowBreadcrumbs()` in the Pi extension reads `.trellis/workflow.md` directly — same source as the Python hook. There is no separate TS-side template for breadcrumb bodies. If the regex drifts, the TS port silently falls back to hardcoded defaults and Pi loses parity.
-- **Status writer parity**: `task.json.status` is the sole input to "which `[workflow-state:STATUS]` block fires". Both the Python hook (`get_active_task` + status read) and the TS port (`readActiveTaskStatus()` in `index.ts.txt`) MUST agree on the status string. Custom statuses pass through both unchanged.
+- **Manifest/body-file parity**: `templates/pi/extensions/trellis/index.ts.txt:loadWorkflowBreadcrumbs()` MUST read `.trellis/workflow.yaml` and resolve `workflow_states.<status>.body_file` the same way as `templates/shared-hooks/inject-workflow-state.py` via `common/workflow_model.py`. There is no separate TS-side template for breadcrumb bodies.
+- **Breadcrumb body source**: `loadWorkflowBreadcrumbs()` in the Pi extension reads the local workflow body files directly — same source as the Python hook. If the manifest/body parser drifts, the TS port silently falls back to the generic body and Pi loses parity.
+- **Status writer parity**: `task.json.status` is the sole input to "which workflow state body fires". Both the Python hook (`get_active_task` + status read) and the TS port (`readActiveTaskStatus()` in `index.ts.txt`) MUST agree on the status string. Custom statuses pass through both unchanged.
 - **`<session-overview>` parity**: Pi shells out to `python3 .trellis/scripts/get_context.py --mode session-overview` rather than re-implementing context generation in TS, so output stays canonical. Don't replace this with an inline TS implementation — that's a parity drift waiting to happen.
 
 #### Anti-pattern: bypassing the shared TS port
 
 ```typescript
-// WRONG — re-implements parsing with a different regex
-const blocks = workflow.match(/\[workflow-state:(\w+)\][\s\S]+?\[\/workflow-state/g);
+// WRONG — re-implements status body selection from ad hoc text parsing
+const blocks = workflow.match(/workflow_states:[\s\S]+/);
 ```
 
 ```typescript
@@ -934,10 +934,6 @@ function onInput(event, ctx) {
 #### Correct
 
 ```typescript
-// Match Python regex byte-for-byte (TS uses [\s\S]*? for cross-line; Python uses re.DOTALL)
-const WORKFLOW_STATE_TAG_RE =
-  /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g;
-
 // Both events go through the same cached builder
 const buildPerTurnInjection = (contextKey) => {
   const { workflowState, sessionOverview } = turnContextCache.get(projectRoot, contextKey);
@@ -951,7 +947,7 @@ The dispatch protocol text (the `Active task: <path>` first-line rule plus the c
 
 | Writer | Location | Consumed by |
 |---|---|---|
-| Workflow breadcrumb | `templates/trellis/workflow.md` `[workflow-state:in_progress]` block | Python `inject-workflow-state.py` and the Pi TS port — surfaced per-turn while a task is in progress |
+| Workflow breadcrumb | `templates/trellis/workflow/states/in_progress.md` referenced by `workflow.yaml` | Python `inject-workflow-state.py` and the Pi TS port — surfaced per-turn while a task is in progress |
 | Pi extension constant | `templates/pi/extensions/trellis/index.ts.txt:SUBAGENT_DISPATCH_PROTOCOL` | Pi `subagent` tool's `promptSnippet` / `promptGuidelines` — surfaced at extension load and on each tool description render |
 
 When you change one, change both. The two channels exist because:
@@ -963,9 +959,9 @@ A drift between the two is silent: the model will still see *some* dispatch guid
 
 #### Tests required
 
-- Regression test asserting the `Active task:` rule appears in `templates/trellis/workflow.md` (`templates/trellis.test.ts > [issue-225]`).
+- Regression test asserting the `Active task:` rule appears in `templates/trellis/workflow/states/in_progress.md` (`templates/trellis.test.ts > [issue-225]`).
 - Configurator test asserting the Pi extension's `SUBAGENT_DISPATCH_PROTOCOL` constant contains the same `Active task:` rule and the same class-1/class-2/class-3 platform list.
-- Cross-source parity test: when the breadcrumb text in `workflow.md` changes, the Pi extension's `SUBAGENT_DISPATCH_PROTOCOL` constant must change in the same commit. Either co-locate the parity assertion in a single regression test, or rely on diff review — but document the rule here.
+- Cross-source parity test: when the in_progress breadcrumb body changes, the Pi extension's `SUBAGENT_DISPATCH_PROTOCOL` constant must change in the same commit. Either co-locate the parity assertion in a single regression test, or rely on diff review — but document the rule here.
 
 ### Implementation
 
@@ -981,7 +977,7 @@ Hook-inject platforms keep using `writeSharedHooks(dir, platform)` with a capabi
 Every generated `trellis-implement` and `trellis-check` agent definition must
 carry an explicit recursion guard near the top of its instructions. The guard
 must state that the reader is already the dispatched sub-agent, that any
-SessionStart / workflow-state / workflow.md text saying to dispatch
+SessionStart / workflow-state / workflow.yaml text saying to dispatch
 `trellis-implement` or `trellis-check` applies only to the main session, and
 that the agent must do its own work directly instead of spawning another
 implement/check agent.
@@ -1012,7 +1008,7 @@ Full reliability audit (per-platform evidence, GitHub issues, Cursor staff confi
 ### Lifecycle
 
 1. **Seed** — `task.py create` writes **one line** to each jsonl when a sub-agent-capable platform is detected (see `_SUBAGENT_CONFIG_DIRS` in Step 6). Agent-less platforms skip seeding.
-2. **Curate** — AI executes Phase 1.3 per `workflow.md`: replaces the seed line with real `{file, reason}` entries pointing at spec files or `research/*.md`. **Code paths are forbidden**; code gets read in Phase 2.
+2. **Curate** — AI executes Phase 1.3 per `workflow.yaml`: replaces the seed line with real `{file, reason}` entries pointing at spec files or `research/*.md`. **Code paths are forbidden**; code gets read in Phase 2.
 3. **Consume** — hook / prelude reads the file and injects referenced content into the sub-agent prompt.
 
 ### Signatures
@@ -1109,7 +1105,7 @@ Mechanical rule: when a contract touches **any** session-start, grep all four im
 
 ## Workflow Step Detail Loading
 
-`.trellis/workflow.md` contains per-phase step detail under `#### X.X` headings, with per-platform variants demarcated by `[Platform Name, ...]` … `[/Platform Name, ...]` blocks.
+`.trellis/workflow.yaml` contains per-phase step detail under `#### X.X` headings, with per-platform variants demarcated by `[Platform Name, ...]` … `[/Platform Name, ...]` blocks.
 
 Load step detail on demand (both commands and hooks use this):
 
@@ -1260,12 +1256,12 @@ When a task has `prd.md` plus curated jsonl context, `SessionStart` should give 
 
 ### Design Decision: Inject Instructions, Not Reference Content
 
-**Context**: session-start.py injected both `workflow.md` (~12 KB reference) and `start.md` (~11 KB instructions), totaling ~29 KB on vanilla — always truncated.
+**Context**: session-start.py injected both the workflow reference (~12 KB) and `start.md` (~11 KB instructions), totaling ~29 KB on vanilla — always truncated.
 
-**Decision**: Remove `workflow.md` full injection. Keep `start.md` injection because:
+**Decision**: Remove full workflow reference injection. Keep `start.md` injection because:
 
 1. `start.md` is **imperative** (step-by-step instructions the AI follows) — must be in context to be effective
-2. `workflow.md` is **reference** (principles, file structure, best practices) — `start.md` Step 1 tells AI to `cat .trellis/workflow.md`, so it's accessed on-demand
+2. `workflow.yaml` is **reference** (manifest plus body files) — `start.md` Step 1 tells AI to `cat .trellis/workflow.yaml`, so it's accessed on-demand
 3. Other slash commands (`brainstorm`, `finish-work`, `check`) are not pre-injected — this restores symmetry
 
 **Rule**: When adding content to session-start, prefer pointers over full injection for reference material. Reserve inline injection for actionable instructions the AI must follow immediately.
@@ -1286,25 +1282,28 @@ On the Trellis dev repo (light use), `<guidelines>` is 10.8 KB vs 5.1 KB on vani
 
 A lightweight hook (`shared-hooks/inject-workflow-state.py`) fires on **every user prompt**, emitting a short `<workflow-state>` block reminding the AI of the active task + expected flow. Keep the payload compact and directive; it is injected every turn.
 
-### Single Source of Truth: `workflow.md` Tag Blocks
+### Single Source of Truth: `workflow.yaml` Body Files
 
-Breadcrumb text lives in `workflow.md` as `[workflow-state:STATUS]...[/workflow-state:STATUS]` blocks (same tag style as existing `[Platform, ...]` blocks). Users who fork the Trellis workflow edit **only the markdown**; the hook script stays untouched.
+Breadcrumb text lives in `.trellis/workflow/states/*.md` files referenced by
+`.trellis/workflow.yaml` under `workflow_states.<status>.body_file`. Users who
+fork the Trellis workflow edit the manifest/body files; the hook script stays
+untouched.
 
-```markdown
-[workflow-state:in_progress]
-Flow: trellis-implement → trellis-check → trellis-update-spec → finish
-Next required action: inspect conversation history + git status, then execute the next uncompleted step in that sequence.
-For agent-capable platforms, do NOT edit code in the main session; dispatch `trellis-implement` for implementation and dispatch `trellis-check` before reporting completion.
-[/workflow-state:in_progress]
+```yaml
+workflow_states:
+  in_progress:
+    body_file: .trellis/workflow/states/in_progress.md
 ```
 
-STATUS matches `task.json.status`. Built-in: `planning` / `in_progress` / `completed`. Custom statuses (including hyphenated like `in-review`) are recognized — STATUS regex is `[A-Za-z0-9_-]+`.
+STATUS matches `task.json.status`. Built-in: `planning` / `in_progress` /
+`completed`. Custom statuses (including hyphenated like `in-review`) are
+recognized as YAML keys.
 
 ### Fallback Strategy (hook never crashes)
 
-1. `workflow.md` missing → hardcoded defaults for 3 built-in statuses
-2. Tag block missing for a status → same hardcoded default
-3. Status unknown (no tag, no default) → generic `"Refer to workflow.md for current step."`
+1. `workflow.yaml` missing → generic `"Refer to workflow.yaml for current step."`
+2. `body_file` missing for a status → same generic fallback
+3. Status unknown → same generic fallback
 4. No session active task → emit `no_task` pseudo-status breadcrumb instead of silent-exit. Header is `Status: no_task`; body nudges AI to load `trellis-brainstorm` + `task.py create` for multi-step work (or answer directly for trivial asks).
 
 ### Design Principle: Per-Turn Hooks Must Not Silent-Exit on "Nothing to Say"
@@ -1351,7 +1350,7 @@ The hook uses `find_trellis_root()` to walk up from CWD until it finds `.trellis
 
 ### Why No State Machine / No Extra `task.json` Fields
 
-After first-principles analysis (see `.trellis/tasks/04-17-workflow-enforcement-v2/prd.md`), we dropped the original design's `current_phase` string / `phase_history` / `checkpoints` / 7 new `task.py` commands / skill tail blocks. The core insight: **workflow.md Phase 1.0/1.1/... is documentation layering, not runtime state**. The existing `task.json.status` (`planning` / `in_progress` / `completed`) is sufficient to express task lifecycle; sub-phase position is inferred by the AI from conversation history + git state.
+After first-principles analysis (see `.trellis/tasks/04-17-workflow-enforcement-v2/prd.md`), we dropped the original design's `current_phase` string / `phase_history` / `checkpoints` / 7 new `task.py` commands / skill tail blocks. The core insight: **workflow.yaml Phase 1.0/1.1/... is documentation layering, not runtime state**. The existing `task.json.status` (`planning` / `in_progress` / `completed`) is sufficient to express task lifecycle; sub-phase position is inferred by the AI from conversation history + git state.
 
 This keeps state minimal, avoids the "task.json drifts from filesystem reality" class of bugs, and is trivially customizable — users modify one markdown file, not Python/TypeScript.
 

@@ -20,7 +20,7 @@ You are the Implement Agent in the Trellis workflow.
 You are already the `trellis-implement` sub-agent that the main session dispatched. Do the implementation work directly.
 
 - Do NOT spawn another `trellis-implement` or `trellis-check` sub-agent.
-- If SessionStart context, workflow-state breadcrumbs, or workflow.md say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
+- If SessionStart context, workflow-state breadcrumbs, or workflow.yaml say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
 - Only the main session may dispatch Trellis implement/check agents. If more parallel work is needed, report that recommendation instead of spawning.
 
 ## Trellis Context Loading Protocol
@@ -33,7 +33,7 @@ Look for the `<!-- trellis-hook-injected -->` marker in your input above.
 ## Context
 
 Before implementing, read:
-- `.trellis/workflow.md` - Project workflow
+- `.trellis/workflow.yaml` - Project workflow
 - `.trellis/spec/` - Development guidelines
 - Task `prd.md` - Requirements document
 - Task `info.md` - Technical design (if exists)

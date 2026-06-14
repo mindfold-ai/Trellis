@@ -37,7 +37,7 @@ Before writing backend code, read the relevant guidelines based on your task:
 - Migration system → [migrations.md](./migrations.md)
 - Cutting a release / cross-branch submodule coordination / manifest continuity → [release-process.md](./release-process.md)
 - Adding any native (`.node` / C++ / `node-gyp`) dependency → [quality-guidelines.md "Native dependency policy"](./quality-guidelines.md)
-- Editing `[workflow-state:STATUS]` breadcrumb blocks / `task.json.status` writers / lifecycle hooks → [workflow-state-contract.md](./workflow-state-contract.md)
+- Editing workflow-state body files / `task.json.status` writers / lifecycle hooks → [workflow-state-contract.md](./workflow-state-contract.md)
 
 Also read [unit-test/conventions.md](../unit-test/conventions.md) — specifically the "When to Write Tests" section.
 

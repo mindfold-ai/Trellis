@@ -71,7 +71,7 @@ Do NOT paste full research content into the reply. The files are the contract.
 
 - Code files (`src/`, `lib/`, …)
 - Spec files (`.trellis/spec/`) — main agent should use `update-spec` skill instead
-- `.trellis/scripts/`, `.trellis/workflow.md`, platform config (`.claude/`, `.cursor/`, etc.)
+- `.trellis/scripts/`, `.trellis/workflow.yaml`, platform config (`.claude/`, `.cursor/`, etc.)
 - Other task directories
 - Any git operation (commit / push / branch / merge)
 

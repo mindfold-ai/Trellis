@@ -226,7 +226,7 @@ echo '{"subagent_type":"check","output":"test"}' | \
 ```python
 # session-start.py
 files_to_inject = [
-    ".trellis/workflow.md",
+    ".trellis/workflow.yaml",
     ".trellis/custom-context.md",  # Add this
 ]
 ```

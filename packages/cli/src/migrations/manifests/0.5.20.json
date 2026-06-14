@@ -1,0 +1,20 @@
+{
+  "version": "0.5.20",
+  "description": "Patch: migrate the Trellis workflow runtime from a monolithic workflow.md file to workflow.yaml plus workflow/ body files.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(workflow): `.trellis/workflow.yaml` is now the runtime workflow manifest, with long prompt bodies stored under `.trellis/workflow/`. `get_context.py`, SessionStart hooks, workflow-state breadcrumbs, OpenCode, and Pi read the structured manifest instead of parsing a monolithic `.trellis/workflow.md`.\n- feat(update): `trellis init` and `trellis update` now write and hash-track `.trellis/workflow.yaml` plus every `.trellis/workflow/**` body file.\n\n**Migration:**\n- chore(update): pristine legacy `.trellis/workflow.md` files are removed through hash-verified safe-file-delete. Locally modified copies are preserved for manual reference, but runtime no longer reads them.",
+  "migrations": [
+    {
+      "type": "safe-file-delete",
+      "from": ".trellis/workflow.md",
+      "description": "legacy monolithic workflow guide replaced by workflow.yaml + workflow/",
+      "reason": "The workflow runtime now reads .trellis/workflow.yaml and .trellis/workflow/**. Pristine old workflow.md files can be removed; customized copies are preserved for manual migration.",
+      "allowed_hashes": [
+        "f4b8a6f89017f62071986d6d36cc32c4c7f01fe6f023f0fd9311eddc57d8c94f",
+        "94810f640dcfe6fdaebcf6e9d0d6cec554610192c4f953b288029570ba8bc89d"
+      ]
+    }
+  ],
+  "notes": "Run `trellis update` to install `.trellis/workflow.yaml` and `.trellis/workflow/**`. If you had customized `.trellis/workflow.md`, manually port those changes into the manifest/body files."
+}

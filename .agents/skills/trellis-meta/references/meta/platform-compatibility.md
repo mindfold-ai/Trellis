@@ -148,7 +148,7 @@ For teams using Cursor, here's how to get partial Trellis benefits:
 
 ```
 1. Session Start
-   - Read .trellis/workflow.md
+   - Read .trellis/workflow.yaml
    - Read relevant specs from .trellis/spec/
    - Run `task.py current --source`
 

@@ -14,11 +14,11 @@ Rule of thumb: **if the change touches `packages/cli/src/templates/` or `package
 
 ## Trigger 1: Phase Structure Changes
 
-Scope: any edit to `packages/cli/src/templates/trellis/workflow.md` that adds/removes a step, renames a phase, or changes required/optional/once tags.
+Scope: any edit to `packages/cli/src/templates/trellis/workflow.yaml` or `packages/cli/src/templates/trellis/workflow/**/*.md` that adds/removes a step, renames a phase, or changes required/optional/once tags.
 
 | File (en + zh) | What to sync |
 |---|---|
-| `start/install-and-first-task.mdx` | Phase 1/2/3 walkthrough block (around line 215-240 in en) — keep step numbers + action verbs in sync with `workflow.md` phase index |
+| `start/install-and-first-task.mdx` | Phase 1/2/3 walkthrough block (around line 215-240 in en) — keep step numbers + action verbs in sync with `workflow.yaml` phase index |
 | `start/everyday-use.mdx` | Task lifecycle ASCII diagram + any per-phase bash examples |
 | `advanced/architecture.mdx` | Phase overview diagrams (if present) |
 | `concepts/workflow.mdx` (if exists) | Phase definition sections |
@@ -26,7 +26,7 @@ Scope: any edit to `packages/cli/src/templates/trellis/workflow.md` that adds/re
 ### Grep command
 
 ```bash
-cd docs-site && grep -rln "Phase 1\|Phase 2\|Phase 3\|phase-1\|phase-2\|phase-3\|workflow\.md" \
+cd docs-site && grep -rln "Phase 1\|Phase 2\|Phase 3\|phase-1\|phase-2\|phase-3\|workflow\.yaml\|workflow/" \
   --include="*.mdx" | grep -v "release/\|changelog/\|blog/"
 ```
 
@@ -34,7 +34,7 @@ cd docs-site && grep -rln "Phase 1\|Phase 2\|Phase 3\|phase-1\|phase-2\|phase-3\
 
 ## Trigger 2: Platform Add / Remove / Rename
 
-Scope: any edit to `AI_TOOLS` in `packages/cli/src/types/ai-tools.ts`, `_SUBAGENT_CONFIG_DIRS` in `task_store.py`, or platform-tagged blocks in `workflow.md`.
+Scope: any edit to `AI_TOOLS` in `packages/cli/src/types/ai-tools.ts`, `_SUBAGENT_CONFIG_DIRS` in `task_store.py`, or platform-tagged blocks in `workflow.yaml` body files.
 
 ### Add a new platform
 
@@ -100,7 +100,7 @@ Scope: any edit to `packages/cli/src/templates/common/skills/` or `packages/cli/
 | `start/everyday-use.mdx` | Skill table at top (around line 15-18) + individual skill description sections |
 | `advanced/appendix-b.mdx` | Skill reference table (if present) |
 | `start/install-and-first-task.mdx` | Phase walkthrough skill names |
-| Skill Routing table across workflow docs | Must match `workflow.md` Skill Routing per-platform splits |
+| Skill Routing table across workflow docs | Must match `workflow.yaml` / workflow body per-platform splits |
 
 ### Grep command
 

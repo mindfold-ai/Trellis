@@ -380,7 +380,7 @@ export function initializeHashes(
   }
 
   // .trellis/ workflow tree: still walked recursively. Accuracy here is for
-  // `trellis update`'s 3-way merge of workflow.md / config.yaml / scripts;
+  // `trellis update`'s 3-way merge of workflow.yaml / config.yaml / scripts;
   // uninstall removes .trellis/ wholesale so it does not matter for the
   // data-loss bug this contract addresses.
   const files = collectFiles(cwd, ".trellis");

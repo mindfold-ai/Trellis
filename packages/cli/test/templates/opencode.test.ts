@@ -403,16 +403,20 @@ function setupTrellisProject(): string {
   writeFileSync(join(taskDir, "prd.md"), "# Demo PRD\n\nGoal: verify injection.");
   writeFileSync(join(taskDir, "implement.jsonl"), "");
   writeFileSync(join(taskDir, "check.jsonl"), "");
+  mkdirSync(join(dir, ".trellis", "workflow", "states"), { recursive: true });
   writeFileSync(
-    join(dir, ".trellis", "workflow.md"),
+    join(dir, ".trellis", "workflow.yaml"),
     [
-      "# Workflow",
-      "",
-      "[workflow-state:in_progress]",
-      "Active task: <task path>. Dispatch trellis-implement or trellis-check.",
-      "[/workflow-state:in_progress]",
-      "",
+      "schema_version: 1",
+      "body_root: .trellis/workflow",
+      "workflow_states:",
+      "  in_progress:",
+      "    body_file: .trellis/workflow/states/in_progress.md",
     ].join("\n"),
+  );
+  writeFileSync(
+    join(dir, ".trellis", "workflow", "states", "in_progress.md"),
+    "Active task: <task path>. Dispatch trellis-implement or trellis-check.\n",
   );
   return dir;
 }

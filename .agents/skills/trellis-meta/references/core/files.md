@@ -15,7 +15,8 @@ Complete reference of all files in the `.trellis/` directory.
 ├── .template-hashes.json   # Template version tracking
 ├── .version                # Installed Trellis version
 ├── .gitignore              # Git ignore rules
-├── workflow.md             # Main workflow documentation
+├── workflow.yaml           # Structured workflow manifest
+├── workflow/               # Workflow markdown body files
 ├── worktree.yaml           # Multi-session configuration
 │
 ├── workspace/              # Developer workspaces
@@ -113,7 +114,7 @@ uses `.runtime/sessions/<session-key>.json` only.
 
 ```json
 {
-  ".trellis/workflow.md": "028891d1fe839a266...",
+  ".trellis/workflow.yaml": "028891d1fe839a266...",
   ".claude/hooks/session-start.py": "0a9899e80f6bfe15...",
   ".claude/commands/start.md": "d1276dcbff880299..."
 }
@@ -186,22 +187,19 @@ uses `.runtime/sessions/<session-key>.json` only.
 
 ---
 
-### `workflow.md`
+### `workflow.yaml` and `workflow/`
 
-**Purpose**: Main workflow documentation for developers and AI.
+**Purpose**: Structured workflow manifest plus Markdown bodies for developers and AI.
 
 **Created by**: `trellis init`
 
 **Content sections**:
-1. Quick Start guide
-2. Workflow overview
-3. Session start process
-4. Development process
-5. Session end
-6. File descriptions
-7. Best practices
+1. Phase index and step metadata in `workflow.yaml`
+2. Per-status breadcrumb bodies in `workflow/states/*.md`
+3. Per-step phase bodies in `workflow/steps/*.md`
+4. Additional workflow overview body files under `workflow/`
 
-**Injected by**: `session-start.py` hook (Claude Code)
+**Read by**: `get_context.py`, `session-start.py`, and workflow-state hooks.
 
 **For Cursor**: Read manually at session start.
 
@@ -303,7 +301,7 @@ These files are managed by `trellis update`:
 
 | File | Purpose |
 |------|---------|
-| `.trellis/workflow.md` | Workflow documentation |
+| `.trellis/workflow.yaml` | Workflow documentation |
 | `.trellis/worktree.yaml` | Multi-session config |
 | `.trellis/.gitignore` | Git ignore rules |
 | `.claude/hooks/*.py` | Hook scripts |
@@ -328,7 +326,8 @@ These files are managed by `trellis update`:
 ├── .template-hashes.json
 ├── .version
 ├── .gitignore
-├── workflow.md
+├── workflow.yaml
+├── workflow/
 ├── worktree.yaml
 ├── spec/
 │   ├── frontend/

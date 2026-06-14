@@ -6,13 +6,12 @@
  *
  * On every chat.message, if a Trellis task is active, inject a short
  * <workflow-state> breadcrumb reminding the main AI what task is
- * active and its expected flow. Breadcrumb text is pulled exclusively
- * from the project's workflow.md [workflow-state:STATUS] tag blocks —
- * workflow.md is the single source of truth. There are no fallback
- * tables in this plugin: when workflow.md is missing or a tag is
- * absent, the breadcrumb degrades to a generic
- * "Refer to workflow.md for current step." line so users see (and fix)
- * the broken state instead of the plugin silently masking it.
+ * active and its expected flow. Breadcrumb text is pulled exclusively from
+ * `.trellis/workflow.yaml` and its referenced workflow state body files.
+ * There are no fallback tables in this plugin: when workflow.yaml is missing
+ * or a state body is absent, the breadcrumb degrades to a generic
+ * "Refer to workflow.yaml for current step." line so users see (and fix) the
+ * broken state instead of the plugin silently masking it.
  *
  * Unlike session-start, this plugin does NOT dedupe — the breadcrumb
  * should surface on every turn so long conversations don't drift.
@@ -26,37 +25,7 @@
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 import { TrellisContext, debugLog, isTrellisSubagent } from "../lib/trellis-context.js"
-
-// Supports STATUS values with letters, digits, underscores, hyphens
-// (so "in-review" / "blocked-by-team" work alongside "in_progress").
-const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g
-
-/**
- * Parse workflow.md for [workflow-state:STATUS] blocks.
- *
- * Returns {status: body}. workflow.md is the single source of truth —
- * there are no fallback tables here. Missing tags (or a missing /
- * unreadable workflow.md) fall back to a generic line in
- * buildBreadcrumb so users see the broken state and fix workflow.md
- * rather than the plugin silently masking it.
- */
-function loadBreadcrumbs(directory) {
-  const workflowPath = join(directory, ".trellis", "workflow.md")
-  if (!existsSync(workflowPath)) return {}
-  let content
-  try {
-    content = readFileSync(workflowPath, "utf-8")
-  } catch {
-    return {}
-  }
-  const result = {}
-  for (const match of content.matchAll(TAG_RE)) {
-    const status = match[1]
-    const body = match[2].trim()
-    if (body) result[status] = body
-  }
-  return result
-}
+import { loadWorkflowStateBodies } from "../lib/workflow-model.js"
 
 /**
  * Get (taskId, status) from active task, or null if no active task.
@@ -84,15 +53,14 @@ function getActiveTask(ctx, platformInput = null) {
 
 /**
  * Build the <workflow-state>...</workflow-state> block.
- * - Known status (tag present in workflow.md) → detailed body
- * - Unknown status (no tag, or workflow.md missing) → generic
- *   "Refer to workflow.md for current step." line
+ * - Known status (body file present in workflow.yaml) -> detailed body
+ * - Unknown status (or workflow.yaml missing) -> generic broken-state line
  * - no_task pseudo-status (id === null) → header omits task info
  */
 function buildBreadcrumb(id, status, templates, source = null) {
   let body = templates[status]
   if (body === undefined) {
-    body = "Refer to workflow.md for current step."
+    body = "Refer to workflow.yaml for current step."
   }
   let header = id === null ? `Status: ${status}` : `Task: ${id} (${status})`
   if (source) {
@@ -127,7 +95,7 @@ export default async ({ directory }) => {
           if (!ctx.isTrellisProject()) {
             return
           }
-          const templates = loadBreadcrumbs(directory)
+          const templates = loadWorkflowStateBodies(directory)
           const task = getActiveTask(ctx, input)
           const breadcrumb = task
             ? buildBreadcrumb(task.id, task.status, templates, task.source)

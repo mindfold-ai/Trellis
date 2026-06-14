@@ -637,24 +637,82 @@ function buildTrellisContext(
 // hook used by class-1 platforms).
 //
 // Pi is extension-backed and MUST NOT receive Python hook scripts under .pi/.
-// We therefore parse `.trellis/workflow.md` `[workflow-state:STATUS]...
-// [/workflow-state:STATUS]` blocks directly in TypeScript and emit the
-// per-turn `<workflow-state>` breadcrumb in `before_agent_start` and `input`.
-// Tag regex mirrors the shared parser so the breadcrumb body stays
-// byte-identical with hook-driven platforms.
+// We therefore read `.trellis/workflow.yaml` directly, load each
+// `workflow_states.<status>.body_file`, and emit the per-turn
+// `<workflow-state>` breadcrumb in `before_agent_start` and `input`.
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_STATE_TAG_RE =
-  /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g;
+function stripYamlInlineComment(value: string): string {
+  let quote: string | null = null;
+  for (let index = 0; index < value.length; index += 1) {
+    const ch = value[index] ?? "";
+    if (quote) {
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "#" && (index === 0 || /\s/.test(value[index - 1] ?? ""))) {
+      return value.slice(0, index);
+    }
+  }
+  return value;
+}
+
+function parseYamlScalar(value: string): string {
+  const trimmed = stripYamlInlineComment(value).trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function yamlIndent(line: string): number {
+  return line.length - line.trimStart().length;
+}
 
 function loadWorkflowBreadcrumbs(projectRoot: string): Record<string, string> {
-  const workflow = readText(join(projectRoot, ".trellis", "workflow.md"));
+  const workflow = readText(join(projectRoot, ".trellis", "workflow.yaml"));
   if (!workflow) return {};
+
+  const bodyFiles: Record<string, string> = {};
+  let inStates = false;
+  let currentStatus: string | null = null;
+
+  for (const line of workflow.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const indent = yamlIndent(line);
+
+    if (indent === 0) {
+      inStates = trimmed === "workflow_states:";
+      currentStatus = null;
+      continue;
+    }
+    if (!inStates) continue;
+
+    const statusMatch =
+      indent === 2 ? trimmed.match(/^([A-Za-z0-9_-]+):\s*$/) : null;
+    if (statusMatch) {
+      currentStatus = statusMatch[1] ?? null;
+      continue;
+    }
+    if (currentStatus && indent === 4 && trimmed.startsWith("body_file:")) {
+      bodyFiles[currentStatus] = parseYamlScalar(
+        trimmed.slice("body_file:".length),
+      );
+    }
+  }
+
   const result: Record<string, string> = {};
-  for (const match of workflow.matchAll(WORKFLOW_STATE_TAG_RE)) {
-    const status = match[1] ?? "";
-    const body = (match[2] ?? "").trim();
-    if (status && body) result[status] = body;
+  for (const [status, bodyFile] of Object.entries(bodyFiles)) {
+    const body = readText(join(projectRoot, bodyFile)).trim();
+    if (body) result[status] = body;
   }
   return result;
 }
@@ -702,7 +760,8 @@ function buildWorkflowStateBreadcrumb(
       lookupKey = info.status;
     }
   }
-  const body = templates[lookupKey] ?? "Refer to workflow.md for current step.";
+  const body =
+    templates[lookupKey] ?? "Refer to workflow.yaml for current step.";
   return `<workflow-state>\n${header}\n${body}\n</workflow-state>`;
 }
 
@@ -782,9 +841,9 @@ class TurnContextCache {
 
 // ---------------------------------------------------------------------------
 // Sub-agent dispatch protocol snippet (registered with the `subagent` tool).
-// Mirrors the [workflow-state:in_progress] dispatch protocol text in
-// trellis/workflow.md so the AI sees the same `Active task: <path>` rule
-// whether it reads workflow.md, the per-turn breadcrumb, or the tool prompt.
+// Mirrors the workflow.yaml `in_progress` dispatch protocol text so the AI
+// sees the same `Active task: <path>` rule whether it reads workflow.yaml,
+// the per-turn breadcrumb, or the tool prompt.
 // ---------------------------------------------------------------------------
 
 const SUBAGENT_DISPATCH_PROTOCOL = `Sub-agent dispatch protocol (Trellis): your dispatch prompt MUST start with one line "Active task: <task path from \`task.py current\`>" before any other instructions. No exceptions. On class-2 platforms (codex / copilot / gemini / qoder) the sub-agent depends on this line because there is no hook to inject task context. On class-1 platforms (claude / cursor / opencode / kiro / codebuddy / droid) and on Pi, the line is the canonical fallback when hook/extension injection misses. trellis-research uses the line to know which {task_dir}/research/ to write into.

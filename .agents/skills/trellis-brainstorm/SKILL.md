@@ -1,9 +1,12 @@
----
-name: trellis-brainstorm
-description: "Guides collaborative requirements discovery before implementation. Creates task directory, seeds PRD, asks high-value questions one at a time, researches technical choices, and converges on MVP scope. Use when requirements are unclear, there are multiple valid approaches, or the user describes a new feature or complex task."
----
-
 # Brainstorm - Requirements Discovery (AI Coding Enhanced)
+
+**CoreRule**: Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+---
 
 Guide AI through collaborative requirements discovery **before implementation**, optimized for AI coding workflows:
 
@@ -16,7 +19,7 @@ Guide AI through collaborative requirements discovery **before implementation**,
 
 ## When to Use
 
-Triggered from `start` (Trellis command) when the user describes a development task, especially when:
+Triggered from {{CMD_REF:start}} when the user describes a development task, especially when:
 
 * requirements are unclear or evolving
 * there are multiple valid implementation paths
@@ -198,9 +201,11 @@ For each research topic, **spawn a `trellis-research` sub-agent via the Task too
 
 Why:
 - The sub-agent has its own context window → doesn't pollute brainstorm context with raw tool output
-- It persists findings to `{TASK_DIR}/research/<topic>.md` (the contract — see `workflow.md` Phase 1.2)
+- It persists findings to `{TASK_DIR}/research/<topic>.md` (the contract — see `workflow.yaml` Phase 1.2)
 - It returns only `{file path, one-line summary}` to the main agent
 - Independent topics can be **parallelized** — spawn multiple sub-agents in one tool call
+
+> **Codex exception**: on Codex CLI, do NOT dispatch `trellis-research` for research-first mode — do the research inline (WebFetch / WebSearch in the main session) and write findings to `{TASK_DIR}/research/<topic>.md` yourself. Reason: Codex `spawn_agent` runs sub-agents with `fork_turns="none"` (isolated context, no parent session inheritance), so the research sub-agent cannot resolve the active task path via `task.py current` and silently aborts without producing files. Inline research on Codex avoids this failure mode. The 3+ inline research calls limit (B rule in `workflow.yaml`) is relaxed for Codex specifically.
 
 Agent type: `trellis-research`
 Task description template: "Research <specific question>; persist findings to `{TASK_DIR}/research/<topic-slug>.md`."
@@ -533,6 +538,6 @@ The task directory and PRD already exist from brainstorm, so Phase 1 of the Task
 
 | Command | When to Use |
 |---------|-------------|
-| ``start` (Trellis command)` | Entry point that triggers brainstorm |
-| ``finish-work` (Trellis command)` | After implementation is complete |
-| ``update-spec` (Trellis command)` | If new patterns emerge during work |
+| `{{CMD_REF:start}}` | Entry point that triggers brainstorm |
+| `{{CMD_REF:finish-work}}` | After implementation is complete |
+| `{{CMD_REF:update-spec}}` | If new patterns emerge during work |

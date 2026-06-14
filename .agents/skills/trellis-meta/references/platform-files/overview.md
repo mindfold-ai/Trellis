@@ -4,7 +4,7 @@ Trellis connects the same local architecture to different AI tools. `.trellis/` 
 
 When a local AI modifies Trellis, it should distinguish two file categories first:
 
-- **Shared files**: `.trellis/workflow.md`, `.trellis/tasks/`, `.trellis/spec/`, `.trellis/scripts/`.
+- **Shared files**: `.trellis/workflow.yaml`, `.trellis/tasks/`, `.trellis/spec/`, `.trellis/scripts/`.
 - **Platform files**: `.claude/`, `.codex/`, `.cursor/`, `.opencode/`, `.kiro/`, `.gemini/`, `.qoder/`, `.codebuddy/`, `.github/`, `.factory/`, `.pi/`, `.kilocode/`, `.agent/`, `.windsurf/`, and similar directories.
 
 Platform files do not store business state. They let the corresponding AI tool read Trellis state, call Trellis scripts, and load Trellis skills/agents/hooks.
@@ -44,16 +44,16 @@ To change how sub-agents load context, inspect the agent files themselves.
 
 Some platforms do not have Trellis sub-agent or hook capabilities. They rely on workflows/skills/commands to guide the main-session AI to read files, run scripts, and move tasks forward.
 
-To change behavior, inspect platform workflows/skills/commands and `.trellis/workflow.md`.
+To change behavior, inspect platform workflows/skills/commands and `.trellis/workflow.yaml`.
 
 ## Local Modification Order
 
 When the user asks to customize behavior for a platform, the AI should inspect files in this order:
 
-1. Read `.trellis/workflow.md` to confirm the shared flow.
+1. Read `.trellis/workflow.yaml` to confirm the shared flow.
 2. Read the target platform's settings/config to see which hooks/agents/skills/commands are registered.
 3. Read the target platform's agents/skills/commands/hooks.
 4. Modify the local file closest to the user's need.
-5. If the change affects the shared flow, synchronize `.trellis/workflow.md` or `.trellis/spec/`.
+5. If the change affects the shared flow, synchronize `.trellis/workflow.yaml` or `.trellis/spec/`.
 
-Do not modify only platform files and forget the shared workflow. Do not modify only `.trellis/workflow.md` and forget that platform entry points may still contain old descriptions.
+Do not modify only platform files and forget the shared workflow. Do not modify only `.trellis/workflow.yaml` and forget that platform entry points may still contain old descriptions.

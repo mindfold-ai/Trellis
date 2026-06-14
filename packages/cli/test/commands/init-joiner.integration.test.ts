@@ -134,7 +134,7 @@ describe("init() joiner onboarding", () => {
     // reference.
     expect(prd).toContain("bob");
     expect(prd).toContain("You (the AI) are running this task");
-    expect(prd).toContain("workflow.md");
+    expect(prd).toContain("workflow.yaml");
     expect(prd).toContain(".trellis/spec/");
     expect(prd).toContain("00-join-bob");
     // Fallback text for empty archive

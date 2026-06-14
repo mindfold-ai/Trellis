@@ -20,7 +20,7 @@ Phase Index + skill routing table + DO-NOT-skip rules.
 {{PYTHON_CMD}} ./.trellis/scripts/get_context.py --mode phase
 ```
 
-Full guide in `.trellis/workflow.md` (read on demand).
+Full guide in `.trellis/workflow.yaml` (read on demand).
 
 ## Step 3: Guideline indexes
 Discover packages + spec layers, then read each relevant index file.
@@ -55,4 +55,4 @@ From Step 1 you know the current task. Check the task directory:
 | Stuck / fixed same bug multiple times | `trellis-break-loop` |
 | Learned something worth capturing | `trellis-update-spec` |
 
-Full rules + anti-rationalization table in `.trellis/workflow.md`.
+Full rules + anti-rationalization table in `.trellis/workflow.yaml`.

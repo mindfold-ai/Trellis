@@ -15,7 +15,7 @@ const AGENTS_ALL = ["implement", "check", "research"]
 const AGENTS_REQUIRE_TASK = ["implement", "check"]
 
 // Match `Active task: <path>` on the first non-empty line of the dispatch
-// prompt. Mirrors the contract in workflow.md's [workflow-state:in_progress]
+// prompt. Mirrors the contract in workflow.yaml's in_progress workflow state.
 // breadcrumb so multi-window users can disambiguate which task is targeted.
 const ACTIVE_TASK_HINT_RE = /^\s*Active task:\s*(\S+)\s*$/m
 

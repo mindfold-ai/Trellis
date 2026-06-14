@@ -4,7 +4,7 @@ When the user wants to change AI entry points, auto-trigger rules, or explicit c
 
 ## Read These Files First
 
-1. `.trellis/workflow.md`
+1. `.trellis/workflow.yaml`
 2. Target platform skill/command/prompt/workflow directory
 3. Related agent or hook files
 4. Whether project rules already exist in `.trellis/spec/`
@@ -16,7 +16,7 @@ When the user wants to change AI entry points, auto-trigger rules, or explicit c
 | AI should automatically know a capability | Add or modify a skill. |
 | User wants to trigger manually with a command | Add or modify a command/prompt/workflow. |
 | Team project conventions | Prefer `.trellis/spec/` or a project-local skill. |
-| Change Trellis flow semantics | Synchronize `.trellis/workflow.md`. |
+| Change Trellis flow semantics | Synchronize `.trellis/workflow.yaml`. |
 
 ## Modify A Skill
 
@@ -47,7 +47,7 @@ Explicit entry points should state:
 - Which scripts to run.
 - How to report after completion.
 
-If a command only repeats workflow rules, prefer making it reference/read `.trellis/workflow.md` instead of maintaining a second copy of the flow.
+If a command only repeats workflow rules, prefer making it reference/read `.trellis/workflow.yaml` instead of maintaining a second copy of the flow.
 
 ## Common Paths
 

@@ -95,7 +95,7 @@ When the AI learns a new rule during implementation or debugging, it should upda
 | Change monorepo spec mapping | `packages` / `default_package` / `spec_scope` in `.trellis/config.yaml`. |
 | Change which specs AI reads before implementation | The task's `implement.jsonl`. |
 | Change which specs AI reads during checking | The task's `check.jsonl`. |
-| Change when specs should be updated | Phase 3.3 in `.trellis/workflow.md` and the `trellis-update-spec` skill. |
+| Change when specs should be updated | Phase 3.3 in `.trellis/workflow.yaml` and the `trellis-update-spec` skill. |
 
 ## Boundaries
 

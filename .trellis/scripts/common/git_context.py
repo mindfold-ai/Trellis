@@ -34,6 +34,7 @@ from .workflow_phase import (
     get_step,
     resolve_effective_platform,
 )
+from .workflow_model import load_workflow_manifest, workflow_reference_path
 
 # Backward-compatible alias — external modules import this name
 _run_git_command = run_git
@@ -88,13 +89,26 @@ def main() -> None:
             if args.step:
                 parser.exit(2, f"Step not found: {args.step}\n")
             else:
-                parser.exit(2, "Phase Index section not found in workflow.md\n")
+                parser.exit(2, "Phase Index section not found in workflow.yaml\n")
+        effective = None
         if args.platform:
             effective = resolve_effective_platform(
                 args.platform, read_trellis_config()
             )
             content = filter_platform(content, effective)
-        print(content, end="")
+        if args.json:
+            payload = {
+                "mode": "phase",
+                "step": args.step,
+                "platform": args.platform,
+                "effective_platform": effective,
+                "source": workflow_reference_path(),
+                "manifest": load_workflow_manifest(),
+                "content": content,
+            }
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print(content, end="")
     else:
         if args.json:
             output_json()

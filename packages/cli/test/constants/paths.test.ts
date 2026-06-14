@@ -44,6 +44,8 @@ describe("FILE_NAMES", () => {
     expect(FILE_NAMES).toHaveProperty("CURRENT_TASK");
     expect(FILE_NAMES).toHaveProperty("TASK_JSON");
     expect(FILE_NAMES).toHaveProperty("PRD");
+    expect(FILE_NAMES).toHaveProperty("WORKFLOW_MANIFEST");
+    expect(FILE_NAMES).toHaveProperty("WORKFLOW_BODY_DIR");
     expect(FILE_NAMES).toHaveProperty("WORKFLOW_GUIDE");
     expect(FILE_NAMES).toHaveProperty("JOURNAL_PREFIX");
   });
@@ -99,7 +101,19 @@ describe("PATHS", () => {
     );
   });
 
-  it("WORKFLOW_GUIDE_FILE is WORKFLOW/workflow.md", () => {
+  it("WORKFLOW_MANIFEST_FILE is WORKFLOW/workflow.yaml", () => {
+    expect(PATHS.WORKFLOW_MANIFEST_FILE).toBe(
+      `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_MANIFEST}`,
+    );
+  });
+
+  it("WORKFLOW_BODY_DIR is WORKFLOW/workflow", () => {
+    expect(PATHS.WORKFLOW_BODY_DIR).toBe(
+      `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_BODY_DIR}`,
+    );
+  });
+
+  it("keeps legacy WORKFLOW_GUIDE_FILE for migration compatibility", () => {
     expect(PATHS.WORKFLOW_GUIDE_FILE).toBe(
       `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_GUIDE}`,
     );

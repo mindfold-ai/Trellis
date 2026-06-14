@@ -382,7 +382,7 @@ Specs and research, by contrast, *are* the rules and background the sub-agent ne
 
 ```jsonl
 # Good — specs + research
-{"file": ".trellis/workflow.md", "reason": "Workflow contract"}
+{"file": ".trellis/workflow.yaml", "reason": "Workflow contract"}
 {"file": ".trellis/spec/backend/api-module.md", "reason": "API module conventions"}
 {"file": ".trellis/tasks/02-27-user-login/research/", "type": "directory", "reason": "Upstream research outputs"}
 

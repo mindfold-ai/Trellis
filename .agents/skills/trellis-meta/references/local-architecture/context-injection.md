@@ -7,7 +7,7 @@ Trellis context injection aims to make AI read the right files at the right time
 | Type | Source | Purpose |
 | --- | --- | --- |
 | session context | `.trellis/scripts/get_context.py` | Current developer, git status, active task, active tasks, journal, packages. |
-| workflow context | `.trellis/workflow.md` | Current Trellis flow and next action. |
+| workflow context | `.trellis/workflow.yaml` | Current Trellis flow and next action. |
 | spec context | `.trellis/spec/` + task JSONL | Specs that must be followed during implementation/checking. |
 | task context | `.trellis/tasks/<task>/prd.md`, `info.md`, `research/` | Current task requirements, design, and research. |
 | platform context | Platform hooks/settings/agents | Lets different AI tools read the files above through their own mechanisms. |
@@ -26,9 +26,9 @@ If the user feels the AI does not know the current task in a new session, first 
 
 ## workflow-state
 
-workflow-state is a lightweight hint injected around each user turn. Based on current task status, it selects a block from `.trellis/workflow.md`, such as `no_task`, `planning`, `in_progress`, or `completed`.
+workflow-state is a lightweight hint injected around each user turn. Based on current task status, it selects a block from `.trellis/workflow.yaml`, such as `no_task`, `planning`, `in_progress`, or `completed`.
 
-If the user wants to change "what the AI should do next in a given state," edit the corresponding state block in `.trellis/workflow.md` first.
+If the user wants to change "what the AI should do next in a given state," edit the corresponding state block in `.trellis/workflow.yaml` first.
 
 ## sub-agent context
 
@@ -60,7 +60,7 @@ If shell commands cannot see the same context key, `task.py current --source` ma
 | Need | Edit location |
 | --- | --- |
 | Change session-start injected content | The platform's `session-start` hook or plugin file. |
-| Change per-turn workflow-state rules | `[workflow-state:STATUS]` block in `.trellis/workflow.md`. The platform workflow-state hook parses these blocks verbatim and embeds no fallback text. |
+| Change per-turn workflow-state rules | `workflow_states.<status>.body_file` in `.trellis/workflow.yaml` and the referenced `.trellis/workflow/states/*.md` file. |
 | Change how sub-agents read context | Platform agent definitions, the `inject-subagent-context` hook, or agent preludes. |
 | Change JSONL validation/display | `.trellis/scripts/common/task_context.py`. |
 | Change active task resolution | `.trellis/scripts/common/active_task.py`. |

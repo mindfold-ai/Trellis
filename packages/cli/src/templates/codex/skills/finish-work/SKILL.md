@@ -76,7 +76,7 @@ Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` (o
 
 ```
 Development Flow:
-  Phase 3.4 (workflow.md) -> AI drafts batched commits -> user confirms -> git commit
+  Phase 3.4 (workflow.yaml) -> AI drafts batched commits -> user confirms -> git commit
                                                                               |
                                                                               v
                                                                     $finish-work

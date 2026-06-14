@@ -8,7 +8,10 @@ This page only describes files that are visible and editable inside the user pro
 
 ```text
 .trellis/
-├── workflow.md
+├── workflow.yaml
+├── workflow/
+│   ├── states/
+│   └── steps/
 ├── config.yaml
 ├── .developer
 ├── .version
@@ -22,7 +25,7 @@ This page only describes files that are visible and editable inside the user pro
 
 | Path | Usually editable? | Notes |
 | --- | --- | --- |
-| `.trellis/workflow.md` | Yes | Local workflow documentation and AI routing rules. |
+| `.trellis/workflow.yaml` | Yes | Local workflow documentation and AI routing rules. |
 | `.trellis/config.yaml` | Yes | Project configuration, hooks, packages, journal line limits, and related settings. |
 | `.trellis/spec/` | Yes | Project specs, intended to be updated regularly by users and AI. |
 | `.trellis/tasks/` | Yes | Task material and research artifacts, maintained by the task workflow. |
@@ -45,7 +48,7 @@ Different platforms generate different directories. Common categories:
 | skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/` | Skills that auto-trigger or can be read by AI. |
 | commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.windsurf/workflows/` | Explicit user-invoked command or workflow entry points. |
 
-When modifying a platform directory, also confirm whether `.trellis/workflow.md` still describes the same flow.
+When modifying a platform directory, also confirm whether `.trellis/workflow.yaml` still describes the same flow.
 
 ## Meaning Of Template Hashes
 
@@ -63,7 +66,7 @@ When an AI customizes local Trellis files, it does not need to maintain hashes m
 
 Editable by default:
 
-- `.trellis/workflow.md`
+- `.trellis/workflow.yaml`
 - `.trellis/config.yaml`
 - `.trellis/spec/**`
 - `.trellis/scripts/**`

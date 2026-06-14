@@ -62,11 +62,18 @@ describe("deprecated source path aliases", () => {
 // =============================================================================
 
 describe("readTrellisFile", () => {
-  it("reads workflow.md from trellis templates", () => {
-    const content = readTrellisFile("workflow.md");
+  it("reads workflow.yaml from trellis templates", () => {
+    const content = readTrellisFile("workflow.yaml");
     expect(typeof content).toBe("string");
     expect(content.length).toBeGreaterThan(0);
-    expect(content).toContain("#");
+    expect(content).toContain("workflow_states:");
+  });
+
+  it("reads workflow body files from trellis templates", () => {
+    const content = readTrellisFile("workflow/states/in_progress.md");
+    expect(typeof content).toBe("string");
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).toContain("trellis-implement");
   });
 
   it("reads a script file", () => {
@@ -103,8 +110,8 @@ describe("readScript", () => {
 });
 
 describe("readMarkdown", () => {
-  it("reads workflow.md", () => {
-    const content = readMarkdown("workflow.md");
+  it("reads workflow body markdown", () => {
+    const content = readMarkdown("workflow/steps/2.1.md");
     expect(typeof content).toBe("string");
     expect(content).toContain("#");
   });
