@@ -230,10 +230,10 @@ def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
     has_prd = (task_dir / "prd.md").is_file()
 
     if not has_prd:
-        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: prd.md not created\nNext: Write PRD (see workflow.md Phase 1.1) then curate implement.jsonl per Phase 1.3"
+        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: prd.md not created\nNext: Write PRD (see workflow.yaml Phase 1.1) then curate implement.jsonl per Phase 1.3"
 
     if not has_context:
-        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then `task.py start`"
+        return f"Status: NOT READY\nTask: {task_title}\nSource: {active.source}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.yaml Phase 1.3 (spec + research files only), then `task.py start`"
 
     return (
         f"Status: READY\nTask: {task_title}\n"
@@ -248,64 +248,19 @@ def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
     )
 
 
-def _extract_range(content: str, start_header: str, end_header: str) -> str:
-    """Extract lines starting at `## start_header` up to (but excluding) `## end_header`."""
-    lines = content.splitlines()
-    start: "int | None" = None
-    end: int = len(lines)
-    start_match = f"## {start_header}"
-    end_match = f"## {end_header}"
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if start is None and stripped == start_match:
-            start = i
-            continue
-        if start is not None and stripped == end_match:
-            end = i
-            break
-    if start is None:
-        return ""
-    return "\n".join(lines[start:end]).rstrip()
-
-
-_BREADCRUMB_TAG_RE = re.compile(
-    r"\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n.*?\n\s*\[/workflow-state:\1\]",
-    re.DOTALL,
-)
-
-
-def _strip_breadcrumb_tag_blocks(content: str) -> str:
-    return _BREADCRUMB_TAG_RE.sub("", content)
-
-
-def _build_workflow_toc(workflow_path: Path) -> str:
-    """Inject workflow guide: TOC + Phase Index + Phase 1/2/3 step details.
-
-    Since v0.5.0-rc.0 the [workflow-state:STATUS] breadcrumb tag blocks
-    live inside ## Phase Index. They're consumed by inject-workflow-state.py
-    on each UserPromptSubmit, so strip them from the session-start payload
-    to avoid duplicating context.
-    """
-    content = read_file(workflow_path)
-    if not content:
-        return "No workflow.md found"
-
-    out_lines = [
-        "# Development Workflow — Section Index",
-        "Full guide: .trellis/workflow.md  (read on demand)",
-        "",
-        "## Table of Contents",
-    ]
-    for line in content.splitlines():
-        if line.startswith("## "):
-            out_lines.append(line)
-    out_lines += ["", "---", ""]
-
-    phases = _extract_range(content, "Phase Index", "Customizing Trellis (for forks)")
-    if phases:
-        out_lines.append(_strip_breadcrumb_tag_blocks(phases).rstrip())
-
-    return "\n".join(out_lines).rstrip()
+def _build_workflow_toc(trellis_dir: Path) -> str:
+    """Inject workflow guide from workflow.yaml and body files."""
+    scripts_dir = trellis_dir / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.workflow_model import render_workflow_toc  # type: ignore[import-not-found]
+    except Exception:
+        return "No workflow.yaml found"
+    try:
+        return render_workflow_toc(trellis_dir.parent)
+    except Exception:
+        return "No workflow.yaml found"
 
 
 def main() -> None:
@@ -344,7 +299,7 @@ Read and follow all instructions below carefully.
     output.write("\n</current-state>\n\n")
 
     output.write("<workflow>\n")
-    output.write(_build_workflow_toc(trellis_dir / "workflow.md"))
+    output.write(_build_workflow_toc(trellis_dir))
     output.write("\n</workflow>\n\n")
 
     output.write("<guidelines>\n")

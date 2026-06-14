@@ -14,7 +14,7 @@ Do not default to guiding the user to fork the Trellis CLI repository. Treat ups
 
 Trellis provides three layers inside a user project:
 
-1. **Workflow layer**: `.trellis/workflow.md` defines phases, routing, next actions, and prompt blocks.
+1. **Workflow layer**: `.trellis/workflow.yaml` defines phases, routing, next actions, and prompt blocks.
 2. **Persistence layer**: `.trellis/tasks/`, `.trellis/spec/`, and `.trellis/workspace/` store tasks, specs, and session memory.
 3. **Platform integration layer**: hooks, settings, agents, skills, commands, prompts, and workflows in platform directories connect the Trellis workflow to different AI tools.
 
@@ -24,7 +24,7 @@ All three layers live inside the user project, so an AI can read and modify them
 
 | Path | Purpose |
 | --- | --- |
-| `.trellis/workflow.md` | Workflow phases, skill routing, and workflow-state prompt blocks. |
+| `.trellis/workflow.yaml` | Workflow phases, skill routing, and workflow-state prompt blocks. |
 | `.trellis/config.yaml` | Project configuration, task lifecycle hooks, monorepo package configuration, and journal configuration. |
 | `.trellis/spec/` | The user's project-specific coding conventions and thinking guides. |
 | `.trellis/tasks/` | Each task's PRD, technical notes, research files, and JSONL context. |
@@ -35,7 +35,7 @@ All three layers live inside the user project, so an AI can read and modify them
 
 ## AI Customization Principles
 
-1. **Find the local source of truth first**: Do not edit from memory. Read `.trellis/workflow.md`, `.trellis/config.yaml`, the relevant platform directory, and related task files first.
+1. **Find the local source of truth first**: Do not edit from memory. Read `.trellis/workflow.yaml`, `.trellis/config.yaml`, the relevant platform directory, and related task files first.
 2. **Edit the user project, not the npm package cache**: Modify generated files inside the project, not `node_modules` or the global npm install directory.
 3. **Keep platform files aligned with `.trellis/`**: If workflow routing changes, also check whether platform skills or commands still describe the same flow.
 4. **Put project-specific rules in `.trellis/spec/` or a local skill**: Do not put team conventions into `trellis-meta`.
@@ -44,7 +44,7 @@ All three layers live inside the user project, so an AI can read and modify them
 ## How To Use This Directory
 
 - To understand which files exist after init, read `generated-files.md`.
-- To change phases, routing, or next actions, read `workflow.md`.
+- To change phases, routing, or next actions, read `workflow.md` in this reference folder and `.trellis/workflow.yaml` in the target project.
 - To change the task model, JSONL context, or active task behavior, read `task-system.md`.
 - To change coding convention injection, read `spec-system.md`.
 - To understand journals and cross-session memory, read `workspace-memory.md`.

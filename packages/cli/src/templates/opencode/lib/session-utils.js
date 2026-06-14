@@ -4,6 +4,7 @@ import { basename, join } from "path"
 import { execFileSync } from "child_process"
 import { platform } from "os"
 import { debugLog } from "./trellis-context.js"
+import { renderWorkflowToc } from "./workflow-model.js"
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 
@@ -77,11 +78,11 @@ function getTaskStatus(ctx, platformInput = null) {
   const hasPrd = existsSync(join(taskDir, "prd.md"))
 
   if (!hasPrd) {
-    return `Status: NOT READY\nTask: ${taskTitle}\nSource: ${active.source}\nMissing: prd.md not created\nNext: Write PRD (see workflow.md Phase 1.1) then curate implement.jsonl per Phase 1.3`
+    return `Status: NOT READY\nTask: ${taskTitle}\nSource: ${active.source}\nMissing: prd.md not created\nNext: Write PRD (see workflow.yaml Phase 1.1) then curate implement.jsonl per Phase 1.3`
   }
 
   if (!hasContext) {
-    return `Status: NOT READY\nTask: ${taskTitle}\nSource: ${active.source}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.md Phase 1.3 (spec + research files only), then \`task.py start\``
+    return `Status: NOT READY\nTask: ${taskTitle}\nSource: ${active.source}\nMissing: implement.jsonl / check.jsonl missing or empty\nNext: Curate entries per workflow.yaml Phase 1.3 (spec + research files only), then \`task.py start\``
   }
 
   return (
@@ -234,39 +235,9 @@ Read and follow all instructions below carefully.
     }
   }
 
-  const workflowContent = ctx.readProjectFile(".trellis/workflow.md")
-  if (workflowContent) {
-    const allLines = workflowContent.split("\n")
-    const overviewLines = [
-      "# Development Workflow — Section Index",
-      "Full guide: .trellis/workflow.md  (read on demand)",
-      "",
-      "## Table of Contents",
-    ]
-    for (const line of allLines) {
-      if (line.startsWith("## ")) overviewLines.push(line)
-    }
-    overviewLines.push("", "---", "")
-
-    let rangeStart = -1
-    let rangeEnd = allLines.length
-    for (let i = 0; i < allLines.length; i++) {
-      const stripped = allLines[i].trim()
-      if (rangeStart === -1 && stripped === "## Phase Index") {
-        rangeStart = i
-      } else if (rangeStart !== -1 && stripped === "## Workflow State Breadcrumbs") {
-        rangeEnd = i
-        break
-      }
-    }
-    if (rangeStart !== -1) {
-      overviewLines.push(...allLines.slice(rangeStart, rangeEnd))
-    }
-
-    parts.push("<workflow>")
-    parts.push(overviewLines.join("\n").trimEnd())
-    parts.push("</workflow>")
-  }
+  parts.push("<workflow>")
+  parts.push(renderWorkflowToc(directory))
+  parts.push("</workflow>")
 
   parts.push("<guidelines>")
   parts.push(

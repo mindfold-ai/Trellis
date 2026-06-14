@@ -1,0 +1,9 @@
+{
+  "version": "0.6.0-rc.0",
+  "description": "First release candidate for v0.6.0. Feature surface frozen; entering stabilization. Only fix since 0.6.0-beta.23 is removing explicit mcp__exa__* tools from bundled Claude-style sub-agent defs so they no longer silent-skip on installs without the Exa MCP server.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(agents): drop explicit `mcp__exa__*` tools from bundled `trellis-implement` and `trellis-check` agent definitions. Claude Code silently skips agent registration when an explicit MCP tool name fails to resolve, so users without the Exa MCP server installed had every Trellis sub-agent disappear from the dispatch list. `trellis-research` keeps external search by folding `mcp__exa__*` + `mcp__chrome-devtools__*` into a single `mcp__*` wildcard, which Claude Code resolves lazily and does not silent-skip on. OpenCode files use a different permission syntax and are unchanged (#302).\n\n**Internal:**\n- chore(release): v0.6 feature surface frozen at this RC. Open feature requests (#193, #318, #320, #325, #326, etc.) are deferred to v0.7 or later. Further changes on this line will be bug-only `0.6.0-rc.*` cuts.",
+  "migrations": [],
+  "notes": "First release candidate for v0.6.0. Run `npm install -g @mindfoldhq/trellis@rc && trellis update` to pick up the agent silent-skip fix. If you are coming from a beta older than 0.6.0-beta.23, also pass `--migrate` to apply the rename-dir migration that moves `trellis-spec-bootstarp/` to `trellis-spec-bootstrap/` across configured platform skill roots."
+}

@@ -55,7 +55,10 @@ import { update } from "../../src/commands/update.js";
 import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { computeHash } from "../../src/utils/template-hash.js";
-import { workflowMdTemplate } from "../../src/templates/trellis/index.js";
+import {
+  workflowYamlTemplate,
+  getWorkflowBodyFiles,
+} from "../../src/templates/trellis/index.js";
 import { replacePythonCommandLiterals } from "../../src/configurators/shared.js";
 
 // A managed template file that update always handles (Python script)
@@ -126,6 +129,13 @@ describe("update() integration", () => {
     const fullPath = projectFile(relativePath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     fs.writeFileSync(fullPath, content, "utf-8");
+  }
+
+  function removeProjectPath(relativePath: string): void {
+    const fullPath = projectFile(relativePath);
+    if (fs.existsSync(fullPath)) {
+      fs.rmSync(fullPath, { recursive: true, force: true });
+    }
   }
 
   /**
@@ -547,14 +557,17 @@ describe("update() integration", () => {
   it("#12b versioned upgrade scenario applies auto-updates, additive config sections, and modified-file skips", async () => {
     await setupProject();
 
-    const expectedWorkflow = replacePythonCommandLiterals(workflowMdTemplate);
+    const expectedWorkflow = replacePythonCommandLiterals(workflowYamlTemplate);
+    const expectedInProgressBody = replacePythonCommandLiterals(
+      getWorkflowBodyFiles().get("states/in_progress.md") ?? "",
+    );
     const expectedGetContext = readProjectFile(MANAGED_FILE);
     const userModifiedScript = `${PATHS.SCRIPTS}/add_session.py`;
     const userModifiedScriptContent = "# user customized add_session.py\n";
     const oldConfigWithoutSessionAutoCommit =
       "max_journal_lines: 2000\n\n" +
       "# Local 0.5.10 config customization that must survive update.\n";
-    const oldWorkflow =
+    const customizedLegacyWorkflow =
       "# Workflow\n\n" +
       "## Phase Index\n\n" +
       "[workflow-state:in_progress]\nlegacy body\n[/workflow-state:in_progress]\n\n" +
@@ -564,10 +577,22 @@ describe("update() integration", () => {
       "1. Load the `trellis-before-dev` skill to read project guidelines\n" +
       "[/Kilo, Antigravity, Windsurf]\n";
 
+    removeProjectPath(PATHS.WORKFLOW_MANIFEST_FILE);
+    removeProjectPath(PATHS.WORKFLOW_BODY_DIR);
+    writeHashesV2(
+      hashFilePath(),
+      Object.fromEntries(
+        Object.entries(readHashesV2(hashFilePath())).filter(
+          ([key]) =>
+            key !== PATHS.WORKFLOW_MANIFEST_FILE &&
+            !key.startsWith(`${PATHS.WORKFLOW_BODY_DIR}/`),
+        ),
+      ),
+    );
+    writeProjectFile(PATHS.WORKFLOW_GUIDE_FILE, customizedLegacyWorkflow);
     stageVersionedUpgradeProject({
       fromVersion: "0.5.10",
       pristineTemplates: {
-        [PATHS.WORKFLOW_GUIDE_FILE]: oldWorkflow,
         [MANAGED_FILE]: "# old get_context.py from installed template\n",
       },
       userModifiedTemplates: {
@@ -581,16 +606,25 @@ describe("update() integration", () => {
 
     expect(fs.readFileSync(versionFilePath(), "utf-8")).toBe(VERSION);
 
-    // Hash-tracked pristine templates from the older install are whole-file
-    // auto-updated to the current packaged template.
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(expectedWorkflow);
+    // Missing structured workflow files are created from the current packaged
+    // templates. A locally customized legacy workflow.md is no longer a runtime
+    // template and is preserved for manual reference.
+    expect(readProjectFile(PATHS.WORKFLOW_MANIFEST_FILE)).toBe(
+      expectedWorkflow,
+    );
+    expect(
+      readProjectFile(`${PATHS.WORKFLOW_BODY_DIR}/states/in_progress.md`),
+    ).toBe(expectedInProgressBody);
+    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(
+      customizedLegacyWorkflow,
+    );
     expect(readProjectFile(MANAGED_FILE)).toBe(expectedGetContext);
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
-      "[codex-inline, Kilo, Antigravity, Windsurf]",
+    expect(readProjectFile(PATHS.WORKFLOW_MANIFEST_FILE)).toContain(
+      "workflow_states:",
     );
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain(
-      "[Codex]",
-    );
+    expect(
+      readProjectFile(`${PATHS.WORKFLOW_BODY_DIR}/steps/2.1.md`),
+    ).toContain("[codex-inline, Kilo, Antigravity, Windsurf]");
 
     // Version-specific additive config sections still apply to a user-modified
     // config.yaml, while preserving the local content around the append.
@@ -607,8 +641,11 @@ describe("update() integration", () => {
       userModifiedScriptContent,
     );
     const hashes = readHashesV2(hashFilePath());
-    expect(hashes[PATHS.WORKFLOW_GUIDE_FILE]).toBe(
+    expect(hashes[PATHS.WORKFLOW_MANIFEST_FILE]).toBe(
       computeHash(expectedWorkflow),
+    );
+    expect(hashes[`${PATHS.WORKFLOW_BODY_DIR}/states/in_progress.md`]).toBe(
+      computeHash(expectedInProgressBody),
     );
     expect(hashes[MANAGED_FILE]).toBe(computeHash(expectedGetContext));
     expect(hashes[userModifiedScript]).not.toBe(
@@ -1170,46 +1207,66 @@ describe("update() integration", () => {
     ).toBe(false);
   });
 
-  it("#workflow-md-r4 updates workflow.md as one runtime template when hash-tracked", async () => {
+  it("#workflow-yaml-r1 creates structured workflow templates and leaves custom legacy workflow.md untouched", async () => {
     await setupProject();
 
-    const workflowPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
-    const staleWorkflow =
+    const workflowPath = path.join(tmpDir, PATHS.WORKFLOW_MANIFEST_FILE);
+    const legacyWorkflowPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const customLegacyWorkflow =
       "# Workflow\n\n" +
       "## Phase Index\n\n" +
-      "[workflow-state:in_progress]\nlegacy body\n[/workflow-state:in_progress]\n\n" +
-      "#### 2.1 Implement `[required · repeatable]`\n\n" +
-      "[Codex]\nSpawn the implement sub-agent:\n[/Codex]\n\n" +
-      "[Kilo, Antigravity, Windsurf]\n" +
-      "1. Load the `trellis-before-dev` skill to read project guidelines\n" +
-      "[/Kilo, Antigravity, Windsurf]\n";
+      "[workflow-state:in_progress]\ncustom legacy body\n[/workflow-state:in_progress]\n";
 
-    fs.writeFileSync(workflowPath, staleWorkflow, "utf-8");
+    // Simulate an old project before workflow.yaml existed.
+    fs.rmSync(workflowPath, { force: true });
+    fs.rmSync(path.join(tmpDir, PATHS.WORKFLOW_BODY_DIR), {
+      recursive: true,
+      force: true,
+    });
+    fs.writeFileSync(legacyWorkflowPath, customLegacyWorkflow, "utf-8");
 
-    // Simulate an older installed workflow.md that is still pristine relative
-    // to the version that installed it. Update must replace the whole file:
-    // platform markers outside [workflow-state:*] blocks are runtime-parsed too.
     const hashFile = path.join(
       tmpDir,
       DIR_NAMES.WORKFLOW,
       ".template-hashes.json",
     );
-    const hashes = readHashesV2(hashFile);
-    hashes[PATHS.WORKFLOW_GUIDE_FILE] = computeHash(staleWorkflow);
+    const hashes = Object.fromEntries(
+      Object.entries(readHashesV2(hashFile)).filter(
+        ([key]) =>
+          key !== PATHS.WORKFLOW_MANIFEST_FILE &&
+          !key.startsWith(`${PATHS.WORKFLOW_BODY_DIR}/`),
+      ),
+    );
     writeHashesV2(hashFile, hashes);
 
     await update({ force: true });
 
     const updated = fs.readFileSync(workflowPath, "utf-8");
-    expect(updated).toBe(replacePythonCommandLiterals(workflowMdTemplate));
-    expect(updated).toContain("[codex-sub-agent]");
-    expect(updated).toContain("[codex-inline, Kilo, Antigravity, Windsurf]");
-    expect(updated).not.toContain("[Codex]");
-    expect(updated).not.toContain("[Kilo, Antigravity, Windsurf]");
-    expect(updated).not.toContain("legacy body");
+    const expected = replacePythonCommandLiterals(workflowYamlTemplate);
+    expect(updated).toBe(expected);
+    expect(updated).toContain("workflow_states:");
+    expect(updated).toContain("body_file: .trellis/workflow/states/in_progress.md");
+    expect(fs.readFileSync(legacyWorkflowPath, "utf-8")).toBe(
+      customLegacyWorkflow,
+    );
+    expect(
+      fs.readFileSync(
+        path.join(tmpDir, PATHS.WORKFLOW_BODY_DIR, "steps", "2.1.md"),
+        "utf-8",
+      ),
+    ).toContain("[codex-sub-agent]");
 
-    expect(readHashesV2(hashFile)[PATHS.WORKFLOW_GUIDE_FILE]).toBe(
+    expect(readHashesV2(hashFile)[PATHS.WORKFLOW_MANIFEST_FILE]).toBe(
       computeHash(updated),
+    );
+    expect(
+      readHashesV2(hashFile)[`${PATHS.WORKFLOW_BODY_DIR}/steps/2.1.md`],
+    ).toBe(
+      computeHash(
+        replacePythonCommandLiterals(
+          getWorkflowBodyFiles().get("steps/2.1.md") ?? "",
+        ),
+      ),
     );
   });
 });

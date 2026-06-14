@@ -18,7 +18,7 @@ Look for the `<!-- trellis-hook-injected -->` marker in your input above.
 ## Context
 
 Before implementing, read:
-- `.trellis/workflow.md` - Project workflow
+- `.trellis/workflow.yaml` - Project workflow
 - `.trellis/spec/` - Development guidelines
 - Task `prd.md` - Requirements document
 - Task `info.md` - Technical design (if exists)

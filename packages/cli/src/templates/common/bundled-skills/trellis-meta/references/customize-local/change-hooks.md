@@ -8,7 +8,7 @@ Hooks are the automation layer that connects a platform to Trellis. When the use
 2. Target platform hooks directory
 3. `.trellis/scripts/common/active_task.py`
 4. `.trellis/scripts/common/session_context.py`
-5. `.trellis/workflow.md`
+5. `.trellis/workflow.yaml`
 
 ## Common Hook Types
 
@@ -25,7 +25,7 @@ Hooks are the automation layer that connects a platform to Trellis. When the use
 2. Confirm the registered script path exists.
 3. Read the hook script and identify inputs, outputs, and called `.trellis/scripts/`.
 4. Modify hook behavior.
-5. If the hook depends on workflow content, synchronize `.trellis/workflow.md`.
+5. If the hook depends on workflow content, synchronize `.trellis/workflow.yaml`.
 
 ## Example: Change New-Session Injection Content
 

@@ -1,0 +1,9 @@
+{
+  "version": "0.6.0-beta.22",
+  "description": "Beta patch: remove the duplicated pull-based prelude from the generated Codex sub-agent toml files, and restore the 0.5.19 migration manifest that was missing on the beta branch.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(codex): the generated `.codex/agents/trellis-check.toml` and `trellis-implement.toml` no longer contain the \"Required: Load Trellis Context First\" prelude twice. The codex toml source templates carried an inline copy that predated the code-injected prelude (`injectPullBasedPreludeToml`); the injector then added a second copy. The inline copies are removed so the injector is the single source, and a regression test asserts the prelude appears exactly once across all class-2 platforms.\n- fix(migrations): restore `src/migrations/manifests/0.5.19.json`, which was missing on the 0.6.0-beta branch. Its absence broke the manifest-continuity guard and would break `trellis update` for users on 0.5.19.",
+  "migrations": [],
+  "notes": "Beta patch on top of 0.6.0-beta.21. Run `trellis update` to regenerate `.codex/agents/` without the duplicated prelude."
+}

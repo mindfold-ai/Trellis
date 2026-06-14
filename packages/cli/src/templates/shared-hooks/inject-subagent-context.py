@@ -248,7 +248,7 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
         print(
             f"[inject-subagent-context] WARN: {jsonl_path} has no curated "
             f"entries (only seed / empty) — sub-agent will receive only "
-            f"prd.md. See workflow.md Phase 1.3 for curation guidance.",
+            f"prd.md. See workflow.yaml Phase 1.3 for curation guidance.",
             file=sys.stderr,
         )
 

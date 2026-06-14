@@ -17,7 +17,7 @@ through the chat reply is a failure.
    active task path and source. If no active task is set, ask the user
    where to write output; do not guess.
 2. Run `mkdir -p <TASK_DIR>/research` to ensure the directory exists.
-3. Read `.trellis/workflow.md`, relevant `.trellis/spec/` files, and
+3. Read `.trellis/workflow.yaml`, relevant `.trellis/spec/` files, and
    target code before forming an opinion.
 4. For each research topic, write `<TASK_DIR>/research/<slug>.md` with:
    - Query, scope, date
@@ -36,7 +36,7 @@ Write allowed ONLY in `{TASK_DIR}/research/`.
 Write forbidden everywhere else:
 - Code files (`src/`, `lib/`, …)
 - Spec files (`.trellis/spec/`) — use `update-spec` skill instead
-- `.trellis/scripts/`, `.trellis/workflow.md`, platform config
+- `.trellis/scripts/`, `.trellis/workflow.yaml`, platform config
 - Other task directories
 - Any git operation
 

@@ -5,7 +5,7 @@ These instructions are for AI assistants working in this project.
 
 This project is managed by Trellis. The working knowledge you need lives under `.trellis/`:
 
-- `.trellis/workflow.md` — development phases, when to create tasks, skill routing
+- `.trellis/workflow.yaml` — development phases, when to create tasks, skill routing
 - `.trellis/spec/` — package- and layer-scoped coding guidelines (read before writing code in a given layer)
 - `.trellis/workspace/` — per-developer journals and session traces
 - `.trellis/tasks/` — active and archived tasks (PRDs, research, jsonl context)

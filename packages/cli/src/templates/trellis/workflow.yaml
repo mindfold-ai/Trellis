@@ -1,0 +1,158 @@
+# Trellis workflow structured manifest.
+# Runtime parsers read this file first. Long prose lives under .trellis/workflow/*.md.
+schema_version: 1
+title: Development Workflow
+runtime_source: .trellis/workflow.yaml
+body_root: .trellis/workflow
+
+phase_index:
+  diagram:
+    - "Phase 1: Plan    → figure out what to do (brainstorm + research → prd.md)"
+    - "Phase 2: Execute → write code and pass quality checks"
+    - "Phase 3: Finish  → distill lessons + wrap-up"
+  extra_body_file: .trellis/workflow/index-extra.md
+
+platform_groups:
+  agent_capable:
+    platforms:
+      - Claude Code
+      - Cursor
+      - OpenCode
+      - codex-sub-agent
+      - Kiro
+      - Gemini
+      - Qoder
+      - CodeBuddy
+      - Copilot
+      - Droid
+      - Pi
+  inline_capable:
+    platforms:
+      - codex-inline
+      - Kilo
+      - Antigravity
+      - Windsurf
+
+workflow_states:
+  no_task:
+    phase: pre_plan
+    body_file: .trellis/workflow/states/no_task.md
+  planning:
+    phase: 1
+    body_file: .trellis/workflow/states/planning.md
+  planning-inline:
+    phase: 1
+    body_file: .trellis/workflow/states/planning-inline.md
+  in_progress:
+    phase: 2
+    body_file: .trellis/workflow/states/in_progress.md
+  in_progress-inline:
+    phase: 2
+    body_file: .trellis/workflow/states/in_progress-inline.md
+  completed:
+    phase: 3
+    body_file: .trellis/workflow/states/completed.md
+
+phases:
+  1:
+    title: Plan
+    label: Phase 1
+    summary: figure out what to do (brainstorm + research → prd.md)
+    status: planning
+    steps:
+      1.0:
+        title: Create task
+        requirement: required
+        cardinality: once
+        summary: just `task.py create`; status enters planning
+        body_file: .trellis/workflow/steps/1.0.md
+      1.1:
+        title: Requirement exploration
+        requirement: required
+        cardinality: repeatable
+        summary: load `trellis-brainstorm` and iterate on prd.md
+        body_file: .trellis/workflow/steps/1.1.md
+      1.2:
+        title: Research
+        requirement: optional
+        cardinality: repeatable
+        summary: research when needed and persist findings
+        body_file: .trellis/workflow/steps/1.2.md
+      1.3:
+        title: Configure context
+        requirement: required
+        cardinality: once
+        summary: curate implement/check JSONL context for sub-agent-capable platforms
+        body_file: .trellis/workflow/steps/1.3.md
+      1.4:
+        title: Activate task
+        requirement: required
+        cardinality: once
+        summary: run `task.py start`; status → in_progress
+        body_file: .trellis/workflow/steps/1.4.md
+      1.5:
+        title: Completion criteria
+        requirement: required
+        cardinality: checkpoint
+        summary: confirm PRD, user approval, context, and task status readiness
+        body_file: .trellis/workflow/steps/1.5.md
+  2:
+    title: Execute
+    label: Phase 2
+    summary: write code and pass quality checks
+    status: in_progress
+    steps:
+      2.1:
+        title: Implement
+        requirement: required
+        cardinality: repeatable
+        summary: implement against the PRD and specs
+        body_file: .trellis/workflow/steps/2.1.md
+      2.2:
+        title: Quality check
+        requirement: required
+        cardinality: repeatable
+        summary: review/fix against specs and PRD, then verify
+        body_file: .trellis/workflow/steps/2.2.md
+      2.3:
+        title: Rollback
+        requirement: on_demand
+        cardinality: repeatable
+        summary: roll back to the right phase when implementation or PRD is wrong
+        body_file: .trellis/workflow/steps/2.3.md
+  3:
+    title: Finish
+    label: Phase 3
+    summary: distill lessons + wrap-up
+    status: in_progress
+    steps:
+      3.1:
+        title: Quality verification
+        requirement: required
+        cardinality: repeatable
+        summary: final spec/lint/type-check/test verification
+        body_file: .trellis/workflow/steps/3.1.md
+      3.2:
+        title: Debug retrospective
+        requirement: on_demand
+        cardinality: repeatable
+        summary: load `trellis-break-loop` when repeated debugging happened
+        body_file: .trellis/workflow/steps/3.2.md
+      3.3:
+        title: Spec update
+        requirement: required
+        cardinality: once
+        summary: evaluate and capture reusable knowledge
+        body_file: .trellis/workflow/steps/3.3.md
+      3.4:
+        title: Commit changes
+        requirement: required
+        cardinality: once
+        summary: plan and create task work commits before finish-work
+        body_file: .trellis/workflow/steps/3.4.md
+      3.5:
+        title: Wrap-up reminder
+        requirement: required
+        cardinality: once
+        summary: remind the user to run `/finish-work`
+        body_file: .trellis/workflow/steps/3.5.md

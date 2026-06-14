@@ -84,7 +84,7 @@ Inject initial context when a Claude Code session starts.
 - Developer identity from `.trellis/.developer`
 - Git status and recent commits
 - Current task (if the session-scoped resolver finds one)
-- `workflow.md` content
+- workflow overview rendered from `.trellis/workflow.yaml` and body files
 - All `spec/*/index.md` files
 - Start instructions
 

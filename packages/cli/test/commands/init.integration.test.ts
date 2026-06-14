@@ -144,6 +144,32 @@ describe("init() integration", () => {
     ).toBe(true);
   });
 
+  it("writes Chinese locale config and generated guidance", async () => {
+    await init({ yes: true, user: "wang", locale: "zh" });
+
+    const config = fs.readFileSync(
+      path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+      "utf-8",
+    );
+    expect(config).toContain("language: zh");
+
+    const agents = fs.readFileSync(path.join(tmpDir, FILE_NAMES.AGENTS), "utf-8");
+    expect(agents).toContain("# Trellis 说明");
+    expect(agents).toContain("由 Trellis 管理");
+
+    const prd = fs.readFileSync(
+      path.join(
+        tmpDir,
+        PATHS.TASKS,
+        "00-bootstrap-guidelines",
+        FILE_NAMES.PRD,
+      ),
+      "utf-8",
+    );
+    expect(prd).toContain("Bootstrap 任务");
+    expect(prd).toContain("记录现实，不写愿望");
+  });
+
   it("#1b does not print the promotional pain-point block", async () => {
     await init({ yes: true });
 
@@ -563,24 +589,26 @@ describe("init() integration", () => {
   it("#4 force mode overwrites previously modified files", async () => {
     await init({ yes: true, force: true });
 
-    const workflowMd = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
-    const original = fs.readFileSync(workflowMd, "utf-8");
-    fs.writeFileSync(workflowMd, "user modified content");
+    const workflowManifest = path.join(tmpDir, PATHS.WORKFLOW_MANIFEST_FILE);
+    const original = fs.readFileSync(workflowManifest, "utf-8");
+    fs.writeFileSync(workflowManifest, "user modified content");
 
     await init({ yes: true, force: true });
 
-    expect(fs.readFileSync(workflowMd, "utf-8")).toBe(original);
+    expect(fs.readFileSync(workflowManifest, "utf-8")).toBe(original);
   });
 
   it("#5 skip mode preserves previously modified files", async () => {
     await init({ yes: true, force: true });
 
-    const workflowMd = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
-    fs.writeFileSync(workflowMd, "user modified content");
+    const workflowManifest = path.join(tmpDir, PATHS.WORKFLOW_MANIFEST_FILE);
+    fs.writeFileSync(workflowManifest, "user modified content");
 
     await init({ yes: true, skipExisting: true });
 
-    expect(fs.readFileSync(workflowMd, "utf-8")).toBe("user modified content");
+    expect(fs.readFileSync(workflowManifest, "utf-8")).toBe(
+      "user modified content",
+    );
   });
 
   it("#6 re-init with force produces identical file set", async () => {

@@ -24,10 +24,10 @@ Initialize your AI development session and begin working on tasks.
 First, read the workflow guide to understand the development process:
 
 ```bash
-cat .trellis/workflow.md
+cat .trellis/workflow.yaml
 ```
 
-**Follow the instructions in workflow.md** - it contains:
+**Follow the instructions in workflow.yaml** - it contains:
 - Core principles (Read Before Write, Follow Standards, etc.)
 - File system structure
 - Development process
@@ -273,7 +273,7 @@ Task(
 
 **Step 6: Configure Context** `[AI]`
 
-`implement.jsonl` and `check.jsonl` were seeded on `task.py create` with a single self-describing `_example` line. Curate real entries now (see workflow.md Phase 1.3 for the full rule):
+`implement.jsonl` and `check.jsonl` were seeded on `task.py create` with a single self-describing `_example` line. Curate real entries now (see workflow.yaml Phase 1.3 for the full rule):
 
 - Put **spec files** (`.trellis/spec/<package>/<layer>/*.md`) and **research files** (`{TASK_DIR}/research/*.md`) only.
 - Do NOT put code files — those are read during implementation, not pre-registered here.

@@ -6,8 +6,9 @@
  */
 
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Locale } from "../../i18n/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,11 +21,34 @@ function readLocalTemplate(filename: string): string {
   return readFileSync(filePath, "utf-8");
 }
 
+function localizedFilename(filename: string, locale: Locale): string {
+  if (locale === "en") return filename;
+  const ext = extname(filename);
+  if (!ext) return `${filename}.${locale}`;
+  return `${filename.slice(0, -ext.length)}.${locale}${ext}`;
+}
+
+function readLocalizedTemplate(filename: string, locale: Locale): string {
+  if (locale !== "en") {
+    try {
+      return readLocalTemplate(localizedFilename(filename, locale));
+    } catch {
+      // Localized template coverage is incremental. Fall back to English until
+      // a sibling file exists for this exact template.
+    }
+  }
+  return readLocalTemplate(filename);
+}
+
 // =============================================================================
 // Root files for new projects
 // =============================================================================
 
-export const agentsMdContent: string = readLocalTemplate("agents.md");
+export function getAgentsMdContent(locale: Locale = "en"): string {
+  return readLocalizedTemplate("agents.md", locale);
+}
+
+export const agentsMdContent: string = getAgentsMdContent("en");
 
 // Workspace index template (developer work records)
 export const workspaceIndexContent: string =

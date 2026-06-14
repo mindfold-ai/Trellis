@@ -64,7 +64,7 @@ src/
 │   │   ├── spec/        # Spec templates (*.md.txt)
 │   │   ├── agents.md    # Project root file template
 │   │   └── index.ts     # Template exports
-│   └── trellis/         # .trellis/ workflow templates (scripts, workflow.md)
+│   └── trellis/         # .trellis/ workflow templates (scripts, workflow.yaml, workflow/)
 ├── types/               # TypeScript type definitions
 │   └── ai-tools.ts      # AI tool types and registry
 ├── utils/               # Shared utility functions
@@ -104,7 +104,10 @@ These directories are copied to `dist/` during build and used as templates:
 │   ├── cli/             # CLI package specs (backend/, unit-test/)
 │   ├── docs-site/       # Docs package specs (docs/)
 │   └── guides/          # Thinking guides
-├── workflow.md          # Workflow documentation (dogfooded)
+├── workflow.yaml        # Structured workflow manifest (dogfooded)
+├── workflow/            # Workflow body markdown files (dogfooded)
+│   ├── states/          # Per-status breadcrumb bodies
+│   └── steps/           # Per-step phase bodies
 └── .gitignore           # Git ignore rules (dogfooded)
 ```
 
@@ -121,7 +124,8 @@ Files that are copied directly from Trellis project to user projects:
 | `.cursor/` | `.cursor/` | Entire directory copied |
 | `.claude/` | `.claude/` | Entire directory copied |
 | `.trellis/scripts/` | `.trellis/scripts/` | All scripts copied |
-| `.trellis/workflow.md` | `.trellis/workflow.md` | Direct copy |
+| `.trellis/workflow.yaml` | `.trellis/workflow.yaml` | Direct copy |
+| `.trellis/workflow/` | `.trellis/workflow/` | Workflow body markdown files |
 | `.trellis/.gitignore` | `.trellis/.gitignore` | Direct copy |
 | `.trellis/workspace/index.md` | `.trellis/workspace/index.md` | Direct copy |
 
@@ -148,7 +152,8 @@ dist/
 │   ├── scripts/       # All scripts (no multi_agent/)
 │   ├── workspace/
 │   │   └── index.md   # Only index.md, no developer subdirs
-│   ├── workflow.md
+│   ├── workflow.yaml
+│   ├── workflow/
 │   └── .gitignore
 └── templates/         # From src/templates/ (no .ts files)
     ├── common/        # Shared command + skill templates

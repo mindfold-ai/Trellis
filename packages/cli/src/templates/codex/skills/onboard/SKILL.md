@@ -71,7 +71,8 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 ```
 .trellis/
 |-- .developer              # Your identity (gitignored)
-|-- workflow.md             # Complete workflow documentation
+|-- workflow.yaml           # Structured workflow manifest
+|-- workflow/               # Workflow body markdown files
 |-- workspace/              # "AI Memory" - session history
 |   |-- index.md            # All developers' progress
 |   +-- {developer}/        # Per-developer directory

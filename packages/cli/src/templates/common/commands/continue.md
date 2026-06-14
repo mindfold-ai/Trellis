@@ -1,6 +1,6 @@
 # Continue Current Task
 
-Resume work on the current task — pick up at the right phase/step in `.trellis/workflow.md`.
+Resume work on the current task — pick up at the right phase/step in `.trellis/workflow.yaml`.
 
 ---
 
@@ -32,7 +32,7 @@ Shows the Phase Index (Plan / Execute / Finish) with routing + skill mapping.
 - `status=in_progress` + check passed → **3.1**
 - `status=completed` (rare; usually archived immediately) → archive flow
 
-Phase rules (full detail in `.trellis/workflow.md`):
+Phase rules (full detail in `.trellis/workflow.yaml`):
 
 1. Run steps **in order** within a phase — `[required]` steps must not be skipped
 2. `[once]` steps are already done if the output exists (e.g., `prd.md` for 1.1; `implement.jsonl` with curated entries for 1.3) — skip them
@@ -52,4 +52,4 @@ Follow the loaded instructions. After each `[required]` step completes, move to 
 
 ## Reference
 
-Full workflow, skill routing table, and the DO-NOT-skip table live in `.trellis/workflow.md`. This command is only an entry point — the canonical guidance is there.
+Full workflow, skill routing table, and the DO-NOT-skip table live in `.trellis/workflow.yaml`. This command is only an entry point — the canonical guidance is there.

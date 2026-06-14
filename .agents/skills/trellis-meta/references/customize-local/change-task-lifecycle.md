@@ -4,7 +4,7 @@ Task lifecycle includes creation, start, context configuration, finish, archive,
 
 ## Read These Files First
 
-1. `.trellis/workflow.md`
+1. `.trellis/workflow.yaml`
 2. `.trellis/config.yaml`
 3. `.trellis/scripts/task.py`
 4. `.trellis/scripts/common/task_store.py`
@@ -62,16 +62,16 @@ Active task is session-level state stored in `.trellis/.runtime/sessions/`. Do n
 
 - `.trellis/scripts/common/active_task.py`
 - platform hooks or shell session bridges
-- active task descriptions in `.trellis/workflow.md`
+- active task descriptions in `.trellis/workflow.yaml`
 
 ### `task.py create` Sets the Active Pointer
 
 `cmd_create` in `.trellis/scripts/common/task_store.py` calls `set_active_task` best-effort right after writing the new task directory. The behavior:
 
-- When the calling shell carries session identity (`TRELLIS_CONTEXT_ID` env var, or any platform-specific session env that `resolve_context_key` recognizes — see `active_task.py:_ENV_SESSION_KEYS`), the per-session pointer at `.trellis/.runtime/sessions/<context_key>.json` is rewritten to point at the new task. The task's `status=planning` and `[workflow-state:planning]` fires on the very next `UserPromptSubmit`.
+- When the calling shell carries session identity (`TRELLIS_CONTEXT_ID` env var, or any platform-specific session env that `resolve_context_key` recognizes — see `active_task.py:_ENV_SESSION_KEYS`), the per-session pointer at `.trellis/.runtime/sessions/<context_key>.json` is rewritten to point at the new task. The task's `status=planning` makes the `planning` workflow-state body fire on the very next `UserPromptSubmit`.
 - When session identity is unavailable (raw CLI invocation outside an AI session, or a platform that doesn't propagate identity to shell), the task directory is still created and `status=planning` is still written, but the active pointer is left untouched. The user can attach the task later with `task.py start <dir>` once they're back in an AI session.
 
-This makes `[workflow-state:planning]` the live breadcrumb during the brainstorm and JSONL curation work that follows `task.py create`. The pre-R7 behavior left the breadcrumb stuck on `no_task` until `task.py start`, so the planning block was effectively dead text.
+This makes the `planning` workflow-state body the live breadcrumb during the brainstorm and JSONL curation work that follows `task.py create`. The pre-R7 behavior left the breadcrumb stuck on `no_task` until `task.py start`, so the planning body was effectively dead text.
 
 If you fork `task.py` to add a new creation path (e.g. an external import that bypasses `cmd_create`), audit whether your path also calls `set_active_task`. Without that call, your created tasks will not surface as active. The full status writer table is in `.trellis/spec/cli/backend/workflow-state-contract.md`.
 
@@ -81,7 +81,7 @@ If you fork `task.py` to add a new creation path (e.g. an external import that b
 2. Read the current task's `task.json` and confirm status and fields.
 3. For configuration needs, edit `.trellis/config.yaml` first.
 4. For script behavior needs, then edit `.trellis/scripts/`.
-5. If the AI flow changed, synchronize `.trellis/workflow.md`.
+5. If the AI flow changed, synchronize `.trellis/workflow.yaml`.
 
 ## Do Not
 

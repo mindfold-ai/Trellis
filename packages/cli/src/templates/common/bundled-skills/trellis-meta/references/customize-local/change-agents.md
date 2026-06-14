@@ -5,7 +5,7 @@ When the user wants to change `trellis-research`, `trellis-implement`, or `trell
 ## Read These Files First
 
 1. Target platform agent directory
-2. `.trellis/workflow.md` Phase 2 / research routing
+2. `.trellis/workflow.yaml` Phase 2 / research routing
 3. Current task `prd.md`
 4. Current task `implement.jsonl` / `check.jsonl`
 5. Relevant hook or agent prelude

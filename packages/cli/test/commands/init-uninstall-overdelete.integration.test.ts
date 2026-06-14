@@ -246,13 +246,13 @@ describe("init + uninstall: manifest accuracy + homedir guard", () => {
     // most common "not-in-collectTemplates-but-important" case. (Migration
     // paths share the same preservation logic in pruneOrphanManifestKeys.)
     const hashes = loadHashes(tmpDir);
-    hashes[".trellis/workflow.md"] = "ok";
+    hashes[".trellis/workflow.yaml"] = "ok";
     saveHashes(tmpDir, hashes);
 
     await update({});
 
     // .trellis/* entries are kept.
-    expect(loadHashes(tmpDir)).toHaveProperty(".trellis/workflow.md");
+    expect(loadHashes(tmpDir)).toHaveProperty(".trellis/workflow.yaml");
   });
 
   // ----- R2: homedir guard -----

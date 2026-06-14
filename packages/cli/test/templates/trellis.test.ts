@@ -14,9 +14,10 @@ import {
   taskScript,
   getContextScript,
   addSessionScript,
-  workflowMdTemplate,
+  workflowYamlTemplate,
   gitignoreTemplate,
   getAllScripts,
+  getWorkflowBodyFiles,
 } from "../../src/templates/trellis/index.js";
 
 // =============================================================================
@@ -39,18 +40,24 @@ describe("trellis template constants", () => {
     taskScript,
     getContextScript,
     addSessionScript,
-    workflowMdTemplate,
+    workflowYamlTemplate,
     gitignoreTemplate,
   };
 
   function inProgressBreadcrumb(): string {
-    const inProgressMatch = /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/.exec(
-      workflowMdTemplate,
-    );
-    if (!inProgressMatch) {
-      throw new Error("in_progress breadcrumb block must exist in workflow.md");
+    const block = getWorkflowBodyFiles().get("states/in_progress.md");
+    if (!block) {
+      throw new Error("in_progress breadcrumb body must exist");
     }
-    return inProgressMatch[1];
+    return block;
+  }
+
+  function stepBody(step: string): string {
+    const body = getWorkflowBodyFiles().get(`steps/${step}.md`);
+    if (!body) {
+      throw new Error(`step ${step} body must exist`);
+    }
+    return body;
   }
 
   it("all templates are non-empty strings", () => {
@@ -82,11 +89,22 @@ describe("trellis template constants", () => {
     expect(scriptsInit).toContain('"""');
   });
 
-  it("workflowMdTemplate is markdown", () => {
-    expect(workflowMdTemplate).toContain("#");
+  it("workflowYamlTemplate is a structured workflow manifest", () => {
+    expect(workflowYamlTemplate).toContain("schema_version:");
+    expect(workflowYamlTemplate).toContain("workflow_states:");
+    expect(workflowYamlTemplate).toContain("body_file:");
   });
 
-  it("[issue-225] workflow.md in_progress breadcrumb has class-2 sub-agent dispatch protocol", () => {
+  it("workflow body templates are present and non-empty", () => {
+    const bodies = getWorkflowBodyFiles();
+    expect(bodies.get("states/in_progress.md")).toBeDefined();
+    expect(bodies.get("steps/2.1.md")).toBeDefined();
+    for (const [name, content] of bodies) {
+      expect(content.length, `${name} should be non-empty`).toBeGreaterThan(0);
+    }
+  });
+
+  it("[issue-225] in_progress breadcrumb has class-2 sub-agent dispatch protocol", () => {
     // The in_progress breadcrumb instructs the main agent to prefix
     // dispatch prompts with "Active task: <path>" on class-2 platforms.
     // Without this line, codex/copilot/gemini/qoder sub-agents cannot
@@ -97,7 +115,7 @@ describe("trellis template constants", () => {
     expect(block).toMatch(/codex|copilot|gemini|qoder/);
   });
 
-  it("[issue-237] workflow.md in_progress breadcrumb self-exempts implement/check sub-agents", () => {
+  it("[issue-237] in_progress breadcrumb self-exempts implement/check sub-agents", () => {
     // The in_progress breadcrumb may be injected into sub-agent turns on some
     // hosts, so its main-session dispatch guidance must not recursively apply
     // to a sub-agent that is already doing the requested work.
@@ -111,18 +129,20 @@ describe("trellis template constants", () => {
     expect(block).toContain("main session only");
   });
 
-  it("[issue-237] workflow.md Phase 2 dispatch steps require prompt recursion guards", () => {
-    expect(workflowMdTemplate).toContain("**Dispatch prompt guard**");
-    expect(workflowMdTemplate).toContain(
+  it("[issue-237] Phase 2 dispatch steps require prompt recursion guards", () => {
+    const implementStep = stepBody("2.1");
+    const checkStep = stepBody("2.2");
+    expect(implementStep).toContain("**Dispatch prompt guard**");
+    expect(implementStep).toContain(
       "already the `trellis-implement` sub-agent",
     );
-    expect(workflowMdTemplate).toContain(
+    expect(implementStep).toContain(
       "not spawn another `trellis-implement` / `trellis-check`",
     );
-    expect(workflowMdTemplate).toContain(
+    expect(checkStep).toContain(
       "already the `trellis-check` sub-agent",
     );
-    expect(workflowMdTemplate).toContain(
+    expect(checkStep).toContain(
       "not spawn another `trellis-check` / `trellis-implement`",
     );
   });
@@ -149,6 +169,7 @@ describe("getAllScripts", () => {
     expect(scripts.has("common/__init__.py")).toBe(true);
     expect(scripts.has("common/paths.py")).toBe(true);
     expect(scripts.has("common/active_task.py")).toBe(true);
+    expect(scripts.has("common/workflow_model.py")).toBe(true);
     expect(scripts.has("task.py")).toBe(true);
     expect(scripts.has("get_developer.py")).toBe(true);
   });

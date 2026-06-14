@@ -50,6 +50,8 @@ import {
   commonGitContext,
   commonSessionContext,
   getAllScripts,
+  workflowYamlTemplate,
+  getWorkflowBodyFiles,
 } from "../src/templates/trellis/index.js";
 import {
   collectPlatformTemplates,
@@ -1227,6 +1229,24 @@ describe("regression: current-task path normalization", () => {
     fs.writeFileSync(absPath, content, "utf-8");
   }
 
+  function writeWorkflowTemplates(): void {
+    writeProjectFile(path.join(".trellis", "workflow.yaml"), workflowYamlTemplate);
+    for (const [relativePath, content] of getWorkflowBodyFiles()) {
+      writeProjectFile(path.join(".trellis", "workflow", relativePath), content);
+    }
+  }
+
+  function writeWorkflowStateBodies(bodies: Record<string, string>): void {
+    const lines = ["schema_version: 1", "workflow_states:"];
+    for (const [status, body] of Object.entries(bodies)) {
+      const bodyPath = `.trellis/workflow/states/${status}.md`;
+      lines.push(`  ${status}:`);
+      lines.push(`    body_file: ${bodyPath}`);
+      writeProjectFile(path.join(".trellis", "workflow", "states", `${status}.md`), body);
+    }
+    writeProjectFile(path.join(".trellis", "workflow.yaml"), `${lines.join("\n")}\n`);
+  }
+
   function writeLegacyCurrentTask(taskRef: string): void {
     writeProjectFile(path.join(".trellis", ".current-task"), `${taskRef}\n`);
   }
@@ -1295,7 +1315,7 @@ describe("regression: current-task path normalization", () => {
       path.join(".trellis", ".developer"),
       "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
     );
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    writeWorkflowTemplates();
     writeProjectFile(
       path.join(".trellis", "spec", "guides", "index.md"),
       "# Guides\n",
@@ -1501,7 +1521,7 @@ describe("regression: current-task path normalization", () => {
       path.join(".trellis", ".developer"),
       "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
     );
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    writeWorkflowTemplates();
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
@@ -1542,7 +1562,7 @@ describe("regression: current-task path normalization", () => {
       path.join(".trellis", ".developer"),
       "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
     );
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    writeWorkflowTemplates();
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     // sessionEnv() with no overrides drops every session-identity env var.
@@ -1572,7 +1592,7 @@ describe("regression: current-task path normalization", () => {
       path.join(".trellis", ".developer"),
       "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
     );
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    writeWorkflowTemplates();
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
@@ -1698,7 +1718,7 @@ describe("regression: current-task path normalization", () => {
       path.join(".trellis", ".developer"),
       "name=test-dev\ninitialized_at=2026-03-27T00:00:00\n",
     );
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Workflow\n");
+    writeWorkflowTemplates();
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -2741,10 +2761,6 @@ describe("regression: current-task path normalization", () => {
     fs.writeFileSync(taskJsonPath, JSON.stringify(data, null, 2));
   }
 
-  function writeWorkflowMd(body: string): void {
-    writeProjectFile(path.join(".trellis", "workflow.md"), body);
-  }
-
   function runInjectWorkflowState(cwdOverride?: string): string {
     return runInjectWorkflowStateWithInput({
       cwd: cwdOverride ?? tmpDir,
@@ -2759,15 +2775,15 @@ describe("regression: current-task path normalization", () => {
     );
   }
 
-  it("[workflow-state] missing/empty workflow.md degrades to generic line (post-R5: no fallback dict)", () => {
+  it("[workflow-state] missing/empty workflow.yaml degrades to generic line (post-R5: no fallback dict)", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     writeWorkflowStateHook();
-    // overwrite workflow.md with empty content (no tag blocks). After
+    // Overwrite workflow.yaml with empty content. After
     // v0.5.0-rc.0 the fallback dict was removed — the hook now degrades
-    // to the generic "Refer to workflow.md" line so users see (and fix) the
+    // to the generic "Refer to workflow.yaml" line so users see (and fix) the
     // broken state instead of being silently masked by hardcoded text.
-    writeWorkflowMd("# Empty\n");
+    writeProjectFile(path.join(".trellis", "workflow.yaml"), "");
 
     const output = runInjectWorkflowState();
     const parsed = JSON.parse(output) as {
@@ -2777,7 +2793,7 @@ describe("regression: current-task path normalization", () => {
       "Task: issue-106 (in_progress)",
     );
     expect(parsed.hookSpecificOutput.additionalContext).toContain(
-      "Refer to workflow.md",
+      "Refer to workflow.yaml",
     );
     // Hardcoded fallback wording must NOT appear post-R5
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain(
@@ -2785,18 +2801,14 @@ describe("regression: current-task path normalization", () => {
     );
   });
 
-  it("[workflow-state] in_progress tag in workflow.md mentions Phase 3.4 commit (R1 invariant)", () => {
+  it("[workflow-state] in_progress body mentions Phase 3.4 commit (R1 invariant)", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     writeWorkflowStateHook();
-    // Write a workflow.md containing only the in_progress tag with the
-    // canonical Phase 3.4 commit reminder. This guards against future
-    // regressions that omit Phase 3.4 from the per-turn breadcrumb.
-    writeWorkflowMd(
-      "[workflow-state:in_progress]\n" +
-        "Flow: trellis-implement → trellis-check → trellis-update-spec → commit (Phase 3.4) → /trellis:finish-work\n" +
-        "[/workflow-state:in_progress]\n",
-    );
+    writeWorkflowStateBodies({
+      in_progress:
+        "Flow: trellis-implement → trellis-check → trellis-update-spec → commit (Phase 3.4) → /trellis:finish-work\n",
+    });
 
     const parsed = JSON.parse(runInjectWorkflowState()) as {
       hookSpecificOutput: { additionalContext: string };
@@ -2806,19 +2818,19 @@ describe("regression: current-task path normalization", () => {
     );
   });
 
-  it("[workflow-state] workflow.md tag overrides hardcoded fallback", () => {
+  it("[workflow-state] workflow state body overrides hardcoded fallback", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     writeWorkflowStateHook();
-    writeWorkflowMd(
-      "[workflow-state:in_progress]\nCUSTOM BODY from workflow.md\n[/workflow-state:in_progress]\n",
-    );
+    writeWorkflowStateBodies({
+      in_progress: "CUSTOM BODY from workflow.yaml body file\n",
+    });
 
     const parsed = JSON.parse(runInjectWorkflowState()) as {
       hookSpecificOutput: { additionalContext: string };
     };
     expect(parsed.hookSpecificOutput.additionalContext).toContain(
-      "CUSTOM BODY from workflow.md",
+      "CUSTOM BODY from workflow.yaml body file",
     );
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain(
       "trellis-implement → trellis-check",
@@ -2827,7 +2839,7 @@ describe("regression: current-task path normalization", () => {
 
   it("[workflow-state-r5] inject-workflow-state.py contains no _FALLBACK_BREADCRUMBS dict (post-rc.0 collapse)", () => {
     // R5: the fallback breadcrumb dict was removed in v0.5.0-rc.0 to
-    // collapse three sources (workflow.md / py / js) to one. This test
+    // collapse three sources (workflow.yaml body files / py / js) to one. This test
     // guards against accidental re-introduction.
     const py = injectWorkflowStateScript ?? "";
     expect(py).not.toMatch(/_FALLBACK_BREADCRUMBS\s*=\s*\{/);
@@ -2842,14 +2854,14 @@ describe("regression: current-task path normalization", () => {
     expect(js).not.toMatch(/const\s+FALLBACK_BREADCRUMBS\s*=\s*\{/);
   });
 
-  it("[workflow-state] custom status with hyphen matches via regex", () => {
+  it("[workflow-state] custom status with hyphen loads from workflow.yaml", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     writeWorkflowStateHook();
     setStatus("in-review");
-    writeWorkflowMd(
-      "[workflow-state:in-review]\nTeam review pending\n[/workflow-state:in-review]\n",
-    );
+    writeWorkflowStateBodies({
+      "in-review": "Team review pending\n",
+    });
 
     const parsed = JSON.parse(runInjectWorkflowState()) as {
       hookSpecificOutput: { additionalContext: string };
@@ -2862,12 +2874,14 @@ describe("regression: current-task path normalization", () => {
     );
   });
 
-  it("[workflow-state] unknown status with no tag emits generic fallback, not silent", () => {
+  it("[workflow-state] unknown status with no body emits generic fallback, not silent", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     writeWorkflowStateHook();
     setStatus("weirdstate");
-    writeWorkflowMd("# no matching tags\n");
+    writeWorkflowStateBodies({
+      in_progress: "Known body only\n",
+    });
 
     const output = runInjectWorkflowState();
     expect(output.trim()).not.toBe("");
@@ -2878,7 +2892,7 @@ describe("regression: current-task path normalization", () => {
       "Task: issue-106 (weirdstate)",
     );
     expect(parsed.hookSpecificOutput.additionalContext).toContain(
-      "Refer to workflow.md",
+      "Refer to workflow.yaml",
     );
   });
 
@@ -2901,15 +2915,12 @@ describe("regression: current-task path normalization", () => {
   it("[workflow-state] no_task breadcrumb emitted when no session active task exists", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    // Post-R5: breadcrumb body is read exclusively from workflow.md tag
-    // blocks. Provide a minimal no_task tag so the test can assert the
+    // Post-R5: breadcrumb body is read exclusively from workflow.yaml body
+    // files. Provide a minimal no_task body so the test can assert the
     // routing to trellis-brainstorm content surfaces.
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:no_task]\n" +
-        "No active task. Load `trellis-brainstorm` skill to start.\n" +
-        "[/workflow-state:no_task]\n",
-    );
+    writeWorkflowStateBodies({
+      no_task: "No active task. Load `trellis-brainstorm` skill to start.\n",
+    });
     writeLegacyCurrentTask(".trellis/tasks/issue-106");
     writeWorkflowStateHook();
     // Legacy repo-global state must not suppress the session no_task breadcrumb.
@@ -3182,27 +3193,16 @@ print(len(entries))
   //   Now returns Phase Index + Phase 1/2/3 bodies (was Phase Index only).
   // ------------------------------------------------------------
 
-  function templateWorkflowMd(): string {
-    const { readFileSync } = fs;
-    const { dirname, join: pathJoin } = path;
-    const templatePath = pathJoin(
-      dirname(fileURLToPath(import.meta.url)),
-      "..",
-      "src",
-      "templates",
-      "trellis",
-      "workflow.md",
-    );
-    return readFileSync(templatePath, "utf-8");
+  function templateWorkflowBody(relativePath: string): string {
+    const body = getWorkflowBodyFiles().get(relativePath);
+    if (!body) {
+      throw new Error(`Missing workflow body template: ${relativePath}`);
+    }
+    return body;
   }
 
-  it("[workflow-state-r1] template workflow.md [workflow-state:in_progress] mentions commit (Phase 3.4)", () => {
-    const wf = templateWorkflowMd();
-    const match = wf.match(
-      /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/,
-    );
-    expect(match).toBeTruthy();
-    const body = match?.[1] ?? "";
+  it("[workflow-state-r1] template in_progress body mentions commit (Phase 3.4)", () => {
+    const body = templateWorkflowBody("states/in_progress.md");
     expect(body).toMatch(/commit \(Phase 3\.4\)/i);
   });
 
@@ -3243,7 +3243,7 @@ print(len(entries))
         "main session",
       );
       expect(content, `${relativePath} should mention workflow-state safety`).toMatch(
-        /workflow-state breadcrumbs|workflow.md/,
+        /workflow-state breadcrumbs|workflow.yaml/,
       );
 
       if (relativePath.includes("implement")) {
@@ -3303,88 +3303,34 @@ print(len(entries))
     }
   });
 
-  it("[workflow-state-r2] template workflow.md [workflow-state:planning] mentions Phase 1.3 + jsonl curation", () => {
-    const wf = templateWorkflowMd();
-    const match = wf.match(
-      /\[workflow-state:planning\]([\s\S]*?)\[\/workflow-state:planning\]/,
-    );
-    expect(match).toBeTruthy();
-    const body = match?.[1] ?? "";
+  it("[workflow-state-r2] template planning body mentions Phase 1.3 + jsonl curation", () => {
+    const body = templateWorkflowBody("states/planning.md");
     expect(body).toMatch(/Phase 1\.3/);
     expect(body).toMatch(/implement\.jsonl|check\.jsonl/);
   });
 
-  it("[workflow-state-r3-no_task] template workflow.md [workflow-state:no_task] block is present and well-formed", () => {
-    const wf = templateWorkflowMd();
-    expect(wf).toMatch(
-      /\[workflow-state:no_task\]\s*\n[\s\S]+?\n\s*\[\/workflow-state:no_task\]/,
-    );
+  it("[workflow-state-r3-no_task] template no_task body is present", () => {
+    expect(templateWorkflowBody("states/no_task.md").trim().length).toBeGreaterThan(0);
   });
 
-  it("[workflow-state-r3-completed] template workflow.md [workflow-state:completed] block is present and well-formed", () => {
-    const wf = templateWorkflowMd();
-    expect(wf).toMatch(
-      /\[workflow-state:completed\]\s*\n[\s\S]+?\n\s*\[\/workflow-state:completed\]/,
-    );
+  it("[workflow-state-r3-completed] template completed body is present", () => {
+    expect(templateWorkflowBody("states/completed.md").trim().length).toBeGreaterThan(0);
   });
 
-  it("[strip-breadcrumb] _strip_breadcrumb_tag_blocks only strips matched STATUS pairs (backreference parity with parser)", () => {
-    // Finding 1: the strip regex previously used [A-Za-z0-9_-]+ on both ends,
-    // accepting [workflow-state:A]...[/workflow-state:B]. The parser uses \1
-    // backreference to require matched STATUS. Tightening the strip regex to
-    // use the same backreference closes the contract gap.
-    const sessionStartScript = getSharedHookScripts().find(
-      (hook) => hook.name === "session-start.py",
-    )?.content;
-    writeProjectFile(
-      path.join(".claude", "hooks", "session-start.py"),
-      expectTemplateContent(sessionStartScript, "shared session-start"),
+  it("[workflow-yaml] manifest references state and step body files", () => {
+    expect(workflowYamlTemplate).toContain("workflow_states:");
+    expect(workflowYamlTemplate).toContain(
+      "body_file: .trellis/workflow/states/in_progress.md",
     );
-
-    // Each probe writes a fenced result so newlines in stripped output are
-    // preserved; the JS side parses by splitting on the END marker.
-    const probe = [
-      "import importlib.util, pathlib, json",
-      "spec = importlib.util.spec_from_file_location('ss', pathlib.Path('.claude/hooks/session-start.py'))",
-      "mod = importlib.util.module_from_spec(spec)",
-      "spec.loader.exec_module(mod)",
-      "matched = '[workflow-state:planning]\\nbody\\n[/workflow-state:planning]'",
-      "mismatched = '[workflow-state:planning]\\nbody\\n[/workflow-state:in_progress]'",
-      "nested_orphan = '[workflow-state:planning]\\nbody1\\n[/workflow-state:other]\\ntail\\n[/workflow-state:planning]'",
-      "result = {'M': mod._strip_breadcrumb_tag_blocks(matched), 'X': mod._strip_breadcrumb_tag_blocks(mismatched), 'N': mod._strip_breadcrumb_tag_blocks(nested_orphan)}",
-      "print(json.dumps(result))",
-    ].join("; ");
-    const output = execSync(`${pythonCmd} -c ${JSON.stringify(probe)}`, {
-      cwd: tmpDir,
-      encoding: "utf-8",
-    });
-    const lastLine = output
-      .split("\n")
-      .filter((l) => l.startsWith("{"))
-      .pop();
-    const result = JSON.parse(lastLine ?? "{}") as Record<string, string>;
-
-    // Matched pair: stripped (empty string).
-    expect(result.M).toBe("");
-    // Mismatched pair: NOT stripped — full input preserved.
-    expect(result.X).toContain("[workflow-state:planning]");
-    expect(result.X).toContain("[/workflow-state:in_progress]");
-    // Nested orphan: outer pair matches via \1 backreference and gets
-    // stripped as one unit. Either fully stripped or fully preserved —
-    // never partial (no dangling [/workflow-state:other] orphan).
-    if (result.N !== "") {
-      expect(result.N).toContain("[workflow-state:planning]");
-      expect(result.N).toContain("[/workflow-state:planning]");
-    }
+    expect(workflowYamlTemplate).toContain(
+      "body_file: .trellis/workflow/steps/2.1.md",
+    );
   });
 
   it("[workflow-v2] get_context.py --mode phase returns Phase Index + Phase 1/2/3 step bodies", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
 
     const contextScript = path.join(
       tmpDir,
@@ -3413,10 +3359,7 @@ print(len(entries))
   it("[workflow-v2] --mode phase --platform codex (sub-agent mode) filters out generic before-dev routing", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
     // Codex defaults to inline since 0.5.9; opt into sub-agent dispatch
     // explicitly so the legacy spawn-trellis-implement block surfaces.
     writeConfigYaml("codex:\n  dispatch_mode: sub-agent\n");
@@ -3442,10 +3385,7 @@ print(len(entries))
   it("[pi] --mode phase --platform pi uses sub-agent routing", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
 
     const contextScript = path.join(
       tmpDir,
@@ -3469,10 +3409,7 @@ print(len(entries))
   it("[workflow-v2] step 2.1 for codex (sub-agent mode) describes self-loaded agent context, not hook injection", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
     // Codex defaults to inline since 0.5.9; opt into sub-agent dispatch
     // explicitly so the [codex-sub-agent] block surfaces.
     writeConfigYaml("codex:\n  dispatch_mode: sub-agent\n");
@@ -3499,10 +3436,7 @@ print(len(entries))
   it("[pi] step 2.1 describes extension-backed sub-agent context path", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
 
     const contextScript = path.join(
       tmpDir,
@@ -3526,10 +3460,7 @@ print(len(entries))
     // see `trellis-before-dev` because they write code in the main session.
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
 
     const contextScript = path.join(
       tmpDir,
@@ -3553,10 +3484,7 @@ print(len(entries))
   it("[workflow-v2] session-start.py <workflow> block contains Phase 1/2/3 step bodies", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
     writeProjectFile(
       path.join(".claude", "hooks", "session-start.py"),
       expectTemplateContent(claudeSessionStart, "shared session-start"),
@@ -3590,10 +3518,7 @@ print(len(entries))
   it("[workflow-v2] session-start.py <guidelines> block lists spec paths, not inlined content", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
     // Guides — must be inlined
     writeProjectFile(
       path.join(".trellis", "spec", "guides", "index.md"),
@@ -3645,7 +3570,7 @@ print(len(entries))
 
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(path.join(".trellis", "workflow.md"), "# Minimal\n");
+    writeWorkflowTemplates();
     // Session active task WITHOUT current_phase field (post-migration state)
     writeProjectFile(
       path.join(".trellis", ".runtime", "sessions", "claude_phase-a.json"),
@@ -3740,19 +3665,20 @@ print(len(entries))
     writeProjectFile(path.join(".trellis", "config.yaml"), content);
   }
 
+  function writeCodexModeWorkflowStates(): void {
+    writeWorkflowStateBodies({
+      in_progress:
+        "DISPATCH the trellis-implement / trellis-check sub-agents.\n",
+      "in_progress-inline":
+        "MAIN SESSION edits code via trellis-before-dev directly.\n",
+    });
+  }
+
   it("[issue-codex-dispatch-mode] codex breadcrumb defaults to inline dispatch when config absent", () => {
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     const codexHookPath = writeCodexInjectHook();
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:in_progress]\n" +
-        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
-        "[/workflow-state:in_progress]\n" +
-        "[workflow-state:in_progress-inline]\n" +
-        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
-        "[/workflow-state:in_progress-inline]\n",
-    );
+    writeCodexModeWorkflowStates();
 
     const parsed = JSON.parse(
       runPython(codexHookPath, JSON.stringify({ cwd: tmpDir, session_id: "workflow-a" })),
@@ -3766,15 +3692,7 @@ print(len(entries))
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     const codexHookPath = writeCodexInjectHook();
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:in_progress]\n" +
-        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
-        "[/workflow-state:in_progress]\n" +
-        "[workflow-state:in_progress-inline]\n" +
-        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
-        "[/workflow-state:in_progress-inline]\n",
-    );
+    writeCodexModeWorkflowStates();
     writeConfigYaml("codex:\n  dispatch_mode: sub-agent\n");
 
     const parsed = JSON.parse(
@@ -3789,15 +3707,7 @@ print(len(entries))
     setupTaskRepo();
     writeSessionContext("session_workflow-a", ".trellis/tasks/issue-106");
     const codexHookPath = writeCodexInjectHook();
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:in_progress]\n" +
-        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
-        "[/workflow-state:in_progress]\n" +
-        "[workflow-state:in_progress-inline]\n" +
-        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
-        "[/workflow-state:in_progress-inline]\n",
-    );
+    writeCodexModeWorkflowStates();
     writeConfigYaml("codex:\n  dispatch_mode: inline\n");
 
     const parsed = JSON.parse(
@@ -3822,15 +3732,7 @@ print(len(entries))
       claudeHookPath,
       expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
     );
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:in_progress]\n" +
-        "DISPATCH the trellis-implement / trellis-check sub-agents.\n" +
-        "[/workflow-state:in_progress]\n" +
-        "[workflow-state:in_progress-inline]\n" +
-        "MAIN SESSION edits code via trellis-before-dev directly.\n" +
-        "[/workflow-state:in_progress-inline]\n",
-    );
+    writeCodexModeWorkflowStates();
     writeConfigYaml("codex:\n  dispatch_mode: inline\n");
 
     const parsed = JSON.parse(
@@ -3844,10 +3746,7 @@ print(len(entries))
   it("[issue-codex-dispatch-mode] get_context.py --platform codex swaps to inline block content", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      templateWorkflowMd(),
-    );
+    writeWorkflowTemplates();
     writeConfigYaml("codex:\n  dispatch_mode: inline\n");
 
     const contextScript = path.join(
@@ -4007,10 +3906,10 @@ print(len(entries))
       codexHookPath,
       expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
     );
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:in_progress]\nDISPATCH the trellis-implement.\n[/workflow-state:in_progress]\n[workflow-state:in_progress-inline]\nMAIN SESSION inline edit.\n[/workflow-state:in_progress-inline]\n",
-    );
+    writeWorkflowStateBodies({
+      in_progress: "DISPATCH the trellis-implement.\n",
+      "in_progress-inline": "MAIN SESSION inline edit.\n",
+    });
 
     // Default (no config.yaml) → inline banner.
     const defaultRun = JSON.parse(
@@ -4043,10 +3942,9 @@ print(len(entries))
       claudeHookPath,
       expectTemplateContent(injectWorkflowStateScript, "inject-workflow-state"),
     );
-    writeProjectFile(
-      path.join(".trellis", "workflow.md"),
-      "[workflow-state:in_progress]\nDISPATCH the trellis-implement.\n[/workflow-state:in_progress]\n",
-    );
+    writeWorkflowStateBodies({
+      in_progress: "DISPATCH the trellis-implement.\n",
+    });
     writeConfigYaml("codex:\n  dispatch_mode: inline\n");
 
     const result = JSON.parse(
@@ -5196,7 +5094,7 @@ describe("regression: pi uses TypeScript extension assets instead of Python hook
 describe("regression: research agent persists findings to task dir", () => {
   // Every platform's research agent must:
   //   1. Have a Write tool (or platform equivalent) — otherwise it cannot
-  //      fulfill workflow.md step 1.2 "调研产出必须写入文件".
+  //      fulfill workflow.yaml step 1.2 "调研产出必须写入文件".
   //   2. Explicitly tell the agent to write under {TASK_DIR}/research/.
   //   3. NOT have "Modify any files" as a blanket forbidden rule (that
   //      contradicts the persist requirement).
@@ -5707,10 +5605,10 @@ describe("regression: sub-agent context injection fallback (0.5.3)", () => {
     }
   });
 
-  it("workflow.md dispatch protocol covers all platforms (not class-2 only)", () => {
+  it("workflow.yaml in_progress dispatch protocol covers all platforms (not class-2 only)", () => {
     const workflowPath = path.join(
       repoRootFb,
-      "packages/cli/src/templates/trellis/workflow.md",
+      "packages/cli/src/templates/trellis/workflow/states/in_progress.md",
     );
     const wf = fs.readFileSync(workflowPath, "utf-8");
     // The protocol enforces `Active task: <path>` for ALL sub-agents (no

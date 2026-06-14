@@ -78,7 +78,7 @@ Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` (o
 ## Relationship to Other Commands
 
 ```
-Development Flow (workflow.md Phase 3):
+Development Flow (workflow.yaml Phase 3):
   3.1 Quality verification
   3.2 Debug retrospective (on demand)
   3.3 Spec update

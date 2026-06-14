@@ -271,33 +271,38 @@ Even with the manifest contract above, `trellis init` and `trellis uninstall` re
 - Unit: `pruneOrphanManifestKeys` — preserves all four classes above; rewrites manifest only when pruned.length > 0.
 - Unit: `isCwdHomedir` — symlinked home matches; subdirectory does NOT match; Windows case-insensitive.
 
-### `workflow.md` whole-file update contract
+### `workflow.yaml` + body-file update contract
 
-`.trellis/workflow.md` is not only documentation. It is runtime input for
-`get_context.py`, `workflow_phase.py`, SessionStart strippers, and per-turn
-workflow-state hooks.
+`.trellis/workflow.yaml` and `.trellis/workflow/**/*.md` are runtime input for
+`get_context.py`, `workflow_model.py`, `workflow_phase.py`, SessionStart
+workflow rendering, and per-turn workflow-state hooks.
 
-`trellis update` must therefore keep `workflow.md` on the normal whole-file
-template path:
+`trellis update` must therefore manage the structured workflow as a template
+set:
 
-- If the installed file's current hash matches the tracked hash, update the
-  entire file to the packaged template and refresh the tracked hash.
-- If the installed file was edited by the user, use the standard
+- If an installed workflow file's current hash matches the tracked hash, update
+  that entire file to the packaged template and refresh the tracked hash.
+- If an installed workflow file was edited by the user, use the standard
   modified-file decision path (`confirm`, `--force`, or `--skip`).
-- Do not partially merge only `[workflow-state:*]` tag blocks.
+- If a new manifest or body file is missing, create it from the packaged
+  template and hash-track it.
+- Do not partially merge legacy `[workflow-state:*]` tag blocks.
+- Remove pristine legacy `.trellis/workflow.md` via hash-verified
+  safe-file-delete. Preserve locally modified legacy copies for manual porting;
+  runtime no longer reads them.
 
-Reason: runtime-significant routing markers and phase headings also live
-outside `[workflow-state:*]` blocks. A partial tag-block merge can update hook
+Reason: runtime-significant routing markers and phase headings live in
+referenced body files. A partial breadcrumb-only merge can update hook
 breadcrumbs while leaving stale platform blocks, for example `[Codex]` instead
 of `[codex-inline]` / `[codex-sub-agent]`, causing `get_context.py --mode phase
 --platform codex` to return empty or wrong step detail after upgrade.
 
-Regression coverage for this belongs in versioned update integration tests,
-not only fresh-init template tests: write the older `.trellis/.version`, stage
-older hash-tracked template files, run `trellis update`, then assert the
-installed files reach the current packaged shape and the version stamp advances.
-For runtime templates such as `workflow.md`, the scenario must also assert that
-runtime markers such as Codex virtual platform blocks are present after update.
+Regression coverage for this belongs in versioned update integration tests, not
+only fresh-init template tests: write the older `.trellis/.version`, stage an
+old project shape, run `trellis update`, then assert `workflow.yaml`, body
+files, tracked hashes, and version stamp reach the current packaged shape. For
+runtime templates, the scenario must also assert that markers such as Codex
+virtual platform blocks are present in the relevant body file after update.
 
 ## CLI 使用
 

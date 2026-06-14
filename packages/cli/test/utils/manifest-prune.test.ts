@@ -30,7 +30,7 @@ describe("pruneOrphanManifestKeys", () => {
 
   it("preserves every .trellis/* entry regardless of platform-collect output", () => {
     const hashes = {
-      ".trellis/workflow.md": "h1",
+      ".trellis/workflow.yaml": "h1",
       ".trellis/scripts/task.py": "h2",
       ".trellis/config.yaml": "h3",
     };
@@ -117,7 +117,7 @@ describe("pruneOrphanManifestKeys", () => {
 
   it("persists pruned manifest to disk by default", () => {
     const hashes = {
-      ".trellis/workflow.md": "h1",
+      ".trellis/workflow.yaml": "h1",
       ".codex/sessions/user.jsonl": "orphan",
     };
     saveHashes(tmpDir, hashes);
@@ -127,12 +127,12 @@ describe("pruneOrphanManifestKeys", () => {
     expect(pruned).toEqual([".codex/sessions/user.jsonl"]);
     // Disk should reflect the prune.
     expect(loadHashes(tmpDir)).not.toHaveProperty(".codex/sessions/user.jsonl");
-    expect(loadHashes(tmpDir)).toHaveProperty(".trellis/workflow.md");
+    expect(loadHashes(tmpDir)).toHaveProperty(".trellis/workflow.yaml");
   });
 
   it("does NOT write disk when persist=false", () => {
     const hashes = {
-      ".trellis/workflow.md": "h1",
+      ".trellis/workflow.yaml": "h1",
       ".codex/sessions/user.jsonl": "orphan",
     };
     saveHashes(tmpDir, hashes);
@@ -144,7 +144,7 @@ describe("pruneOrphanManifestKeys", () => {
   });
 
   it("does NOT rewrite disk when nothing was pruned", () => {
-    const hashes = { ".trellis/workflow.md": "h1" };
+    const hashes = { ".trellis/workflow.yaml": "h1" };
     saveHashes(tmpDir, hashes);
 
     const hashFile = path.join(tmpDir, ".trellis", ".template-hashes.json");

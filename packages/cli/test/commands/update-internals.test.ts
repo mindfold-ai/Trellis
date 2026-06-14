@@ -252,7 +252,8 @@ describe("shouldExcludeFromBackup", () => {
   it.each([
     ".claude/commands/trellis/continue.md",
     ".claude/skills/trellis-check/SKILL.md",
-    ".trellis/workflow.md",
+    ".trellis/workflow.yaml",
+    ".trellis/workflow/states/in_progress.md",
     ".trellis/scripts/get_context.py",
     ".agents/skills/trellis-check/SKILL.md",
   ])("includes managed file %s", (p) => {

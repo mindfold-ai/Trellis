@@ -33,7 +33,7 @@ Operations in this document are categorized as:
 First, read the workflow guide to understand the development process:
 
 ```bash
-cat .trellis/workflow.md  # Development process, conventions, and quick start guide
+cat .trellis/workflow.yaml  # Development process, conventions, and quick start guide
 ```
 
 ### Step 2: Get Current Status `[AI]`

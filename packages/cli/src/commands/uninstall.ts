@@ -43,8 +43,10 @@ import {
   scrubCodexConfigToml,
   type ScrubResult,
 } from "../utils/uninstall-scrubbers.js";
+import { resolveLocale, setLocale, t } from "../i18n/index.js";
 
 export interface UninstallOptions {
+  locale?: string;
   yes?: boolean;
   dryRun?: boolean;
 }
@@ -265,7 +267,7 @@ async function promptContinue(): Promise<boolean> {
     {
       type: "confirm",
       name: "proceed",
-      message: "Continue?",
+      message: t("uninstall.continue"),
       default: true,
     },
   ]);
@@ -380,15 +382,12 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
   }
 
   const cwd = process.cwd();
+  setLocale(resolveLocale({ cliLocale: options.locale, cwd }));
   const trellisDir = path.join(cwd, DIR_NAMES.WORKFLOW);
 
   // Pre-check 1: must have a `.trellis/` directory.
   if (!fs.existsSync(trellisDir)) {
-    console.log(
-      chalk.gray(
-        "Trellis is not installed in this project (no .trellis/ directory found).",
-      ),
-    );
+    console.log(chalk.gray(t("uninstall.notInstalled")));
     return;
   }
 
@@ -436,7 +435,7 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
   renderPlan(cwd, plan);
 
   if (options.dryRun) {
-    console.log(chalk.gray("Dry run — no files were modified."));
+    console.log(chalk.gray(t("uninstall.dryRun")));
     return;
   }
 
@@ -459,7 +458,7 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
 
     const ok = await promptContinue();
     if (!ok) {
-      console.log(chalk.yellow("Uninstall cancelled. No files modified."));
+      console.log(chalk.yellow(t("uninstall.cancelled")));
       return;
     }
   }
@@ -469,9 +468,11 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
   console.log();
   console.log(
     chalk.green(
-      `Uninstalled trellis: ${summary.deletedFiles} files deleted, ` +
-        `${summary.modifiedFiles} files modified, ` +
-        `${summary.deletedDirs} directories removed.`,
+      t("uninstall.complete", {
+        deletedFiles: summary.deletedFiles,
+        modifiedFiles: summary.modifiedFiles,
+        deletedDirs: summary.deletedDirs,
+      }),
     ),
   );
 }

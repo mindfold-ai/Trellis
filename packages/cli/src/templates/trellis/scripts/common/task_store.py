@@ -113,7 +113,7 @@ def _repo_relative_path(path: Path, repo_root: Path) -> str:
 
 # Config directories of platforms that consume implement.jsonl / check.jsonl.
 # Keep in sync with src/types/ai-tools.ts AI_TOOLS entries — these are the
-# platforms listed in workflow.md's "agent-capable" Skill Routing block
+# platforms listed in workflow.yaml's "agent-capable" Skill Routing block
 # (Class-1 hook-inject + Class-2 pull-based preludes). Kilo / Antigravity /
 # Windsurf are NOT in this list: they do not consume JSONL.
 _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
@@ -265,7 +265,7 @@ def cmd_create(args: argparse.Namespace) -> int:
     write_json(task_json_path, task_data)
 
     # Seed implement.jsonl / check.jsonl for sub-agent-capable platforms.
-    # Agent curates real entries in Phase 1.3 (see .trellis/workflow.md).
+    # Agent curates real entries in Phase 1.3 (see .trellis/workflow.yaml).
     # Agent-less platforms (Kilo / Antigravity / Windsurf) skip this — they
     # load specs via the trellis-before-dev skill instead of JSONL.
     seeded_jsonl = False
@@ -321,7 +321,7 @@ def cmd_create(args: argparse.Namespace) -> int:
     if seeded_jsonl:
         print(
             "  2. Curate implement.jsonl / check.jsonl (spec + research files only — "
-            "see .trellis/workflow.md Phase 1.3)",
+            "see .trellis/workflow.yaml Phase 1.3)",
             file=sys.stderr,
         )
         print("  3. Run: python3 task.py start <dir>", file=sys.stderr)

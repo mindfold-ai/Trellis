@@ -34,6 +34,10 @@ export const FILE_NAMES = {
   /** Requirements document */
   PRD: "prd.md",
   /** Workflow guide */
+  WORKFLOW_MANIFEST: "workflow.yaml",
+  /** Workflow body directory */
+  WORKFLOW_BODY_DIR: "workflow",
+  /** @deprecated Use WORKFLOW_MANIFEST instead. */
   WORKFLOW_GUIDE: "workflow.md",
   /** Journal file prefix */
   JOURNAL_PREFIX: "journal-",
@@ -55,7 +59,11 @@ export const PATHS = {
   DEVELOPER_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.DEVELOPER}`,
   /** .trellis/.current-task */
   CURRENT_TASK_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.CURRENT_TASK}`,
-  /** .trellis/workflow.md */
+  /** .trellis/workflow.yaml */
+  WORKFLOW_MANIFEST_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_MANIFEST}`,
+  /** .trellis/workflow/ */
+  WORKFLOW_BODY_DIR: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_BODY_DIR}`,
+  /** @deprecated .trellis/workflow.md legacy file path */
   WORKFLOW_GUIDE_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_GUIDE}`,
 } as const;
 

@@ -15,52 +15,46 @@ pull-based prelude on class-2 platforms. Host behavior can still surface the
 breadcrumb inside sub-agent turns, though, and hooks do not currently expose a
 stable main-vs-sub-agent identity signal. Therefore: **every `[required · once]`
 step that the workflow-walkthrough mandates for a given phase must also be
-mentioned in that phase's breadcrumb tag block, and breadcrumb text must be
+mentioned in that phase's breadcrumb body file, and breadcrumb text must be
 safe when read by a sub-agent.** If required steps are absent, the AI in the
 main session will silently skip them. Two production bugs (Phase 1.3 jsonl
 curation skip, Phase 3.4 commit skip) hit exactly this failure mode.
 
 This document is the source of truth for the runtime mechanics. The user-facing
-breadcrumb body lives in `.trellis/workflow.md`; this spec covers everything
+breadcrumb body lives in `.trellis/workflow.yaml`; this spec covers everything
 **around** it (parsers, writers, lifecycle, reachability).
 
 ---
 
-## Marker syntax
+## Manifest Syntax
 
-Each breadcrumb body lives in a managed block of `.trellis/workflow.md`:
+Each breadcrumb body is declared in `.trellis/workflow.yaml` and stored as a
+plain Markdown file under `.trellis/workflow/`:
 
-```
-[workflow-state:STATUS]
-<one or more lines of body text>
-[/workflow-state:STATUS]
-```
-
-- STATUS character set: `[A-Za-z0-9_-]+` (letters, digits, underscores,
-  hyphens). Examples: `planning`, `in_progress`, `in-review`, `blocked-by-team`.
-- The body is read verbatim and inlined into the `<workflow-state>` block.
-- Both the opening and closing tags must end with the same STATUS string.
-
-The regex used by both the Python hook (`packages/cli/src/templates/shared-hooks/inject-workflow-state.py`)
-and the OpenCode plugin (`packages/cli/src/templates/opencode/plugins/inject-workflow-state.js`)
-is:
-
-```
-[workflow-state:([A-Za-z0-9_-]+)]\s*\n(.*?)\n\s*[/workflow-state:\1]
+```yaml
+workflow_states:
+  in_progress:
+    phase: 2
+    body_file: .trellis/workflow/states/in_progress.md
 ```
 
-### Invariant: parser regex ↔ strip regex must use the same `\1` backreference
+- STATUS keys are YAML map keys and may include letters, digits, underscores,
+  and hyphens. Examples: `planning`, `in_progress`, `in-review`,
+  `blocked-by-team`.
+- `body_file` is required for a status to emit a custom body.
+- Body files are read verbatim and inlined into the `<workflow-state>` block.
+- Body files are ordinary Markdown. They do not contain `[workflow-state:*]`
+  wrapper tags, and hooks must not parse tag blocks.
 
-There are two regex consumers of the marker syntax:
+The Python loader for `get_context.py` and Python hooks lives in
+`common/workflow_model.py`. OpenCode and Pi have lightweight JS/TS readers that
+load the same manifest shape. All three implementations must agree on:
 
-1. **Parser** — extracts tag content for breadcrumb emission. Lives in `inject-workflow-state.py` (`_TAG_RE`) and `inject-workflow-state.js`.
-2. **Stripper** — removes tag blocks from the workflow.md range injected at SessionStart (so AI doesn't read each block twice — once in the workflow overview, once in the per-turn breadcrumb). Lives in `session-start.py` (shared / codex / copilot copies), `workflow_phase.py`, and any future SessionStart-equivalent script.
-
-Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za-z0-9_-]+)]...[/workflow-state:\1]` — so they only match well-formed pairs (same STATUS on open and close). A non-backreference variant like `[workflow-state:[A-Za-z0-9_-]+]...[/workflow-state:[A-Za-z0-9_-]+]` permits `STATUS_A...STATUS_B` mismatches, which can swallow surrounding content if a user typo'd the closing tag.
-
-**Symptom of drift**: parser would refuse to emit content for a typo'd block (because parser uses `\1`), but stripper would silently consume it from the SessionStart payload (because stripper used the loose form). End result: the AI never sees that content via either channel — silent loss.
-
-**Test invariant**: `test/regression.test.ts` `[strip-breadcrumb] _strip_breadcrumb_tag_blocks only strips matched STATUS pairs` covers the three boundary cases (matched, mismatched, nested orphan) for the strip side. The parser already enforces same-status pairing structurally via `\1`.
+1. `.trellis/workflow.yaml` as the manifest path.
+2. `workflow_states.<status>.body_file` as the breadcrumb body pointer.
+3. `phases.<phase>.steps.<step>.body_file` as the phase-step body pointer.
+4. `Refer to workflow.yaml for current step.` as the generic missing-body
+   fallback.
 
 ---
 
@@ -73,11 +67,12 @@ Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za
    per-session active task. If absent → status is the pseudo `no_task`. If
    the pointer is stale (task dir deleted) → status is `stale_<source_type>`.
 4. Otherwise it reads `task.json.status` from the resolved task directory.
-5. It opens `.trellis/workflow.md` and parses every `[workflow-state:STATUS]`
-   block.
+5. It opens `.trellis/workflow.yaml`, reads `workflow_states`, and resolves
+   each `body_file` path relative to the project root.
 6. It looks up the current status in the parsed map. If found → emits the
-   block body in `<workflow-state>...</workflow-state>`. If not found →
-   emits the generic line `Refer to workflow.md for current step.`
+   referenced body file in `<workflow-state>...</workflow-state>`. If not found
+   or the body file is missing → emits the generic line
+   `Refer to workflow.yaml for current step.`
 7. The output JSON has shape:
 
    ```json
@@ -109,37 +104,40 @@ Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za
 
 ## Source of truth
 
-`workflow.md` is **the only editable source** for breadcrumb body text. The
-hook scripts (`.py` and `.js`) contain only the parser, no fallback text.
+`.trellis/workflow.yaml` plus `.trellis/workflow/**/*.md` are **the only
+editable sources** for breadcrumb body text. Hook scripts (`.py`, `.js`, and
+Pi `.ts`) contain only manifest/body-file loaders, no fallback body text.
 
 **Why no fallback dicts**: prior to v0.5.0-beta.20, both hook scripts shipped
 a `_FALLBACK_BREADCRUMBS` / `FALLBACK_BREADCRUMBS` dict mirroring the
-workflow.md content. The mirror inevitably drifted (different word polish in
+workflow body content. The mirror inevitably drifted (different word polish in
 each file), and the architecture invited copy-paste skew. Removing the
-fallback collapses three sources to one. When `workflow.md` is missing or a
-tag is absent, the hook degrades to the generic line — visible to the user as
-an obvious bug they can fix, rather than being silently masked.
+fallback collapses three sources to one. When `workflow.yaml` is missing or a
+body file is absent, the hook degrades to the generic line — visible to the user
+as an obvious bug they can fix, rather than being silently masked.
 
-To customize breadcrumb wording, edit the `[workflow-state:STATUS]` block in
-`.trellis/workflow.md`. No script change required.
+To customize breadcrumb wording, edit the `body_file` target for the status in
+`.trellis/workflow.yaml` and then edit that Markdown body file. No script
+change required.
 
 ### Update boundary
 
-The `[workflow-state:STATUS]` blocks are not the only runtime-sensitive
-content in `workflow.md`. Phase headings, step headings, and platform marker
-blocks such as `[codex-inline, Kilo, Antigravity, Windsurf]` are parsed by
-`workflow_phase.py` / `get_context.py` when step-specific instructions are
-loaded.
+`workflow.yaml` is not only a breadcrumb index. Phase headings, step headings,
+and platform marker blocks inside referenced step bodies are parsed by
+`workflow_model.py` / `workflow_phase.py` / `get_context.py` when step-specific
+instructions are loaded.
 
-For that reason, `trellis update` must update `workflow.md` as one managed
-template file whenever the installed file still matches its tracked template
-hash. It must not partially merge only `[workflow-state:*]` blocks. User edits
-are protected by the normal hash-based modified-file flow, not by preserving
-arbitrary prose outside tag blocks during automatic updates.
+For that reason, `trellis update` must hash-track and update `workflow.yaml`
+and every `.trellis/workflow/**/*.md` body file as managed runtime templates
+whenever each installed file still matches its tracked template hash. It must
+not partially merge legacy `[workflow-state:*]` blocks. User edits are
+protected by the normal hash-based modified-file flow. Pristine legacy
+`.trellis/workflow.md` files are removed by hash-verified safe-file-delete;
+locally modified legacy copies are preserved for manual porting but are not read
+by runtime.
 
-Regression invariant: an older hash-tracked workflow containing stale Codex
-markers (`[Codex]` plus `[Kilo, Antigravity, Windsurf]`) must be replaced by
-the current packaged template so `--platform codex` can resolve to
+Regression invariant: an older project without `workflow.yaml` must receive the
+current packaged manifest and body files so `--platform codex` can resolve to
 `codex-inline` or `codex-sub-agent` and still load Phase 2.1 detail.
 
 ---
@@ -194,16 +192,16 @@ Which breadcrumbs actually fire in normal flow:
 | `no_task` | ✅ reachable | Pseudo-status; emitted when `resolve_active_task()` returns no pointer. |
 | `planning` | ✅ reachable | After `cmd_create` (which now auto-sets the session pointer when available) and before `cmd_start`. Pre-R7 (v0.5.0-beta.19 and earlier), `cmd_create` did NOT set the pointer, so the breadcrumb stayed at `no_task` until `cmd_start`. R7 made `planning` actually reachable. |
 | `in_progress` | ✅ reachable | After `cmd_start`, until `cmd_archive`. |
-| `completed` | ❌ DEAD in normal flow | `cmd_archive` writes `status="completed"` and immediately moves the task dir to `archive/`. The session-pointer cleanup in `clear_task_from_sessions` runs before the move, so the resolver loses the pointer in the same call. The block body in workflow.md is preserved for a future status-transition redesign (e.g. an explicit `in_progress → completed` command) but no current code path produces it. |
-| `stale_<source_type>` | ✅ reachable (rare) | Synthesized when the session pointer references a deleted task directory. Emits the generic body via `build_breadcrumb` because no `stale_*` tag is shipped. |
+| `completed` | ❌ DEAD in normal flow | `cmd_archive` writes `status="completed"` and immediately moves the task dir to `archive/`. The session-pointer cleanup in `clear_task_from_sessions` runs before the move, so the resolver loses the pointer in the same call. The block body in workflow.yaml is preserved for a future status-transition redesign (e.g. an explicit `in_progress → completed` command) but no current code path produces it. |
+| `stale_<source_type>` | ✅ reachable (rare) | Synthesized when the session pointer references a deleted task directory. Emits the generic body via `build_breadcrumb` because no `stale_*` body is shipped. |
 
 **Test invariant** (`test/regression.test.ts`): for every step marked
-`[required · once]` in the workflow.md walkthrough body, the corresponding
-phase's `[workflow-state:*]` block must mention it. This is the contract
+`[required · once]` in the workflow body files, the corresponding phase's
+breadcrumb body file must mention it. This is the contract
 that prevents Phase-1.3 / Phase-3.4 style drift from re-occurring. See:
 
-- `test that workflow.md [workflow-state:in_progress] mentions commit (Phase 3.4)`
-- `test that workflow.md [workflow-state:planning] mentions Phase 1.3 jsonl curation`
+- `test that the in_progress body mentions commit (Phase 3.4)`
+- `test that the planning body mentions Phase 1.3 jsonl curation`
 
 ---
 
@@ -211,8 +209,8 @@ that prevents Phase-1.3 / Phase-3.4 style drift from re-occurring. See:
 
 Forks can define custom statuses. To do so:
 
-1. Add a `[workflow-state:my-status]...[/workflow-state:my-status]` block to
-   `.trellis/workflow.md` (STATUS charset: `[A-Za-z0-9_-]+`).
+1. Add `workflow_states.my-status.body_file` to `.trellis/workflow.yaml` and
+   create the referenced `.trellis/workflow/states/my-status.md` body file.
 2. Add a lifecycle hook (`task.json.hooks.after_*`) that writes
    `task.json.status = "my-status"` at the appropriate event. Without a
    writer, the tag is never read because no task ever carries that status.
@@ -251,23 +249,25 @@ directly instead of spawning nested Trellis sub-agents.
 
 ## DO
 
-- Edit `.trellis/workflow.md` `[workflow-state:STATUS]` blocks for breadcrumb
-  body changes; never touch the parser scripts.
-- Keep `trellis update` whole-file behavior for hash-tracked `workflow.md`.
-  Breadcrumb tag updates alone are insufficient because platform routing
-  markers outside those tags are runtime input too.
+- Edit `.trellis/workflow/states/<status>.md` body files for breadcrumb body
+  changes; update `.trellis/workflow.yaml` only when adding or moving a body.
+- Keep `trellis update` hash-tracking behavior for `workflow.yaml` and every
+  `.trellis/workflow/**/*.md` body file. Updating only one layer is
+  insufficient because platform routing markers in step body files are runtime
+  input too.
 - Add a writer-table row to this spec when introducing a new status writer.
 - Run the regression tests after editing breadcrumb bodies.
 - When adding a `[required · once]` step to the workflow walkthrough, add a
-  matching enforcement line to that phase's breadcrumb tag block in the
+  matching enforcement line to that phase's breadcrumb body file in the
   same commit.
 
 ## DON'T
 
 - Don't add fallback breadcrumb dicts back to `inject-workflow-state.py` or
   `.js`. Drift is structurally guaranteed.
-- Don't implement special partial merging for `workflow.md` unless every
-  runtime parser that consumes headings, platform blocks, and breadcrumb tags
+- Don't implement special partial merging for `workflow.yaml` or workflow body
+  files unless every runtime parser that consumes headings, platform blocks,
+  and breadcrumb bodies
   has an explicit compatibility strategy and upgrade test coverage.
 - Don't introduce a `task.json.status` writer without updating this spec.
 - Don't subscribe to `after_finish` to detect task completion — it doesn't
@@ -283,13 +283,13 @@ directly instead of spawning nested Trellis sub-agents.
 
 ## Mandatory triggers (must update this spec when changing)
 
-- Marker syntax (regex / charset)
-- Hook script structural change (parser, output envelope, what reads
+- Manifest syntax (`workflow_states`, `body_file`, status charset)
+- Hook script structural change (manifest/body loader, output envelope, what reads
   `task.json.status`)
-- `workflow.md` update semantics in `trellis update`
+- `workflow.yaml` / `.trellis/workflow/**/*.md` update semantics in `trellis update`
 - New `task.json.status` writer (any path that mutates the field)
-- Breadcrumb body that changes the contract (e.g. removing a `[required ·
-  once]` enforcement line — flag in PR description)
+- Breadcrumb body that changes the contract (e.g. removing a `[required · once]`
+  enforcement line — flag in PR description)
 - New lifecycle event added to `run_task_hooks`
 - Reachability changes (e.g. wiring a new status transition that makes
   `completed` reachable)

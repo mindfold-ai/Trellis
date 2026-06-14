@@ -347,17 +347,18 @@ fallbackModels:
     expect(extension).not.toContain("persistent: true");
   });
 
-  it("extension injects per-turn workflow-state breadcrumb from workflow.md tags", () => {
+  it("extension injects per-turn workflow-state breadcrumb from workflow.yaml body files", () => {
     const extension = getExtensionTemplate();
 
     // TS port of shared-hooks/inject-workflow-state.py — Pi is extension-backed
-    // and must not receive Python hook files, so the parser lives inline.
-    expect(extension).toContain("WORKFLOW_STATE_TAG_RE");
-    expect(extension).toContain("workflow-state:([A-Za-z0-9_-]+)");
+    // and must not receive Python hook files, so the YAML/body loader lives inline.
+    expect(extension).toContain('".trellis", "workflow.yaml"');
+    expect(extension).toContain("workflow_states:");
+    expect(extension).toContain("body_file:");
     expect(extension).toContain("function loadWorkflowBreadcrumbs");
     expect(extension).toContain("function buildWorkflowStateBreadcrumb");
     expect(extension).toContain("<workflow-state>");
-    expect(extension).toContain("Refer to workflow.md for current step.");
+    expect(extension).toContain("Refer to workflow.yaml for current step.");
     expect(extension).toContain("no_task");
   });
 
@@ -397,7 +398,7 @@ fallbackModels:
     expect(extension).toContain("promptGuidelines: SUBAGENT_DISPATCH_PROTOCOL");
     // The protocol body must instruct the AI to start dispatch with the
     // canonical "Active task: <path>" line — same wording as
-    // `[workflow-state:in_progress]` in trellis/workflow.md.
+    // the in_progress body file referenced by trellis/workflow.yaml.
     expect(extension).toContain("Active task:");
     expect(extension).toContain("class-1");
     expect(extension).toContain("class-2");

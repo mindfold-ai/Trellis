@@ -10,21 +10,48 @@
  *   │   ├── __init__.py
  *   │   ├── common/           # Shared utilities (Python)
  *   │   └── *.py              # Main scripts (Python)
- *   ├── scripts-shell-archive/ # Archived shell scripts (for reference)
- *   ├── workflow.md           # Workflow guide
+ *   ├── workflow.yaml         # Structured workflow manifest
+ *   ├── workflow/             # Workflow body markdown files
  *   ├── config.yaml            # Trellis configuration
  *   └── gitignore.txt         # .gitignore content
  */
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Locale } from "../../i18n/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 function readTemplate(relativePath: string): string {
   return readFileSync(join(__dirname, relativePath), "utf-8");
+}
+
+function readTemplateDir(relativeDir: string): Map<string, string> {
+  const root = join(__dirname, relativeDir);
+  const files = new Map<string, string>();
+
+  function walk(dir: string): void {
+    const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    for (const entry of entries) {
+      const absPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(absPath);
+        continue;
+      }
+      if (!entry.isFile()) {
+        continue;
+      }
+      const relPath = relative(root, absPath).split(sep).join("/");
+      files.set(relPath, readFileSync(absPath, "utf-8"));
+    }
+  }
+
+  walk(root);
+  return files;
 }
 
 // Python scripts - package init
@@ -56,6 +83,9 @@ export const commonPackagesContext = readTemplate(
 export const commonWorkflowPhase = readTemplate(
   "scripts/common/workflow_phase.py",
 );
+export const commonWorkflowModel = readTemplate(
+  "scripts/common/workflow_model.py",
+);
 export const commonTrellisConfig = readTemplate(
   "scripts/common/trellis_config.py",
 );
@@ -69,9 +99,23 @@ export const getContextScript = readTemplate("scripts/get_context.py");
 export const addSessionScript = readTemplate("scripts/add_session.py");
 
 // Configuration files
-export const workflowMdTemplate = readTemplate("workflow.md");
+export const workflowYamlTemplate = readTemplate("workflow.yaml");
 export const configYamlTemplate = readTemplate("config.yaml");
 export const gitignoreTemplate = readTemplate("gitignore.txt");
+
+export function renderConfigYamlTemplate(locale: Locale = "en"): string {
+  return configYamlTemplate.replace(
+    /^language:\s*(?:en|zh)\s*$/m,
+    `language: ${locale}`,
+  );
+}
+
+/**
+ * Get all workflow body templates as a map of `workflow/`-relative path to content.
+ */
+export function getWorkflowBodyFiles(): Map<string, string> {
+  return readTemplateDir("workflow");
+}
 
 /**
  * Get all script templates as a map of relative path to content
@@ -102,6 +146,7 @@ export function getAllScripts(): Map<string, string> {
   scripts.set("common/session_context.py", commonSessionContext);
   scripts.set("common/packages_context.py", commonPackagesContext);
   scripts.set("common/workflow_phase.py", commonWorkflowPhase);
+  scripts.set("common/workflow_model.py", commonWorkflowModel);
   scripts.set("common/trellis_config.py", commonTrellisConfig);
   scripts.set("common/safe_commit.py", commonSafeCommit);
 
