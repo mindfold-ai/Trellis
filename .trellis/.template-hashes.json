@@ -126,7 +126,7 @@
     ".opencode/agents/trellis-research.md": "2c5135aefe280fd4508554e58c64bd13f5f9fe58b8bb25393e68496b29bfae4e",
     ".trellis/workflow.md": "f4b8a6f89017f62071986d6d36cc32c4c7f01fe6f023f0fd9311eddc57d8c94f",
     ".claude/hooks/inject-workflow-state.py": "0684fb17d0d42b36d1549e9bc0a905d4c06f714e2b2008d74d9ab0d2c1c2b626",
-    ".agents/skills/trellis-brainstorm/SKILL.md": "a1fa18fbd4bf528ce001c8fd013b8099f653c3379d1f7dda054e37e00552a17f",
+    ".agents/skills/trellis-brainstorm/SKILL.md": "17e6e1eb3d0ef7b92b876d4e5632787d54c78e403a927454598dbab6809f4c54",
     ".agents/skills/trellis-update-spec/SKILL.md": "003ce08a3404aeb50998029392c4d4e57b626edf526d3ebd585032bb92dcbb96",
     ".codex/agents/trellis-check.toml": "ba40d588acacfc638bb0282056d1383af91f2a77e8c2dbfce5fb43a9edf3707a",
     ".codex/agents/trellis-implement.toml": "b9a7016f5d482fd56f246d6ad81c82804e648c052df8c809bb01f3b8b6afd3d0",

@@ -142,6 +142,8 @@ Per-platform skill directories (`.claude/skills/`, `.cursor/skills/`, `.qoder/sk
 
 **Codex-only files under `.agents/skills/`** (currently `trellis-continue/SKILL.md` and `trellis-finish-work/SKILL.md`, written via `resolveAllAsSkillsNeutral()`) are an explicit exception: only Codex writes them, so byte-identity across platforms is not required and they may use `{{CLI_FLAG}}` / `{{PYTHON_CMD}}`. They still go through the neutral helper to keep `{{CMD_REF}}` neutralized for consistency with the surrounding shared skills.
 
+**Self-hosted generated files rule**: Checked-in files under `.agents/skills/*/SKILL.md` must be rendered skill outputs, not raw `src/templates/common/skills/*.md` templates. The rendered file must start with YAML frontmatter (`name` + `description`) and all `{{CMD_REF:*}}` placeholders must already be resolved. When manually repairing a generated skill in this repository, recompute the matching `.trellis/.template-hashes.json` entry from the final file bytes; otherwise `trellis update` can misclassify the file as user-modified or template-drifted.
+
 **Wrong**:
 ```typescript
 // Codex configurator
