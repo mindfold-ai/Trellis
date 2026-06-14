@@ -20,7 +20,14 @@ import {
 import { AI_TOOLS, type CliFlag } from "../types/ai-tools.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
 import { VERSION } from "../constants/version.js";
-import { agentsMdContent } from "../templates/markdown/index.js";
+import { getAgentsMdContent } from "../templates/markdown/index.js";
+import {
+  assertLocale,
+  resolveLocale,
+  setLocale,
+  t,
+  type Locale,
+} from "../i18n/index.js";
 import {
   setWriteMode,
   startRecordingWrites,
@@ -383,8 +390,13 @@ function getBootstrapRelatedFiles(
 function getBootstrapPrdContent(
   projectType: ProjectType,
   pythonCmd: string,
+  locale: Locale,
   packages?: DetectedPackage[],
 ): string {
+  if (locale === "zh") {
+    return getBootstrapPrdContentZh(projectType, pythonCmd, packages);
+  }
+
   const checklistItems = getBootstrapChecklistItems(projectType, packages);
   const checklistMarkdown = checklistItems
     .map((item) => `- [ ] ${item}`)
@@ -564,6 +576,107 @@ etc.) I can pull from, or should I scan the codebase from scratch?"
   return content;
 }
 
+function getBootstrapPrdContentZh(
+  projectType: ProjectType,
+  pythonCmd: string,
+  packages?: DetectedPackage[],
+): string {
+  const checklistItems = getBootstrapChecklistItems(projectType, packages);
+  const checklistMarkdown = checklistItems
+    .map((item) => `- [ ] ${item}`)
+    .join("\n");
+  const packageList =
+    packages && packages.length > 0
+      ? packages
+          .map(
+            (pkg) =>
+              `- \`${pkg.name}\` -> \`.trellis/spec/${sanitizePkgName(pkg.name)}/\``,
+          )
+          .join("\n")
+      : projectType === "frontend"
+        ? "- `.trellis/spec/frontend/`"
+        : projectType === "backend"
+          ? "- `.trellis/spec/backend/`"
+          : "- `.trellis/spec/backend/`\n- `.trellis/spec/frontend/`";
+
+  return `# Bootstrap 任务：补齐项目开发规范
+
+**你（AI）正在执行这个任务。开发者通常不会直接阅读本文件。**
+
+开发者刚在项目中运行了 \`trellis init\`。\`.trellis/\`、空白 spec
+脚手架和本 bootstrap 任务已经创建完成。
+
+**你的职责**：帮助团队把真实的编码约定沉淀到 \`.trellis/spec/\`。后续
+\`trellis-implement\` / \`trellis-check\` 子代理会从任务的
+\`implement.jsonl\` / \`check.jsonl\` 中读取这些 spec。空 spec 会导致 AI
+写出通用风格；真实 spec 才能让 AI 贴合本项目。
+
+不要直接倾倒说明。先简短开场，确认仓库里是否已有 \`CLAUDE.md\`、
+\`AGENTS.md\`、\`.cursorrules\`、\`CONTRIBUTING.md\` 等约定文档，再按对话推进。
+
+---
+
+## 状态（完成时更新勾选）
+
+${checklistMarkdown}
+
+---
+
+## 需要补齐的 spec 范围
+
+${packageList}
+
+---
+
+## 执行步骤
+
+### 1. 优先导入已有约定
+
+先搜索并阅读现有约定文档，再把有效规则归入对应 spec：
+
+| 来源 | 常见平台 |
+|------|----------|
+| \`CLAUDE.md\` / \`CLAUDE.local.md\` | Claude Code |
+| \`AGENTS.md\` | Codex / 通用 agent |
+| \`.cursorrules\` / \`.cursor/rules/*.mdc\` | Cursor |
+| \`.windsurfrules\` / \`.clinerules\` / \`.roomodes\` | 其他 AI IDE |
+| \`.github/copilot-instructions.md\` | GitHub Copilot |
+| \`CONTRIBUTING.md\` / \`.editorconfig\` | 项目通用约定 |
+
+### 2. 从真实代码补齐缺口
+
+每写一个 spec 文件前，先在代码里找 2-3 个真实例子。记录实际路径，
+不要写假想示例。反模式也只记录项目明确避免的做法。
+
+### 3. 记录现实，不写愿望
+
+spec 是后续 AI 写代码的执行合同。请写当前代码真实采用的模式，而不是
+理想中的重构方向。已知技术债可以记录现状，改进应另起任务。
+
+---
+
+## 完成方式
+
+当开发者确认 checklist 已用真实例子补齐后，引导运行：
+
+\`\`\`bash
+${pythonCmd} ./.trellis/scripts/task.py finish
+${pythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines
+\`\`\`
+
+归档后，新开发者在该项目中初始化会得到 \`00-join-<slug>\` onboarding
+任务，而不是重复 bootstrap。
+
+---
+
+## 建议开场
+
+"欢迎使用 Trellis！这次 init 已经创建好项目规范脚手架。我会先检查现有
+约定文档，再帮你把真实工程规则沉淀到 \`.trellis/spec/\`，这样后续 AI
+会话就能按团队标准工作。你希望我先读已有文档，还是直接扫描代码？"
+`;
+}
+
 function getBootstrapTaskJson(
   developer: string,
   projectType: ProjectType,
@@ -599,11 +712,17 @@ function createBootstrapTask(
   cwd: string,
   developer: string,
   pythonCmd: string,
+  locale: Locale,
   projectType: ProjectType,
   packages?: DetectedPackage[],
 ): boolean {
   const taskJson = getBootstrapTaskJson(developer, projectType, packages);
-  const prdContent = getBootstrapPrdContent(projectType, pythonCmd, packages);
+  const prdContent = getBootstrapPrdContent(
+    projectType,
+    pythonCmd,
+    locale,
+    packages,
+  );
   return writeTaskSkeleton(cwd, BOOTSTRAP_TASK_NAME, taskJson, prdContent);
 }
 
@@ -639,7 +758,15 @@ function getJoinerTaskJson(developer: string, taskName: string): TaskJson {
  * PRD content for joiner onboarding. Kept concise (~80 lines) — deeper
  * guidance lives in skills and docs.
  */
-function getJoinerPrdContent(developer: string, pythonCmd: string): string {
+function getJoinerPrdContent(
+  developer: string,
+  pythonCmd: string,
+  locale: Locale,
+): string {
+  if (locale === "zh") {
+    return getJoinerPrdContentZh(developer, pythonCmd);
+  }
+
   const slug = slugifyDeveloperName(developer);
   return `# Joiner Onboarding Task
 
@@ -748,6 +875,76 @@ hood, summarize the team's spec, or jump to what you're already curious about
 `;
 }
 
+function getJoinerPrdContentZh(developer: string, pythonCmd: string): string {
+  const slug = slugifyDeveloperName(developer);
+  return `# 新成员 Onboarding 任务
+
+**你（AI）正在执行这个任务。开发者通常不会直接阅读本文件。**
+
+\`${developer}\` 刚在已有 Trellis 项目的新 checkout 中运行了
+\`trellis init\`。这个任务用于帮助 TA 快速理解项目里的 Trellis 工作流、
+规范和已分配任务。
+
+---
+
+## 需要覆盖的主题
+
+### 1. Trellis 是什么
+
+Trellis 是覆盖在 Claude Code、Cursor、Codex 等 AI coding 工具之上的项目
+工作流层。它把任务、规范、研究记录和 session journal 存进仓库，让 AI
+不是每次都从零开始。
+
+- 主要阶段：Plan（brainstorm -> \`prd.md\`）-> Execute（实现 + 检查）->
+  Finish（收尾 + 记录）。
+- 任务生命周期：planning -> in_progress -> done -> archive。
+- 常用命令：\`/trellis:continue\`、\`/trellis:finish-work\`，以及部分平台的
+  \`/trellis:start\`。
+
+### 2. 运行机制
+
+- SessionStart hook 会运行 \`get_context.py\`，注入身份、git 状态、当前任务、
+  活跃任务和 workflow phase。
+- \`<workflow-state>\` 标签会随用户消息注入，用于提示当前任务和阶段。
+- \`implement.jsonl\` / \`check.jsonl\` 决定子代理加载哪些 spec 和研究文件。
+- \`.trellis/spec/\` 是团队编码规范的源头。
+- \`.trellis/workspace/${developer}/journal-*.md\` 是该开发者的 session 记录。
+
+### 3. 本项目规范
+
+请总结 \`.trellis/spec/\` 的重点，并说明哪些规范在写代码前必须阅读。
+如果 \`.trellis/tasks/archive/\` 有历史任务，可选取最近几个作为工作节奏示例。
+
+### 4. TA 的任务
+
+运行下面命令查看分配给该开发者的任务：
+
+\`\`\`bash
+${pythonCmd} ./.trellis/scripts/task.py list --assignee ${developer}
+\`\`\`
+
+如果名字包含空格，请在实际执行时加引号。
+
+---
+
+## 完成方式
+
+当开发者已经理解工作流和规范后，引导运行：
+
+\`\`\`bash
+${pythonCmd} ./.trellis/scripts/task.py finish
+${pythonCmd} ./.trellis/scripts/task.py archive 00-join-${slug}
+\`\`\`
+
+---
+
+## 建议开场
+
+"欢迎！你的 \`trellis init\` 已经把我接入这个项目。我可以先讲工作流、
+解释运行机制、总结团队 spec，或者直接看你当前分配的任务。你想从哪里开始？"
+`;
+}
+
 /**
  * Create joiner onboarding task for a new developer on an existing Trellis
  * project. Task name is slugified to be filesystem-safe for arbitrary
@@ -757,11 +954,12 @@ function createJoinerOnboardingTask(
   cwd: string,
   developer: string,
   pythonCmd: string,
+  locale: Locale,
 ): boolean {
   const slug = slugifyDeveloperName(developer);
   const taskName = `00-join-${slug}`;
   const taskJson = getJoinerTaskJson(developer, taskName);
-  const prdContent = getJoinerPrdContent(developer, pythonCmd);
+  const prdContent = getJoinerPrdContent(developer, pythonCmd, locale);
   return writeTaskSkeleton(cwd, taskName, taskJson, prdContent);
 }
 
@@ -774,6 +972,7 @@ async function handleReinit(
   options: InitOptions,
   developerName: string | undefined,
   pythonCmd: string,
+  locale: Locale,
 ): Promise<boolean> {
   const TOOLS = getInitToolChoices();
   const configuredPlatforms = getConfiguredPlatforms(cwd);
@@ -934,7 +1133,7 @@ async function handleReinit(
     // Runs outside the init_developer try/catch so failures surface as warnings.
     if (!hadDeveloperFileBefore) {
       try {
-        if (!createJoinerOnboardingTask(cwd, devName, pythonCmd)) {
+        if (!createJoinerOnboardingTask(cwd, devName, pythonCmd, locale)) {
           console.warn(
             chalk.yellow("⚠ Failed to create joiner onboarding task"),
           );
@@ -953,6 +1152,7 @@ async function handleReinit(
 }
 
 interface InitOptions {
+  locale?: string;
   cursor?: boolean;
   claude?: boolean;
   opencode?: boolean;
@@ -1048,6 +1248,8 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   const cwd = process.cwd();
+  const locale = resolveLocale({ cliLocale: options.locale, cwd });
+  setLocale(locale);
   const isFirstInit = !fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW));
   // Captured here (before createWorkflowStructure + init_developer run) so
   // the three-branch dispatch at the bottom can tell "fresh clone joiner"
@@ -1059,11 +1261,7 @@ export async function init(options: InitOptions): Promise<void> {
   // Generate ASCII art banner dynamically using FIGlet "Rebel" font
   const banner = figlet.textSync("Trellis", { font: "Rebel" });
   console.log(chalk.cyan(`\n${banner.trimEnd()}`));
-  console.log(
-    chalk.gray(
-      "\n   All-in-one AI framework & toolkit for Claude Code & Cursor\n",
-    ),
-  );
+  console.log(chalk.gray(`\n   ${t("init.tagline")}\n`));
 
   // Set up proxy before any network calls
   const proxyUrl = setupProxy();
@@ -1075,15 +1273,15 @@ export async function init(options: InitOptions): Promise<void> {
   let writeMode: WriteMode = "ask";
   if (options.force) {
     writeMode = "force";
-    console.log(chalk.gray("Mode: Force overwrite existing files\n"));
+    console.log(chalk.gray(`${t("init.mode.force")}\n`));
   } else if (options.skipExisting) {
     writeMode = "skip";
-    console.log(chalk.gray("Mode: Skip existing files\n"));
+    console.log(chalk.gray(`${t("init.mode.skip")}\n`));
   } else if (options.yes) {
     // -y implies non-interactive: never prompt on conflicts. Default to skip
     // (preserve user files) — explicit --force is required to overwrite.
     writeMode = "skip";
-    console.log(chalk.gray("Mode: Non-interactive (skip existing files)\n"));
+    console.log(chalk.gray(`${t("init.mode.yes")}\n`));
   }
   setWriteMode(writeMode);
 
@@ -1105,7 +1303,14 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   if (developerName) {
-    console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
+    console.log(
+      chalk.blue(`👤 ${t("init.developer")}`),
+      chalk.gray(developerName),
+    );
+  }
+
+  if (options.locale) {
+    assertLocale(options.locale);
   }
 
   const { command: pythonCmd } = resolveSupportedPython();
@@ -1135,6 +1340,7 @@ export async function init(options: InitOptions): Promise<void> {
       options,
       developerName,
       pythonCmd,
+      locale,
     );
     if (reinitDone) return;
     // reinitDone === false means user chose "full re-initialize" → fall through
@@ -1154,7 +1360,10 @@ export async function init(options: InitOptions): Promise<void> {
       console.log(chalk.yellow("Name is required"));
       developerName = await askInput("Your name: ");
     }
-    console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
+    console.log(
+      chalk.blue(`👤 ${t("init.developer")}`),
+      chalk.gray(developerName),
+    );
   }
 
   // Detect project type (silent - no output)
@@ -1397,9 +1606,7 @@ export async function init(options: InitOptions): Promise<void> {
     detectedType === "unknown" ? "fullstack" : detectedType;
 
   if (tools.length === 0) {
-    console.log(
-      chalk.yellow("No tools selected. At least one tool is required."),
-    );
+    console.log(chalk.yellow(t("init.noTools")));
     return;
   }
 
@@ -1818,9 +2025,10 @@ export async function init(options: InitOptions): Promise<void> {
   const writtenPaths = startRecordingWrites(cwd);
   try {
     // Create workflow structure with project type
-    console.log(chalk.blue("📁 Creating workflow structure..."));
+    console.log(chalk.blue(`📁 ${t("init.creatingWorkflow")}`));
     await createWorkflowStructure(cwd, {
       projectType,
+      locale,
       skipSpecTemplates: useRemoteTemplate,
       packages: monorepoPackages,
       remoteSpecPackages,
@@ -1856,7 +2064,7 @@ export async function init(options: InitOptions): Promise<void> {
     }
 
     // Create root files (skip if exists)
-    await createRootFiles(cwd);
+    await createRootFiles(cwd, locale);
   } finally {
     stopRecordingWrites();
   }
@@ -1919,12 +2127,15 @@ export async function init(options: InitOptions): Promise<void> {
         cwd,
         developerName,
         pythonCmd,
+        locale,
         projectType,
         monorepoPackages,
       );
     } else if (!hadDeveloperFileAtStart) {
       try {
-        if (!createJoinerOnboardingTask(cwd, developerName, pythonCmd)) {
+        if (
+          !createJoinerOnboardingTask(cwd, developerName, pythonCmd, locale)
+        ) {
           console.warn(
             chalk.yellow("⚠ Failed to create joiner onboarding task"),
           );
@@ -1957,12 +2168,12 @@ function askInput(prompt: string): Promise<string> {
   });
 }
 
-async function createRootFiles(cwd: string): Promise<void> {
+async function createRootFiles(cwd: string, locale: Locale): Promise<void> {
   const agentsPath = path.join(cwd, FILE_NAMES.AGENTS);
 
   // Write AGENTS.md from template
-  const agentsWritten = await writeFile(agentsPath, agentsMdContent);
+  const agentsWritten = await writeFile(agentsPath, getAgentsMdContent(locale));
   if (agentsWritten) {
-    console.log(chalk.blue("📄 Created AGENTS.md"));
+    console.log(chalk.blue(`📄 ${t("init.createdAgents")}`));
   }
 }

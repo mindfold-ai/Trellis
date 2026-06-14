@@ -7,9 +7,10 @@ import { copyTrellisDir } from "../templates/extract.js";
 import {
   workflowYamlTemplate,
   getWorkflowBodyFiles,
-  configYamlTemplate,
+  renderConfigYamlTemplate,
   gitignoreTemplate,
 } from "../templates/trellis/index.js";
+import type { Locale } from "../i18n/index.js";
 
 // Import markdown templates
 import {
@@ -54,6 +55,8 @@ interface DocDefinition {
 export interface WorkflowOptions {
   /** Detected or specified project type */
   projectType: ProjectType;
+  /** Language for locale-aware generated templates */
+  locale?: Locale;
   /** Skip creating local spec templates (when using remote template) — single-repo mode */
   skipSpecTemplates?: boolean;
   /** Detected monorepo packages (enables monorepo spec creation) */
@@ -80,6 +83,7 @@ export async function createWorkflowStructure(
   options?: WorkflowOptions,
 ): Promise<void> {
   const projectType = options?.projectType ?? "fullstack";
+  const locale = options?.locale ?? "en";
   const skipSpecTemplates = options?.skipSpecTemplates ?? false;
   const packages = options?.packages;
   const remoteSpecPackages = options?.remoteSpecPackages;
@@ -116,7 +120,7 @@ export async function createWorkflowStructure(
   // Copy config.yaml from templates
   await writeFile(
     path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml"),
-    configYamlTemplate,
+    renderConfigYamlTemplate(locale),
   );
 
   // Create workspace/ with index.md

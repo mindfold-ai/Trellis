@@ -19,6 +19,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Locale } from "../../i18n/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -101,6 +102,13 @@ export const addSessionScript = readTemplate("scripts/add_session.py");
 export const workflowYamlTemplate = readTemplate("workflow.yaml");
 export const configYamlTemplate = readTemplate("config.yaml");
 export const gitignoreTemplate = readTemplate("gitignore.txt");
+
+export function renderConfigYamlTemplate(locale: Locale = "en"): string {
+  return configYamlTemplate.replace(
+    /^language:\s*(?:en|zh)\s*$/m,
+    `language: ${locale}`,
+  );
+}
 
 /**
  * Get all workflow body templates as a map of `workflow/`-relative path to content.

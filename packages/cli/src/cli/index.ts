@@ -7,6 +7,7 @@ import { update } from "../commands/update.js";
 import { uninstall } from "../commands/uninstall.js";
 import { DIR_NAMES } from "../constants/paths.js";
 import { VERSION, PACKAGE_NAME } from "../constants/version.js";
+import { resolveLocale, setLocale, t } from "../i18n/index.js";
 import { compareVersions } from "../utils/compare-versions.js";
 
 // Re-export for backwards compatibility (consumers should prefer constants/version.js)
@@ -28,23 +29,28 @@ function checkForUpdates(cwd: string): void {
     // CLI is newer than project - update available
     console.log(
       chalk.yellow(
-        `\n⚠️  Trellis update available: ${projectVersion} → ${cliVersion}`,
+        `\n⚠️  ${t("cli.update.available", { projectVersion, cliVersion })}`,
       ),
     );
-    console.log(chalk.gray(`   Run: trellis update\n`));
+    console.log(chalk.gray(`   ${t("cli.update.run")}\n`));
   } else if (comparison < 0) {
     // CLI is older than project - CLI needs updating
     console.log(
       chalk.yellow(
-        `\n⚠️  Your CLI (${cliVersion}) is older than project (${projectVersion})`,
+        `\n⚠️  ${t("cli.update.cliOlder", { cliVersion, projectVersion })}`,
       ),
     );
-    console.log(chalk.gray(`   Run: npm install -g ${PACKAGE_NAME}\n`));
+    console.log(
+      chalk.gray(
+        `   ${t("cli.update.install", { packageName: PACKAGE_NAME })}\n`,
+      ),
+    );
   }
 }
 
 // Check for updates at CLI startup (only if .trellis exists)
 const cwd = process.cwd();
+setLocale(resolveLocale({ argv: process.argv, cwd }));
 if (fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
   checkForUpdates(cwd);
 }
@@ -53,57 +59,55 @@ const program = new Command();
 
 program
   .name("trellis")
-  .description(
-    "AI-assisted development workflow framework for Cursor, Claude Code and more",
-  )
-  .version(VERSION, "-v, --version", "output the version number");
+  .description(t("cli.description"))
+  .option("--locale <locale>", t("option.locale"))
+  .option("--lang <locale>", t("option.locale"))
+  .helpOption("-h, --help", t("cli.help.description"))
+  .addHelpCommand("help [command]", t("cli.help.command"))
+  .version(VERSION, "-v, --version", t("cli.version.description"));
 
 program
   .command("init")
-  .description("Initialize trellis in the current project")
-  .option("--cursor", "Include Cursor commands")
-  .option("--claude", "Include Claude Code commands")
-  .option("--opencode", "Include OpenCode commands")
-  .option("--codex", "Include Codex skills")
-  .option("--kilo", "Include Kilo CLI commands")
-  .option("--kiro", "Include Kiro Code skills")
-  .option("--gemini", "Include Gemini CLI commands")
-  .option("--antigravity", "Include Antigravity workflows")
-  .option("--windsurf", "Include Windsurf workflows")
-  .option("--qoder", "Include Qoder commands")
-  .option("--codebuddy", "Include CodeBuddy commands")
-  .option("--copilot", "Include GitHub Copilot hooks")
-  .option("--droid", "Include Factory Droid commands")
-  .option("--pi", "Include Pi Agent extension assets")
-  .option("--reasonix", "Include Reasonix skills")
-  .option("-y, --yes", "Skip prompts and use defaults")
-  .option(
-    "-u, --user <name>",
-    "Initialize developer identity with specified name",
-  )
-  .option("-f, --force", "Overwrite existing files without asking")
-  .option("-s, --skip-existing", "Skip existing files without asking")
-  .option("--monorepo", "Force monorepo mode")
-  .option("--no-monorepo", "Skip monorepo detection")
-  .option(
-    "-t, --template <name>",
-    "Use a remote spec template (e.g., electron-fullstack)",
-  )
-  .option(
-    "--overwrite",
-    "Overwrite existing spec directory when using template",
-  )
-  .option("--append", "Only add missing files when using template")
-  .option(
-    "-r, --registry <source>",
-    "Use a custom template registry (e.g., gh:myorg/myrepo/specs)",
-  )
+  .description(t("init.description"))
+  .helpOption("-h, --help", t("cli.help.description"))
+  .option("--locale <locale>", t("option.locale"))
+  .option("--cursor", t("init.option.cursor"))
+  .option("--claude", t("init.option.claude"))
+  .option("--opencode", t("init.option.opencode"))
+  .option("--codex", t("init.option.codex"))
+  .option("--kilo", t("init.option.kilo"))
+  .option("--kiro", t("init.option.kiro"))
+  .option("--gemini", t("init.option.gemini"))
+  .option("--antigravity", t("init.option.antigravity"))
+  .option("--windsurf", t("init.option.windsurf"))
+  .option("--qoder", t("init.option.qoder"))
+  .option("--codebuddy", t("init.option.codebuddy"))
+  .option("--copilot", t("init.option.copilot"))
+  .option("--droid", t("init.option.droid"))
+  .option("--pi", t("init.option.pi"))
+  .option("--reasonix", t("init.option.reasonix"))
+  .option("-y, --yes", t("init.option.yes"))
+  .option("-u, --user <name>", t("init.option.user"))
+  .option("-f, --force", t("init.option.force"))
+  .option("-s, --skip-existing", t("init.option.skipExisting"))
+  .option("--monorepo", t("init.option.monorepo"))
+  .option("--no-monorepo", t("init.option.noMonorepo"))
+  .option("-t, --template <name>", t("init.option.template"))
+  .option("--overwrite", t("init.option.overwrite"))
+  .option("--append", t("init.option.append"))
+  .option("-r, --registry <source>", t("init.option.registry"))
   .action(async (options: Record<string, unknown>) => {
     try {
+      const globalOptions = program.opts() as {
+        locale?: string;
+        lang?: string;
+      };
+      options.locale =
+        options.locale ?? globalOptions.locale ?? globalOptions.lang;
       await init(options);
     } catch (error) {
       console.error(
-        chalk.red("Error:"),
+        chalk.red(t("cli.error.prefix")),
         error instanceof Error ? error.message : error,
       );
       if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
@@ -115,16 +119,25 @@ program
 
 program
   .command("update")
-  .description("Update trellis configuration and commands to latest version")
-  .option("--dry-run", "Preview changes without applying them")
-  .option("-f, --force", "Overwrite all changed files without asking")
-  .option("-s, --skip-all", "Skip all changed files without asking")
-  .option("-n, --create-new", "Create .new copies for all changed files")
-  .option("--allow-downgrade", "Allow downgrading to an older version")
-  .option("--migrate", "Apply pending file migrations (renames/deletions)")
+  .description(t("update.description"))
+  .helpOption("-h, --help", t("cli.help.description"))
+  .option("--locale <locale>", t("option.locale"))
+  .option("--dry-run", t("update.option.dryRun"))
+  .option("-f, --force", t("update.option.force"))
+  .option("-s, --skip-all", t("update.option.skipAll"))
+  .option("-n, --create-new", t("update.option.createNew"))
+  .option("--allow-downgrade", t("update.option.allowDowngrade"))
+  .option("--migrate", t("update.option.migrate"))
   .action(async (options: Record<string, unknown>) => {
     try {
+      const globalOptions = program.opts() as {
+        locale?: string;
+        lang?: string;
+      };
       await update({
+        locale: (options.locale ??
+          globalOptions.locale ??
+          globalOptions.lang) as string | undefined,
         dryRun: options.dryRun as boolean,
         force: options.force as boolean,
         skipAll: options.skipAll as boolean,
@@ -134,7 +147,7 @@ program
       });
     } catch (error) {
       console.error(
-        chalk.red("Error:"),
+        chalk.red(t("cli.error.prefix")),
         error instanceof Error ? error.message : error,
       );
       if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
@@ -146,20 +159,27 @@ program
 
 program
   .command("uninstall")
-  .description(
-    "Remove all trellis files (managed platform files + .trellis/) from this project",
-  )
-  .option("-y, --yes", "Skip confirmation prompt")
-  .option("--dry-run", "List what would be removed without changing anything")
+  .description(t("uninstall.description"))
+  .helpOption("-h, --help", t("cli.help.description"))
+  .option("--locale <locale>", t("option.locale"))
+  .option("-y, --yes", t("uninstall.option.yes"))
+  .option("--dry-run", t("uninstall.option.dryRun"))
   .action(async (options: Record<string, unknown>) => {
     try {
+      const globalOptions = program.opts() as {
+        locale?: string;
+        lang?: string;
+      };
       await uninstall({
+        locale: (options.locale ??
+          globalOptions.locale ??
+          globalOptions.lang) as string | undefined,
         yes: options.yes as boolean,
         dryRun: options.dryRun as boolean,
       });
     } catch (error) {
       console.error(
-        chalk.red("Error:"),
+        chalk.red(t("cli.error.prefix")),
         error instanceof Error ? error.message : error,
       );
       if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {

@@ -7,6 +7,7 @@ import inquirer from "inquirer";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
 import type { AITool } from "../types/ai-tools.js";
 import { VERSION, PACKAGE_NAME } from "../constants/version.js";
+import { resolveLocale, setLocale, t, type Locale } from "../i18n/index.js";
 import {
   getMigrationsForVersion,
   getAllMigrations,
@@ -39,12 +40,11 @@ import { emptyTaskJson } from "../utils/task-json.js";
 import {
   getAllScripts,
   getWorkflowBodyFiles,
-  // Configuration
-  configYamlTemplate,
   gitignoreTemplate,
+  renderConfigYamlTemplate,
   workflowYamlTemplate,
 } from "../templates/trellis/index.js";
-import { agentsMdContent } from "../templates/markdown/index.js";
+import { getAgentsMdContent } from "../templates/markdown/index.js";
 
 import {
   ALL_MANAGED_DIRS,
@@ -67,6 +67,7 @@ import {
 import { loadSpecRegistryConfig } from "../utils/registry-config.js";
 
 export interface UpdateOptions {
+  locale?: string;
   dryRun?: boolean;
   force?: boolean;
   skipAll?: boolean;
@@ -154,17 +155,18 @@ function replaceTrellisManagedBlock(
   );
 }
 
-function buildAgentsMdTemplate(cwd: string): string {
+function buildAgentsMdTemplate(cwd: string, locale: Locale): string {
+  const agentsTemplate = getAgentsMdContent(locale);
   const fullPath = path.join(cwd, FILE_NAMES.AGENTS);
   if (!fs.existsSync(fullPath)) {
-    return agentsMdContent;
+    return agentsTemplate;
   }
 
   const existingContent = fs.readFileSync(fullPath, "utf-8");
 
   // Existing file already has TRELLIS:START/END markers — replace just the
   // managed block, preserving everything outside it.
-  const replaced = replaceTrellisManagedBlock(existingContent, agentsMdContent);
+  const replaced = replaceTrellisManagedBlock(existingContent, agentsTemplate);
   if (replaced !== null) {
     return replaced;
   }
@@ -173,9 +175,9 @@ function buildAgentsMdTemplate(cwd: string): string {
   // user hand-wrote AGENTS.md without ever running through Trellis). Append
   // the template's managed block at the end so user content is preserved
   // instead of clobbered.
-  const templateBlock = getTrellisManagedBlock(agentsMdContent);
+  const templateBlock = getTrellisManagedBlock(agentsTemplate);
   if (!templateBlock) {
-    return agentsMdContent;
+    return agentsTemplate;
   }
   const trimmed = existingContent.replace(/\s+$/, "");
   return `${trimmed}\n\n${templateBlock}\n`;
@@ -733,6 +735,7 @@ async function collectRegistrySpecTemplates(
 
 async function collectTemplateFiles(
   cwd: string,
+  locale: Locale,
   extraPlatforms?: Set<AITool>,
   /**
    * Bypass `update.skip` when collecting templates. Enable this for breaking
@@ -760,7 +763,7 @@ async function collectTemplateFiles(
   // Configuration
   files.set(
     `${DIR_NAMES.WORKFLOW}/config.yaml`,
-    preserveExistingRegistryConfig(cwd, configYamlTemplate),
+    preserveExistingRegistryConfig(cwd, renderConfigYamlTemplate(locale)),
   );
   files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
   // workflow.yaml + workflow/ body files are runtime-parsed by get_context.py
@@ -779,7 +782,7 @@ async function collectTemplateFiles(
   }
   // workspace/index.md stays excluded — it's runtime-appended by add_session.py
   // (journal index) and has no script-parsed structure.
-  files.set(FILE_NAMES.AGENTS, buildAgentsMdTemplate(cwd));
+  files.set(FILE_NAMES.AGENTS, buildAgentsMdTemplate(cwd, locale));
 
   // Platform-specific templates (only for configured platforms)
   for (const platformId of platforms) {
@@ -1817,15 +1820,19 @@ function printMigrationResult(result: MigrationResult): void {
  */
 export async function update(options: UpdateOptions): Promise<void> {
   const cwd = process.cwd();
+  const locale = resolveLocale({ cliLocale: options.locale, cwd });
+  setLocale(locale);
 
   // Check if Trellis is initialized
   if (!fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
-    console.log(chalk.red("Error: Trellis not initialized in this directory."));
-    console.log(chalk.gray("Run 'trellis init' first."));
+    console.log(
+      chalk.red(`${t("cli.error.prefix")} ${t("update.notInitialized")}`),
+    );
+    console.log(chalk.gray(t("update.runInitFirst")));
     return;
   }
 
-  console.log(chalk.cyan("\nTrellis Update"));
+  console.log(chalk.cyan(`\n${t("update.title")}`));
   console.log(chalk.cyan("══════════════\n"));
 
   // Set up proxy before any network calls (npm version check)
@@ -1843,12 +1850,12 @@ export async function update(options: UpdateOptions): Promise<void> {
     : 0;
 
   // Display versions with context
-  console.log(`Project version: ${chalk.white(projectVersion)}`);
-  console.log(`CLI version:     ${chalk.white(cliVersion)}`);
+  console.log(`${t("update.projectVersion")} ${chalk.white(projectVersion)}`);
+  console.log(`${t("update.cliVersion")}     ${chalk.white(cliVersion)}`);
   if (latestNpmVersion) {
-    console.log(`Latest on npm:   ${chalk.white(latestNpmVersion)}`);
+    console.log(`${t("update.latestNpm")}   ${chalk.white(latestNpmVersion)}`);
   } else {
-    console.log(chalk.gray("Latest on npm:   (unable to fetch)"));
+    console.log(chalk.gray(t("update.latestNpmUnavailable")));
   }
   console.log("");
 
@@ -1966,6 +1973,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   // Collect templates (used for both migration classification and change analysis)
   const templates = await collectTemplateFiles(
     cwd,
+    locale,
     codexUpgradeNeeded ? new Set<AITool>(["codex"]) : undefined,
     breakingBypass,
   );
@@ -2445,7 +2453,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   }
 
   // Print summary
-  console.log(chalk.cyan("\n--- Summary ---\n"));
+  console.log(chalk.cyan(`\n${t("update.summary")}\n`));
   if (added > 0) {
     console.log(`  Added: ${added} file(s)`);
   }
@@ -2471,19 +2479,21 @@ export async function update(options: UpdateOptions): Promise<void> {
     console.log(`  Backup: ${path.relative(cwd, backupDir)}/`);
   }
 
-  const actionWord = isDowngrade ? "Downgrade" : "Update";
+  const actionWord = isDowngrade
+    ? t("update.action.downgrade")
+    : t("update.action.update");
   console.log(
     chalk.green(
-      `\n✅ ${actionWord} complete! (${projectVersion} → ${cliVersion})`,
+      `\n✅ ${t("update.complete", {
+        action: actionWord,
+        projectVersion,
+        cliVersion,
+      })}`,
     ),
   );
 
   if (createdNew > 0) {
-    console.log(
-      chalk.gray(
-        "\nTip: Review .new files and merge changes manually if needed.",
-      ),
-    );
+    console.log(chalk.gray(`\n${t("update.tipNewFiles")}`));
   }
 
   // Create migration task if there are breaking changes with migration guides

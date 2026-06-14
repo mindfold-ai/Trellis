@@ -23,6 +23,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Release Process](./release-process.md) | Cross-branch + submodule release flow, manifest continuity, submodule ordering | Done |
 | [Platform Integration](./platform-integration.md) | How to add support for new AI CLI platforms | Done |
 | [Workflow-State Contract](./workflow-state-contract.md) | Per-turn breadcrumb subsystem: marker syntax, status writers, lifecycle events, reachability | Done |
+| [Internationalization Contract](./i18n.md) | English/Chinese runtime, docs-site, and template localization contract | Done |
 ---
 
 ## Pre-Development Checklist
@@ -35,6 +36,7 @@ Before writing backend code, read the relevant guidelines based on your task:
 - Modifying `init.ts` flow (new triggers, dispatch branches, bootstrap/joiner) → [platform-integration.md "Bootstrap & Joiner Task Auto-Generation"](./platform-integration.md) — two-point wiring + `.developer` signal
 - Script work → [script-conventions.md](./script-conventions.md)
 - Migration system → [migrations.md](./migrations.md)
+- i18n / user-facing text / localized templates → [i18n.md](./i18n.md)
 - Cutting a release / cross-branch submodule coordination / manifest continuity → [release-process.md](./release-process.md)
 - Adding any native (`.node` / C++ / `node-gyp`) dependency → [quality-guidelines.md "Native dependency policy"](./quality-guidelines.md)
 - Editing workflow-state body files / `task.json.status` writers / lifecycle hooks → [workflow-state-contract.md](./workflow-state-contract.md)

@@ -144,6 +144,32 @@ describe("init() integration", () => {
     ).toBe(true);
   });
 
+  it("writes Chinese locale config and generated guidance", async () => {
+    await init({ yes: true, user: "wang", locale: "zh" });
+
+    const config = fs.readFileSync(
+      path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+      "utf-8",
+    );
+    expect(config).toContain("language: zh");
+
+    const agents = fs.readFileSync(path.join(tmpDir, FILE_NAMES.AGENTS), "utf-8");
+    expect(agents).toContain("# Trellis 说明");
+    expect(agents).toContain("由 Trellis 管理");
+
+    const prd = fs.readFileSync(
+      path.join(
+        tmpDir,
+        PATHS.TASKS,
+        "00-bootstrap-guidelines",
+        FILE_NAMES.PRD,
+      ),
+      "utf-8",
+    );
+    expect(prd).toContain("Bootstrap 任务");
+    expect(prd).toContain("记录现实，不写愿望");
+  });
+
   it("#1b does not print the promotional pain-point block", async () => {
     await init({ yes: true });
 

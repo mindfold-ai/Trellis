@@ -4,6 +4,14 @@
 # All values have sensible defaults. Only override what you need.
 
 #-------------------------------------------------------------------------------
+# Localization
+#-------------------------------------------------------------------------------
+
+# Language for Trellis CLI output and locale-aware generated templates.
+# Supported values: en, zh
+language: en
+
+#-------------------------------------------------------------------------------
 # Session Recording
 #-------------------------------------------------------------------------------
 
