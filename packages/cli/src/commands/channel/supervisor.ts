@@ -76,6 +76,34 @@ type Child = ChildProcessByStdio<Writable, Readable, Readable>;
 const SHUTDOWN_GRACE_MS = 3000;
 
 /**
+ * On Windows, npm installs CLI tools as `.cmd` shims where the real `.exe`
+ * lives in `node_modules/`.  Node.js ≥18.20.2 (CVE-2024-27980) blocks
+ * implicit `.cmd` execution via `spawn()` without `shell: true`.  Resolve
+ * the real `.exe` path so we can spawn it directly — no shell, no injection.
+ */
+function resolveProviderPath(provider: string): string {
+  if (process.platform !== "win32") return provider;
+  try {
+    const cmdName = `${provider}.cmd`;
+    const dirs = (process.env.PATH || "").split(path.delimiter);
+    for (const dir of dirs) {
+      const cmdFile = path.join(dir, cmdName);
+      if (!fs.existsSync(cmdFile)) continue;
+      const content = fs.readFileSync(cmdFile, "utf8");
+      // npm-generated cmd shim format:  "%dp0%\node_modules\pkg\bin\name.exe" %*
+      const m = content.match(/"%dp0%\\(.+\.exe)"/i);
+      if (m) {
+        const exePath = path.join(dir, m[1]);
+        if (fs.existsSync(exePath)) return exePath;
+      }
+    }
+  } catch {
+    // resolve failure is non-fatal — fall back to bare name
+  }
+  return provider;
+}
+
+/**
  * Entry point invoked by `trellis channel __supervisor <channel> <worker> <config>`.
  */
 export async function runSupervisor(
@@ -113,9 +141,12 @@ export async function runSupervisor(
 
   const logPath = workerFile(channelName, workerName, "log", project);
   const log = fs.createWriteStream(logPath);
-  log.write(`[supervisor] starting ${adapter.provider} ${args.join(" ")}\n`);
+  const providerPath = resolveProviderPath(adapter.provider);
+  log.write(
+    `[supervisor] starting ${adapter.provider} (resolved: ${providerPath}) ${args.join(" ")}\n`,
+  );
 
-  const child = spawn(adapter.provider, args, {
+  const child = spawn(providerPath, args, {
     cwd: config.cwd,
     env,
     stdio: ["pipe", "pipe", "pipe"],
