@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/prd.md", "reason": "Acceptance criteria — gate for check"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/00-summary.md", "reason": "Verify deltas: byte-identity, B8 exclusion, line 186 散文, platforms.test.ts:295 断言"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/03-workflow-md-platform-blocks.md", "reason": "Cross-check all 13 R3 edit points were actually applied (and B8 stayed unchanged)"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/06-test-impact.md", "reason": "Verify the single assertion change + new zcode/opencode/reasonix assertions exist"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/07-migration-update-impact.md", "reason": "Verify trellis update no-op (byte-identity) — manual run gate"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Test conventions check"}

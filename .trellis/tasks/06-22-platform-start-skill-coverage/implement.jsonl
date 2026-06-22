@@ -1,0 +1,11 @@
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/prd.md", "reason": "Authoritative spec for this task — R1-R5 acceptance criteria"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/00-summary.md", "reason": "Cross-cuts all 8 research dimensions; PRD revision rationale"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/01-filtercommands-fanout.md", "reason": "R1 fan-out: 16-platform matrix proves R1 only touches 4 agentCapable && !hasHooks platforms"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/02-start-template-semantics.md", "reason": "R1 + R2 safety: per-platform invocation surface after R1; codex de-recursion scope"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/03-workflow-md-platform-blocks.md", "reason": "R3 edit clinic: 13 block locations + zcode/reasonix routing rules + B8 exclusion"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/04-opencode-deep-dive.md", "reason": "OpenCode plugin-as-hook context; do NOT change hasHooks=false"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/05-reasonix-subagent.md", "reason": "Confirms trellis-start as plain skill in .reasonix/skills/ does not collide with runAs:subagent agents"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/06-test-impact.md", "reason": "R4: lists single assertion to update + recommends new init.integration assertions for zcode/opencode/reasonix"}
+{"file": ".trellis/tasks/06-22-platform-start-skill-coverage/research/07-migration-update-impact.md", "reason": "R5: byte-identity proof — no migration manifest required"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend spec index — platform configurator conventions"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "CLI unit-test conventions — anti-patterns + assertion style for R4.2 new tests"}

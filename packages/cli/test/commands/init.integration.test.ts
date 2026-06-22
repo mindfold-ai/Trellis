@@ -568,6 +568,68 @@ describe("init() integration", () => {
     expect(trackedPaths).toEqual(expect.arrayContaining(expectedPiPaths));
   });
 
+  it("#3l zcode platform emits trellis-start skill and start slash command", async () => {
+    await init({ yes: true, zcode: true });
+
+    // ZCode is agentCapable && !hasHooks → start is preserved via both the
+    // shared-skills path (.agents/skills/) and the platform commands path
+    // (.zcode/commands/trellis/). No SessionStart hook covers session bootstrap,
+    // so users must be able to invoke trellis-start themselves.
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "commands", "trellis", "start.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "cli", "agents", "trellis-implement.md"),
+      ),
+    ).toBe(true);
+  });
+
+  it("#3m opencode platform emits start slash command", async () => {
+    await init({ yes: true, opencode: true });
+
+    // OpenCode is agentCapable && !hasHooks per registry (plugins/session-start.js
+    // provides equivalent injection, but the user-invocable /trellis:start is
+    // still emitted as fallback for plugin failures / manual reload).
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".opencode", "commands", "trellis", "start.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".opencode", "commands", "trellis", "finish-work.md"),
+      ),
+    ).toBe(true);
+  });
+
+  it("#3n reasonix platform emits trellis-start skill without runAs:subagent", async () => {
+    await init({ yes: true, reasonix: true });
+
+    // Reasonix is agentCapable && !hasHooks → trellis-start ships as a plain
+    // user-invocable skill. It must NOT carry the `runAs: subagent` frontmatter
+    // — that field is reserved for trellis-implement / trellis-check which run
+    // as isolated subagent loops.
+    const startSkill = path.join(
+      tmpDir,
+      ".reasonix",
+      "skills",
+      "trellis-start",
+      "SKILL.md",
+    );
+    expect(fs.existsSync(startSkill)).toBe(true);
+    expect(fs.readFileSync(startSkill, "utf-8")).not.toContain(
+      "runAs: subagent",
+    );
+  });
+
   it("#4 force mode overwrites previously modified files", async () => {
     await init({ yes: true, force: true });
 

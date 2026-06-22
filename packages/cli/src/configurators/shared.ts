@@ -329,16 +329,23 @@ export interface ResolvedSkillFile {
 /**
  * Filter command templates based on platform capabilities.
  *
- * `start.md` is only emitted for agent-less platforms (kilo, antigravity,
- * devin). On agent-capable platforms, the session-start hook / plugin
- * already injects the workflow overview, so a user-facing `start` command
- * would be redundant.
+ * `start.md` is stripped only on platforms that are BOTH `agentCapable` AND
+ * `hasHooks` — those platforms (Claude Code, Cursor, Kiro, Gemini, Qoder,
+ * CodeBuddy, Copilot, Droid, Pi) have a SessionStart-style hook that
+ * auto-injects the workflow overview, so a user-facing `start` would be
+ * redundant.
+ *
+ * `agentCapable && !hasHooks` platforms (Codex, ZCode, OpenCode, Reasonix)
+ * have no such hook (or use an out-of-band plugin), so they need the
+ * user-invocable `trellis-start` skill / `start.md` command as fallback.
+ * Agent-less platforms (Kilo, Antigravity, Devin) also keep `start` since
+ * they rely entirely on user-triggered workflows.
  */
 function filterCommands(
   templates: CommonTemplate[],
   ctx: TemplateContext,
 ): CommonTemplate[] {
-  if (ctx.agentCapable) {
+  if (ctx.agentCapable && ctx.hasHooks) {
     return templates.filter((t) => t.name !== "start");
   }
   return templates;
@@ -430,38 +437,6 @@ export function resolveAllAsSkillsNeutral(
       resolvePlaceholdersNeutral(tmpl.content, ctx),
     ),
   }));
-}
-
-/**
- * Codex needs a `trellis-start` skill in `.agents/skills/` so the
- * `<trellis-bootstrap>` notice from `inject-workflow-state.py` resolves
- * to an actual skill file (the bootstrap notice tells the AI to invoke
- * `$trellis-start` once on the first `no_task` turn — added in 0.5.5
- * after the Codex SessionStart hook was removed for de-recursion).
- *
- * Built from `common/commands/start.md` + skill frontmatter; renders
- * neutrally so init and update produce byte-identical output. Returns
- * `null` if the template is missing (defensive — should never happen).
- *
- * Used by both `configureCodex()` (init path, file write) and
- * `collectPlatformTemplates.codex` (update path, manifest map). Both
- * paths must agree, otherwise upgraded users miss the file (which broke
- * 0.4.x → 0.5.5/0.5.6 upgrades — see #247-style symptom: AI reports
- * "no .agents/skills/trellis-start/SKILL.md" because update only ran
- * `collectTemplates` and never wrote the file).
- */
-export function resolveCodexTrellisStartSkill(
-  ctx: TemplateContext,
-): ResolvedTemplate | null {
-  const startTemplate = getCommandTemplates().find((t) => t.name === "start");
-  if (!startTemplate) return null;
-  return {
-    name: "trellis-start",
-    content: wrapWithSkillFrontmatter(
-      "trellis-start",
-      resolvePlaceholdersNeutral(startTemplate.content, ctx),
-    ),
-  };
 }
 
 /**

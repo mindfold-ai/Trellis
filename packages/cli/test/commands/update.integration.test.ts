@@ -1252,7 +1252,7 @@ describe("update() integration", () => {
 
     const updated = fs.readFileSync(workflowPath, "utf-8");
     expect(updated).toBe(replacePythonCommandLiterals(workflowMdTemplate));
-    expect(updated).toContain("[codex-sub-agent]");
+    expect(updated).toContain("[codex-sub-agent, ZCode, Reasonix]");
     expect(updated).toContain("[codex-inline, Kilo, Antigravity, Devin]");
     expect(updated).not.toContain("[Codex]");
     expect(updated).not.toContain("[Kilo, Antigravity, Windsurf]");
