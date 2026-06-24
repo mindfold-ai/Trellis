@@ -31,11 +31,13 @@ interface SubagentInput {
 interface AgentConfig {
   model?: string;
   thinking?: string;
+  tools?: string[];
   fallbackModels: string[];
 }
 interface PiRunConfig {
   model?: string;
   thinking?: string;
+  tools?: string[];
 }
 
 // ── Lazy-load pi-tui (avoid failing top-level imports) ─────────────────
@@ -654,8 +656,8 @@ function resolveRunCfg(
     agentSuffixThinking ??
     normalize(inheritedThinking);
   if (baseModel && thinking && thinking !== "off")
-    return { model: `${baseModel}:${thinking}`, thinking };
-  return { model: baseModel || rawModel, thinking };
+    return { model: `${baseModel}:${thinking}`, thinking, tools: agentCfg.tools };
+  return { model: baseModel || rawModel, thinking, tools: agentCfg.tools };
 }
 
 function buildPiArgs(cfg: PiRunConfig): string[] {
@@ -669,6 +671,8 @@ function buildPiArgs(cfg: PiRunConfig): string[] {
     );
   else if (cfg.thinking && cfg.thinking !== "off")
     args.push("--thinking", cfg.thinking);
+  if (cfg.tools && cfg.tools.length > 0)
+    args.push("--tools", cfg.tools.join(","));
   return args;
 }
 
@@ -761,6 +765,16 @@ function parseAgentFM(c: string): AgentConfig {
           i++;
         }
         i--;
+      }
+    } else if (k === "tools") {
+      // Pi tool names are lowercase (read, bash, edit, write, grep, find, ls).
+      // Normalize to lowercase so mixed-case frontmatter still matches.
+      if (v.trim()) {
+        cfg.tools = v
+          .trim()
+          .split(",")
+          .map((s) => s.trim().replace(/^["']|["']$/g, "").toLowerCase())
+          .filter(Boolean);
       }
     }
   }

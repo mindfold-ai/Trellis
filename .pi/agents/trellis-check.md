@@ -2,7 +2,7 @@
 name: trellis-check
 description: |
   Code quality check expert. Reviews changes against Trellis specs, fixes issues directly, and verifies quality gates.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: read, write, edit, bash, find, grep
 ---
 
 ## Required: Load Trellis Context First

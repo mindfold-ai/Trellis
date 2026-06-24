@@ -2,7 +2,7 @@
 name: trellis-research
 description: |
   Code and technical research expert. Finds relevant files, patterns, docs, and persists findings to the current task's research/ directory.
-tools: Read, Write, Bash, Glob, Grep
+tools: read, write, bash, find, grep
 ---
 # Research Agent
 

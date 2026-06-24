@@ -15,12 +15,14 @@ import {
 interface AgentConfig {
   model?: string;
   thinking?: string;
+  tools?: string[];
   fallbackModels: string[];
 }
 
 interface PiRunConfig {
   model?: string;
   thinking?: string;
+  tools?: string[];
 }
 
 interface PiExtensionInternals {
@@ -179,13 +181,18 @@ describe("pi templates", () => {
     expect(existsSync(root)).toBe(true);
   });
 
-  it("parseAgentFM reads model/thinking/fallbackModels from agent frontmatter", () => {
+  it("parseAgentFM reads model/thinking/fallbackModels/tools from agent frontmatter", () => {
     const { parseAgentFM } = loadExtensionInternals();
 
+    // Mixed-case tool names in frontmatter must be normalized to lowercase:
+    // Pi's built-in tools are lowercase (read, bash, edit, write, grep, find, ls)
+    // and pi applies the allowlist without case normalization, so uppercase names
+    // would silently fail to enable any tool.
     const cfg = parseAgentFM(`---
 name: reviewer
 model: anthropic/claude-sonnet-4
 thinking: high
+tools: Read, Write, Bash, find, Grep
 fallbackModels:
   - openai/gpt-5-mini
   - "google/gemini-2.5-pro"
@@ -196,8 +203,11 @@ fallbackModels:
     expect(cfg).toEqual({
       model: "anthropic/claude-sonnet-4",
       thinking: "high",
+      tools: ["read", "write", "bash", "find", "grep"],
       fallbackModels: ["openai/gpt-5-mini", "google/gemini-2.5-pro"],
     });
+    // Belt-and-suspenders: no tool name survives with uppercase letters.
+    expect(cfg.tools?.every((t) => t === t.toLowerCase())).toBe(true);
   });
 
   it("buildPiArgs maps PiRunConfig onto Pi CLI args", () => {
@@ -244,6 +254,18 @@ fallbackModels:
       "--model",
       "gpt-5",
     ]);
+
+    // tools → --tools flag
+    expect(
+      buildPiArgs({ tools: ["Read", "Write", "Bash", "find", "Grep"] }),
+    ).toEqual([
+      "--mode",
+      "json",
+      "-p",
+      "--no-session",
+      "--tools",
+      "Read,Write,Bash,find,Grep",
+    ]);
   });
 
   it("resolveRunCfg lets per-call input override agent frontmatter defaults", () => {
@@ -252,6 +274,7 @@ fallbackModels:
     const agentCfg: AgentConfig = {
       model: "anthropic/claude-sonnet-4",
       thinking: "high",
+      tools: ["Read", "Write", "Edit", "Bash", "find", "Grep"],
       fallbackModels: [],
     };
 
@@ -261,12 +284,13 @@ fallbackModels:
         { model: "openai/gpt-5", thinking: "xhigh" },
         agentCfg,
       ),
-    ).toEqual({ model: "openai/gpt-5:xhigh", thinking: "xhigh" });
+    ).toEqual({ model: "openai/gpt-5:xhigh", thinking: "xhigh", tools: agentCfg.tools });
 
     // No overrides → fall back to agent config
     expect(resolveRunCfg({}, agentCfg)).toEqual({
       model: "anthropic/claude-sonnet-4:high",
       thinking: "high",
+      tools: agentCfg.tools,
     });
 
     // Inherited thinking is the last fallback
