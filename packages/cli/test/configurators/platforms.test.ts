@@ -1011,11 +1011,17 @@ describe("configurePlatform", () => {
     expect(extension).toContain("function formatPiOutput");
     expect(extension).toContain('"## Trellis Agent Definition"');
     expect(extension).toContain("ctx?.ui?.notify?.(");
+    expect(extension).toContain("message: runtimeContext");
+    expect(extension).toContain('customType: "trellis-runtime-context"');
+    expect(extension).toContain("display: false");
+    expect(extension).toContain('const runtimeContext = [turn.wf, turn.ov]');
     expect(extension).toContain("systemPrompt:");
+    expect(extension).not.toContain('action: "transform"');
+    expect(extension).not.toContain('pi.on?.("input"');
+    expect(extension).toContain('pi.on?.("context"');
     expect(extension).toContain("isTrellisAgent(root, agentName)");
     expect(extension).not.toContain("message: buildTrellisContext");
     expect(extension).not.toContain('message:\n      "Trellis project context');
-    expect(extension).not.toContain("persistent: true");
     expect(extension).not.toContain(
       '["--mode", "json", "-p", "--no-session", toPiPromptArgument(prompt)]',
     );
