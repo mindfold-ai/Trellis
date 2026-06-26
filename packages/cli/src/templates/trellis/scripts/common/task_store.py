@@ -129,6 +129,7 @@ _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
     ".github/copilot",
     ".pi",        # Pi Agent
     ".trae",      # Trae IDE
+    ".omp",       # Oh My Pi
 )
 
 _SEED_EXAMPLE = (

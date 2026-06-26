@@ -86,3 +86,20 @@ Platform ecosystems change, and user projects may already be customized. If this
 - Judge behavior by the read rules currently written in the agent file.
 
 Do not delete a custom file just because it is not listed in this path table.
+
+### `.omp/` — Oh My Pi (OMP)
+
+Extension-backed platform. OMP native provider auto-discovers all subdirectories.
+
+```
+.omp/
+├── commands/          # Slash commands (flat .md)
+├── skills/            # Auto-triggered skills (SKILL.md per dir)
+├── agents/            # Agent definitions (.md)
+└── extensions/
+    └── trellis/
+        └── index.ts   # Trellis extension (context injection)
+```
+
+No `settings.json` — OMP scans `.omp/` subdirectories automatically.
+No Python hooks — hook-equivalent behavior lives in the TypeScript extension.

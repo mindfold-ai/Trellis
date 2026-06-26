@@ -300,6 +300,37 @@ export function wrapWithCommandFrontmatter(
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n${content}`;
 }
 
+/**
+ * Argument-hint values for commands that accept positional args.
+ * Used by OMP platform's YAML frontmatter.
+ */
+const COMMAND_ARGUMENT_HINTS: Record<string, string> = {
+  "finish-work": "[task-name]",
+};
+
+/**
+ * Wrap resolved command content with OMP-style YAML frontmatter.
+ * OMP uses `description` (required) + optional `argument-hint`.
+ * The leading `# Title` heading from the source template is stripped
+ * because OMP's frontmatter replaces its role.
+ */
+export function wrapWithOmpFrontmatter(name: string, content: string): string {
+  const baseName = name.replace(/^trellis-/, "");
+  const description = COMMAND_DESCRIPTIONS[baseName];
+  if (!description) {
+    throw new Error(
+      `Missing command description for "${baseName}". Add it to COMMAND_DESCRIPTIONS in shared.ts.`,
+    );
+  }
+  // Strip leading H1 + blank line from template body
+  const body = content.replace(/^# [^\n]+\n\n/, "");
+  const hint = COMMAND_ARGUMENT_HINTS[baseName];
+  const frontmatter = hint
+    ? `---\ndescription: ${description}\nargument-hint: ${hint}\n---`
+    : `---\ndescription: ${description}\n---`;
+  return `${frontmatter}\n\n${body}`;
+}
+
 // ---------------------------------------------------------------------------
 // Shared configurator helpers
 // ---------------------------------------------------------------------------

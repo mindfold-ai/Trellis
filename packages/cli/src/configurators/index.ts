@@ -35,6 +35,7 @@ import { configurePi, collectPiTemplates } from "./pi.js";
 import { configureReasonix, collectReasonixTemplates } from "./reasonix.js";
 import { configureZcode, collectZcodeTemplates } from "./zcode.js";
 import { configureTrae } from "./trae.js";
+import { configureOmp, collectOmpTemplates } from "./omp.js";
 
 // Shared utilities
 import {
@@ -486,6 +487,10 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       );
       return files;
     },
+  },
+  omp: {
+    configure: configureOmp,
+    collectTemplates: () => collectOmpTemplates(),
   },
 };
 

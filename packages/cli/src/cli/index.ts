@@ -85,6 +85,7 @@ program
   .option("--pi", "Include Pi Agent extension assets")
   .option("--reasonix", "Include Reasonix skills")
   .option("--zcode", "Include ZCode commands")
+  .option("--omp", "Include Oh My Pi extension assets")
   .option("--trae", "Include Trae IDE commands")
   .option(
     "--with-statusline",

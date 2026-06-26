@@ -738,6 +738,7 @@ describe("regression: update only configured platforms (beta.16)", () => {
       "copilot",
       "droid",
       "pi",
+      "omp",
     ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);
@@ -4454,6 +4455,15 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.pi.templateContext.hasHooks).toBe(true);
   });
 
+  it("[omp] Oh My Pi platform is registered", () => {
+    expect(AI_TOOLS).toHaveProperty("omp");
+    expect(AI_TOOLS.omp.configDir).toBe(".omp");
+    expect(AI_TOOLS.omp.cliFlag).toBe("omp");
+    expect(AI_TOOLS.omp.hasPythonHooks).toBe(false);
+    expect(AI_TOOLS.omp.templateContext.agentCapable).toBe(true);
+    expect(AI_TOOLS.omp.templateContext.hasHooks).toBe(true);
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -4535,6 +4545,11 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(
       'return f".pi/prompts/trellis-{name}.md"',
     );
+  });
+
+  it("[omp] cli_adapter.py supports omp platform", () => {
+    expect(commonCliAdapter).toContain('"omp"');
+    expect(commonCliAdapter).toContain(".omp");
   });
 
   it("[droid] cli_adapter.py treats droid as commands-only (no CLI run/resume yet)", () => {
@@ -4782,6 +4797,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(commonCliAdapter).toContain(".github/copilot");
     expect(commonCliAdapter).toContain(".factory");
     expect(commonCliAdapter).toContain(".pi");
+    expect(commonCliAdapter).toContain(".omp");
   });
 
   it("[copilot] cli_adapter.py treats copilot as IDE-only (no CLI run/resume)", () => {

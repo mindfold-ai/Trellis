@@ -114,9 +114,9 @@ describe("trellis template constants", () => {
     for (const script of pyScripts) {
       expect(
         script.includes("import") ||
-          script.includes("def ") ||
-          script.includes("class ") ||
-          script.includes("#"),
+        script.includes("def ") ||
+        script.includes("class ") ||
+        script.includes("#"),
       ).toBe(true);
     }
   });
@@ -177,7 +177,7 @@ describe("trellis template constants", () => {
     const implement = stepSection("2.1");
     const hookAutoBlock = platformBlock(
       implement,
-      "[Claude Code, Cursor, OpenCode, CodeBuddy, Droid, Pi]",
+      "[Claude Code, Cursor, OpenCode, CodeBuddy, Droid, Pi, Oh My Pi]",
     );
     const pullBasedMarker =
       "[codex-sub-agent, Gemini, Qoder, Copilot, ZCode, Reasonix, Trae]";
