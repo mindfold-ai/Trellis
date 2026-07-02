@@ -1645,29 +1645,22 @@ export default function trellisExtension(pi: {
       return { isError: true };
     return undefined;
   });
-  pi.on?.("input", (event, ctx) => {
-    const k = getKey(event, ctx);
-    const ev = event as { text?: string };
-    if (typeof ev.text !== "string" || !ev.text.trim())
-      return { action: "continue" };
-    const { wf, ov } = getTurnCtx(k);
-    const injection = [wf, ov].filter(Boolean).join("\n\n");
-    if (!injection) return { action: "continue" };
-    return {
-      action: "transform",
-      text: [ev.text, injection].join("\n\n"),
-    };
-  });
   pi.on?.("before_agent_start", (event, ctx) => {
     const k = getKey(event, ctx);
     const cur = (event as { systemPrompt?: string }).systemPrompt ?? "";
     const ctxText = buildContext(root, "trellis-implement", k);
     const turn = getTurnCtx(k);
     const startup = getStartupCtx(k, turn);
+    const runtimeContext = [turn.wf, turn.ov].filter(Boolean).join("\n\n");
     return {
-      systemPrompt: [cur, startup, ctxText, turn.wf, turn.ov]
-        .filter(Boolean)
-        .join("\n\n"),
+      message: runtimeContext
+        ? {
+            customType: "trellis-runtime-context",
+            content: runtimeContext,
+            display: false,
+          }
+        : undefined,
+      systemPrompt: [cur, startup, ctxText].filter(Boolean).join("\n\n"),
     };
   });
   pi.on?.("context", (event, ctx) => {

@@ -37,3 +37,36 @@ Implemented Pi platform adapter for trellis mem in packages/core/src/mem/adapter
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: Fix Pi context injection
+
+**Date**: 2026-06-26
+**Task**: Fix Pi context injection
+**Package**: cli
+
+### Summary
+
+Moved Pi Trellis compact runtime context from visible input transform to a hidden persistent before_agent_start custom message, while preserving systemPrompt full-context injection and context key behavior. Updated Pi template/configurator tests and platform integration spec; validation passed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dd35d97` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -69,8 +69,10 @@ export {
   const require = createRequire(import.meta.url);
   const moduleObject: { exports: Record<string, unknown> } = { exports: {} };
   const sandboxProcess = Object.create(process) as NodeJS.Process;
+  const sandboxEnv = { ...process.env };
+  delete sandboxEnv.TRELLIS_SUBAGENT_CHILD;
   Object.defineProperty(sandboxProcess, "cwd", { value: () => cwd });
-  Object.defineProperty(sandboxProcess, "env", { value: process.env });
+  Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
   const sandbox = vm.createContext({
     Buffer,
     console,
@@ -181,17 +183,19 @@ describe("pi templates", () => {
 
     // session_start: notify-only welcome
     expect(extension).toContain('pi.on?.("session_start"');
-    // input: per-turn model-visible workflow breadcrumb
-    expect(extension).toContain('pi.on?.("input"');
-    // before_agent_start: inject Trellis task context + per-turn breadcrumb
+    // input: not used; Trellis must not rewrite submitted user text
+    expect(extension).not.toContain('pi.on?.("input"');
+    // before_agent_start: preserves system prompt context and persists hidden runtime context
     expect(extension).toContain('pi.on?.("before_agent_start"');
+    // context: preserves the existing context-key establishment behavior only
+    expect(extension).toContain('pi.on?.("context"');
     // tool_call: inject TRELLIS_CONTEXT_ID into bash commands
     expect(extension).toContain('pi.on?.("tool_call"');
     // tool_result: mark failed/cancelled subagent runs as errors
     expect(extension).toContain('pi.on?.("tool_result"');
   });
 
-  it("injects workflow state on input and startup context on first agent start", () => {
+  it("keeps user input clean while persisting hidden runtime context", () => {
     const root = createMinimalTrellisRoot();
     const { trellisExtension } = loadExtensionInternals(root);
     const handlers = new Map<
@@ -211,14 +215,8 @@ describe("pi templates", () => {
       sessionManager: { getSessionId: () => "pi-unit-355" },
       ui: { notify: vi.fn() },
     };
-    const inputResult = handlers.get("input")?.(
-      { type: "input", text: "Adjust service routing", source: "interactive" },
-      ctx,
-    ) as { action: string; text?: string };
 
-    expect(inputResult.action).toBe("transform");
-    expect(inputResult.text).toContain("<workflow-state>");
-    expect(inputResult.text).toContain("Status: no_task");
+    expect(handlers.has("input")).toBe(false);
 
     const beforeAgentStart = handlers.get("before_agent_start");
     const first = beforeAgentStart?.(
@@ -229,8 +227,12 @@ describe("pi templates", () => {
         systemPromptOptions: {},
       },
       ctx,
-    ) as { systemPrompt: string };
+    ) as {
+      systemPrompt?: string;
+      message: { customType?: string; content?: string; display?: boolean };
+    };
 
+    expect(first.systemPrompt).toContain("BASE");
     expect(first.systemPrompt).toContain(
       "Trellis compact SessionStart context",
     );
@@ -238,6 +240,24 @@ describe("pi templates", () => {
     expect(first.systemPrompt).toContain("<trellis-workflow>");
     expect(first.systemPrompt).toContain("Phase 1: Plan");
     expect(first.systemPrompt).toContain("No active Trellis task found");
+    expect(first.systemPrompt).not.toContain("<workflow-state>");
+    // The first system prompt still contains startup's one-shot session overview.
+    expect(first.systemPrompt).toContain("<session-overview>");
+    expect(first.message).toEqual(
+      expect.objectContaining({
+        customType: "trellis-runtime-context",
+        display: false,
+      }),
+    );
+    expect("role" in first.message).toBe(false);
+    expect("timestamp" in first.message).toBe(false);
+    expect(first.message.content).not.toContain("BASE");
+    expect(first.message.content).not.toContain(
+      "Trellis compact SessionStart context",
+    );
+    expect(first.message.content).toContain("<workflow-state>");
+    expect(first.message.content).toContain("Status: no_task");
+    expect(first.message.content).toContain("<session-overview>");
 
     const second = beforeAgentStart?.(
       {
@@ -247,12 +267,33 @@ describe("pi templates", () => {
         systemPromptOptions: {},
       },
       ctx,
-    ) as { systemPrompt: string };
+    ) as {
+      systemPrompt?: string;
+      message: { customType?: string; content?: string; display?: boolean };
+    };
 
+    expect(second.systemPrompt).toContain("BASE");
     expect(second.systemPrompt).not.toContain(
       "Trellis compact SessionStart context",
     );
-    expect(second.systemPrompt).toContain("<workflow-state>");
+    expect(second.systemPrompt).toContain("No active Trellis task found");
+    expect(second.systemPrompt).not.toContain("<workflow-state>");
+    expect(second.systemPrompt).not.toContain("<session-overview>");
+    expect(second.message).toEqual(
+      expect.objectContaining({
+        customType: "trellis-runtime-context",
+        display: false,
+      }),
+    );
+    expect("role" in second.message).toBe(false);
+    expect("timestamp" in second.message).toBe(false);
+    expect(second.message.content).not.toContain(
+      "Trellis compact SessionStart context",
+    );
+    expect(second.message.content).not.toContain("BASE");
+    expect(second.message.content).toContain("<workflow-state>");
+    expect(second.message.content).toContain("<session-overview>");
+    expect(handlers.has("context")).toBe(true);
   });
 
   it("extension bash tool_call handler prefixes TRELLIS_CONTEXT_ID", () => {
