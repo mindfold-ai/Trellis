@@ -1,9 +1,9 @@
 {
   "version": "0.6.6",
-  "description": "Patch release: aligns ZCode sub-agent output with ZCode's updated `.zcode/agents/` discovery path (was `.zcode/cli/agents/`).",
+  "description": "Patch release: aligns ZCode-managed Trellis assets with ZCode's native `.zcode` layout for skills and agents.",
   "breaking": false,
   "recommendMigrate": false,
-  "changelog": "**Bug Fixes:**\n- fix(zcode): write ZCode sub-agents to `.zcode/agents/` instead of the legacy `.zcode/cli/agents/`. ZCode moved its sub-agent discovery path (dropped the intermediate `cli/` segment), so `trellis init --zcode` and `trellis update` were emitting agents to a directory ZCode no longer scans. `configureZcode` (`configurators/zcode.ts`), `AI_TOOLS.zcode.extraManagedPaths` (`types/ai-tools.ts`), the `collectZcodeTemplates` diff-tracking map, and the trellis-meta reference docs now all use `.zcode/agents/`. Existing projects can run `trellis update --migrate` to move any installed `.zcode/cli/agents/` directory to `.zcode/agents/` (projects without the old directory are silently skipped).\n\n**Migration:** ZCode users who initialized with `--zcode` on an earlier CLI version should run `trellis update --migrate` once to relocate the sub-agent directory. Plain `trellis update` prints a soft hint prompting `--migrate`. New `trellis init --zcode` installs are unaffected.",
+  "changelog": "**Bug Fixes:**\n- fix(zcode): write ZCode-managed Trellis skills to `.zcode/skills/` instead of `.agents/skills/`, so local manually invoked skills live in the directory ZCode scans and ZCode no longer owns the shared agentskills.io compatibility root.\n- fix(zcode): complete the ZCode sub-agent set by adding `trellis-research` under `.zcode/agents/`, and treat `.zcode` as sub-agent-capable when seeding task JSONL context files.\n- fix(zcode): keep ZCode sub-agents under `.zcode/agents/` instead of the legacy `.zcode/cli/agents/` discovery path. Existing projects can run `trellis update --migrate` to move any installed legacy sub-agent directory.\n\n**Migration:** ZCode users who initialized with `--zcode` on an earlier CLI version should run `trellis update --migrate` once to relocate `.zcode/cli/agents/` to `.zcode/agents/` if the legacy directory exists. New `trellis init --zcode` installs write the corrected `.zcode/skills/` and `.zcode/agents/` layout directly.",
   "migrations": [
     {
       "type": "rename-dir",
@@ -13,5 +13,5 @@
       "reason": "ZCode dropped the intermediate `cli/` segment from its sub-agent discovery path. Trellis now writes to `.zcode/agents/`; this relocation keeps already-initialized projects consistent without leaving a stale directory behind."
     }
   ],
-  "notes": "No `--migrate` required for new installs.\n\nZCode users on an earlier CLI version (0.6.3–0.6.5) should run `trellis update --migrate` once to move `.zcode/cli/agents/` → `.zcode/agents/`. Projects that never had a `.zcode/cli/agents/` directory are silently skipped. After migrating, the empty `.zcode/cli/` parent (if it has nothing else under it) can be removed manually.\n\nInstall: `npm install -g @mindfoldhq/trellis`"
+  "notes": "No `--migrate` required for new installs.\n\nZCode users on an earlier CLI version (0.6.3–0.6.5) should run `trellis update --migrate` once to move `.zcode/cli/agents/` → `.zcode/agents/` if that legacy directory exists. `trellis update` also adds the new `.zcode/skills/` files and `trellis-research` agent through the normal template update path.\n\nProjects that only used ZCode may remove stale `.agents/skills/` files after confirming no other configured platform still relies on the shared agentskills.io root.\n\nInstall: `npm install -g @mindfoldhq/trellis`"
 }

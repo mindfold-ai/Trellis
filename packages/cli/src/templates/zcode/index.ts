@@ -5,9 +5,10 @@
  * collaboration. It stores agents as `.zcode/agents/<name>.md`
  * (Markdown with YAML frontmatter: name, description, color).
  *
- * Sub-agent definitions (trellis-implement, trellis-check, trellis-research) use pull-based
- * context injection — no hooks are available, so agents read their own
- * context files at startup.
+ * trellis-implement and trellis-check use pull-based context injection.
+ * trellis-research is intentionally standalone: it does not receive the
+ * implement/check prelude, and persists findings under the active task's
+ * research directory instead.
  */
 
 import { createTemplateReader, type AgentTemplate } from "../template-utils.js";

@@ -715,7 +715,7 @@ describe("configurePlatform", () => {
         path.join(tmpDir, ".zcode", "skills", "trellis-check", "SKILL.md"),
         "utf-8",
       ),
-    ).toBe(expectedCheck.content);
+    ).toBe(replacePythonCommandLiterals(expectedCheck.content));
     expect(
       fs.existsSync(
         path.join(tmpDir, ".zcode", "agents", "trellis-implement.md"),

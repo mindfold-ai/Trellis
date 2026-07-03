@@ -14,7 +14,7 @@ The PR also completes ZCode's native sub-agent set by adding the missing `trelli
 - Stop tracking `.agents/skills` in `collectZcodeTemplates()`.
 - Remove `supportsAgentSkills` from the ZCode registry entry.
 - Add `.zcode/skills` as the ZCode-owned skill root.
-- Render ZCode private skills with `resolveSkills()` so `.zcode/skills` contains workflow skills only.
+- Render ZCode private skills with `resolveSkills()` and `resolveBundledSkills()` so `.zcode/skills` contains workflow and bundled skills.
 - Keep `trellis-start`, `trellis-continue`, and `trellis-finish-work` as `.zcode/commands/trellis` commands instead of duplicating them as skills.
 - Add `.zcode/skills` to ZCode managed paths.
 - Add `packages/cli/src/templates/zcode/agents/trellis-research.md`.
