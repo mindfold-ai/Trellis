@@ -4796,6 +4796,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(taskStore as string).toContain('".codex"');
     expect(taskStore as string).toContain('".github/copilot"');
     expect(taskStore as string).toContain('".pi"');
+    expect(taskStore as string).toContain('".zcode"');
     // Seed row is self-describing and has no `file` field (so consumers skip
     // it naturally).
     expect(taskStore as string).toMatch(/_write_seed_jsonl/);
@@ -5678,6 +5679,19 @@ describe("regression: research agent persists findings to task dir", () => {
     const rel = "packages/cli/src/templates/gemini/agents/trellis-research.md";
     const content = fs.readFileSync(path.join(repoRoot, rel), "utf-8");
     const fm = content.split("---\n")[1] ?? "";
+    expect(fm).not.toMatch(/^tools:/m);
+    expect(content).toContain("{TASK_DIR}/research/");
+    expect(content).toMatch(/PERSIST|[Pp]ersist/);
+    expect(content).not.toMatch(/^- Modify any files\s*$/m);
+  });
+
+  it("[packages/cli/src/templates/zcode/agents/trellis-research.md] uses ZCode frontmatter + has persist instruction", () => {
+    const rel = "packages/cli/src/templates/zcode/agents/trellis-research.md";
+    const content = fs
+      .readFileSync(path.join(repoRoot, rel), "utf-8")
+      .replace(/\r\n/g, "\n");
+    const fm = content.split("---\n")[1] ?? "";
+    expect(fm).toContain("color:");
     expect(fm).not.toMatch(/^tools:/m);
     expect(content).toContain("{TASK_DIR}/research/");
     expect(content).toMatch(/PERSIST|[Pp]ersist/);

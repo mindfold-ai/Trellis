@@ -15,9 +15,9 @@ Platform files do not store business state. They let the corresponding AI tool r
 | --- | --- | --- |
 | settings/config | `.claude/settings.json`, `.codex/hooks.json`, `.qoder/settings.json`, `.trae/hooks.json` | Register hooks, plugins, extensions, or platform behavior. |
 | hooks/plugins/extensions | `.claude/hooks/`, `.opencode/plugins/`, `.pi/extensions/` | Inject context at session start, user input, agent startup, shell execution, and similar events. |
-| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/` | Define `trellis-research`, `trellis-implement`, and `trellis-check`. |
-| skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/` | Capability descriptions that auto-trigger or can be read on demand. |
-| commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.devin/workflows/` | Entry points explicitly invoked by the user. |
+| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/`, `.zcode/agents/` | Define `trellis-research`, `trellis-implement`, and `trellis-check`. |
+| skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/`, `.zcode/skills/` | Capability descriptions that auto-trigger or can be read on demand. |
+| commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.devin/workflows/`, `.zcode/commands/` | Entry points explicitly invoked by the user. |
 
 ## Three Platform Integration Modes
 

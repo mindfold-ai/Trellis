@@ -22,7 +22,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Pi Agent | `--pi` | `.pi/` | `.pi/skills/` | `.pi/agents/` | `.pi/extensions/trellis/` (native `trellis_subagent` tool) + `.pi/settings.json` |
 | Trae IDE | `--trae` | `.trae/` | `.trae/skills/` | `.trae/agents/` | `.trae/hooks/` + `.trae/hooks.json` |
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
-| ZCode | `--zcode` | `.zcode/` | `.agents/skills/` | `.zcode/agents/` | pull-based prelude (no hooks) |
+| ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | pull-based prelude (no hooks) |
 
 ## Capability Groups
 
@@ -67,7 +67,7 @@ When changing behavior, inspect workflows and skills first. Do not assume Trelli
 
 ### Shared `.agents/skills/`
 
-Codex writes the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it.
+Codex and Gemini CLI write the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it. ZCode keeps Trellis-managed skills under `.zcode/skills/`.
 
 ## Decision Rules When Modifying Platform Files
 

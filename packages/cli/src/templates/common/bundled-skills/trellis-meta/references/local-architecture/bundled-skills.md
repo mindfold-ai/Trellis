@@ -47,6 +47,7 @@ Each platform configurator calls `writeSkills(<root>, <workflowSkills>, resolveB
 | Antigravity | `.agent/skills/<skill>/` | `configureAntigravity` |
 | Devin | `.devin/skills/<skill>/` | `configureDevin` |
 | Kilo | `.kilocode/skills/<skill>/` | `configureKilo` |
+| ZCode | `.zcode/skills/<skill>/` | `configureZcode` |
 | OpenCode | (handled by `collectOpenCodeTemplates`) | Uses the same `resolveBundledSkills(ctx)` output |
 | Pi, Reasonix | (their own collectors) | Same `resolveBundledSkills(ctx)` output |
 
@@ -105,7 +106,7 @@ The shape and dispatch wiring are already generic, so adding a skill requires on
    - Source files exist on the branch being tagged.
    - `pnpm --filter @mindfoldhq/trellis build` copies the asset into `dist/templates/common/bundled-skills/<skill>/`.
    - `npm pack --dry-run --json` includes the expected `dist/**` paths.
-   - In a fresh temp project, `trellis init` writes `.claude/skills/<skill>/SKILL.md`, `.agents/skills/<skill>/SKILL.md`, etc.
+   - In a fresh temp project, `trellis init` writes `.claude/skills/<skill>/SKILL.md`, `.agents/skills/<skill>/SKILL.md`, `.zcode/skills/<skill>/SKILL.md`, etc.
    - `.trellis/.template-hashes.json` lists the generated files.
    - `trellis update --dry-run` in that temp project reports "Already up to date!".
 

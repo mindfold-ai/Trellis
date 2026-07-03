@@ -402,7 +402,6 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "ZCode",
     templateDirs: ["common", "zcode"],
     configDir: ".zcode",
-    supportsAgentSkills: true,
     // `.zcode/cli/agents` is the pre-ZCode-update discovery path. Kept managed
     // during the transition so `trellis update --migrate` (rename-dir →
     // `.zcode/agents/`) and `trellis uninstall` can clean up the now-empty
@@ -413,6 +412,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       ".zcode/cli/agents",
       ".zcode/agents",
       ".zcode/commands",
+      ".zcode/skills",
     ],
     cliFlag: "zcode",
     defaultChecked: false,

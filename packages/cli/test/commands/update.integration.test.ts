@@ -240,15 +240,25 @@ describe("update() integration", () => {
     expect(entries.filter((e) => e.startsWith(".backup-")).length).toBe(0);
   });
 
-  it("[issue-zcode-codex-upgrade] zcode .agents skills do not trigger legacy Codex backfill", async () => {
+  it("[issue-zcode-codex-upgrade] zcode private skills do not trigger legacy Codex backfill", async () => {
     await init({ yes: true, force: true, zcode: true });
 
+    expect(fs.existsSync(projectFile(".zcode/commands/trellis/start.md"))).toBe(
+      true,
+    );
     expect(
-      fs.existsSync(projectFile(".zcode/commands/trellis/start.md")),
+      fs.existsSync(projectFile(".zcode/skills/trellis-start/SKILL.md")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(projectFile(".zcode/skills/trellis-check/SKILL.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(projectFile(".zcode/agents/trellis-research.md")),
     ).toBe(true);
     expect(
       fs.existsSync(projectFile(".agents/skills/trellis-start/SKILL.md")),
     ).toBe(false);
+    expect(fs.existsSync(projectFile(".agents/skills"))).toBe(false);
     expect(
       fs.existsSync(projectFile(".agents/skills/trellis-continue/SKILL.md")),
     ).toBe(false);
@@ -258,6 +268,16 @@ describe("update() integration", () => {
     const logOutput = vi.mocked(console.log).mock.calls.flat().join("\n");
     expect(logOutput).not.toContain("Legacy Codex detected");
     expect(fs.existsSync(projectFile(".codex"))).toBe(false);
+    expect(
+      fs.existsSync(projectFile(".zcode/skills/trellis-start/SKILL.md")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(projectFile(".zcode/skills/trellis-check/SKILL.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(projectFile(".zcode/agents/trellis-research.md")),
+    ).toBe(true);
+    expect(fs.existsSync(projectFile(".agents/skills"))).toBe(false);
   });
 
   it("#2 dry run makes no file changes even when changes exist", async () => {

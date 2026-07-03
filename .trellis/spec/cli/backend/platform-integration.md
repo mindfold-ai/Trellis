@@ -138,13 +138,13 @@ When adding a new platform `{platform}`, update the following:
 
 #### Rule: `.agents/skills/` writes use `resolvePlaceholdersNeutral()`
 
-`.agents/skills/` is a **shared destination**: multiple configurators (Codex, Gemini CLI 0.40+ via the workspace alias, ZCode, future agentskills.io consumers) all write into the same path. Per-platform `{{CMD_REF:name}}` resolution (`$name` for Codex, `/trellis:name` for Gemini/ZCode, etc.) makes the same `<skill>/SKILL.md` differ byte-for-byte depending on which configurator ran last → "last-writer-wins" content collisions and `.template-hashes.json` churn.
+`.agents/skills/` is a **shared destination**: multiple configurators (Codex, Gemini CLI 0.40+ via the workspace alias, future agentskills.io consumers) all write into the same path. Per-platform `{{CMD_REF:name}}` resolution (`$name` for Codex, `/trellis:name` for Gemini, etc.) makes the same `<skill>/SKILL.md` differ byte-for-byte depending on which configurator ran last → "last-writer-wins" content collisions and `.template-hashes.json` churn.
 
 **Rule**: Anything written under `.agents/skills/` MUST be rendered via `resolvePlaceholdersNeutral()` (in `configurators/shared.ts`), which substitutes `` `name` (Trellis command) `` for `{{CMD_REF:name}}` instead of a platform prefix. All other placeholders (`{{CLI_FLAG}}`, `{{EXECUTOR_AI}}`, `{{USER_ACTION_LABEL}}`, conditionals, `{{PYTHON_CMD}}`) still resolve from the platform context — those don't appear in the auto-triggered skill templates from `common/skills/`, so the rendered output stays identical across writers.
 
 Per-platform skill directories (`.claude/skills/`, `.cursor/skills/`, `.qoder/skills/`, etc.) keep using `resolvePlaceholders()` — `{{CMD_REF}}` resolves to the platform-correct slash form there, because no other configurator writes those paths.
 
-**Command-as-skill fallback files under `.agents/skills/`** (currently `trellis-start/SKILL.md`, `trellis-continue/SKILL.md`, and `trellis-finish-work/SKILL.md`, written via `resolveAllAsSkillsNeutral()` by Codex) may use per-platform `{{CLI_FLAG}}` / `{{PYTHON_CMD}}` because they are user-invoked fallback entrypoints. They still go through the neutral helper to keep `{{CMD_REF}}` neutralized for consistency with the surrounding shared skills. A platform that has its own command surface (for example ZCode's `.zcode/commands/trellis/*.md`) must write only `resolveSkillsNeutral()` output under `.agents/skills/`; otherwise combined installs with Codex produce last-writer/hash churn on `trellis-start` / `trellis-continue`.
+**Command-as-skill fallback files under `.agents/skills/`** (currently `trellis-start/SKILL.md`, `trellis-continue/SKILL.md`, and `trellis-finish-work/SKILL.md`, written via `resolveAllAsSkillsNeutral()` by Codex) may use per-platform `{{CLI_FLAG}}` / `{{PYTHON_CMD}}` because they are user-invoked fallback entrypoints. They still go through the neutral helper to keep `{{CMD_REF}}` neutralized for consistency with the surrounding shared skills. Platforms with their own private command and skill roots should not write `.agents/skills/`; for example, ZCode writes workflow/bundled skills under `.zcode/skills/` and keeps slash commands under `.zcode/commands/trellis/*.md`.
 
 **Wrong**:
 ```typescript
@@ -528,8 +528,8 @@ Configurator output:
 Runtime script registry:
 
 ```python
-Platform = Literal[..., "pi"]
-_SUBAGENT_CONFIG_DIRS = (..., ".pi")
+Platform = Literal[..., "pi", "zcode"]
+_SUBAGENT_CONFIG_DIRS = (..., ".pi", ".zcode")
 ```
 
 ### 3. Contracts
@@ -888,7 +888,7 @@ Platform's hook either doesn't expose a sub-agent spawn event or can't modify th
 | Qoder | No `Task` tool concept; `SubagentStart` input has no `prompt` field; Context Isolation |
 | Codex | `PreToolUse` only fires for Bash; `CollabAgentSpawn` hook unimplemented ([#15486](https://github.com/openai/codex/issues/15486)) |
 | Copilot | `preToolUse` doesn't enforce on subagents ([#2392](https://github.com/github/copilot-cli/issues/2392), [#2540](https://github.com/github/copilot-cli/issues/2540)) |
-| ZCode | No Trellis-supported hook surface for sub-agent prompt mutation; generated `.zcode/cli/agents/*.md` files receive the pull-based prelude. |
+| ZCode | No Trellis-supported hook surface for sub-agent prompt mutation; generated `.zcode/agents/*.md` files receive the pull-based prelude. |
 | Reasonix | Sub-agent skills run with `runAs: subagent`; no prompt-mutation hook exists, so workflow dispatch must carry the active task and the sub-agent skill reads task artifacts itself. |
 | Trae IDE | `SessionStart` / `UserPromptSubmit` hooks cover main-session context, but no Trellis-supported sub-agent prompt mutation surface exists; generated `.trae/agents/*.md` files receive the pull-based prelude. |
 

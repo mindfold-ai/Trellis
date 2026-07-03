@@ -3,7 +3,7 @@
  *
  * ZCode (智谱) is a pull-based class-2 platform (agentCapable, no hooks).
  * Three output paths:
- * - `.agents/skills/` — shared skills, byte-identical with Codex/Gemini writes
+ * - `.zcode/skills/` — ZCode-private workflow and bundled skills
  * - `.zcode/commands/trellis/` — slash commands (invoked as /trellis:<name>)
  * - `.zcode/agents/` — sub-agent definitions with pull-based prelude
  */
@@ -14,9 +14,9 @@ import { ensureDir, writeFile } from "../utils/file-writer.js";
 import { getAllAgents } from "../templates/zcode/index.js";
 import {
   collectSkillTemplates,
-  resolveSkillsNeutral,
   resolveBundledSkills,
   resolveCommands,
+  resolveSkills,
   writeSkills,
   writeAgents,
   applyPullBasedPreludeMarkdown,
@@ -31,10 +31,10 @@ export function collectZcodeTemplates(): Map<string, string> {
   const ctx = config.templateContext;
   const files = new Map<string, string>();
 
-  // 1. Shared skills → .agents/skills/ (byte-identical with Codex/Gemini)
+  // 1. ZCode-private workflow and bundled skills → .zcode/skills/.
   for (const [filePath, content] of collectSkillTemplates(
-    ".agents/skills",
-    resolveSkillsNeutral(ctx),
+    ".zcode/skills",
+    resolveSkills(ctx),
     resolveBundledSkills(ctx),
   )) {
     files.set(filePath, content);
@@ -54,16 +54,16 @@ export function collectZcodeTemplates(): Map<string, string> {
 }
 
 /**
- * Configure ZCode at init time: write shared skills, commands, and sub-agents.
+ * Configure ZCode at init time: write private skills, commands, and sub-agents.
  */
 export async function configureZcode(cwd: string): Promise<void> {
   const config = AI_TOOLS.zcode;
   const ctx = config.templateContext;
 
-  // 1. Shared skills → .agents/skills/
+  // 1. ZCode-private workflow and bundled skills → .zcode/skills/.
   await writeSkills(
-    path.join(cwd, ".agents", "skills"),
-    resolveSkillsNeutral(ctx),
+    path.join(cwd, ".zcode", "skills"),
+    resolveSkills(ctx),
     resolveBundledSkills(ctx),
   );
 

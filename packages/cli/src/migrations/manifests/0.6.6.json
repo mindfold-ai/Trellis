@@ -1,0 +1,17 @@
+{
+  "version": "0.6.6",
+  "description": "Patch release: aligns ZCode sub-agent output with ZCode's updated `.zcode/agents/` discovery path (was `.zcode/cli/agents/`).",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(zcode): write ZCode sub-agents to `.zcode/agents/` instead of the legacy `.zcode/cli/agents/`. ZCode moved its sub-agent discovery path (dropped the intermediate `cli/` segment), so `trellis init --zcode` and `trellis update` were emitting agents to a directory ZCode no longer scans. `configureZcode` (`configurators/zcode.ts`), `AI_TOOLS.zcode.extraManagedPaths` (`types/ai-tools.ts`), the `collectZcodeTemplates` diff-tracking map, and the trellis-meta reference docs now all use `.zcode/agents/`. Existing projects can run `trellis update --migrate` to move any installed `.zcode/cli/agents/` directory to `.zcode/agents/` (projects without the old directory are silently skipped).\n\n**Migration:** ZCode users who initialized with `--zcode` on an earlier CLI version should run `trellis update --migrate` once to relocate the sub-agent directory. Plain `trellis update` prints a soft hint prompting `--migrate`. New `trellis init --zcode` installs are unaffected.",
+  "migrations": [
+    {
+      "type": "rename-dir",
+      "from": ".zcode/cli/agents",
+      "to": ".zcode/agents",
+      "description": "ZCode: move installed sub-agents from the legacy `.zcode/cli/agents/` directory to the new `.zcode/agents/` discovery path.",
+      "reason": "ZCode dropped the intermediate `cli/` segment from its sub-agent discovery path. Trellis now writes to `.zcode/agents/`; this relocation keeps already-initialized projects consistent without leaving a stale directory behind."
+    }
+  ],
+  "notes": "No `--migrate` required for new installs.\n\nZCode users on an earlier CLI version (0.6.3–0.6.5) should run `trellis update --migrate` once to move `.zcode/cli/agents/` → `.zcode/agents/`. Projects that never had a `.zcode/cli/agents/` directory are silently skipped. After migrating, the empty `.zcode/cli/` parent (if it has nothing else under it) can be removed manually.\n\nInstall: `npm install -g @mindfoldhq/trellis`"
+}

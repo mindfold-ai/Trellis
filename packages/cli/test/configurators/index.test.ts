@@ -318,6 +318,7 @@ describe("collectPlatformTemplates", () => {
     copilot: ".github/skills",
     droid: ".factory/skills",
     pi: ".pi/skills",
+    zcode: ".zcode/skills",
   };
 
   it("does not throw for any platform", () => {
@@ -415,5 +416,28 @@ describe("collectPlatformTemplates", () => {
     expect(result?.has(".pi/agents/trellis-implement.md")).toBe(true);
     expect(result?.has(".pi/extensions/trellis/index.ts")).toBe(true);
     expect(result?.has(".pi/settings.json")).toBe(true);
+  });
+
+  it("zcode collectTemplates includes only .zcode-owned skills", () => {
+    const result = collectPlatformTemplates("zcode");
+    expect(result).toBeInstanceOf(Map);
+    expect(
+      [...(result?.keys() ?? [])].some((key) =>
+        key.startsWith(".agents/skills/"),
+      ),
+    ).toBe(false);
+    expect(result?.has(".agents/skills/trellis-check/SKILL.md")).toBe(false);
+    expect(result?.has(".agents/skills/trellis-start/SKILL.md")).toBe(false);
+    expect(result?.has(".zcode/skills/trellis-start/SKILL.md")).toBe(false);
+    expect(result?.has(".zcode/skills/trellis-continue/SKILL.md")).toBe(false);
+    expect(result?.has(".zcode/skills/trellis-finish-work/SKILL.md")).toBe(
+      false,
+    );
+    expect(result?.has(".zcode/skills/trellis-before-dev/SKILL.md")).toBe(true);
+    expect(result?.has(".zcode/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(result?.has(".zcode/commands/trellis/start.md")).toBe(true);
+    expect(result?.has(".zcode/agents/trellis-implement.md")).toBe(true);
+    expect(result?.has(".zcode/agents/trellis-check.md")).toBe(true);
+    expect(result?.has(".zcode/agents/trellis-research.md")).toBe(true);
   });
 });

@@ -656,14 +656,23 @@ describe("configurePlatform", () => {
     }
   });
 
-  it("configurePlatform('zcode') keeps command fallbacks out of shared .agents skills", async () => {
+  it("configurePlatform('zcode') writes only .zcode-owned skills", async () => {
     await configurePlatform("zcode", tmpDir);
+
+    const expectedPrivateSkills = resolveSkills(AI_TOOLS.zcode.templateContext);
+    const expectedCheck = expectedPrivateSkills.find(
+      (skill) => skill.name === "trellis-check",
+    );
+    if (!expectedCheck) {
+      throw new Error("Expected ZCode private skills to include trellis-check");
+    }
 
     expect(
       fs.existsSync(
         path.join(tmpDir, ".zcode", "commands", "trellis", "start.md"),
       ),
     ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
     expect(
       fs.existsSync(
         path.join(tmpDir, ".agents", "skills", "trellis-start", "SKILL.md"),
@@ -671,23 +680,88 @@ describe("configurePlatform", () => {
     ).toBe(false);
     expect(
       fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-continue", "SKILL.md"),
+      ),
+    ).toBe(false);
+
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-continue", "SKILL.md"),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
         path.join(
           tmpDir,
-          ".agents",
+          ".zcode",
           "skills",
-          "trellis-continue",
+          "trellis-finish-work",
           "SKILL.md",
         ),
       ),
     ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.readFileSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-check", "SKILL.md"),
+        "utf-8",
+      ),
+    ).toBe(expectedCheck.content);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "agents", "trellis-implement.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".zcode", "agents", "trellis-check.md")),
+    ).toBe(true);
+    const researchAgentPath = path.join(
+      tmpDir,
+      ".zcode",
+      "agents",
+      "trellis-research.md",
+    );
+    expect(fs.existsSync(researchAgentPath)).toBe(true);
+    expect(fs.readFileSync(researchAgentPath, "utf-8")).not.toContain(
+      "Load Trellis Context First",
+    );
 
     const templates = collectPlatformTemplates("zcode");
     expect(templates?.has(".zcode/commands/trellis/start.md")).toBe(true);
+    expect(
+      [...(templates?.keys() ?? [])].some((key) =>
+        key.startsWith(".agents/skills/"),
+      ),
+    ).toBe(false);
     expect(templates?.has(".agents/skills/trellis-start/SKILL.md")).toBe(false);
     expect(templates?.has(".agents/skills/trellis-continue/SKILL.md")).toBe(
       false,
     );
-    expect(templates?.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(templates?.has(".agents/skills/trellis-check/SKILL.md")).toBe(false);
+    expect(templates?.has(".zcode/skills/trellis-start/SKILL.md")).toBe(false);
+    expect(templates?.has(".zcode/skills/trellis-continue/SKILL.md")).toBe(
+      false,
+    );
+    expect(templates?.has(".zcode/skills/trellis-finish-work/SKILL.md")).toBe(
+      false,
+    );
+    expect(templates?.has(".zcode/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(templates?.has(".zcode/skills/trellis-meta/SKILL.md")).toBe(true);
+    expect(templates?.has(".zcode/agents/trellis-implement.md")).toBe(true);
+    expect(templates?.has(".zcode/agents/trellis-check.md")).toBe(true);
+    expect(templates?.has(".zcode/agents/trellis-research.md")).toBe(true);
+    expect(templates?.get(".zcode/agents/trellis-research.md")).not.toContain(
+      "Load Trellis Context First",
+    );
   });
 
   it("configurePlatform('codebuddy') creates .codebuddy directory", async () => {
@@ -894,9 +968,9 @@ describe("configurePlatform", () => {
     for (const file of walk(tmpDir)) {
       expect(path.basename(file)).not.toBe("statusline.py");
       if (path.basename(file) === "settings.json") {
-        expect(
-          JSON.parse(fs.readFileSync(file, "utf-8")),
-        ).not.toHaveProperty("statusLine");
+        expect(JSON.parse(fs.readFileSync(file, "utf-8"))).not.toHaveProperty(
+          "statusLine",
+        );
       }
     }
   });

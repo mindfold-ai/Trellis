@@ -627,10 +627,9 @@ describe("init() integration", () => {
   it("#3m zcode platform emits start slash command without shared command-as-skill fallback", async () => {
     await init({ yes: true, zcode: true });
 
-    // ZCode is agentCapable && !hasHooks, so start must be user-invocable.
-    // It has a private command surface, so command fallbacks stay under
-    // .zcode/commands/trellis/ instead of the shared .agents/skills/ path
-    // that Codex also owns.
+    // ZCode owns its private .zcode surface. Commands remain commands, while
+    // .zcode/skills contains workflow/bundled skills only.
+    expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
     expect(
       fs.existsSync(
         path.join(tmpDir, ".agents", "skills", "trellis-start", "SKILL.md"),
@@ -643,7 +642,41 @@ describe("init() integration", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-continue", "SKILL.md"),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(
+          tmpDir,
+          ".zcode",
+          "skills",
+          "trellis-finish-work",
+          "SKILL.md",
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
         path.join(tmpDir, ".zcode", "agents", "trellis-implement.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".zcode", "agents", "trellis-check.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".zcode", "agents", "trellis-research.md"),
       ),
     ).toBe(true);
   });
