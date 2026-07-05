@@ -67,11 +67,18 @@ describe("resolveProviderPath", () => {
   it("checks local node_modules bin before PATH", () => {
     const projectDir = path.join(tmpDir, "project");
     const binDir = path.join(projectDir, "node_modules", ".bin");
+    const globalBinDir = path.join(tmpDir, "global-bin");
     const jsPath = writeShimTarget(
       "node_modules\\@openai\\codex\\bin\\codex.js",
       binDir,
     );
-    process.env.PATH = path.join(tmpDir, "global-bin");
+    writeShimTarget("node_modules\\global-codex\\bin\\codex.js", globalBinDir);
+    fs.writeFileSync(
+      path.join(globalBinDir, "codex.cmd"),
+      '"%_prog%"  "%dp0%\\node_modules\\global-codex\\bin\\codex.js" %*\r\n',
+      "utf8",
+    );
+    process.env.PATH = globalBinDir;
     fs.writeFileSync(
       path.join(binDir, "codex.cmd"),
       '"%_prog%"  "%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*\r\n',

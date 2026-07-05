@@ -81,11 +81,11 @@ interface ResolvedProviderPath {
 }
 
 /**
- * 在 Windows 上解析 npm `.cmd` shim 的真实启动目标
+ * Resolve the real launch target for npm `.cmd` shims on Windows.
  *
- * @param provider provider 的 CLI 基名，例如 `codex` 或 `claude`
- * @param cwd worker 启动目录，用于优先查找本地 `node_modules/.bin`
- * @returns 可直接传给 `spawn()` 的命令与前置参数
+ * @param provider CLI basename for the provider, such as `codex` or `claude`.
+ * @param cwd Worker launch directory, used to check local `node_modules/.bin` first.
+ * @returns Command and prefix arguments that can be passed directly to `spawn()`.
  */
 export function resolveProviderPath(
   provider: string,
@@ -103,7 +103,7 @@ export function resolveProviderPath(
       const cmdFile = path.join(dir, cmdName);
       if (!fs.existsSync(cmdFile)) continue;
       const content = fs.readFileSync(cmdFile, "utf8");
-      // npm 生成的可执行文件 shim 格式: "%dp0%\node_modules\pkg\bin\name.exe" %*
+      // npm-generated executable shim format: "%dp0%\node_modules\pkg\bin\name.exe" %*
       const m = content.match(/"%dp0%\\([^"]+?\.exe)"/i);
       if (m) {
         const exePath = path.join(dir, m[1]);
@@ -114,7 +114,7 @@ export function resolveProviderPath(
           return { command: exePath, prefixArgs: [] };
         }
       }
-      // npm 生成的 Node 脚本 shim 格式:
+      // npm-generated Node script shim format:
       // "%_prog%"  "%dp0%\node_modules\pkg\bin\name.js" %*
       const js = content.match(/"%dp0%\\([^"]+?\.(?:js|cjs|mjs))"/i);
       if (js) {
@@ -125,7 +125,7 @@ export function resolveProviderPath(
       }
     }
   } catch {
-    // 解析失败不影响后续流程，回退到原始 provider 名称
+    // Resolution failures are non-fatal; fall back to the raw provider name.
   }
   return fallback;
 }
