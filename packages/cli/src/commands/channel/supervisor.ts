@@ -75,32 +75,59 @@ type Child = ChildProcessByStdio<Writable, Readable, Readable>;
 
 const SHUTDOWN_GRACE_MS = 3000;
 
+interface ResolvedProviderPath {
+  command: string;
+  prefixArgs: string[];
+}
+
 /**
- * On Windows, npm installs CLI tools as `.cmd` shims where the real `.exe`
- * lives in `node_modules/`.  Node.js ≥18.20.2 (CVE-2024-27980) blocks
- * implicit `.cmd` execution via `spawn()` without `shell: true`.  Resolve
- * the real `.exe` path so we can spawn it directly — no shell, no injection.
+ * 在 Windows 上解析 npm `.cmd` shim 的真实启动目标
+ *
+ * @param provider provider 的 CLI 基名，例如 `codex` 或 `claude`
+ * @param cwd worker 启动目录，用于优先查找本地 `node_modules/.bin`
+ * @returns 可直接传给 `spawn()` 的命令与前置参数
  */
-function resolveProviderPath(provider: string): string {
-  if (process.platform !== "win32") return provider;
+export function resolveProviderPath(
+  provider: string,
+  cwd?: string,
+): ResolvedProviderPath {
+  const fallback = { command: provider, prefixArgs: [] };
+  if (process.platform !== "win32") return fallback;
   try {
     const cmdName = `${provider}.cmd`;
-    const dirs = (process.env.PATH ?? "").split(path.delimiter);
+    const dirs = [
+      ...(cwd ? [path.join(cwd, "node_modules", ".bin")] : []),
+      ...(process.env.PATH ?? "").split(path.delimiter),
+    ].filter(Boolean);
     for (const dir of dirs) {
       const cmdFile = path.join(dir, cmdName);
       if (!fs.existsSync(cmdFile)) continue;
       const content = fs.readFileSync(cmdFile, "utf8");
-      // npm-generated cmd shim format:  "%dp0%\node_modules\pkg\bin\name.exe" %*
-      const m = content.match(/"%dp0%\\(.+\.exe)"/i);
+      // npm 生成的可执行文件 shim 格式: "%dp0%\node_modules\pkg\bin\name.exe" %*
+      const m = content.match(/"%dp0%\\([^"]+?\.exe)"/i);
       if (m) {
         const exePath = path.join(dir, m[1]);
-        if (fs.existsSync(exePath)) return exePath;
+        if (
+          path.basename(exePath).toLowerCase() !== "node.exe" &&
+          fs.existsSync(exePath)
+        ) {
+          return { command: exePath, prefixArgs: [] };
+        }
+      }
+      // npm 生成的 Node 脚本 shim 格式:
+      // "%_prog%"  "%dp0%\node_modules\pkg\bin\name.js" %*
+      const js = content.match(/"%dp0%\\([^"]+?\.(?:js|cjs|mjs))"/i);
+      if (js) {
+        const jsPath = path.join(dir, js[1]);
+        if (fs.existsSync(jsPath)) {
+          return { command: process.execPath, prefixArgs: [jsPath] };
+        }
       }
     }
   } catch {
-    // resolve failure is non-fatal — fall back to bare name
+    // 解析失败不影响后续流程，回退到原始 provider 名称
   }
-  return provider;
+  return fallback;
 }
 
 /**
@@ -141,16 +168,24 @@ export async function runSupervisor(
 
   const logPath = workerFile(channelName, workerName, "log", project);
   const log = fs.createWriteStream(logPath);
-  const providerPath = resolveProviderPath(adapter.provider);
+  const resolvedProvider = resolveProviderPath(adapter.provider, config.cwd);
+  const resolvedProviderDisplay = [
+    resolvedProvider.command,
+    ...resolvedProvider.prefixArgs,
+  ].join(" ");
   log.write(
-    `[supervisor] starting ${adapter.provider} (resolved: ${providerPath}) ${args.join(" ")}\n`,
+    `[supervisor] starting ${adapter.provider} (resolved: ${resolvedProviderDisplay}) ${args.join(" ")}\n`,
   );
 
-  const child = spawn(providerPath, args, {
-    cwd: config.cwd,
-    env,
-    stdio: ["pipe", "pipe", "pipe"],
-  }) as Child;
+  const child = spawn(
+    resolvedProvider.command,
+    [...resolvedProvider.prefixArgs, ...args],
+    {
+      cwd: config.cwd,
+      env,
+      stdio: ["pipe", "pipe", "pipe"],
+    },
+  ) as Child;
 
   // ── shutdown controller declared before listener attachment ──
   // Node fires `error` on next tick when spawn fails (ENOENT / EACCES);
