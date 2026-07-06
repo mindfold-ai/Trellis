@@ -375,3 +375,30 @@ export function scrubCodexConfigToml(content: string): ScrubResult {
   const fullyEmpty = result.trim().length === 0;
   return { content: result, fullyEmpty };
 }
+
+export function scrubManagedMarkdownBlock(
+  content: string,
+  startMarker: string,
+  endMarker: string,
+): ScrubResult {
+  const start = content.indexOf(startMarker);
+  if (start === -1) {
+    return { content, fullyEmpty: false };
+  }
+
+  const end = content.indexOf(endMarker, start);
+  if (end === -1) {
+    return { content, fullyEmpty: false };
+  }
+
+  const blockEnd = end + endMarker.length;
+  const result = (content.slice(0, start) + content.slice(blockEnd))
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
+  const normalized = result.length > 0 ? `${result}\n` : "";
+
+  return {
+    content: normalized,
+    fullyEmpty: normalized.trim().length === 0,
+  };
+}

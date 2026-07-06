@@ -13,6 +13,7 @@ import {
   scrubOpencodePackageJson,
   scrubPiSettings,
   scrubCodexConfigToml,
+  scrubManagedMarkdownBlock,
 } from "../../src/utils/uninstall-scrubbers.js";
 
 const CLAUDE_DELETE_PATHS = [
@@ -27,6 +28,9 @@ const CURSOR_DELETE_PATHS = [
   ".cursor/hooks/inject-workflow-state.py",
   ".cursor/hooks/inject-shell-session-context.py",
 ];
+
+const TEST_BLOCK_START = "<!-- TRELLIS:TEST:START -->";
+const TEST_BLOCK_END = "<!-- TRELLIS:TEST:END -->";
 
 describe("scrubHooksJson — nested schema", () => {
   it("strips trellis hook entries from a Claude-style file", () => {
@@ -270,7 +274,8 @@ describe("scrubHooksJson — flat schema", () => {
           {
             type: "command",
             bash: "python3 .github/copilot/hooks/inject-workflow-state.py",
-            powershell: "python3 .github/copilot/hooks/inject-workflow-state.py",
+            powershell:
+              "python3 .github/copilot/hooks/inject-workflow-state.py",
             timeoutSec: 5,
           },
         ],
@@ -326,6 +331,63 @@ describe("scrubOpencodePackageJson", () => {
     const parsed = JSON.parse(content);
     expect(parsed.name).toBe("my-project");
     expect(parsed.dependencies).toEqual({ lodash: "^4.0.0" });
+    expect(fullyEmpty).toBe(false);
+  });
+});
+
+describe("scrubManagedMarkdownBlock", () => {
+  it("removes the managed block and preserves user markdown", () => {
+    const input = `# User Guidance
+
+Keep this.
+
+${TEST_BLOCK_START}
+# Managed
+Remove this.
+${TEST_BLOCK_END}
+
+## Tail
+
+Also keep this.
+`;
+
+    const { content, fullyEmpty } = scrubManagedMarkdownBlock(
+      input,
+      TEST_BLOCK_START,
+      TEST_BLOCK_END,
+    );
+
+    expect(content).toBe(`# User Guidance
+
+Keep this.
+
+## Tail
+
+Also keep this.
+`);
+    expect(fullyEmpty).toBe(false);
+  });
+
+  it("reports fullyEmpty when only the managed block remains", () => {
+    const { content, fullyEmpty } = scrubManagedMarkdownBlock(
+      `${TEST_BLOCK_START}\nmanaged\n${TEST_BLOCK_END}\n`,
+      TEST_BLOCK_START,
+      TEST_BLOCK_END,
+    );
+
+    expect(content).toBe("");
+    expect(fullyEmpty).toBe(true);
+  });
+
+  it("leaves malformed marker pairs untouched", () => {
+    const input = `${TEST_BLOCK_START}\nmanaged\n`;
+    const { content, fullyEmpty } = scrubManagedMarkdownBlock(
+      input,
+      TEST_BLOCK_START,
+      TEST_BLOCK_END,
+    );
+
+    expect(content).toBe(input);
     expect(fullyEmpty).toBe(false);
   });
 });

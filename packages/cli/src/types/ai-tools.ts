@@ -334,6 +334,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     configDir: ".github/copilot",
     extraManagedPaths: [
       ".github/agents",
+      ".github/copilot-instructions.md",
       ".github/hooks",
       ".github/prompts",
       ".github/skills",

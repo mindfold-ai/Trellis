@@ -51,6 +51,10 @@ import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { collectPlatformTemplates } from "../../src/configurators/index.js";
 import { computeHash } from "../../src/utils/template-hash.js";
+import {
+  COPILOT_INSTRUCTIONS_PATH,
+  getCopilotInstructions,
+} from "../../src/templates/copilot/index.js";
 import { execSync } from "node:child_process";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -441,6 +445,14 @@ describe("init() integration", () => {
     expect(
       fs.existsSync(path.join(tmpDir, ".github", "hooks", "trellis.json")),
     ).toBe(true);
+    const copilotInstructionsPath = path.join(
+      tmpDir,
+      ...COPILOT_INSTRUCTIONS_PATH.split("/"),
+    );
+    expect(fs.existsSync(copilotInstructionsPath)).toBe(true);
+    expect(fs.readFileSync(copilotInstructionsPath, "utf-8")).toBe(
+      getCopilotInstructions(),
+    );
 
     const hashFile = path.join(
       tmpDir,
@@ -456,6 +468,7 @@ describe("init() integration", () => {
     expect(trackedPaths).not.toContain(".github/prompts/start.prompt.md");
     expect(trackedPaths).toContain(".github/prompts/finish-work.prompt.md");
     expect(trackedPaths).toContain(".github/prompts/continue.prompt.md");
+    expect(trackedPaths).toContain(COPILOT_INSTRUCTIONS_PATH);
     expect(trackedPaths).toContain(".github/copilot/hooks.json");
     expect(trackedPaths).toContain(".github/hooks/trellis.json");
 
@@ -589,12 +602,12 @@ describe("init() integration", () => {
       ),
     ).toBe(true);
     expect(
-      fs.existsSync(
-        path.join(tmpDir, ".trae", "commands", "trellis-start.md"),
-      ),
+      fs.existsSync(path.join(tmpDir, ".trae", "commands", "trellis-start.md")),
     ).toBe(false);
     expect(
-      fs.existsSync(path.join(tmpDir, ".trae", "agents", "trellis-implement.md")),
+      fs.existsSync(
+        path.join(tmpDir, ".trae", "agents", "trellis-implement.md"),
+      ),
     ).toBe(true);
     expect(
       fs.readFileSync(
