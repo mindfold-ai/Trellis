@@ -1,6 +1,11 @@
 import path from "node:path";
 import { AI_TOOLS } from "../types/ai-tools.js";
-import { getAllHooks, getHooksConfig } from "../templates/copilot/index.js";
+import {
+  COPILOT_INSTRUCTIONS_PATH,
+  getAllHooks,
+  getCopilotInstructions,
+  getHooksConfig,
+} from "../templates/copilot/index.js";
 import { ensureDir, writeFile } from "../utils/file-writer.js";
 import {
   resolvePlaceholders,
@@ -21,11 +26,18 @@ import {
  * - agents/{name}.agent.md — sub-agent definitions (note .agent.md suffix)
  * - copilot/hooks/ — platform-specific + shared hook scripts
  * - hooks config — hooks.json
+ * - copilot-instructions.md — repository-wide review guidance
  */
 export async function configureCopilot(cwd: string): Promise<void> {
   const config = AI_TOOLS.copilot;
   const ctx = config.templateContext;
   const copilotRoot = path.join(cwd, ".github", "copilot");
+
+  ensureDir(path.join(cwd, ".github"));
+  await writeFile(
+    path.join(cwd, ...COPILOT_INSTRUCTIONS_PATH.split("/")),
+    getCopilotInstructions(),
+  );
 
   const promptsDir = path.join(cwd, ".github", "prompts");
   ensureDir(promptsDir);

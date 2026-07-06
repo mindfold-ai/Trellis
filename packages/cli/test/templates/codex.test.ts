@@ -19,6 +19,8 @@ const EXPECTED_AGENT_NAMES = [
   "trellis-research",
 ];
 
+const EMPTY_EXCEPT_PASS_RE = /except[^\n]*:\n\s*pass\s*$/m;
+
 // Shared skills are now sourced from common/ via resolveAllAsSkills
 describe("codex shared skills (from common source)", () => {
   it("resolves all common templates for codex context", () => {
@@ -127,5 +129,10 @@ describe("codex session-start.py compact SessionStart context", () => {
     expect(content).not.toContain("<sub-agent-notice>");
     expect(content).not.toContain("guides (inlined");
     expect(content).not.toContain("Project spec indexes are listed by path below");
+  });
+
+  it("documents fail-open exception suppression", () => {
+    const content = fs.readFileSync(hookPath, "utf-8");
+    expect(content).not.toMatch(EMPTY_EXCEPT_PASS_RE);
   });
 });

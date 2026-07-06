@@ -13,6 +13,8 @@ const ALL_HOOK_FILES = [
   "inject-subagent-context.py",
 ] as const;
 
+const EMPTY_EXCEPT_PASS_RE = /except[^\n]*:\n\s*pass\s*$/m;
+
 describe("shared-hooks capability table", () => {
   it("every capability-table entry names a real shared-hook file", () => {
     const realFiles = new Set(getSharedHookScripts().map((h) => h.name));
@@ -145,5 +147,16 @@ describe("shared-hooks capability table", () => {
     expect(content).toContain("complex task must add");
     expect(content).not.toContain("Status: READY");
     expect(content).not.toContain("<workflow>");
+  });
+
+  it("generated session and workflow-state hooks document fail-open exception suppression", () => {
+    for (const name of ["session-start.py", "inject-workflow-state.py"]) {
+      const hook = getSharedHookScripts().find((h) => h.name === name);
+      expect(hook, `${name} is missing from shared-hooks/`).toBeDefined();
+      const content = hook?.content ?? "";
+
+      expect(content).not.toContain("BaseException");
+      expect(content).not.toMatch(EMPTY_EXCEPT_PASS_RE);
+    }
   });
 });

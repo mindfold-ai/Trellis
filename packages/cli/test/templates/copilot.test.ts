@@ -6,6 +6,7 @@ import {
 } from "../../src/templates/copilot/index.js";
 
 const EXPECTED_HOOK_NAMES = ["session-start.py"];
+const EMPTY_EXCEPT_PASS_RE = /except[^\n]*:\n\s*pass\s*$/m;
 
 describe("copilot getAllHooks", () => {
 	it("returns the expected hook set", () => {
@@ -35,6 +36,13 @@ describe("copilot getAllHooks", () => {
 		expect(content).not.toContain("systemMessage");
 		expect(content).not.toContain("currently ignores sessionStart hook output");
 		expect(content).not.toMatch(/Copilot[^\n]*ignores hook output/);
+	});
+
+	it("session-start.py documents fail-open exception suppression", () => {
+		const hooks = getAllHooks();
+		const sessionStart = hooks.find((h) => h.name === "session-start.py");
+		expect(sessionStart).toBeDefined();
+		expect(sessionStart?.content ?? "").not.toMatch(EMPTY_EXCEPT_PASS_RE);
 	});
 });
 

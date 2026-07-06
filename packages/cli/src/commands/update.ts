@@ -45,6 +45,12 @@ import {
   workflowMdTemplate,
 } from "../templates/trellis/index.js";
 import { agentsMdContent } from "../templates/markdown/index.js";
+import {
+  COPILOT_INSTRUCTIONS_BLOCK_END,
+  COPILOT_INSTRUCTIONS_BLOCK_START,
+  COPILOT_INSTRUCTIONS_PATH,
+  getCopilotInstructions,
+} from "../templates/copilot/index.js";
 
 import {
   ALL_MANAGED_DIRS,
@@ -114,35 +120,49 @@ const PROTECTED_PATHS = [
   `${DIR_NAMES.WORKFLOW}/.current-task`,
 ];
 
-function getTrellisManagedBlock(content: string): string | null {
-  const start = content.indexOf(TRELLIS_BLOCK_START);
+function getManagedBlock(
+  content: string,
+  startMarker: string,
+  endMarker: string,
+): string | null {
+  const start = content.indexOf(startMarker);
   if (start === -1) {
     return null;
   }
 
-  const end = content.indexOf(TRELLIS_BLOCK_END, start);
+  const end = content.indexOf(endMarker, start);
   if (end === -1) {
     return null;
   }
 
-  return content.slice(start, end + TRELLIS_BLOCK_END.length);
+  return content.slice(start, end + endMarker.length);
 }
 
-function replaceTrellisManagedBlock(
+function getTrellisManagedBlock(content: string): string | null {
+  return getManagedBlock(content, TRELLIS_BLOCK_START, TRELLIS_BLOCK_END);
+}
+
+function replaceManagedBlock(
   existingContent: string,
   templateContent: string,
+  startMarker: string,
+  endMarker: string,
 ): string | null {
-  const existingStart = existingContent.indexOf(TRELLIS_BLOCK_START);
+  const existingStart = existingContent.indexOf(startMarker);
   if (existingStart === -1) {
     return null;
   }
 
-  const existingEnd = existingContent.indexOf(TRELLIS_BLOCK_END, existingStart);
+  const existingEnd = existingContent.indexOf(endMarker, existingStart);
   if (existingEnd === -1) {
     return null;
   }
 
-  const templateBlock = getTrellisManagedBlock(templateContent);
+  const templateBlock = getManagedBlock(
+    templateContent,
+    startMarker,
+    endMarker,
+  );
   if (!templateBlock) {
     return null;
   }
@@ -150,35 +170,78 @@ function replaceTrellisManagedBlock(
   return (
     existingContent.slice(0, existingStart) +
     templateBlock +
-    existingContent.slice(existingEnd + TRELLIS_BLOCK_END.length)
+    existingContent.slice(existingEnd + endMarker.length)
   );
 }
 
-function buildAgentsMdTemplate(cwd: string): string {
-  const fullPath = path.join(cwd, FILE_NAMES.AGENTS);
-  if (!fs.existsSync(fullPath)) {
-    return agentsMdContent;
-  }
-
-  const existingContent = fs.readFileSync(fullPath, "utf-8");
-
-  // Existing file already has TRELLIS:START/END markers — replace just the
-  // managed block, preserving everything outside it.
-  const replaced = replaceTrellisManagedBlock(existingContent, agentsMdContent);
+function mergeManagedBlockContent(
+  existingContent: string,
+  templateContent: string,
+  startMarker: string,
+  endMarker: string,
+): string {
+  const replaced = replaceManagedBlock(
+    existingContent,
+    templateContent,
+    startMarker,
+    endMarker,
+  );
   if (replaced !== null) {
     return replaced;
   }
 
-  // Existing file has no managed-block markers (pre-0.5.0-beta.18 project, or
-  // user hand-wrote AGENTS.md without ever running through Trellis). Append
-  // the template's managed block at the end so user content is preserved
-  // instead of clobbered.
-  const templateBlock = getTrellisManagedBlock(agentsMdContent);
+  const templateBlock = getManagedBlock(
+    templateContent,
+    startMarker,
+    endMarker,
+  );
   if (!templateBlock) {
-    return agentsMdContent;
+    return templateContent;
   }
+
   const trimmed = existingContent.replace(/\s+$/, "");
   return `${trimmed}\n\n${templateBlock}\n`;
+}
+
+function buildManagedBlockTemplate(
+  cwd: string,
+  relativePath: string,
+  templateContent: string,
+  startMarker: string,
+  endMarker: string,
+): string {
+  const fullPath = path.join(cwd, ...relativePath.split("/"));
+  if (!fs.existsSync(fullPath)) {
+    return templateContent;
+  }
+
+  const existingContent = fs.readFileSync(fullPath, "utf-8");
+  return mergeManagedBlockContent(
+    existingContent,
+    templateContent,
+    startMarker,
+    endMarker,
+  );
+}
+
+function buildAgentsMdTemplate(cwd: string): string {
+  return buildManagedBlockTemplate(
+    cwd,
+    FILE_NAMES.AGENTS,
+    agentsMdContent,
+    TRELLIS_BLOCK_START,
+    TRELLIS_BLOCK_END,
+  );
+}
+
+function buildCopilotInstructionsTemplate(cwd: string): string {
+  return buildManagedBlockTemplate(
+    cwd,
+    COPILOT_INSTRUCTIONS_PATH,
+    getCopilotInstructions(),
+    COPILOT_INSTRUCTIONS_BLOCK_START,
+    COPILOT_INSTRUCTIONS_BLOCK_END,
+  );
 }
 
 function isKnownUntrackedTemplate(
@@ -195,6 +258,35 @@ function isKnownUntrackedTemplate(
   }
 
   return LEGACY_UNTRACKED_AGENTS_MD_BLOCK_HASHES.has(computeHash(managedBlock));
+}
+
+function isSafeUntrackedCopilotInstructionsMerge(
+  relativePath: string,
+  existingContent: string,
+  newContent: string,
+): boolean {
+  if (relativePath !== COPILOT_INSTRUCTIONS_PATH) {
+    return false;
+  }
+
+  if (
+    getManagedBlock(
+      existingContent,
+      COPILOT_INSTRUCTIONS_BLOCK_START,
+      COPILOT_INSTRUCTIONS_BLOCK_END,
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    mergeManagedBlockContent(
+      existingContent,
+      getCopilotInstructions(),
+      COPILOT_INSTRUCTIONS_BLOCK_START,
+      COPILOT_INSTRUCTIONS_BLOCK_END,
+    ) === newContent
+  );
 }
 
 /**
@@ -803,6 +895,12 @@ async function collectTemplateFiles(
       for (const [filePath, content] of platformFiles) {
         files.set(filePath, content);
       }
+      if (platformId === "copilot") {
+        files.set(
+          COPILOT_INSTRUCTIONS_PATH,
+          buildCopilotInstructionsTemplate(cwd),
+        );
+      }
     }
   }
 
@@ -894,7 +992,13 @@ function analyzeChanges(
         if (
           (storedHash && storedHash === currentHash) ||
           (!storedHash &&
-            isKnownUntrackedTemplate(relativePath, existingContent))
+            isKnownUntrackedTemplate(relativePath, existingContent)) ||
+          (!storedHash &&
+            isSafeUntrackedCopilotInstructionsMerge(
+              relativePath,
+              existingContent,
+              newContent,
+            ))
         ) {
           // Either the tracked hash matches, or this is a known pristine template
           // from before the path was hash-tracked. Safe to auto-update.
@@ -913,14 +1017,15 @@ function analyzeChanges(
   return result;
 }
 
-function collectMissingAgentsMdHash(
+function collectMissingManagedFileHashes(
   changes: ChangeAnalysis,
   hashes: TemplateHashes,
 ): Map<string, string> {
   const files = new Map<string, string>();
+  const managedFiles = new Set([FILE_NAMES.AGENTS, COPILOT_INSTRUCTIONS_PATH]);
 
   for (const file of changes.unchangedFiles) {
-    if (file.relativePath === FILE_NAMES.AGENTS && !hashes[file.relativePath]) {
+    if (managedFiles.has(file.relativePath) && !hashes[file.relativePath]) {
       files.set(file.relativePath, file.newContent);
     }
   }
@@ -1219,6 +1324,14 @@ async function getLatestNpmVersion(): Promise<string | null> {
  */
 function collectAllFiles(dirPath: string, cwd = process.cwd()): string[] {
   if (!fs.existsSync(dirPath)) return [];
+
+  const rootStat = fs.statSync(dirPath);
+  if (rootStat.isFile()) {
+    return [dirPath];
+  }
+  if (!rootStat.isDirectory()) {
+    return [];
+  }
 
   const files: string[] = [];
   const stack = [dirPath];
@@ -2122,7 +2235,10 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Analyze changes (pass hashes for modification detection)
   const changes = analyzeChanges(cwd, hashes, templates);
-  const missingAgentsMdHash = collectMissingAgentsMdHash(changes, hashes);
+  const missingManagedFileHashes = collectMissingManagedFileHashes(
+    changes,
+    hashes,
+  );
 
   // Print summary
   printChangeSummary(changes);
@@ -2161,8 +2277,8 @@ export async function update(options: UpdateOptions): Promise<void> {
     !hasPendingMigrations &&
     !hasSafeDeletes
   ) {
-    if (!options.dryRun && missingAgentsMdHash.size > 0) {
-      updateHashes(cwd, missingAgentsMdHash);
+    if (!options.dryRun && missingManagedFileHashes.size > 0) {
+      updateHashes(cwd, missingManagedFileHashes);
     }
 
     if (isSameVersion) {
@@ -2435,7 +2551,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   updateVersionFile(cwd);
 
   // Update template hashes for new, auto-updated, and overwritten files
-  const filesToHash = new Map<string, string>(missingAgentsMdHash);
+  const filesToHash = new Map<string, string>(missingManagedFileHashes);
   for (const file of changes.newFiles) {
     filesToHash.set(file.relativePath, file.newContent);
   }

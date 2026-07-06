@@ -68,7 +68,9 @@ import {
 } from "../templates/codex/index.js";
 import {
   getAllHooks as getCopilotHooks,
+  getCopilotInstructions,
   getHooksConfig as getCopilotHooksConfig,
+  COPILOT_INSTRUCTIONS_PATH,
 } from "../templates/copilot/index.js";
 import {
   getAllAgents as getQoderAgents,
@@ -421,6 +423,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       )) {
         files.set(`.github/agents/${agent.name}.agent.md`, agent.content);
       }
+      files.set(COPILOT_INSTRUCTIONS_PATH, getCopilotInstructions());
       const hooksConfig = resolvePlaceholders(getCopilotHooksConfig());
       files.set(".github/copilot/hooks.json", hooksConfig);
       files.set(".github/hooks/trellis.json", hooksConfig);

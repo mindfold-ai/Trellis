@@ -41,8 +41,14 @@ import {
   scrubOpencodePackageJson,
   scrubPiSettings,
   scrubCodexConfigToml,
+  scrubManagedMarkdownBlock,
   type ScrubResult,
 } from "../utils/uninstall-scrubbers.js";
+import {
+  COPILOT_INSTRUCTIONS_BLOCK_END,
+  COPILOT_INSTRUCTIONS_BLOCK_START,
+  COPILOT_INSTRUCTIONS_PATH,
+} from "../templates/copilot/index.js";
 
 export interface UninstallOptions {
   yes?: boolean;
@@ -113,6 +119,16 @@ function buildStructuredFileSpecs(): Map<string, StructuredFileSpec> {
       posixPath: ".codex/config.toml",
       reason: "Remove trellis project_doc_fallback_filenames and notes",
       scrub: (content) => scrubCodexConfigToml(content),
+    },
+    {
+      posixPath: COPILOT_INSTRUCTIONS_PATH,
+      reason: "Remove Trellis Copilot guidance; preserve repo instructions",
+      scrub: (content) =>
+        scrubManagedMarkdownBlock(
+          content,
+          COPILOT_INSTRUCTIONS_BLOCK_START,
+          COPILOT_INSTRUCTIONS_BLOCK_END,
+        ),
     },
   ];
   const map = new Map<string, StructuredFileSpec>();

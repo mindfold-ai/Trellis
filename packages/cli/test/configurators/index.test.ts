@@ -13,6 +13,7 @@ import {
   resolveCliFlag,
 } from "../../src/configurators/index.js";
 import { AI_TOOLS, type AITool } from "../../src/types/ai-tools.js";
+import { COPILOT_INSTRUCTIONS_PATH } from "../../src/templates/copilot/index.js";
 
 // =============================================================================
 // Derived Constants
@@ -371,9 +372,9 @@ describe("collectPlatformTemplates", () => {
           `${skillRoot}/trellis-meta/references/local-architecture/overview.md`,
         ),
       ).toBe(true);
-      expect(
-        result?.has(`${skillRoot}/trellis-spec-bootstrap/SKILL.md`),
-      ).toBe(true);
+      expect(result?.has(`${skillRoot}/trellis-spec-bootstrap/SKILL.md`)).toBe(
+        true,
+      );
       expect(
         result?.has(
           `${skillRoot}/trellis-spec-bootstrap/references/spec-writing.md`,
@@ -404,6 +405,7 @@ describe("collectPlatformTemplates", () => {
     expect(result?.has(".github/prompts/start.prompt.md")).toBe(false);
     expect(result?.has(".github/prompts/finish-work.prompt.md")).toBe(true);
     expect(result?.has(".github/prompts/continue.prompt.md")).toBe(true);
+    expect(result?.has(COPILOT_INSTRUCTIONS_PATH)).toBe(true);
     expect(result?.has(".github/copilot/hooks.json")).toBe(true);
     expect(result?.has(".github/hooks/trellis.json")).toBe(true);
   });

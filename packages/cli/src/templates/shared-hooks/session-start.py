@@ -87,12 +87,12 @@ if sys.platform.startswith("win"):
             try:
                 _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
             except Exception:
-                pass
+                pass  # Optional Windows stream setup; keep hook startup non-fatal.
         elif hasattr(_stream, "detach"):
             try:
                 setattr(sys, _stream_name, _io.TextIOWrapper(_stream.detach(), encoding="utf-8", errors="replace"))
             except Exception:
-                pass
+                pass  # Optional Windows stream setup; keep hook startup non-fatal.
 
 
 
@@ -249,7 +249,7 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
         with open(env_file, "a", encoding="utf-8") as handle:
             handle.write(f"export TRELLIS_CONTEXT_ID={shlex.quote(context_key)}\n")
     except OSError:
-        pass
+        pass  # Optional shell bridge; keep session-start non-fatal.
 
 
 def _resolve_active_task(trellis_dir: Path, input_data: dict):
@@ -351,7 +351,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
         try:
             task_data = json.loads(task_json_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, PermissionError):
-            pass
+            pass  # Optional task metadata; fall back to generic status.
 
     task_title = task_data.get("title", task_ref)
     task_status = task_data.get("status", "unknown")
@@ -453,7 +453,7 @@ def _load_trellis_config(trellis_dir: Path, input_data: dict) -> tuple:
                         if isinstance(tp, str) and tp:
                             task_pkg = tp
                 except (json.JSONDecodeError, OSError):
-                    pass
+                    pass  # Optional package metadata; fall back to default scope.
 
         default_pkg = get_default_package(repo_root)
         return is_mono, packages, scope, task_pkg, default_pkg
@@ -630,7 +630,7 @@ def _build_compact_current_state(
                 if isinstance(data, dict):
                     status = str(data.get("status") or "unknown")
             except (json.JSONDecodeError, OSError):
-                pass
+                pass  # Optional task metadata; fall back to generic status.
         lines.append(f"Current task: {_repo_relative(repo_root, task_dir)}; status={status}.")
     else:
         lines.append("Current task: none.")
@@ -642,7 +642,7 @@ def _build_compact_current_state(
                 f"Active tasks: {task_count} total. Use `python3 ./.trellis/scripts/task.py list --mine` only if needed."
             )
         except Exception:
-            pass
+            pass  # Optional task summary; keep compact state available.
 
     if get_active_journal_file and count_lines:
         journal = get_active_journal_file(repo_root)

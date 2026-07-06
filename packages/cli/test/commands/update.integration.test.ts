@@ -56,6 +56,12 @@ import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { computeHash } from "../../src/utils/template-hash.js";
 import { workflowMdTemplate } from "../../src/templates/trellis/index.js";
+import {
+  COPILOT_INSTRUCTIONS_BLOCK_END,
+  COPILOT_INSTRUCTIONS_BLOCK_START,
+  COPILOT_INSTRUCTIONS_PATH,
+  getCopilotInstructions,
+} from "../../src/templates/copilot/index.js";
 import { replacePythonCommandLiterals } from "../../src/configurators/shared.js";
 
 // A managed template file that update always handles (Python script)
@@ -435,6 +441,66 @@ describe("update() integration", () => {
     expect(result.endsWith(templateContent.trimEnd() + "\n")).toBe(true);
   });
 
+  it("#4e appends Trellis Copilot guidance to existing repo instructions", async () => {
+    await init({ yes: true, force: true, copilot: true });
+
+    const userContent =
+      "# Repo Copilot Instructions\n\nReview app code first.\n";
+    writeProjectFile(COPILOT_INSTRUCTIONS_PATH, userContent);
+
+    const hashFile = hashFilePath();
+    const hashes = removeHashEntry(
+      readHashesV2(hashFile),
+      COPILOT_INSTRUCTIONS_PATH,
+    ) as Record<string, string>;
+    writeHashesV2(hashFile, hashes);
+
+    await update({});
+
+    const result = readProjectFile(COPILOT_INSTRUCTIONS_PATH);
+    expect(result).toContain("# Repo Copilot Instructions");
+    expect(result).toContain("Review app code first.");
+    expect(result).toContain(COPILOT_INSTRUCTIONS_BLOCK_START);
+    expect(result).toContain(COPILOT_INSTRUCTIONS_BLOCK_END);
+    expect(result).toContain("Trellis-generated runtime");
+    expect(result.indexOf("# Repo Copilot Instructions")).toBeLessThan(
+      result.indexOf(COPILOT_INSTRUCTIONS_BLOCK_START),
+    );
+    expect(readHashesV2(hashFile)[COPILOT_INSTRUCTIONS_PATH]).toBe(
+      computeHash(result),
+    );
+  });
+
+  it("#4f refreshes only the Trellis Copilot guidance block", async () => {
+    await init({ yes: true, force: true, copilot: true });
+
+    const oldBlock = getCopilotInstructions().replace(
+      "Group duplicate root-cause findings into one comment",
+      "Leave duplicate comments for every occurrence",
+    );
+    const existingContent = `# Repo Copilot Instructions\n\n${oldBlock}\n\n## Local Notes\n\nKeep this.\n`;
+    writeProjectFile(COPILOT_INSTRUCTIONS_PATH, existingContent);
+
+    const hashFile = hashFilePath();
+    const hashes = readHashesV2(hashFile);
+    hashes[COPILOT_INSTRUCTIONS_PATH] = computeHash(existingContent);
+    writeHashesV2(hashFile, hashes);
+
+    await update({});
+
+    const result = readProjectFile(COPILOT_INSTRUCTIONS_PATH);
+    expect(result).toContain("# Repo Copilot Instructions");
+    expect(result).toContain("## Local Notes");
+    expect(result).toContain("Keep this.");
+    expect(result).toContain(
+      "Group duplicate root-cause findings into one comment",
+    );
+    expect(result).not.toContain("Leave duplicate comments");
+    expect(readHashesV2(hashFile)[COPILOT_INSTRUCTIONS_PATH]).toBe(
+      computeHash(result),
+    );
+  });
+
   it("#5 force overwrites user-modified files", async () => {
     await setupProject();
 
@@ -628,9 +694,7 @@ describe("update() integration", () => {
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
       "[codex-inline, Kilo, Antigravity, Devin]",
     );
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain(
-      "[Codex]",
-    );
+    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain("[Codex]");
 
     // Version-specific additive config sections still apply to a user-modified
     // config.yaml, while preserving the local content around the append.
@@ -643,9 +707,7 @@ describe("update() integration", () => {
 
     // User-modified template files are skipped under skipAll and their hashes
     // are not rewritten to bless the local modification as a template.
-    expect(readProjectFile(userModifiedScript)).toBe(
-      userModifiedScriptContent,
-    );
+    expect(readProjectFile(userModifiedScript)).toBe(userModifiedScriptContent);
     const hashes = readHashesV2(hashFilePath());
     expect(hashes[PATHS.WORKFLOW_GUIDE_FILE]).toBe(
       computeHash(expectedWorkflow),

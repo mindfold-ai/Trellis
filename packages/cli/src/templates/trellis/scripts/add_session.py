@@ -55,6 +55,12 @@ from common.config import (
 )
 
 
+DEFAULT_MAIN_CHANGES = (
+    "- Detailed change bullets were not supplied; see the summary above."
+)
+DEFAULT_TESTING = "- Validation was not recorded for this session."
+
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -154,6 +160,7 @@ def generate_session_content(
     today: str,
     package: str | None = None,
     branch: str | None = None,
+    testing_content: str = DEFAULT_TESTING,
 ) -> str:
     """Generate session content."""
     if commit and commit != "-":
@@ -189,7 +196,7 @@ def generate_session_content(
 
 ### Testing
 
-- [OK] (Add test results)
+{testing_content}
 
 ### Status
 
@@ -395,8 +402,8 @@ def _auto_commit_workspace(repo_root: Path) -> None:
 def add_session(
     title: str,
     commit: str = "-",
-    summary: str = "(Add summary)",
-    extra_content: str = "(Add details)",
+    summary: str = "Session summary was not supplied.",
+    extra_content: str = DEFAULT_MAIN_CHANGES,
     auto_commit: bool = True,
     package: str | None = None,
     branch: str | None = None,
@@ -503,7 +510,7 @@ def main() -> int:
     )
     parser.add_argument("--title", required=True, help="Session title")
     parser.add_argument("--commit", default="-", help="Comma-separated commit hashes")
-    parser.add_argument("--summary", default="(Add summary)", help="Brief summary")
+    parser.add_argument("--summary", default="Session summary was not supplied.", help="Brief summary")
     parser.add_argument("--content-file", help="Path to file with detailed content")
     parser.add_argument("--package", help="Package name tag (e.g., cli, docs-site)")
     parser.add_argument("--branch", help="Branch name (auto-detected if omitted)")
@@ -514,7 +521,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    extra_content = "(Add details)"
+    extra_content = DEFAULT_MAIN_CHANGES
     if args.content_file:
         content_path = Path(args.content_file)
         if content_path.is_file():

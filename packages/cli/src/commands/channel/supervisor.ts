@@ -75,32 +75,59 @@ type Child = ChildProcessByStdio<Writable, Readable, Readable>;
 
 const SHUTDOWN_GRACE_MS = 3000;
 
+interface ResolvedProviderPath {
+  command: string;
+  prefixArgs: string[];
+}
+
 /**
- * On Windows, npm installs CLI tools as `.cmd` shims where the real `.exe`
- * lives in `node_modules/`.  Node.js ≥18.20.2 (CVE-2024-27980) blocks
- * implicit `.cmd` execution via `spawn()` without `shell: true`.  Resolve
- * the real `.exe` path so we can spawn it directly — no shell, no injection.
+ * Resolve the real launch target for npm `.cmd` shims on Windows.
+ *
+ * @param provider CLI basename for the provider, such as `codex` or `claude`.
+ * @param cwd Worker launch directory, used to check local `node_modules/.bin` first.
+ * @returns Command and prefix arguments that can be passed directly to `spawn()`.
  */
-function resolveProviderPath(provider: string): string {
-  if (process.platform !== "win32") return provider;
+export function resolveProviderPath(
+  provider: string,
+  cwd?: string,
+): ResolvedProviderPath {
+  const fallback = { command: provider, prefixArgs: [] };
+  if (process.platform !== "win32") return fallback;
   try {
     const cmdName = `${provider}.cmd`;
-    const dirs = (process.env.PATH ?? "").split(path.delimiter);
+    const dirs = [
+      ...(cwd ? [path.join(cwd, "node_modules", ".bin")] : []),
+      ...(process.env.PATH ?? "").split(path.delimiter),
+    ].filter(Boolean);
     for (const dir of dirs) {
       const cmdFile = path.join(dir, cmdName);
       if (!fs.existsSync(cmdFile)) continue;
       const content = fs.readFileSync(cmdFile, "utf8");
-      // npm-generated cmd shim format:  "%dp0%\node_modules\pkg\bin\name.exe" %*
-      const m = content.match(/"%dp0%\\(.+\.exe)"/i);
+      // npm-generated executable shim format: "%dp0%\node_modules\pkg\bin\name.exe" %*
+      const m = content.match(/"%dp0%\\([^"]+?\.exe)"/i);
       if (m) {
         const exePath = path.join(dir, m[1]);
-        if (fs.existsSync(exePath)) return exePath;
+        if (
+          path.basename(exePath).toLowerCase() !== "node.exe" &&
+          fs.existsSync(exePath)
+        ) {
+          return { command: exePath, prefixArgs: [] };
+        }
+      }
+      // npm-generated Node script shim format:
+      // "%_prog%"  "%dp0%\node_modules\pkg\bin\name.js" %*
+      const js = content.match(/"%dp0%\\([^"]+?\.(?:js|cjs|mjs))"/i);
+      if (js) {
+        const jsPath = path.join(dir, js[1]);
+        if (fs.existsSync(jsPath)) {
+          return { command: process.execPath, prefixArgs: [jsPath] };
+        }
       }
     }
   } catch {
-    // resolve failure is non-fatal — fall back to bare name
+    // Resolution failures are non-fatal; fall back to the raw provider name.
   }
-  return provider;
+  return fallback;
 }
 
 /**
@@ -141,16 +168,24 @@ export async function runSupervisor(
 
   const logPath = workerFile(channelName, workerName, "log", project);
   const log = fs.createWriteStream(logPath);
-  const providerPath = resolveProviderPath(adapter.provider);
+  const resolvedProvider = resolveProviderPath(adapter.provider, config.cwd);
+  const resolvedProviderDisplay = [
+    resolvedProvider.command,
+    ...resolvedProvider.prefixArgs,
+  ].join(" ");
   log.write(
-    `[supervisor] starting ${adapter.provider} (resolved: ${providerPath}) ${args.join(" ")}\n`,
+    `[supervisor] starting ${adapter.provider} (resolved: ${resolvedProviderDisplay}) ${args.join(" ")}\n`,
   );
 
-  const child = spawn(providerPath, args, {
-    cwd: config.cwd,
-    env,
-    stdio: ["pipe", "pipe", "pipe"],
-  }) as Child;
+  const child = spawn(
+    resolvedProvider.command,
+    [...resolvedProvider.prefixArgs, ...args],
+    {
+      cwd: config.cwd,
+      env,
+      stdio: ["pipe", "pipe", "pipe"],
+    },
+  ) as Child;
 
   // ── shutdown controller declared before listener attachment ──
   // Node fires `error` on next tick when spawn fails (ENOENT / EACCES);

@@ -16,7 +16,9 @@ import {
   getHooksConfig as getCodexHooksConfig,
 } from "../../src/templates/codex/index.js";
 import {
+  COPILOT_INSTRUCTIONS_PATH,
   getAllHooks as getAllCopilotHooks,
+  getCopilotInstructions,
   getHooksConfig as getCopilotHooksConfig,
 } from "../../src/templates/copilot/index.js";
 import { getHooksConfig as getCursorHooksConfig } from "../../src/templates/cursor/index.js";
@@ -447,10 +449,7 @@ describe("configurePlatform", () => {
     }
 
     // IDE `.kiro.hook` written with PYTHON_CMD resolved and valid schema.
-    const ideHookPath = path.join(
-      hooksDir,
-      "trellis-workflow-state.kiro.hook",
-    );
+    const ideHookPath = path.join(hooksDir, "trellis-workflow-state.kiro.hook");
     expect(fs.existsSync(ideHookPath)).toBe(true);
     const ideRaw = fs.readFileSync(ideHookPath, "utf-8");
     expect(ideRaw).not.toContain("{{PYTHON_CMD}}");
@@ -841,6 +840,15 @@ describe("configurePlatform", () => {
 
   it("configurePlatform('copilot') writes prompts + skills", async () => {
     await configurePlatform("copilot", tmpDir);
+
+    const instructionsPath = path.join(
+      tmpDir,
+      ...COPILOT_INSTRUCTIONS_PATH.split("/"),
+    );
+    expect(fs.existsSync(instructionsPath)).toBe(true);
+    expect(fs.readFileSync(instructionsPath, "utf-8")).toBe(
+      getCopilotInstructions(),
+    );
 
     // Prompts (commands)
     const promptsDir = path.join(tmpDir, ".github", "prompts");
@@ -1243,6 +1251,9 @@ describe("configurePlatform", () => {
     );
     expect(templates?.get(".github/hooks/trellis.json")).toBe(
       resolvePlaceholders(getCopilotHooksConfig()),
+    );
+    expect(templates?.get(COPILOT_INSTRUCTIONS_PATH)).toBe(
+      getCopilotInstructions(),
     );
   });
 
