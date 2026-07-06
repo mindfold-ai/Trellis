@@ -178,6 +178,28 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
     expect(status).toMatch(/\.trellis\/tasks\/task-b\/prd\.md/);
   });
 
+  it("uses explicit fallback text instead of journal placeholders", () => {
+    makeTask(tmp, "task-a", "task A prd\n");
+    setCurrentTask(tmp, "task-a");
+    git(tmp, "add", "-A");
+    git(tmp, "commit", "-q", "-m", "initial");
+
+    runAddSession(tmp, "placeholder-free work");
+
+    const journal = fs.readFileSync(
+      path.join(tmp, ".trellis", "workspace", DEVELOPER, "journal-1.md"),
+      "utf-8",
+    );
+
+    expect(journal).toContain(
+      "- Detailed change bullets were not supplied; see the summary above.",
+    );
+    expect(journal).toContain("- Validation was not recorded for this session.");
+    expect(journal).not.toContain("(Add details)");
+    expect(journal).not.toContain("(Add test results)");
+    expect(journal).not.toContain("(Add summary)");
+  });
+
   it("does not wide-scan task dirs when the current task is unresolvable (>=2 sessions)", () => {
     makeTask(tmp, "task-a", "task A prd\n");
     makeTask(tmp, "task-b", "task B prd v1\n");

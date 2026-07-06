@@ -941,7 +941,8 @@ describe("regression: agent-session Trellis update hint", () => {
     );
 
     expect(output).toContain("Trellis update available: 0.5.0 -> 0.5.9");
-    expect(output).toContain("run trellis upgrade");
+    expect(output).toContain("run trellis update");
+    expect(output).not.toContain("run trellis upgrade");
     expect(output).toContain("SESSION CONTEXT");
   });
 
