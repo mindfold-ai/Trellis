@@ -6,9 +6,9 @@
 - `packages/cli/test/templates/pi.test.ts`
 - `packages/cli/test/configurators/platforms.test.ts`
 - `.trellis/spec/cli/backend/platform-integration.md`
-- `.trellis/tasks/06-25-fix-pi-context-injection/prd.md`
-- `.trellis/tasks/06-25-fix-pi-context-injection/design.md`
-- `.trellis/tasks/06-25-fix-pi-context-injection/implement.md`
+- `.trellis/tasks/archive/2026-06/06-25-fix-pi-context-injection/prd.md`
+- `.trellis/tasks/archive/2026-06/06-25-fix-pi-context-injection/design.md`
+- `.trellis/tasks/archive/2026-06/06-25-fix-pi-context-injection/implement.md`
 
 ## Ordered Steps
 
