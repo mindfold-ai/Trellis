@@ -38,6 +38,64 @@ export function pumpStdout(
 ): void {
   let buf = "";
   let queue: Promise<void> = Promise.resolve();
+  let pending = 0;
+  let paused = false;
+
+  /**
+   * 在有待处理行时暂停 stdout 读取
+   *
+   * @returns 无返回值
+   */
+  const pauseForBackpressure = (): void => {
+    if (!paused) {
+      stream.pause();
+      paused = true;
+    }
+  };
+
+  /**
+   * 在待处理行全部完成后恢复 stdout 读取
+   *
+   * @returns 无返回值
+   */
+  const resumeIfDrained = (): void => {
+    if (paused && pending === 0) {
+      paused = false;
+      stream.resume();
+    }
+  };
+
+  /**
+   * 将 stdout 单行追加到串行处理队列
+   *
+   * @param line 已切分出的 stdout 单行文本
+   * @returns 无返回值
+   */
+  const enqueue = (line: string): void => {
+    pending += 1;
+    pauseForBackpressure();
+    queue = queue
+      .then(async () => {
+        try {
+          await onLine(line);
+        } catch (err) {
+          if (onError) {
+            try {
+              await onError(
+                err instanceof Error ? err : new Error(String(err)),
+              );
+            } catch {
+              // 吞掉错误处理器自身的错误
+            }
+          }
+        } finally {
+          pending -= 1;
+          resumeIfDrained();
+        }
+      })
+      .catch(() => undefined);
+  };
+
   stream.on("data", (chunk: Buffer) => {
     buf += chunk.toString("utf-8");
     let nl: number;
@@ -45,21 +103,7 @@ export function pumpStdout(
       const line = buf.slice(0, nl);
       buf = buf.slice(nl + 1);
       if (line.trim()) {
-        queue = queue.then(async () => {
-          try {
-            await onLine(line);
-          } catch (err) {
-            if (onError) {
-              try {
-                await onError(
-                  err instanceof Error ? err : new Error(String(err)),
-                );
-              } catch {
-                // 吞掉错误处理器自身的错误
-              }
-            }
-          }
-        });
+        enqueue(line);
       }
     }
   });

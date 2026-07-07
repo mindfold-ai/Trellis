@@ -639,6 +639,49 @@ describe("channel stdout pump", () => {
     expect(errors).toEqual([]);
   });
 
+  it("pauses stdout reads while queued line handling drains", async () => {
+    const stream = new PassThrough();
+    const pause = vi.spyOn(stream, "pause");
+    const resume = vi.spyOn(stream, "resume");
+    const handled: string[] = [];
+    let releaseFirst!: () => void;
+    const firstDone = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    pumpStdout(stream, async (line) => {
+      handled.push(`start:${line}`);
+      if (line === "first") {
+        await firstDone;
+      }
+      handled.push(`finish:${line}`);
+    });
+
+    stream.write("first\n");
+
+    await vi.waitUntil(() => handled.includes("start:first"), {
+      timeout: 1_000,
+    });
+    expect(pause).toHaveBeenCalled();
+
+    stream.write("second\n");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(handled).toEqual(["start:first"]);
+
+    releaseFirst();
+    await vi.waitUntil(() => handled.includes("finish:second"), {
+      timeout: 1_000,
+    });
+
+    expect(resume).toHaveBeenCalled();
+    expect(handled).toEqual([
+      "start:first",
+      "finish:first",
+      "start:second",
+      "finish:second",
+    ]);
+  });
+
   it("awaits stdout handler errors before continuing to later lines", async () => {
     const stream = new PassThrough();
     const handled: string[] = [];
