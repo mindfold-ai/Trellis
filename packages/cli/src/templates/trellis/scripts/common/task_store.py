@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .config import (
+    get_codex_dispatch_mode,
     get_packages,
     get_session_auto_commit,
     is_monorepo,
@@ -113,13 +114,13 @@ def _repo_relative_path(path: Path, repo_root: Path) -> str:
 
 # Config directories of platforms that consume implement.jsonl / check.jsonl.
 # Keep in sync with src/types/ai-tools.ts AI_TOOLS entries — these are the
-# platforms listed in workflow.md's "agent-capable" Skill Routing block
-# (Class-1 hook-inject + Class-2 pull-based preludes). Kilo / Antigravity /
-# Devin are NOT in this list: they do not consume JSONL.
+# platforms listed in workflow.md's "agent-capable" Skill Routing block.
+# Codex is checked separately because default inline mode does not consume
+# JSONL. Kilo / Antigravity / Devin are NOT in this list either: they load
+# specs through skills instead of JSONL.
 _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
     ".claude",
     ".cursor",
-    ".codex",
     ".kiro",
     ".gemini",
     ".opencode",
@@ -132,6 +133,7 @@ _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
     ".omp",       # Oh My Pi
     ".zcode",     # ZCode
 )
+_CODEX_CONFIG_DIR = ".codex"
 
 _SEED_EXAMPLE = (
     "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. "
@@ -144,13 +146,15 @@ _SEED_EXAMPLE = (
 def _has_subagent_platform(repo_root: Path) -> bool:
     """Return True if any sub-agent-capable platform is configured.
 
-    Detected by probing well-known config directories at the repo root. Used
-    only to decide whether ``task.py create`` should seed empty
-    ``implement.jsonl`` / ``check.jsonl`` files.
+    Detected by probing well-known config directories at the repo root. Codex
+    only counts when ``codex.dispatch_mode`` explicitly opts into
+    ``sub-agent``; inline mode loads context through skills, not JSONL.
     """
     for config_dir in _SUBAGENT_CONFIG_DIRS:
         if (repo_root / config_dir).is_dir():
             return True
+    if (repo_root / _CODEX_CONFIG_DIR).is_dir():
+        return get_codex_dispatch_mode(repo_root) == "sub-agent"
     return False
 
 

@@ -391,6 +391,11 @@ a `.current-task` fallback or a Python hook directory.
   runtime state untouched.
 - `task.py create` without a context key creates the task and does not create
   `.trellis/.runtime/`.
+- `task.py create` creates `implement.jsonl` / `check.jsonl` only when the
+  repo has a platform configured that consumes those files. `.codex/` is not
+  enough by itself: Codex defaults to `codex.dispatch_mode: inline`, which
+  loads context through skills. Codex seeds JSONL only when
+  `codex.dispatch_mode: sub-agent` is explicitly configured.
 - `task.py start` writes session-local state only when a context key is
   available. Otherwise it enters degraded mode: no session pointer is persisted,
   `.trellis/.current-task` is not written, and `task.json.status` may still move
@@ -422,6 +427,8 @@ a `.current-task` fallback or a Python hook directory.
 | `create` with context key, default mode | Task files exist; session runtime points at the new task; activation and source are printed; no `.current-task` |
 | `create --no-start` with context key | Task files exist; existing session runtime is unchanged; skip notice is printed; no `.current-task` |
 | `create` without context key | Task files exist; no `.runtime`; no `.current-task` |
+| `create` with `.codex/` and no `codex.dispatch_mode` override | Task files exist; no `implement.jsonl`; no `check.jsonl` |
+| `create` with `.codex/` and `codex.dispatch_mode: sub-agent` | Task files exist; `implement.jsonl` and `check.jsonl` contain seed `_example` rows |
 | `start` without context key | Returns success in degraded mode; no `.runtime`; no `.current-task`; hints IDE/session identity or `TRELLIS_CONTEXT_ID` |
 | `start` with `TRELLIS_CONTEXT_ID` | Writes `.runtime/sessions/<key>.json`; does not require `.current-task` |
 | `current --source` with same context key | Prints `Source: session:<key>` |
@@ -1313,6 +1320,10 @@ Two near-misses worth remembering:
 
 - `codex.dispatch_mode` originally had its own ad-hoc YAML reader. A
   `# default` comment on the user's config silently broke dispatch routing.
+- `task.py create` must read `codex.dispatch_mode` through
+  `get_codex_dispatch_mode()` before deciding whether `.codex/` should seed
+  `implement.jsonl` / `check.jsonl`. Missing or invalid values default to
+  `inline`, not `sub-agent`.
 - `session_auto_commit` (0.5.11) almost shipped with a one-line
   `config.get(...).strip()` reader before being routed through
   `get_session_auto_commit`.

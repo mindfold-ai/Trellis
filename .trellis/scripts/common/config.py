@@ -167,6 +167,7 @@ def _next_content_line(lines: list[str], start: int) -> tuple[int, str]:
 DEFAULT_SESSION_COMMIT_MESSAGE = "chore: record journal"
 DEFAULT_MAX_JOURNAL_LINES = 2000
 DEFAULT_SESSION_AUTO_COMMIT = True
+DEFAULT_CODEX_DISPATCH_MODE = "inline"
 
 CONFIG_FILE = "config.yaml"
 
@@ -241,6 +242,34 @@ def get_session_auto_commit(repo_root: Path | None = None) -> bool:
         file=sys.stderr,
     )
     return DEFAULT_SESSION_AUTO_COMMIT
+
+
+def get_codex_dispatch_mode(repo_root: Path | None = None) -> str:
+    """Return Codex dispatch mode.
+
+    Default is ``inline``. ``sub-agent`` is an explicit opt-in because Codex
+    sub-agents do not inherit the parent session context.
+    """
+    config = _load_config(repo_root)
+    codex = config.get("codex")
+    if codex is None:
+        return DEFAULT_CODEX_DISPATCH_MODE
+    if not isinstance(codex, dict):
+        print(
+            f"[WARN] invalid codex config: {codex!r}; using {DEFAULT_CODEX_DISPATCH_MODE}",
+            file=sys.stderr,
+        )
+        return DEFAULT_CODEX_DISPATCH_MODE
+
+    raw = codex.get("dispatch_mode", DEFAULT_CODEX_DISPATCH_MODE)
+    mode = str(raw).strip().lower()
+    if mode in ("inline", "sub-agent"):
+        return mode
+    print(
+        f"[WARN] invalid codex.dispatch_mode value: {raw!r}; using {DEFAULT_CODEX_DISPATCH_MODE}",
+        file=sys.stderr,
+    )
+    return DEFAULT_CODEX_DISPATCH_MODE
 
 
 def get_hooks(event: str, repo_root: Path | None = None) -> list[str]:

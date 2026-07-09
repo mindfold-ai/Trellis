@@ -3532,6 +3532,57 @@ describe("regression: current-task path normalization", () => {
     }
   });
 
+  it("[issue-373] task.py create does NOT seed jsonl for Codex inline mode", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "codex inline task" --slug codex-inline-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    const taskDir = path.join(
+      tmpDir,
+      ".trellis",
+      "tasks",
+      fs
+        .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+        .find((d) => d.includes("codex-inline-task")) as string,
+    );
+    expect(fs.existsSync(path.join(taskDir, "implement.jsonl"))).toBe(false);
+    expect(fs.existsSync(path.join(taskDir, "check.jsonl"))).toBe(false);
+  });
+
+  it("[issue-373] task.py create seeds jsonl when Codex explicitly uses sub-agent dispatch", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
+    writeProjectFile(
+      path.join(".trellis", "config.yaml"),
+      'codex:\n  dispatch_mode: sub-agent  # opt into trellis-* sub-agents\n',
+    );
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "codex subagent task" --slug codex-subagent-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+
+    const taskDir = path.join(
+      tmpDir,
+      ".trellis",
+      "tasks",
+      fs
+        .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
+        .find((d) => d.includes("codex-subagent-task")) as string,
+    );
+    for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
+      const row = JSON.parse(
+        fs.readFileSync(path.join(taskDir, jsonlName), "utf-8").trim(),
+      ) as Record<string, unknown>;
+      expect(row._example).toBeDefined();
+      expect(row.file).toBeUndefined();
+    }
+  });
+
   it("[init-context-removal] task.py init-context is deprecated with clear pointer to planning artifacts", () => {
     setupTaskRepo();
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -4975,10 +5026,14 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     // Sub-agent platform probe.
     expect(taskStore as string).toMatch(/_SUBAGENT_CONFIG_DIRS/);
     expect(taskStore as string).toContain('".claude"');
-    expect(taskStore as string).toContain('".codex"');
     expect(taskStore as string).toContain('".github/copilot"');
     expect(taskStore as string).toContain('".pi"');
     expect(taskStore as string).toContain('".zcode"');
+    expect(taskStore as string).toContain('_CODEX_CONFIG_DIR = ".codex"');
+    expect(taskStore as string).toContain(
+      'get_codex_dispatch_mode(repo_root) == "sub-agent"',
+    );
+    expect(commonConfig).toContain("def get_codex_dispatch_mode");
     // Seed row is self-describing and has no `file` field (so consumers skip
     // it naturally).
     expect(taskStore as string).toMatch(/_write_seed_jsonl/);
