@@ -83,15 +83,14 @@ function resolveActiveTaskStatus(
    let sessionFilePath: string | null = null;
 
    if (contextKey) {
-      // 有身份标识：直接定位文件
       const candidate = join(sessionsDir, `${contextKey}.json`);
       if (existsSync(candidate)) {
          sessionFilePath = candidate;
+      } else {
+         return { status: "no_task", taskDir: null, taskTitle: null };
       }
-   }
-
-   if (!sessionFilePath) {
-      // 单 session fallback：恰好 1 个文件时使用，否则拒绝猜测
+   } else {
+      // No identity: use single-session fallback only when there is exactly one session file.
       let sessionFiles: string[];
       try {
          sessionFiles = readdirSync(sessionsDir).filter((f) => f.endsWith(".json"));
@@ -101,7 +100,6 @@ function resolveActiveTaskStatus(
       if (sessionFiles.length === 1) {
          sessionFilePath = join(sessionsDir, sessionFiles[0]);
       } else {
-         // 0 或 ≥2 个文件且无身份标识：返回 no_task，不跨会话猜测
          return { status: "no_task", taskDir: null, taskTitle: null };
       }
    }
@@ -329,7 +327,6 @@ function detectAgentType(): AgentType {
 
 export default function(pi: ExtensionAPI): void {
    let projectRoot: string | null = null;
-   let currentContextKey: string | null = null;
    const turnCache = new TurnContextCache();
    const agentType = detectAgentType();
    const isSubAgent = agentType !== null;
@@ -341,8 +338,8 @@ export default function(pi: ExtensionAPI): void {
 
    const rememberContextKey = (ctx?: { sessionManager?: { getSessionId?: () => string; getSessionFile?: () => string } }): string | null => {
       const key = deriveContextKey(ctx);
-      if (key) currentContextKey = key;
-      return currentContextKey;
+      if (!key) return null;
+      return key;
    };
 
    pi.on("session_start", async (_event, ctx) => {

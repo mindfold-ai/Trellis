@@ -50,6 +50,18 @@ describe("omp templates", () => {
     expect(extension).toContain("realpathSync");
     expect(extension).toContain("resolveProjectFile(projectRoot, file)");
     expect(extension).toContain("readFileSync(targetPath");
+    expect(extension).toContain("if (!key) return null;");
+    expect(extension).toContain("return key;");
+    expect(extension).toContain(`if (existsSync(candidate)) {
+         sessionFilePath = candidate;
+      } else {
+         return { status: "no_task", taskDir: null, taskTitle: null };
+      }
+   } else {`);
+    expect(extension).toContain(
+      "No identity: use single-session fallback only when there is exactly one session file.",
+    );
+    expect(extension).not.toContain("currentContextKey");
   });
 
   it("extension template contains session context injection markers", () => {
