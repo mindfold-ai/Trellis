@@ -1941,6 +1941,43 @@ function printMigrationResult(result: MigrationResult): void {
 }
 
 /**
+ * One-time 0.2.0 migration: rename `traces-*.md` → `journal-*.md` in every
+ * developer workspace directory.
+ *
+ * Never overwrites an existing `journal-N.md`: a newer session may already
+ * have created it, and `.trellis/workspace/` is excluded from the update
+ * backup (see `BACKUP_EXCLUDE_PATTERNS`), so clobbering it would be
+ * unrecoverable data loss. Conflicting `traces-N.md` files are left in place
+ * and reported instead.
+ */
+export function renameTracesToJournal(workspaceDir: string): {
+  renamed: number;
+  skipped: string[];
+} {
+  const skipped: string[] = [];
+  let renamed = 0;
+  if (!fs.existsSync(workspaceDir)) return { renamed, skipped };
+
+  for (const dev of fs.readdirSync(workspaceDir)) {
+    const devPath = path.join(workspaceDir, dev);
+    if (!fs.statSync(devPath).isDirectory()) continue;
+
+    for (const file of fs.readdirSync(devPath)) {
+      if (!(file.startsWith("traces-") && file.endsWith(".md"))) continue;
+      const oldPath = path.join(devPath, file);
+      const newPath = path.join(devPath, file.replace("traces-", "journal-"));
+      if (fs.existsSync(newPath)) {
+        skipped.push(oldPath);
+        continue;
+      }
+      fs.renameSync(oldPath, newPath);
+      renamed++;
+    }
+  }
+  return { renamed, skipped };
+}
+
+/**
  * Main update command
  */
 export async function update(options: UpdateOptions): Promise<void> {
@@ -2413,29 +2450,19 @@ export async function update(options: UpdateOptions): Promise<void> {
     // and variable file numbers (traces-1.md, traces-2.md, etc.), so we can't enumerate them
     // in the migration manifest. This is a one-time migration for the 0.2.0 naming redesign.
     const workspaceDir = path.join(cwd, PATHS.WORKSPACE);
-    if (fs.existsSync(workspaceDir)) {
-      let journalRenamed = 0;
-      const devDirs = fs.readdirSync(workspaceDir);
-      for (const dev of devDirs) {
-        const devPath = path.join(workspaceDir, dev);
-        if (!fs.statSync(devPath).isDirectory()) continue;
-
-        const files = fs.readdirSync(devPath);
-        for (const file of files) {
-          if (file.startsWith("traces-") && file.endsWith(".md")) {
-            const oldPath = path.join(devPath, file);
-            const newFile = file.replace("traces-", "journal-");
-            const newPath = path.join(devPath, newFile);
-            fs.renameSync(oldPath, newPath);
-            journalRenamed++;
-          }
-        }
-      }
-      if (journalRenamed > 0) {
-        console.log(
-          chalk.cyan(`Renamed ${journalRenamed} traces file(s) to journal`),
-        );
-      }
+    const { renamed: journalRenamed, skipped: journalSkipped } =
+      renameTracesToJournal(workspaceDir);
+    if (journalRenamed > 0) {
+      console.log(
+        chalk.cyan(`Renamed ${journalRenamed} traces file(s) to journal`),
+      );
+    }
+    for (const oldPath of journalSkipped) {
+      console.warn(
+        chalk.yellow(
+          `Kept ${path.relative(cwd, oldPath)}: its journal target already exists`,
+        ),
+      );
     }
   }
 

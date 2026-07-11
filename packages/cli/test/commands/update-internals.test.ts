@@ -13,6 +13,7 @@ import path from "node:path";
 import {
   cleanupEmptyDirs,
   loadUpdateSkipPaths,
+  renameTracesToJournal,
   shouldExcludeFromBackup,
   sortMigrationsForExecution,
 } from "../../src/commands/update.js";
@@ -278,5 +279,65 @@ describe("shouldExcludeFromBackup", () => {
     ".opencode\\node_modules\\zod\\index.js",
   ])("excludes Windows-style backslash path %s", (p) => {
     expect(shouldExcludeFromBackup(p)).toBe(true);
+  });
+});
+
+// =============================================================================
+// renameTracesToJournal — 0.2.0 traces→journal migration (data-safety)
+// =============================================================================
+
+describe("renameTracesToJournal", () => {
+  let tmpDir: string;
+  let ws: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-traces-"));
+    ws = path.join(tmpDir, "workspace");
+    fs.mkdirSync(path.join(ws, "alice"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("renames traces-N.md to journal-N.md when no target exists", () => {
+    const dev = path.join(ws, "alice");
+    fs.writeFileSync(path.join(dev, "traces-1.md"), "trace one");
+
+    const { renamed, skipped } = renameTracesToJournal(ws);
+
+    expect(renamed).toBe(1);
+    expect(skipped).toEqual([]);
+    expect(fs.existsSync(path.join(dev, "traces-1.md"))).toBe(false);
+    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
+      "trace one",
+    );
+  });
+
+  it("never overwrites an existing journal target; keeps both and reports it", () => {
+    const dev = path.join(ws, "alice");
+    fs.writeFileSync(path.join(dev, "traces-1.md"), "old trace");
+    // A newer session already created journal-1.md with real history.
+    fs.writeFileSync(path.join(dev, "journal-1.md"), "REAL SESSION HISTORY");
+
+    const { renamed, skipped } = renameTracesToJournal(ws);
+
+    expect(renamed).toBe(0);
+    expect(skipped).toEqual([path.join(dev, "traces-1.md")]);
+    // Existing journal is untouched...
+    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
+      "REAL SESSION HISTORY",
+    );
+    // ...and the traces file is preserved, not destroyed.
+    expect(fs.readFileSync(path.join(dev, "traces-1.md"), "utf-8")).toBe(
+      "old trace",
+    );
+  });
+
+  it("returns zero counts when the workspace dir does not exist", () => {
+    expect(renameTracesToJournal(path.join(tmpDir, "nope"))).toEqual({
+      renamed: 0,
+      skipped: [],
+    });
   });
 });
