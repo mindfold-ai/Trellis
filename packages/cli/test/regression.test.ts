@@ -3895,7 +3895,7 @@ print(len(entries))
         "utf-8",
       );
       expect(content, relativePath).toContain(
-        "Before final review or `task.py start`, run the PRD convergence pass below.",
+        "Run the requirement convergence gate, then the PRD convergence pass.",
       );
       expect(content, relativePath).toContain("## PRD Convergence Pass");
       expect(content, relativePath).toContain(

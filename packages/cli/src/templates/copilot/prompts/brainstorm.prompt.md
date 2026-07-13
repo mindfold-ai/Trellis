@@ -4,11 +4,13 @@ description: "Guide requirements discovery for a Trellis task after task-creatio
 
 # Trellis Brainstorm
 
-## Non-Negotiable Interview Contract
+## Non-Negotiable Planning Contract
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+A request to build, implement, fix, refactor, or "go ahead" is not approval to leave planning. Task-creation consent is also not implementation approval.
 
-Ask the questions one at a time.
+For every non-trivial task, the user must respond at least once after the initial request before implementation begins. If no clarification is needed, that response must approve the final planning summary described below.
+
+While any user-owned product, scope, UX, compatibility, risk, or acceptance decision remains unresolved, end the turn with exactly one highest-value question. Do not edit product code, dispatch implementation, or run `task.py start`.
 
 ## Non-Negotiable Evidence Rule
 
@@ -16,7 +18,9 @@ If a question can be answered by exploring the codebase, explore the codebase in
 
 This is mandatory. Before asking the user a question, first check whether the answer is already available in code, tests, configs, docs, existing specs, or task history.
 
-Do not ask the user to confirm facts that the repository can answer. Ask only for product intent, preference, scope, risk tolerance, or decisions that remain ambiguous after inspection.
+Do not ask the user to confirm facts that the repository can answer. Ask only for product intent, preference, scope, risk tolerance, acceptance behavior, or decisions that remain ambiguous after inspection.
+
+Repository evidence establishes current behavior and technical constraints. The user's intended behavior, feature scope boundaries, and UX preferences are never answerable by repository evidence alone, even when an existing pattern exists; existing patterns are options and recommendation evidence, not decisions.
 
 ---
 
@@ -48,11 +52,12 @@ Use a concise title from the user's request. Use a slug without a date prefix. `
    - product intent still needed from the user
    - scope or risk decisions still needed from the user
    - likely out-of-scope items
-4. Ask the single highest-value remaining question.
-5. Include your recommended answer with the question.
-6. After each user answer, update `prd.md` before continuing.
-7. For complex tasks, create or update `design.md` and `implement.md` before implementation starts.
-8. Before final review or `task.py start`, run the PRD convergence pass below.
+4. If a user-owned decision remains, ask the single highest-value question, include your recommendation and trade-off, then stop. Do not perform implementation work in the same turn.
+5. After each user answer, update `prd.md`, recompute the decision inventory, and repeat from step 2.
+6. When no user-owned decision remains, create or update `design.md` and `implement.md` for complex tasks.
+7. Run the requirement convergence gate, then the PRD convergence pass.
+8. Present the final planning summary and stop. Do not run `task.py start` or edit product code in the same turn.
+9. Only a subsequent user message that explicitly approves the latest planning summary authorizes `task.py start` and implementation. If the artifacts change materially after approval, repeat the final review.
 
 Do not invent a project-specific product/spec hierarchy. If the repository already has product, domain, or spec docs, use them. If it does not, proceed with the evidence that exists.
 
@@ -68,6 +73,27 @@ Each question must include:
 - the trade-off if the user chooses differently
 
 Do not ask process questions such as whether to search, inspect files, or continue brainstorming. Do the evidence work directly. Ask the user only when the remaining issue is a product decision, preference, scope boundary, or risk tolerance choice.
+
+Recommendations are not default selections. Never choose a recommended product decision on the user's behalf merely because the user asked for implementation.
+
+Do not manufacture clarification questions when the request and repository evidence already resolve every decision. In that case, proceed directly to the final planning summary, which still requires a subsequent explicit approval.
+
+The final review is a required phase-transition gate, not a prohibited process question. Task-creation consent, the initial implementation request, and approval given before the latest final summary do not satisfy this gate.
+
+## Requirement Convergence Gate
+
+Before final review, verify all of the following:
+
+- the user outcome and product value are explicit
+- in-scope and out-of-scope behavior are explicit
+- acceptance criteria describe observable outcomes
+- user-owned product, scope, UX, compatibility, and risk decisions are resolved
+- blocking open questions are empty
+- technical unknowns are researched or explicitly deferred without changing MVP behavior
+
+Lightweight tasks may omit `design.md` and `implement.md`; they may not skip evidence inspection, requirement convergence, final review, or fresh implementation approval.
+
+The final planning summary must show Goal, In Scope, Out of Scope, Acceptance Criteria, Key Decisions, relevant Risks or Deferred Items, and artifact status.
 
 ## Artifact Rules
 
@@ -110,7 +136,7 @@ The pass must be lossless:
 - Remove resolved open questions instead of leaving empty or already-answered sections.
 - Merge parallel bug and requirement lists when they describe the same work; keep each defect's severity, evidence, and file:line anchors on the owning requirement.
 - Preserve every file:line anchor, decision, constraint, requirement ID, and acceptance-criteria mapping.
-- Keep only genuinely blocking open questions.
+- Do not proceed to final review while any blocking open question remains.
 
 After the pass, read `prd.md` top to bottom and verify that no fact is repeated across sections unless the repetition adds new information.
 
@@ -121,9 +147,10 @@ Before declaring planning ready:
 - `prd.md` contains testable acceptance criteria.
 - `prd.md` has passed the PRD convergence pass: no unresolved temporary brainstorm sections, no duplicate facts across sections, and no lost anchors, decisions, or acceptance mappings.
 - Repository-answerable questions have already been answered through inspection.
-- Remaining open questions are genuinely about user intent or scope.
+- Blocking open questions are empty.
 - Complex tasks have `design.md` and `implement.md`.
 - Sub-agent-dispatch tasks have real curated entries in both `implement.jsonl` and `check.jsonl`; seed-only manifests are not ready.
-- The user has reviewed the final planning artifacts or explicitly approved proceeding.
+- The latest final planning summary has been presented to the user.
+- In a subsequent message, the user explicitly approved that summary for implementation.
 
-Do not start implementation until the user approves or asks for implementation.
+Do not start implementation merely because the user originally asked for implementation.
