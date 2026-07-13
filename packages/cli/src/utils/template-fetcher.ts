@@ -927,7 +927,12 @@ export async function downloadWithStrategy(
     } finally {
       // Best-effort cleanup; also settles giget's orphaned download promise
       // on timeout (giget has no AbortSignal, so removing the dir ENOENTs it).
-      await fs.promises.rm(tempDir, { recursive: true, force: true });
+      // A rejected rm (EBUSY/EPERM) must not replace the download outcome.
+      try {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      } catch {
+        // Best-effort cleanup
+      }
     }
     return true;
   }
@@ -959,8 +964,13 @@ export async function downloadWithStrategy(
       }
       throw error;
     } finally {
-      // Clean up temp directory
-      await fs.promises.rm(tempDir, { recursive: true, force: true });
+      // Clean up temp directory. A rejected rm (EBUSY/EPERM) must not
+      // replace the download outcome.
+      try {
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      } catch {
+        // Best-effort cleanup
+      }
     }
     return true;
   }
