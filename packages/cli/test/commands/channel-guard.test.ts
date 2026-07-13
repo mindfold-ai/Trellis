@@ -310,6 +310,30 @@ describe("scanLiveWorkers + enforceSpawnBudget (integration)", () => {
     expect(typeof live[0].state.idleSince).toBe("string");
   });
 
+  it("skips legacy channel dirs with pre-validation names instead of throwing", async () => {
+    await createChannel("c-ok", { by: "main" });
+    await appendEvent(
+      "c-ok",
+      { kind: "spawned", by: "main", as: "w1", provider: "claude" },
+      env.projectKey,
+    );
+    writeLivePid(env.channelsRoot, env.projectKey, "c-ok", "w1");
+
+    // A store from before name validation: a channel dir whose name fails
+    // SAFE_SEGMENT_RE. Without the skip, readReservationWorkers → channelDir
+    // throws and the whole scan dies.
+    const legacyDir = path.join(env.channelsRoot, env.projectKey, "bad name");
+    fs.mkdirSync(legacyDir, { recursive: true });
+    fs.writeFileSync(path.join(legacyDir, "events.jsonl"), "");
+
+    const live = scanLiveWorkers({
+      projectKey: env.projectKey,
+      isSupervisorProcess: verifySupervisor,
+    });
+    expect(live).toHaveLength(1);
+    expect(live[0].channel).toBe("c-ok");
+  });
+
   it("counts spawn reservations before spawned is durable", async () => {
     await createChannel("c1b", { by: "main" });
     writeReservation(env.channelsRoot, env.projectKey, "c1b", "reserved");

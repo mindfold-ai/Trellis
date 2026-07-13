@@ -69,6 +69,28 @@ def is_safe_task_path(task_path: str, repo_root: Path | None = None) -> bool:
     return True
 
 
+def is_within_tasks_dir(task_dir_abs: Path, repo_root: Path | None = None) -> bool:
+    """Check that a resolved task directory really is a task under the tasks dir.
+
+    A real task lives directly at ``.trellis/tasks/<name>``. This returns True
+    only when ``task_dir_abs`` is an immediate child of the tasks directory.
+
+    Guards archive: ``resolve_task_dir`` falls back to ``repo_root/<name>`` for
+    an unknown name, so a mistyped ``task.py archive src`` resolves to the real
+    ``src/`` source directory. Without this check archive would ``shutil.move``
+    it out of the repo. Also rejects the tasks dir itself and anything nested
+    under ``archive/`` (already-archived tasks).
+    """
+    if repo_root is None:
+        repo_root = get_repo_root()
+    try:
+        resolved = task_dir_abs.resolve()
+        tasks_resolved = get_tasks_dir(repo_root).resolve()
+    except (OSError, RuntimeError):
+        return False
+    return resolved.parent == tasks_resolved
+
+
 # =============================================================================
 # Task Lookup
 # =============================================================================

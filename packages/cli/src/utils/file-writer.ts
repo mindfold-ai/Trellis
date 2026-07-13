@@ -3,6 +3,7 @@ import path from "node:path";
 import chalk from "chalk";
 import inquirer from "inquirer";
 
+import { writeFileAtomic } from "./atomic-write.js";
 import { toPosix } from "./posix.js";
 
 export type WriteMode = "ask" | "force" | "skip" | "append";
@@ -95,7 +96,7 @@ function appendToFile(
   const newContent = existingContent.endsWith("\n")
     ? existingContent + content
     : existingContent + "\n" + content;
-  fs.writeFileSync(filePath, newContent);
+  writeFileAtomic(filePath, newContent);
   if (options?.executable) {
     fs.chmodSync(filePath, "755");
   }
@@ -120,7 +121,7 @@ export async function writeFile(
 
   if (!exists) {
     // File doesn't exist, write directly
-    fs.writeFileSync(filePath, content);
+    writeFileAtomic(filePath, content);
     if (options?.executable) {
       fs.chmodSync(filePath, "755");
     }
@@ -147,7 +148,7 @@ export async function writeFile(
       : globalWriteMode;
 
   if (mode === "force") {
-    fs.writeFileSync(filePath, content);
+    writeFileAtomic(filePath, content);
     if (options?.executable) {
       fs.chmodSync(filePath, "755");
     }
@@ -196,7 +197,7 @@ export async function writeFile(
   }
 
   if (action === "overwrite") {
-    fs.writeFileSync(filePath, content);
+    writeFileAtomic(filePath, content);
     if (options?.executable) {
       fs.chmodSync(filePath, "755");
     }
@@ -219,7 +220,7 @@ export async function writeFile(
 
   if (action === "overwrite-all") {
     globalWriteMode = "force";
-    fs.writeFileSync(filePath, content);
+    writeFileAtomic(filePath, content);
     if (options?.executable) {
       fs.chmodSync(filePath, "755");
     }

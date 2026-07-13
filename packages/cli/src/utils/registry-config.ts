@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { DIR_NAMES } from "../constants/paths.js";
+import { writeFileAtomic } from "./atomic-write.js";
 import { toPosix } from "./posix.js";
 
 export interface SpecRegistryConfig {
@@ -162,7 +163,7 @@ export function writeSpecRegistryConfig(
         output.push(...specLines);
       }
     }
-    fs.writeFileSync(filePath, output.join("\n"), "utf-8");
+    writeFileAtomic(filePath, output.join("\n"));
     return;
   }
 
@@ -180,5 +181,5 @@ export function writeSpecRegistryConfig(
     "",
   ].join("\n");
 
-  fs.writeFileSync(filePath, content.trimEnd() + "\n" + section, "utf-8");
+  writeFileAtomic(filePath, content.trimEnd() + "\n" + section);
 }

@@ -51,6 +51,7 @@ from .safe_commit import (
 from .task_utils import (
     archive_task_complete,
     find_task_by_name,
+    is_within_tasks_dir,
     resolve_task_dir,
     run_task_hooks,
 )
@@ -453,6 +454,17 @@ def cmd_archive(args: argparse.Namespace) -> int:
         from .tasks import iter_active_tasks
         for t in iter_active_tasks(tasks_dir):
             print(f"  - {t.dir_name}/", file=sys.stderr)
+        return 1
+
+    # Refuse to archive anything that isn't a real task directly under
+    # .trellis/tasks/. A mistyped name (e.g. "src") resolves to repo_root/src,
+    # which is a dir but not a task — without this guard archive would move the
+    # user's source directory out of the repo.
+    if not is_within_tasks_dir(task_dir, repo_root):
+        print(colored(
+            f"Error: refusing to archive '{task_name}': "
+            f"{task_dir} is not a task under {tasks_dir}",
+            Colors.RED), file=sys.stderr)
         return 1
 
     dir_name = task_dir.name

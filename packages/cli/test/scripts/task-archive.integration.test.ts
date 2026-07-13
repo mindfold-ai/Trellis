@@ -202,6 +202,36 @@ describe.skipIf(!hasPython())(
       30_000, // python startup + 100-file ops can be slow
     );
 
+    it("refuses to archive a mistyped name that resolves to a real source dir", () => {
+      makeTask(tmp, "real-task", "# real task\n");
+      // A user source directory that is NOT a task.
+      const srcDir = path.join(tmp, "src");
+      fs.mkdirSync(srcDir, { recursive: true });
+      fs.writeFileSync(path.join(srcDir, "index.ts"), "export const x = 1;\n");
+      git(tmp, "add", "-A");
+      git(tmp, "commit", "-q", "-m", "initial");
+
+      // Typo: `archive src` instead of a task name. resolve_task_dir falls
+      // back to repo_root/src; without the guard this moves the whole source
+      // dir into .trellis/tasks/archive/.
+      const r = spawnSync(
+        "python3",
+        [".trellis/scripts/task.py", "archive", "src"],
+        { cwd: tmp, encoding: "utf-8" },
+      );
+
+      expect(r.status).not.toBe(0);
+      expect(r.stderr).toContain("refusing to archive");
+      // src/ untouched, still at its original location with its file.
+      expect(fs.existsSync(path.join(srcDir, "index.ts"))).toBe(true);
+      // No archive dir was created holding a moved src.
+      expect(
+        fs.existsSync(
+          path.join(tmp, ".trellis", "tasks", "archive"),
+        ),
+      ).toBe(false);
+    });
+
     it("fails when archive auto-commit cannot record tracked source deletes", () => {
       makeTask(tmp, "tracked", "# tracked task\n");
       git(tmp, "add", "-A");

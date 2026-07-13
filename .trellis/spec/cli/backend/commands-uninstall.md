@@ -13,9 +13,9 @@ How the uninstall command removes every Trellis-written file from a project, scr
 - **Manifest is authoritative.** The single source of truth for "what trellis wrote" is `.trellis/.template-hashes.json`. Files outside that manifest are never touched, regardless of where they live (e.g. user-added scripts under `.claude/hooks/`, custom commands under `.cursor/commands/`).
 - **No user-modification gate.** Whether the user has edited a manifest-listed file or not, it is removed. `update` semantics (warn / preserve modified files) do not apply here — the user's intent is to remove Trellis entirely.
 - **Two file classes.** Manifest entries fall into:
-  1. *Opaque content files* (`.py`, `.md`, `.toml`, `.json` agents, etc.) — unlinked outright.
-  2. *Structured config files* (`settings.json`, `hooks.json`, `package.json`, `config.toml`) — passed through a scrubber that removes only the trellis-owned fields and writes the trimmed result back. If nothing meaningful remains, the scrubber returns `fullyEmpty: true` and the file is deleted instead of rewritten.
-- **`.trellis/` is removed unconditionally.** Tasks, runtime state, workspace journal, config — all of it. Users who want to keep historical task records must back up `.trellis/tasks/` themselves before running `uninstall`.
+  1. *Opaque content files* (most `.py`, `.md`, `.toml`, `.json` agents, etc.) — unlinked outright.
+  2. *Structured config files* (`settings.json`, `hooks.json`, `package.json`, `config.toml`, and mixed-ownership markdown like `AGENTS.md`) — passed through a scrubber that removes only the trellis-owned fields/block and writes the trimmed result back. If nothing meaningful remains, the scrubber returns `fullyEmpty: true` and the file is deleted instead of rewritten.
+- **`.trellis/` is removed unconditionally once execution proceeds.** Tasks, runtime state, workspace journal, config — all of it; there is no `--keep-tasks` flag. A pre-execution guard warns about (and, for scripted `--yes` runs, can fail closed on) uncommitted specs/tasks/workspace files before that deletion happens — see *Dirty-Data Guard* under *`.trellis/` Handling* below, and [Filesystem Safety § Destructive-op ownership / backup gate](./filesystem-safety.md).
 - **Idempotent.** Re-running on a project that has no `.trellis/` is a friendly no-op. Re-running after a partial failure picks up whatever is still on disk and converges.
 - **Best-effort cleanup.** Permission errors on individual `unlink`/`rmdir` calls are swallowed; the command never aborts halfway. The summary at the end reports counts but does not enumerate per-file failures.
 
@@ -86,6 +86,9 @@ A `Map<posixPath, StructuredFileSpec>` built once per command invocation. Each e
 | `.opencode/package.json` | `scrubOpencodePackageJson` | n/a |
 | `.pi/settings.json` | `scrubPiSettings` | n/a |
 | `.codex/config.toml` | `scrubCodexConfigToml` | n/a |
+| `AGENTS.md` | `scrubManagedMarkdownBlock` | n/a |
+
+`AGENTS.md` is not a hooks-JSON file — it's a mixed-ownership markdown file. Trellis owns only the `<!-- TRELLIS:START/END -->` block (markers exported from `update.ts`); the user owns everything outside it. It shares `scrubManagedMarkdownBlock` with the Copilot-instructions scrubber: strip the block, keep the rest, and only fall through to deletion (`fullyEmpty`) when nothing user-authored remains. Before this spec was added, `AGENTS.md` had no dispatch-table row and was `unlinkSync`'d whole by the plain-deletion path, destroying any pre-existing user content outside the block.
 
 Adding a new platform that ships a structured config file means adding one row to this table — the planner picks it up automatically. **Per-file scrub semantics live in `uninstall-scrubbers.md`; do not duplicate them here.**
 
@@ -135,7 +138,7 @@ While deleting, the parent directory of each deleted file is added to a `Set<str
 
 ### Phase 3 — Drop `.trellis/` recursively
 
-`fs.rmSync(trellisDir, { recursive: true, force: true })`. Whole directory tree gone in one call. This is unconditional within `executePlan`; the only gate is the pre-check at the top of `uninstall()` which establishes that the directory exists and a manifest is present.
+`fs.rmSync(trellisDir, { recursive: true, force: true })`. Whole directory tree gone in one call. This is unconditional within `executePlan`; the gates all live earlier in `uninstall()` — the pre-checks that the directory exists and a manifest is present, the confirmation prompt (or `--yes`), and the *Dirty-Data Guard* below.
 
 ### Phase 4 — Prune empty managed sub-directories
 
@@ -170,9 +173,20 @@ Returns `{ deletedFiles, modifiedFiles, deletedDirs }` for the green summary lin
 | `.trellis/.current-task` | Removed. |
 | `.trellis/.template-hashes.json` | Removed. |
 
-This is **deliberately destructive** for user data inside `.trellis/`. Users are responsible for backing up `tasks/` or `workspace/` before running `uninstall` if they want history preserved. The plan output prints `WORKFLOW/  (entire directory, including tasks/runtime/config)` so this is visible before the confirmation prompt.
+This is **deliberately destructive** for user data inside `.trellis/`. Users are responsible for backing up `spec/`, `tasks/`, or `workspace/` before running `uninstall` if they want history preserved — the command does not create a backup itself. The plan output prints `WORKFLOW/  (entire directory — including your specs, task PRDs, journals, and memory)` so this is visible before the confirmation prompt.
 
 > Rationale: a "soft uninstall" that leaves orphan `.trellis/` content behind is a worse state than either fully-installed or fully-uninstalled — the leftover files reference removed scripts (`.trellis/scripts/`) and broken sub-agent configs (`.trellis/tasks/<id>/implement.jsonl` pointing at deleted spec files). Either keep Trellis or remove it cleanly. There is no half-Trellis mode.
+
+### Dirty-Data Guard — `collectUncommittedTrellisData`
+
+`.trellis/spec/`, `.trellis/tasks/`, and `.trellis/workspace/` are the same subdirectories `update.ts` marks PROTECTED (user-authored specs, task PRDs, journals). Because Phase 3 deletes them with no backup, `uninstall()` calls `collectUncommittedTrellisData(cwd)` right after `renderPlan` (before the dry-run exit and before the confirmation prompt). It shells out to `git status --porcelain -- .trellis/spec .trellis/tasks .trellis/workspace` and returns the list of modified/staged/untracked paths under those three dirs. A non-git repo, or `git` being unavailable, makes it return `[]` — the guard is a no-op in that case, and uninstall proceeds exactly as it did before this fix.
+
+- **Any hits** print a red warning (up to 20 paths, then a "`… and N more`" tail) before the prompt/dry-run message.
+- **Interactive runs** (no `--yes`) only see the warning; the existing `Continue? [Y/n]` prompt is the abort point.
+- **`--dry-run`** shows the warning too (for visibility) but returns before any fail-closed check, since dry-run never mutates anything.
+- **Scripted `--yes` runs fail closed**: if uncommitted data was found and `--dry-run` was not passed, the command prints an error and `process.exit(1)`s *before* `executePlan` runs any write/unlink/rm — unless the environment variable `TRELLIS_ALLOW_DIRTY_UNINSTALL=1` is set, which mirrors the existing homedir-guard bypass pattern (`utils/cwd-guard.ts`).
+
+See [Filesystem Safety § Destructive-op ownership / backup gate](./filesystem-safety.md) for the cross-cutting contract this guard implements.
 
 ---
 
@@ -261,6 +275,8 @@ If you ever need to extend the scrubber to match different command shapes (e.g. 
 
 Tests live in `packages/cli/test/commands/uninstall.integration.test.ts`. The file pattern: each test runs `init({ ..., force: true })` in a fresh tmpdir to set up a real Trellis install, then exercises one path through `uninstall()`.
 
+Two behaviors documented above have their own dedicated integration test files rather than living in the main table below: the `AGENTS.md` block-scrub fix is covered by `test/commands/init-uninstall-overdelete.integration.test.ts`, and the *Dirty-Data Guard* is covered by `test/commands/uninstall-dirty-guard.integration.test.ts` (skipped when `git`/`python3` are unavailable, since it shells out to real `git status`).
+
 Reference cases (number = test ID in the file):
 
 | # | Scenario | What it pins down |
@@ -303,4 +319,6 @@ Do **not** mock `fs` for these tests; they all use real tmpdirs. The pattern is:
 | `cleanupEmptyDirs` | `commands/update.ts:cleanupEmptyDirs` (re-exported) |
 | `ALL_MANAGED_DIRS` / `isManagedRootDir` | `configurators/index.ts` |
 | `DIR_NAMES.WORKFLOW` | `constants/paths.ts:DIR_NAMES` |
-| Scrubbers (`scrubHooksJson`, `scrubOpencodePackageJson`, `scrubPiSettings`, `scrubCodexConfigToml`) | `utils/uninstall-scrubbers.ts` — see `uninstall-scrubbers.md` |
+| `collectUncommittedTrellisData` | `commands/uninstall.ts:collectUncommittedTrellisData` (exported) |
+| `TRELLIS_ALLOW_DIRTY_UNINSTALL` (env bypass) | checked via `dirtyUninstallBypassEnabled` in `commands/uninstall.ts` |
+| Scrubbers (`scrubHooksJson`, `scrubOpencodePackageJson`, `scrubPiSettings`, `scrubCodexConfigToml`, `scrubManagedMarkdownBlock`) | `utils/uninstall-scrubbers.ts` — see `uninstall-scrubbers.md` |

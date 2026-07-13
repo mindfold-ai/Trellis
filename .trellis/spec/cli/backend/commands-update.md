@@ -142,7 +142,7 @@ Permits `cliVersion < projectVersion`. Without it, `update()` exits early with a
 Opt-in to apply file migrations (renames/deletes/dir renames). Without it: migrations are listed in the plan but not executed; a "Tip: Use --migrate" hint prints. With it:
 
 1. `commands/update.ts:executeMigrations` runs on the classified plan.
-2. The hardcoded 0.2.0 `traces-*.md → journal-*.md` rename in `update()` runs (workspace/<dev>/ pattern walk; cannot live in the manifest because the path includes a variable developer slug).
+2. The hardcoded 0.2.0 `traces-*.md → journal-*.md` rename runs via `commands/update.ts:renameTracesToJournal(workspaceDir)` (workspace/<dev>/ pattern walk; cannot live in the manifest because the path includes a variable developer slug). It never overwrites: if the `journal-*.md` target already exists, that file is left as-is and reported back in a `skipped` list instead of being renamed over — `.trellis/workspace/` is outside the backup snapshot, so an overwrite there would be unrecoverable. See [Filesystem Safety § 3](./filesystem-safety.md).
 
 `safe-file-delete` migrations are independent of `--migrate` — they always run when their hash gate passes (see Apply Phase). Rationale in `migrations.md`.
 
@@ -165,7 +165,9 @@ Migration state is then run through `commands/update.ts:classifyMigrations` agai
 | `auto` | source unmodified, target free or matches template |
 | `confirm` | source modified by user (hash mismatch) |
 | `conflict` | both source and target exist with user content |
-| `skip` | source missing, or path is `PROTECTED_PATHS` |
+| `skip` | source missing, path is `PROTECTED_PATHS`, or (see below) an unowned `rename-dir` source |
+
+`rename-dir` has an extra ownership gate when the target is absent: `commands/update.ts:dirHasManifestEntries(item.from, hashes)` must find at least one manifest-tracked file under that source directory before it lands in `auto`. If the manifest has no record of the directory — e.g. a user's own `.windsurf/` editor config that merely shares a path with a retired Trellis platform dir — the item goes to `skip` instead, even under `--force` (skip never executes). See [Filesystem Safety § 2–3](./filesystem-safety.md) for the rationale and the other ownership/backup gates it's modeled after.
 
 Sorting before execution is by `commands/update.ts:sortMigrationsForExecution`: deeper `rename-dir` first, then other `rename-dir`, then `rename` / `delete`. Critical for nested directory renames — without depth ordering, a parent move would leave child entries pointing at a dead source.
 
@@ -210,7 +212,7 @@ Order of operations in `commands/update.ts:update` (after the `Proceed?` confirm
 
 1. **Backup** — `commands/update.ts:createFullBackup` snapshots every `BACKUP_DIRS` (= `configurators/index.ts:ALL_MANAGED_DIRS`) entry plus `BACKUP_FILES` (= `AGENTS.md`) into `.trellis/.backup-<ISO-timestamp>/`. `commands/update.ts:shouldExcludeFromBackup` filters out previous backups, `node_modules/`, user-data dirs (`workspace/`, `tasks/`, `spec/`, `backlog/`, `agent-traces/`), and platform-native worktree dirs (`/worktrees/`, `/worktree/`). Symlinks (and Windows directory junctions) are never followed in `commands/update.ts:collectAllFiles` — a junction to an ancestor would loop forever.
 
-2. **Migrations** (only if `--migrate`) — `commands/update.ts:executeMigrations` runs `auto` items first (sorted by depth), then `confirm` items via `commands/update.ts:promptMigrationAction` (or `--force` / `--skip-all` short-circuits). Default action for prompts is `backup-rename`: leaves `<new-path>.backup` of the user's modified content alongside the rename, so users can diff inline without digging through the snapshot. Hash tracking is updated via `utils/template-hash.ts:renameHash` / `removeHash`. Empty source dirs are pruned by `commands/update.ts:cleanupEmptyDirs` (gated by `configurators/index.ts:isManagedPath` + `isManagedRootDir` — never deletes managed roots themselves, never crosses into unmanaged paths). After regular migrations, the hardcoded `traces-*.md → journal-*.md` workspace walk runs.
+2. **Migrations** (only if `--migrate`) — `commands/update.ts:executeMigrations` runs `auto` items first (sorted by depth), then `confirm` items via `commands/update.ts:promptMigrationAction` (or `--force` / `--skip-all` short-circuits). Default action for prompts is `backup-rename`: leaves `<new-path>.backup` of the user's modified content alongside the rename, so users can diff inline without digging through the snapshot. Hash tracking is updated via `utils/template-hash.ts:renameHash` / `removeHash`. Empty source dirs are pruned by `commands/update.ts:cleanupEmptyDirs` (gated by `configurators/index.ts:isManagedPath` + `isManagedRootDir` — never deletes managed roots themselves, never crosses into unmanaged paths). After regular migrations, the hardcoded `traces-*.md → journal-*.md` workspace walk (`commands/update.ts:renameTracesToJournal`) runs; files whose journal target already exists are skipped (not overwritten) and printed as a yellow "Kept ... its journal target already exists" warning.
 
 3. **`safe-file-delete`** — `commands/update.ts:executeSafeFileDeletes` deletes files in the `delete` action bucket (hash matched, not protected, not in `update.skip` unless bypassed), removes their hash entries, and prunes empty parent directories. `migrations.md` covers the full classification matrix.
 
@@ -241,6 +243,8 @@ Order of operations in `commands/update.ts:update` (after the `Proceed?` confirm
 - `isTemplateModified(cwd, path, hashes)` in `classifyMigrations`
 - `renameHash` / `removeHash` during migrations
 - `updateHashes(cwd, files)` at the end
+
+`saveHashes` (called by `updateHashes`/`renameHash`/`removeHash`) writes `.trellis/.template-hashes.json` via `writeFileAtomic` (temp file in the same dir + rename), not a direct `writeFileSync`. A crash mid-write can no longer truncate the manifest to `{}`, which would otherwise make every managed file look user-modified on the next run. See [Filesystem Safety § 1](./filesystem-safety.md).
 
 `migrations.md` documents the relationship to `allowed_hashes` in `safe-file-delete` migrations: the hash file tracks "Trellis-installed bytes" (so update can detect user edits); `allowed_hashes` is a bounded set of "known-pristine bytes" the manifest blesses for auto-deletion. They are different sets — a user file might have a recorded hash but not be `allowed_hashes`-eligible.
 

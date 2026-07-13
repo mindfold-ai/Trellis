@@ -25,7 +25,7 @@ All workflow scripts target **Python 3.9+** for cross-platform compatibility (ma
 │   ├── types.py          # TaskData (TypedDict), TaskInfo (dataclass), AgentRecord
 │   ├── tasks.py          # load_task(), iter_active_tasks() — typed task access
 │   ├── active_task.py    # Session-scoped active task resolver
-│   ├── task_utils.py     # resolve_task_dir(), run_task_hooks()
+│   ├── task_utils.py     # resolve_task_dir(), is_within_tasks_dir(), run_task_hooks()
 │   ├── task_store.py     # Task CRUD (create, archive, set-branch, etc.)
 │   ├── task_context.py   # JSONL context management (add-context, validate, list-context)
 │   ├── task_queue.py     # Task queue CRUD
@@ -272,6 +272,15 @@ The single source of truth for all JSON file operations. Replaces 8 duplicated `
 - Always uses `encoding="utf-8"` and `ensure_ascii=False`
 - `write_json` outputs with `indent=2` (pretty-printed)
 - Callers must check return value — no exceptions are raised
+- `write_json` is atomic: it writes to a temp file in `path.parent`
+  (`tempfile.mkstemp`) then `os.replace(tmp, path)`. It never
+  `path.write_text()`s over the target in place. A crash or Ctrl-C mid-write
+  leaves the existing file intact instead of truncated. On failure the tmp
+  file is unlinked; a `BaseException` (e.g. `KeyboardInterrupt`) is re-raised,
+  while `OSError`/`IOError` from the write itself are caught and return
+  `False` as before. This matters for `task.json`: a truncated file reads
+  back as `None` from `read_json`, which makes the task silently vanish from
+  `task.py list`. See [Filesystem Safety](./filesystem-safety.md#1-atomic-writes--never-truncate-a-state-file-in-place).
 
 ### `common/log.py` — Terminal Output
 
@@ -418,6 +427,14 @@ a `.current-task` fallback or a Python hook directory.
   `.trellis/.current-task`.
 - `task.py archive <task>` deletes every runtime session file whose
   `current_task` points at the archived task before moving the task directory.
+- Before moving anything, `cmd_archive` (`task_store.py`) calls
+  `is_within_tasks_dir(task_dir_abs, repo_root)` (`task_utils.py`) and refuses
+  with "refusing to archive ..." (exit 1) unless the resolved dir is a direct
+  child of `.trellis/tasks/`. `resolve_task_dir` falls back to
+  `repo_root / <name>` for a name it can't find, so a mistyped
+  `task.py archive src` would otherwise resolve to and `shutil.move` the
+  repo's real `src/` directory. See
+  [Filesystem Safety](./filesystem-safety.md#2-path--name-safety--validate-at-the-chokepoint-before-pathjoin).
 
 ##### 4. Validation & Error Matrix
 
@@ -437,6 +454,7 @@ a `.current-task` fallback or a Python hook directory.
 | `finish` with context key and active task | Deletes `.runtime/sessions/<key>.json` |
 | `finish` without context key | Returns no current task; does not delete `.current-task` |
 | `archive` for a task referenced by runtime sessions | Deletes those session files even when `finish` was skipped |
+| `archive` on a name that resolves outside `.trellis/tasks/` (e.g. `archive src` falling back to `repo_root/src`) | Refuses with "refusing to archive ..." and exit 1; source directory is left untouched |
 
 ##### 5. Good/Base/Bad Cases
 

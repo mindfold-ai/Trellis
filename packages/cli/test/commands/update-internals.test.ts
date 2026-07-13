@@ -13,6 +13,7 @@ import path from "node:path";
 import {
   cleanupEmptyDirs,
   loadUpdateSkipPaths,
+  renameTracesToJournal,
   shouldExcludeFromBackup,
   sortMigrationsForExecution,
 } from "../../src/commands/update.js";
@@ -278,5 +279,143 @@ describe("shouldExcludeFromBackup", () => {
     ".opencode\\node_modules\\zod\\index.js",
   ])("excludes Windows-style backslash path %s", (p) => {
     expect(shouldExcludeFromBackup(p)).toBe(true);
+  });
+});
+
+// =============================================================================
+// renameTracesToJournal — 0.2.0 traces→journal migration (data-safety)
+// =============================================================================
+
+describe("renameTracesToJournal", () => {
+  let tmpDir: string;
+  let ws: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-traces-"));
+    ws = path.join(tmpDir, "workspace");
+    fs.mkdirSync(path.join(ws, "alice"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("renames traces-N.md to journal-N.md when no target exists", () => {
+    const dev = path.join(ws, "alice");
+    fs.writeFileSync(path.join(dev, "traces-1.md"), "trace one");
+
+    const { renamed, skipped } = renameTracesToJournal(ws);
+
+    expect(renamed).toBe(1);
+    expect(skipped).toEqual([]);
+    expect(fs.existsSync(path.join(dev, "traces-1.md"))).toBe(false);
+    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
+      "trace one",
+    );
+  });
+
+  it("never overwrites an existing journal target; keeps both and reports it", () => {
+    const dev = path.join(ws, "alice");
+    fs.writeFileSync(path.join(dev, "traces-1.md"), "old trace");
+    // A newer session already created journal-1.md with real history.
+    fs.writeFileSync(path.join(dev, "journal-1.md"), "REAL SESSION HISTORY");
+
+    const { renamed, skipped } = renameTracesToJournal(ws);
+
+    expect(renamed).toBe(0);
+    expect(skipped).toEqual([path.join(dev, "traces-1.md")]);
+    // Existing journal is untouched...
+    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
+      "REAL SESSION HISTORY",
+    );
+    // ...and the traces file is preserved, not destroyed.
+    expect(fs.readFileSync(path.join(dev, "traces-1.md"), "utf-8")).toBe(
+      "old trace",
+    );
+  });
+
+  it("returns zero counts when the workspace dir does not exist", () => {
+    expect(renameTracesToJournal(path.join(tmpDir, "nope"))).toEqual({
+      renamed: 0,
+      skipped: [],
+    });
+  });
+});
+
+// =============================================================================
+// rename-dir ownership gate — 🔴-4: never auto-move a user-owned directory
+// =============================================================================
+
+import {
+  classifyMigrations,
+  dirHasManifestEntries,
+} from "../../src/commands/update.js";
+import type { MigrationItem } from "../../src/types/migration.js";
+
+describe("dirHasManifestEntries", () => {
+  it("is true when the manifest tracks a file under the dir", () => {
+    expect(
+      dirHasManifestEntries(".windsurf/workflows", {
+        ".windsurf/workflows/a.md": "hash",
+      }),
+    ).toBe(true);
+  });
+
+  it("is true on an exact key match", () => {
+    expect(dirHasManifestEntries("AGENTS.md", { "AGENTS.md": "h" })).toBe(true);
+  });
+
+  it("is false when nothing under the dir is tracked", () => {
+    expect(
+      dirHasManifestEntries(".windsurf/workflows", {
+        ".claude/settings.json": "h",
+      }),
+    ).toBe(false);
+  });
+
+  it("does not match a sibling dir that shares a prefix string", () => {
+    // ".devin" must not match ".devinX/..."
+    expect(
+      dirHasManifestEntries(".devin", { ".devinX/a.md": "h" }),
+    ).toBe(false);
+  });
+});
+
+describe("classifyMigrations rename-dir ownership gate", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-renamedir-"));
+    // A user-owned .windsurf/workflows that Trellis never created.
+    fs.mkdirSync(path.join(tmpDir, ".windsurf", "workflows"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(tmpDir, ".windsurf", "workflows", "user.md"),
+      "user workflow",
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const migration: MigrationItem[] = [
+    { type: "rename-dir", from: ".windsurf/workflows", to: ".devin/workflows" },
+  ];
+
+  it("skips (never auto-moves) an unowned source dir when the target is absent", () => {
+    const result = classifyMigrations(migration, tmpDir, {}, new Map());
+    expect(result.auto).toHaveLength(0);
+    expect(result.skip).toHaveLength(1);
+    expect(result.skip[0].from).toBe(".windsurf/workflows");
+  });
+
+  it("auto-migrates when Trellis owns the source dir (manifest has entries)", () => {
+    const hashes = { ".windsurf/workflows/user.md": "some-hash" };
+    const result = classifyMigrations(migration, tmpDir, hashes, new Map());
+    expect(result.skip).toHaveLength(0);
+    expect(result.auto).toHaveLength(1);
+    expect(result.auto[0].to).toBe(".devin/workflows");
   });
 });

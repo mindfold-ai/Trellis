@@ -19,6 +19,7 @@ import path from "node:path";
 
 import { DIR_NAMES, FILE_NAMES } from "../constants/paths.js";
 import type { TemplateHashes } from "../types/migration.js";
+import { writeFileAtomic } from "./atomic-write.js";
 import { toPosix } from "./posix.js";
 
 /** File name for storing template hashes */
@@ -113,7 +114,7 @@ export function saveHashes(cwd: string, hashes: TemplateHashes): void {
     __version: HASHES_SCHEMA_VERSION,
     hashes: normalizeHashKeys(hashes),
   };
-  fs.writeFileSync(hashesPath, JSON.stringify(payload, null, 2));
+  writeFileAtomic(hashesPath, JSON.stringify(payload, null, 2));
 }
 
 /**

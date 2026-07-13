@@ -95,6 +95,7 @@ src/migrations/
 - 自动批量更新 hash 追踪
 - 移动后自动清理空的源目录
 - 嵌套目录按深度优先处理（避免父目录先移动导致子目录找不到）
+- 目标目录不存在时，是否自动执行取决于归属：只有当 manifest 记录了 `from` 目录下的文件（即这个目录是 trellis 自己建的）才会 `auto`；否则视为可能是用户自建的同名目录（例如真实的 `.windsurf/` 编辑器配置），路由到 `skip`（即使 `--force` 也不执行）。详见下方分类逻辑与 [Filesystem Safety](./filesystem-safety.md)。
 
 ### safe-file-delete 示例
 
@@ -127,10 +128,10 @@ src/migrations/
 
 | 分类 | 条件 | 行为 |
 |------|------|------|
-| `auto` | 文件未被用户修改 / rename-dir | 自动迁移 |
+| `auto` | 文件未被用户修改 / rename-dir 目标不存在且源目录有 manifest 记录（trellis 建的）/ rename-dir 目标存在且只含未修改模板文件 | 自动迁移 |
 | `confirm` | 文件已被用户修改 | 默认询问，`-f` 强制，`-s` 跳过 |
-| `conflict` | 新旧路径都存在 | 跳过并提示手动解决 |
-| `skip` | 旧路径不存在 / 路径受保护 | 无需操作 |
+| `conflict` | 新旧路径都存在且新路径含用户修改内容 | 跳过并提示手动解决 |
+| `skip` | 旧路径不存在 / 路径受保护 / rename-dir 目标不存在且源目录无 manifest 记录（疑似用户自建同名目录，即使 `--force` 也不执行） | 无需操作 |
 
 ## `configSectionsAdded`（追加式 config.yaml 节）
 

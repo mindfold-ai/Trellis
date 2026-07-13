@@ -255,11 +255,12 @@ channelRoot(): string                                       // TRELLIS_CHANNEL_R
 projectKey(cwd: string): string                             // sanitize: /[\\/_]/g→"-" then /[^A-Za-z0-9.-]/g→"-"
 currentProjectKey(): string                                 // TRELLIS_CHANNEL_PROJECT env ?? projectKey(process.cwd())
 projectDir(project?: string): string                        // <root>/<project>
-channelDir(name, project?: string): string                  // <root>/<project>/<name>
+assertSafeName(name, kind = "channel"): void                // ^[A-Za-z0-9._-]+$, rejects "."/".."; throws "Invalid <kind> name: ..."
+channelDir(name, project?: string): string                  // <root>/<project>/<name> — calls assertSafeName(name) first; the one chokepoint every helper below routes through, so create/rm/run/spawn all reject traversal names (see filesystem-safety.md §2)
 eventsPath(name, project?): string                          // <channelDir>/events.jsonl
 lockPath(name, project?): string                            // <channelDir>/<name>.lock
-workerFile(name, worker, suffix, project?): string          // <channelDir>/<worker>.<suffix>
-workerLockPath(name, worker, project?): string              // <channelDir>/<worker>.spawnlock
+workerFile(name, worker, suffix, project?): string          // <channelDir>/<worker>.<suffix> — calls assertSafeName(worker, "worker")
+workerLockPath(name, worker, project?): string              // <channelDir>/<worker>.spawnlock — calls assertSafeName(worker, "worker")
 migrateLegacyChannels(): void                               // idempotent; moves flat → _legacy/
 ensureBucketMarker(project: string): void                   // touch <project>/.bucket
 listProjects(): string[]                                    // bucket names (has .bucket OR is reserved)
@@ -958,7 +959,8 @@ only applies to per-worker supervisor cleanup.
 
 | Surface | Validator | Reject behavior |
 |---------|-----------|-----------------|
-| Worker / channel name in protocol prompt | `safeIdentifier(s)` strips `/[\r\n\x00-\x08\x0b-\x1f\x7f]/` | silent strip (still produces a valid string) |
+| Channel / worker name as a path segment (create/rm/run/spawn/…) | `assertSafeName(name, kind)` — `^[A-Za-z0-9._-]+$`, rejects `.`/`..` — called inside `channelDir` (and `workerFile`/`workerLockPath` for the worker segment), the one chokepoint every path helper routes through | throw `"Invalid <kind> name: ..."` before any filesystem call (see [Filesystem Safety](./filesystem-safety.md) §2) |
+| Worker / channel name in protocol prompt | `safeIdentifier(s)` strips `/[\r\n\x00-\x08\x0b-\x1f\x7f]/` | silent strip (still produces a valid string) — defense-in-depth on top of the `assertSafeName` chokepoint above, not a substitute for it |
 | `--file <path>` | `jailedRealpath(path, cwd)` requires `realpath(path).startsWith(realpath(cwd) + sep)` | skip file, stderr warn |
 | `--jsonl <path>` | same jail | skip manifest entry, stderr warn |
 | Symlink swap during read | `lstat` BEFORE `stat` to detect symlinks before resolve | treat as not found |
@@ -1123,6 +1125,7 @@ trellis channel send trellis-issue --scope global --as main --thread forum-mode 
 | `channel run` failure preserves | e2e | run with bad provider; assert exit 1, stderr matches "channel kept for inspection:", channel directory still exists, `events.jsonl` has create+error |
 | `--ephemeral` create + list + prune | integration | (a) `list` default hides, (b) `list --all` shows with `*`, (c) `list` footer prints "(N ephemeral channels hidden ...)", (d) `prune --ephemeral` only deletes ephemeral, (e) `prune --ephemeral --idle 1h` throws mutex error |
 | Path-traversal jail | security | `--file /etc/passwd` from cwd `/tmp/work` → file skipped, stderr warn |
+| `assertSafeName` / `channelDir` traversal guard | security | (a) `".."`, `"."`, `"../x"`, `"../../x"`, `"a/b"`, `"a\b"` → throw `Invalid channel name`, (b) ordinary names (`"a"`, `"chat-only"`, `"a.b"`) accepted, (c) `channelDir("../../escape")` throws before resolving a path — duplicated in both `core` and `cli` copies of `paths.ts` |
 | Agent name validator | security | `--agent ../../evil` → throw |
 | Frontmatter prototype pollution | security | a `.trellis/agents/<name>.md` fixture with `__proto__: ...` frontmatter → key dropped, no pollution observable |
 | `safeIdentifier` | unit | newline / NUL / control chars stripped from worker name in protocol prompt |
