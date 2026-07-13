@@ -1,0 +1,9 @@
+{
+  "version": "0.6.7",
+  "description": "Patch release: hardens filesystem mutations and state persistence, and adds project-local Pi memory discovery.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(mem): discover Pi sessions from project-local `.pi/settings.json` and resolve relative `sessionDir` values from the settings file directory.\n\n**Bug Fixes:**\n- fix(channel): reject unsafe channel and worker path segments, and skip legacy invalid channel directories during discovery.\n- fix(cli): write generated files, template hashes, registry config, task state, and session pointers atomically; download template overwrites before replacing existing content, and keep cleanup failures from masking the operation result.\n- fix(cli): preserve user-authored `AGENTS.md` content during uninstall, refuse unattended uninstall when `.trellis/` contains uncommitted user data, restrict task archive to real task directories, keep existing journals during legacy rename, and only auto-move directories tracked as Trellis-owned.",
+  "migrations": [],
+  "notes": "No `--migrate` required.\n\nRun `trellis update` after upgrading to refresh generated scripts and filesystem-safety behavior.\n\nPi users with a project-local `.pi/settings.json` can use `trellis mem` with that project's `sessionDir`; relative paths resolve from the settings file directory.\n\nInstall: `npm install -g @mindfoldhq/trellis`"
+}
