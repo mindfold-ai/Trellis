@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import vm from "node:vm";
+import ts from "typescript";
 import {
   getAllAgents,
   getExtensionTemplate,
@@ -10,6 +13,47 @@ import { collectOmpTemplates } from "../../src/configurators/omp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(__dirname, "../../src/templates/omp");
+
+type OmpEventHandler = (event: unknown, ctx?: unknown) => unknown;
+type OmpExtension = (pi: {
+  on: (event: string, handler: OmpEventHandler) => void;
+}) => void;
+
+function loadOmpExtension(): OmpExtension {
+  const compiled = ts.transpileModule(getExtensionTemplate(), {
+    compilerOptions: {
+      esModuleInterop: true,
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+    },
+  }).outputText;
+  const require = createRequire(import.meta.url);
+  const moduleObject: { exports: { default?: OmpExtension } } = { exports: {} };
+  const sandboxProcess = Object.create(process) as NodeJS.Process;
+  const sandboxEnv = { ...process.env };
+  delete sandboxEnv.TRELLIS_CONTEXT_ID;
+  Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
+  const sandbox = vm.createContext({
+    Buffer,
+    console,
+    exports: moduleObject.exports,
+    module: moduleObject,
+    process: sandboxProcess,
+    require,
+  });
+  vm.runInContext(compiled, sandbox);
+  const extension = moduleObject.exports.default;
+  if (!extension) throw new Error("OMP extension template has no default export");
+  return extension;
+}
+
+function captureOmpHandlers(): Map<string, OmpEventHandler> {
+  const handlers = new Map<string, OmpEventHandler>();
+  loadOmpExtension()({
+    on: (event, handler) => handlers.set(event, handler),
+  });
+  return handlers;
+}
 
 describe("omp templates", () => {
   it("provides the three Trellis sub-agent definitions", () => {
@@ -62,6 +106,55 @@ describe("omp templates", () => {
       "No identity: use single-session fallback only when there is exactly one session file.",
     );
     expect(extension).not.toContain("currentContextKey");
+  });
+
+  it("injects the derived context key into the original Bash params", () => {
+    const handler = captureOmpHandlers().get("tool_call");
+    if (!handler) throw new Error("OMP extension did not register tool_call");
+    const params: { command: string; env?: Record<string, string> } = {
+      command: "python3 ./.trellis/scripts/task.py current",
+      env: { EXISTING: "kept" },
+    };
+
+    handler(
+      { type: "tool_call", toolName: "bash", toolCallId: "call-1", input: params },
+      { sessionManager: { getSessionId: () => "session/a" } },
+    );
+
+    expect(params.env?.TRELLIS_CONTEXT_ID).toBe("omp_session_a");
+    expect(params.env?.EXISTING).toBe("kept");
+  });
+
+  it("preserves an explicit Bash env override and leaves inline assignments untouched", () => {
+    const handler = captureOmpHandlers().get("tool_call");
+    if (!handler) throw new Error("OMP extension did not register tool_call");
+    const command =
+      "TRELLIS_CONTEXT_ID=inline python3 ./.trellis/scripts/task.py current";
+    const params: { command: string; env?: Record<string, string> } = {
+      command,
+      env: { TRELLIS_CONTEXT_ID: "explicit" },
+    };
+
+    handler(
+      { type: "tool_call", toolName: "bash", toolCallId: "call-2", input: params },
+      { sessionManager: { getSessionId: () => "session/b" } },
+    );
+
+    expect(params.command).toBe(command);
+    expect(params.env?.TRELLIS_CONTEXT_ID).toBe("explicit");
+  });
+
+  it("does not mutate non-Bash tool params", () => {
+    const handler = captureOmpHandlers().get("tool_call");
+    if (!handler) throw new Error("OMP extension did not register tool_call");
+    const params: Record<string, unknown> = { path: "README.md" };
+
+    handler(
+      { type: "tool_call", toolName: "read", toolCallId: "call-3", input: params },
+      { sessionManager: { getSessionId: () => "session/c" } },
+    );
+
+    expect(params).toEqual({ path: "README.md" });
   });
 
   it("extension template contains session context injection markers", () => {

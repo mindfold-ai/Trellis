@@ -40,7 +40,7 @@ function buildContextKey(platformName: string, kind: string, value: string): str
    return safeValue ? `${platformName}_${safeValue}` : `${platformName}_${hashValue(value)}`;
 }
 
-function deriveContextKey(ctx?: { sessionManager?: { getSessionId?: () => string; getSessionFile?: () => string } }): string | null {
+function deriveContextKey(ctx?: { sessionManager?: { getSessionId?: () => string | undefined; getSessionFile?: () => string | undefined } }): string | null {
    const sessionId = ctx?.sessionManager?.getSessionId?.();
    if (sessionId) {
       return buildContextKey("omp", "session", sessionId);
@@ -336,7 +336,7 @@ export default function(pi: ExtensionAPI): void {
    let lastCompactionTs = 0;
    let lastInjectionTs = 0;
 
-   const rememberContextKey = (ctx?: { sessionManager?: { getSessionId?: () => string; getSessionFile?: () => string } }): string | null => {
+   const rememberContextKey = (ctx?: { sessionManager?: { getSessionId?: () => string | undefined; getSessionFile?: () => string | undefined } }): string | null => {
       const key = deriveContextKey(ctx);
       if (!key) return null;
       return key;
@@ -439,12 +439,27 @@ export default function(pi: ExtensionAPI): void {
          messages: [
             ...event.messages,
             {
-               role: "custom",
+               role: "custom" as const,
                customType: "trellis-workflow-state",
                content: cached.workflowMsg,
+               display: false,
                timestamp: Date.now(),
             },
          ],
+      };
+   });
+
+   // OMP passes Bash event.input through to the tool execution parameters, so
+   // inject the session key through the shell-agnostic env field. An explicit
+   // per-call value wins over the derived key.
+   pi.on("tool_call", (event, ctx) => {
+      if (event.toolName !== "bash") return;
+      const contextKey = rememberContextKey(ctx);
+      if (!contextKey) return;
+      const input = event.input as { env?: Record<string, string> };
+      input.env = {
+         TRELLIS_CONTEXT_ID: contextKey,
+         ...input.env,
       };
    });
 
@@ -453,10 +468,9 @@ export default function(pi: ExtensionAPI): void {
          projectRoot = findProjectRoot(ctx.cwd);
       }
       // Resolve projectRoot on first input if session_start missed it
-      if (!projectRoot) return { action: "continue" };
+      if (!projectRoot) return;
       const contextKey = rememberContextKey(ctx);
       // Pre-warm the cache so before_agent_start and context can use it
       turnCache.get(projectRoot, contextKey);
-      return { action: "continue" };
    });
 }
