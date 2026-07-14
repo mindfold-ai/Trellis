@@ -317,11 +317,13 @@ interface SafeFileDeleteClassified {
  * - File exists
  * - Content hash matches allowed_hashes
  * - Path is not protected or in update.skip
+ * - Path is not owned by the current template set
  */
 function collectSafeFileDeletes(
   migrations: MigrationItem[],
   cwd: string,
   skipPaths: string[],
+  currentTemplatePaths: ReadonlySet<string>,
   /**
    * Bypass `update.skip` for safe-file-delete. Enable this for breaking releases
    * where honoring skip would leave the project half-migrated (old files at
@@ -331,7 +333,11 @@ function collectSafeFileDeletes(
    */
   bypassUpdateSkip = false,
 ): SafeFileDeleteClassified[] {
-  const safeDeletes = migrations.filter((m) => m.type === "safe-file-delete");
+  // Historical migrations are loaded forever, so current template ownership
+  // must win when a later release intentionally restores a retired path.
+  const safeDeletes = migrations.filter(
+    (m) => m.type === "safe-file-delete" && !currentTemplatePaths.has(m.from),
+  );
   const results: SafeFileDeleteClassified[] = [];
 
   for (const item of safeDeletes) {
@@ -2172,6 +2178,7 @@ export async function update(options: UpdateOptions): Promise<void> {
     allMigrations,
     cwd,
     skipPaths,
+    new Set(templates.keys()),
     breakingBypass,
   );
   const hasSafeDeletes =

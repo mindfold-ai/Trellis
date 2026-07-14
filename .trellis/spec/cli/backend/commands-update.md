@@ -144,7 +144,7 @@ Opt-in to apply file migrations (renames/deletes/dir renames). Without it: migra
 1. `commands/update.ts:executeMigrations` runs on the classified plan.
 2. The hardcoded 0.2.0 `traces-*.md → journal-*.md` rename runs via `commands/update.ts:renameTracesToJournal(workspaceDir)` (workspace/<dev>/ pattern walk; cannot live in the manifest because the path includes a variable developer slug). It never overwrites: if the `journal-*.md` target already exists, that file is left as-is and reported back in a `skipped` list instead of being renamed over — `.trellis/workspace/` is outside the backup snapshot, so an overwrite there would be unrecoverable. See [Filesystem Safety § 3](./filesystem-safety.md).
 
-`safe-file-delete` migrations are independent of `--migrate` — they always run when their hash gate passes (see Apply Phase). Rationale in `migrations.md`.
+`safe-file-delete` migrations are independent of `--migrate` — they always run when their hash gate passes (see Apply Phase). A historical deletion is ignored when its path is present in the current template snapshot: current template ownership takes precedence if a later release intentionally restores a retired path. Rationale in `migrations.md`.
 
 ### Tag flag (`--tag <beta|rc|latest>`)
 
@@ -214,7 +214,7 @@ Order of operations in `commands/update.ts:update` (after the `Proceed?` confirm
 
 2. **Migrations** (only if `--migrate`) — `commands/update.ts:executeMigrations` runs `auto` items first (sorted by depth), then `confirm` items via `commands/update.ts:promptMigrationAction` (or `--force` / `--skip-all` short-circuits). Default action for prompts is `backup-rename`: leaves `<new-path>.backup` of the user's modified content alongside the rename, so users can diff inline without digging through the snapshot. Hash tracking is updated via `utils/template-hash.ts:renameHash` / `removeHash`. Empty source dirs are pruned by `commands/update.ts:cleanupEmptyDirs` (gated by `configurators/index.ts:isManagedPath` + `isManagedRootDir` — never deletes managed roots themselves, never crosses into unmanaged paths). After regular migrations, the hardcoded `traces-*.md → journal-*.md` workspace walk (`commands/update.ts:renameTracesToJournal`) runs; files whose journal target already exists are skipped (not overwritten) and printed as a yellow "Kept ... its journal target already exists" warning.
 
-3. **`safe-file-delete`** — `commands/update.ts:executeSafeFileDeletes` deletes files in the `delete` action bucket (hash matched, not protected, not in `update.skip` unless bypassed), removes their hash entries, and prunes empty parent directories. `migrations.md` covers the full classification matrix.
+3. **`safe-file-delete`** — `commands/update.ts:executeSafeFileDeletes` deletes files in the `delete` action bucket (hash matched, not protected, not in `update.skip` unless bypassed), removes their hash entries, and prunes empty parent directories. `commands/update.ts:collectSafeFileDeletes` first excludes paths owned by the current template snapshot so historical cleanup cannot conflict with a reintroduced template. `migrations.md` covers the full classification matrix.
 
 4. **New file writes** — straight `mkdir -p` + `writeFileSync`. `.sh` and `.py` get `chmod 755`.
 
