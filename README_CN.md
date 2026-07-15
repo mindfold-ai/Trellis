@@ -145,7 +145,7 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 ### 联系我们
 
 <p align="center">
-<img src="assets/wx_link9.jpg" alt="微信群" width="260" />
+<img src="assets/wx_link10.jpg" alt="微信群" width="260" />
 &nbsp;&nbsp;&nbsp;&nbsp;
 <img src="assets/feishu-group-qr.jpg" alt="飞书话题群" width="260" />
 </p>
