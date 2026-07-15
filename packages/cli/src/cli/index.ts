@@ -87,6 +87,7 @@ program
   .option("--zcode", "Include ZCode commands")
   .option("--omp", "Include Oh My Pi extension assets")
   .option("--trae", "Include Trae IDE commands")
+  .option("--grok", "Include Grok Build skills and agents")
   .option(
     "--with-statusline",
     "Install the Trellis statusLine for Claude Code (off by default)",

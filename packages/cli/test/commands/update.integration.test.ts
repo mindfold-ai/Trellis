@@ -1355,7 +1355,7 @@ describe("update() integration", () => {
     const updated = fs.readFileSync(workflowPath, "utf-8");
     expect(updated).toBe(replacePythonCommandLiterals(workflowMdTemplate));
     expect(updated).toContain(
-      "[codex-sub-agent, Gemini, Qoder, Copilot, ZCode, Reasonix, Trae]",
+      "[codex-sub-agent, Gemini, Qoder, Copilot, ZCode, Reasonix, Trae, Grok]",
     );
     expect(updated).toContain(
       "[/Claude Code, Cursor, OpenCode, CodeBuddy, Droid, Pi, Oh My Pi]",

@@ -20,6 +20,8 @@ Supported platforms:
 - droid: Factory Droid (commands-based)
 - pi: Pi Agent (extension-backed)
 - trae: Trae IDE (IDE-only, hooks-based)
+- omp: Oh My Pi
+- grok: Grok Build (pull-based skills/agents; no hook context injection)
 
 Usage:
     from common.cli_adapter import CLIAdapter
@@ -56,6 +58,7 @@ Platform = Literal[
     "pi",
     "trae",
     "omp",
+    "grok",
 ]
 
 
@@ -134,6 +137,8 @@ class CLIAdapter:
             return ".trae"
         elif self.platform == "omp":
             return ".omp"
+        elif self.platform == "grok":
+            return ".grok"
         else:
             return ".claude"
 
@@ -202,6 +207,17 @@ class CLIAdapter:
                 return commands_dir / f"trellis-{filename}.md"
             return commands_dir / Path(*parts)
 
+        # Grok: flat slash commands under .grok/commands/trellis-<name>.md
+        if self.platform == "grok":
+            commands_dir = self.get_config_dir(project_root) / "commands"
+            if not parts:
+                return commands_dir
+            if len(parts) >= 2 and parts[0] == "trellis":
+                filename = parts[-1]
+                if filename.endswith(".md"):
+                    filename = filename[:-3]
+                return commands_dir / f"trellis-{filename}.md"
+            return commands_dir / Path(*parts)
 
         if self.platform == "devin":
             workflow_dir = self.get_config_dir(project_root) / "workflows"
@@ -288,6 +304,8 @@ class CLIAdapter:
             return f".pi/prompts/trellis-{name}.md"
         elif self.platform == "omp":
             return f".omp/commands/trellis-{name}.md"
+        elif self.platform == "grok":
+            return f".grok/commands/trellis-{name}.md"
         else:
             return f"{self.config_dir_name}/commands/trellis/{name}.md"
 
@@ -328,6 +346,8 @@ class CLIAdapter:
         elif self.platform == "trae":
             return {}
         elif self.platform == "omp":
+            return {}
+        elif self.platform == "grok":
             return {}
         else:
             return {"CLAUDE_NON_INTERACTIVE": "1"}
@@ -422,6 +442,9 @@ class CLIAdapter:
             raise ValueError(
                 "OMP uses native task tool for agent runs; CLI agent run is not supported."
             )
+        elif self.platform == "grok":
+            # Headless single-prompt; sub-agents use in-process spawn_subagent.
+            cmd = ["grok", "-p", prompt, "--yolo"]
 
         else:  # claude
             cmd = ["claude", "-p"]
@@ -496,6 +519,8 @@ class CLIAdapter:
             raise ValueError(
                 "OMP uses native task tool for agent runs; CLI resume is not supported."
             )
+        elif self.platform == "grok":
+            return ["grok", "-c"]
         else:
             return ["claude", "--resume", session_id]
 
@@ -574,6 +599,8 @@ class CLIAdapter:
             return "trae"
         elif self.platform == "omp":
             return "omp"
+        elif self.platform == "grok":
+            return "grok"
         else:
             return "claude"
 
@@ -584,7 +611,14 @@ class CLIAdapter:
         Claude Code, OpenCode, iFlow, and Codex support CLI agent execution.
         Cursor is IDE-only and doesn't support CLI agents.
         """
-        return self.platform in ("claude", "opencode", "iflow", "codex", "pi")
+        return self.platform in (
+            "claude",
+            "opencode",
+            "iflow",
+            "codex",
+            "pi",
+            "grok",
+        )
 
     @property
     def requires_agent_definition_file(self) -> bool:
@@ -671,9 +705,10 @@ def get_cli_adapter(platform: str = "claude") -> CLIAdapter:
         "pi",
         "trae",
         "omp",
+        "grok",
     ):
         raise ValueError(
-            f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', 'codex', 'kilo', 'kiro', 'gemini', 'antigravity', 'devin', 'qoder', 'codebuddy', 'copilot', 'droid', 'pi', 'trae', or 'omp')"
+            f"Unsupported platform: {platform} (must be 'claude', 'opencode', 'cursor', 'iflow', 'codex', 'kilo', 'kiro', 'gemini', 'antigravity', 'devin', 'qoder', 'codebuddy', 'copilot', 'droid', 'pi', 'trae', 'omp', or 'grok')"
         )
 
     return CLIAdapter(platform=platform)  # type: ignore
@@ -698,6 +733,7 @@ _ALL_PLATFORM_CONFIG_DIRS = (
     ".pi",
     ".trae",
     ".omp",
+    ".grok",
 )
 """Platform-specific config directory names used by detect_platform exclusion
 checks. `.agents/skills/` is NOT listed here: it is a shared cross-platform
@@ -768,6 +804,7 @@ def detect_platform(project_root: Path) -> Platform:
         "pi",
         "trae",
         "omp",
+        "grok",
     ):
         return env_platform  # type: ignore
 
@@ -851,6 +888,10 @@ def detect_platform(project_root: Path) -> Platform:
     # Check for .omp directory (OMP-specific)
     if (project_root / ".omp").is_dir():
         return "omp"
+
+    # Check for .grok directory (Grok Build-specific)
+    if (project_root / ".grok").is_dir():
+        return "grok"
 
     # Fallback: checkout only has the Codex shared-skills layer
     # (.agents/skills/trellis-* dirs) and no explicit platform config dir.

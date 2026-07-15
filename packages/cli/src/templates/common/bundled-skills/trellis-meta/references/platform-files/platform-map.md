@@ -23,6 +23,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Trae IDE | `--trae` | `.trae/` | `.trae/skills/` | `.trae/agents/` | `.trae/hooks/` + `.trae/hooks.json` |
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | pull-based prelude (no hooks) |
+| Grok Build | `--grok` | `.grok/` | `.grok/skills/` | `.grok/agents/` | pull-based prelude (no hooks; flat `.grok/commands/trellis-*.md`) |
 
 ## Capability Groups
 
@@ -44,6 +45,7 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 - Trae IDE
 - Reasonix (delivered as skills with `runAs: subagent` under `.reasonix/skills/`, not as a separate `agents/` directory)
 - ZCode
+- Grok Build (`.grok/agents/`; dispatch via `spawn_subagent` with `subagent_type`)
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
 

@@ -36,6 +36,7 @@ import { configureReasonix, collectReasonixTemplates } from "./reasonix.js";
 import { configureZcode, collectZcodeTemplates } from "./zcode.js";
 import { configureTrae } from "./trae.js";
 import { configureOmp, collectOmpTemplates } from "./omp.js";
+import { configureGrok, collectGrokTemplates } from "./grok.js";
 
 // Shared utilities
 import {
@@ -494,6 +495,10 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
   omp: {
     configure: configureOmp,
     collectTemplates: () => collectOmpTemplates(),
+  },
+  grok: {
+    configure: configureGrok,
+    collectTemplates: () => collectGrokTemplates(),
   },
 };
 

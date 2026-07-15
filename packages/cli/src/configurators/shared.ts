@@ -366,7 +366,7 @@ export interface ResolvedSkillFile {
  * auto-injects the workflow overview, so a user-facing `start` would be
  * redundant.
  *
- * `agentCapable && !hasHooks` platforms (Codex, ZCode, OpenCode, Reasonix)
+ * `agentCapable && !hasHooks` platforms (Codex, ZCode, OpenCode, Reasonix, Grok)
  * have no such hook (or use an out-of-band plugin), so they need the
  * user-invocable `trellis-start` skill / `start.md` command as fallback.
  * Agent-less platforms (Kilo, Antigravity, Devin) also keep `start` since
