@@ -740,6 +740,7 @@ describe("regression: update only configured platforms (beta.16)", () => {
       "droid",
       "pi",
       "omp",
+      "grok",
     ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);
@@ -2120,6 +2121,73 @@ describe("regression: current-task path normalization", () => {
       current_task: string;
     };
     expect(context.current_task).toBe(".trellis/tasks/issue-106");
+  });
+
+  it("[grok] Python CLIAdapter executes Grok paths, commands, and detection", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".grok"), { recursive: true });
+    const probe = `
+import json
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+sys.path.insert(0, str(root / ".trellis" / "scripts"))
+from common.cli_adapter import CLIAdapter, detect_platform
+
+adapter = CLIAdapter("grok")
+print(json.dumps({
+    "config_dir_name": adapter.config_dir_name,
+    "commands_path": adapter.get_commands_path(root, "trellis", "start.md").relative_to(root).as_posix(),
+    "command_path": adapter.get_trellis_command_path("start"),
+    "run": adapter.build_run_command("implement", "test prompt"),
+    "resume": adapter.build_resume_command("ignored-session-id"),
+    "detected": detect_platform(root),
+}))
+`;
+
+    const result = spawnSync(pythonCmd, ["-c", probe], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      env: sessionEnv(),
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      config_dir_name: ".grok",
+      commands_path: ".grok/commands/trellis-start.md",
+      command_path: ".grok/commands/trellis-start.md",
+      run: ["grok", "-p", "test prompt", "--yolo"],
+      resume: ["grok", "-c"],
+      detected: "grok",
+    });
+  });
+
+  it("[grok] task.py start ignores GROK_SESSION_ID and enters degraded mode", () => {
+    // GROK_SESSION_ID is a real Grok Build env var, but it is only injected
+    // into hook script processes (confirmed against docs.x.ai and a real
+    // `grok -p` run: the bash-tool subprocess that actually runs task.py only
+    // sees GROK_AGENT=1). Grok therefore has no usable env session key, same
+    // as ZCode/Reasonix, and correctly degrades instead of pretending to
+    // resolve a session that was never available to this process.
+    setupTaskRepo();
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(".trellis/tasks/issue-106")}`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ GROK_SESSION_ID: "native-a" }),
+      },
+    );
+
+    expect(output).toContain("Session identity not available");
+    expect(output).toContain("degraded");
+    expect(output).not.toContain("session:grok_native-a");
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    expect(fs.existsSync(path.join(sessionsDir, "grok_native-a.json"))).toBe(
+      false,
+    );
   });
 
   it("[session-current-task] task.py start uses Codex Desktop CODEX_THREAD_ID", () => {
@@ -3532,6 +3600,33 @@ describe("regression: current-task path normalization", () => {
     }
   });
 
+  it("[grok] task.py create seeds jsonl when Grok is the only sub-agent platform", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".grok"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "grok task" --slug grok-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    const tasksDir = path.join(tmpDir, ".trellis", "tasks");
+    const taskName = fs
+      .readdirSync(tasksDir)
+      .find((name) => name.includes("grok-task"));
+    expect(taskName).toBeDefined();
+    const taskDir = path.join(tasksDir, taskName as string);
+
+    for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
+      const jsonlPath = path.join(taskDir, jsonlName);
+      expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
+      const seed = JSON.parse(
+        fs.readFileSync(jsonlPath, "utf-8").trim(),
+      ) as Record<string, unknown>;
+      expect(seed).toHaveProperty("_example");
+      expect(seed).not.toHaveProperty("file");
+    }
+  });
+
   it("[issue-373] task.py create does NOT seed jsonl for Codex inline mode", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
@@ -4792,6 +4887,16 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.omp.templateContext.hasHooks).toBe(true);
   });
 
+  it("[grok] Grok Build platform is registered as pull-based class-2", () => {
+    expect(AI_TOOLS).toHaveProperty("grok");
+    expect(AI_TOOLS.grok.configDir).toBe(".grok");
+    expect(AI_TOOLS.grok.cliFlag).toBe("grok");
+    expect(AI_TOOLS.grok.hasPythonHooks).toBe(false);
+    expect(AI_TOOLS.grok.templateContext.agentCapable).toBe(true);
+    expect(AI_TOOLS.grok.templateContext.hasHooks).toBe(false);
+    expect(AI_TOOLS.grok.templateContext.cmdRefPrefix).toBe("/trellis-");
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -4878,6 +4983,19 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
   it("[omp] cli_adapter.py supports omp platform", () => {
     expect(commonCliAdapter).toContain('"omp"');
     expect(commonCliAdapter).toContain(".omp");
+  });
+
+  it("[grok] cli_adapter.py supports grok platform", () => {
+    expect(commonCliAdapter).toContain('"grok"');
+    expect(commonCliAdapter).toContain(".grok");
+    // omp and grok share one branch for the trellis-command path (see the
+    // Python-execution test above for the resolved ".grok/commands/..." path).
+    expect(commonCliAdapter).toContain(
+      'elif self.platform in ("omp", "grok"):',
+    );
+    expect(commonCliAdapter).toContain(
+      'cmd = ["grok", "-p", prompt, "--yolo"]',
+    );
   });
 
   it("[droid] cli_adapter.py treats droid as commands-only (no CLI run/resume yet)", () => {
@@ -5029,6 +5147,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(taskStore as string).toContain('".github/copilot"');
     expect(taskStore as string).toContain('".pi"');
     expect(taskStore as string).toContain('".zcode"');
+    expect(taskStore as string).toContain('".grok"');
     expect(taskStore as string).toContain('_CODEX_CONFIG_DIR = ".codex"');
     expect(taskStore as string).toContain(
       'get_codex_dispatch_mode(repo_root) == "sub-agent"',

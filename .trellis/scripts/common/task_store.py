@@ -130,7 +130,10 @@ _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
     ".factory",   # Factory Droid
     ".github/copilot",
     ".pi",        # Pi Agent
+    ".trae",      # Trae IDE
     ".omp",       # Oh My Pi
+    ".zcode",     # ZCode
+    ".grok",      # Grok Build
 )
 _CODEX_CONFIG_DIR = ".codex"
 

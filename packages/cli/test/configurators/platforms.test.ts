@@ -655,6 +655,64 @@ describe("configurePlatform", () => {
     }
   });
 
+  it("configurePlatform('grok') writes flat commands and .grok agents", async () => {
+    await configurePlatform("grok", tmpDir);
+
+    expect(
+      fs.existsSync(path.join(tmpDir, ".grok", "commands", "trellis-start.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".grok", "commands", "trellis-continue.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".grok", "commands", "trellis", "start.md")),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
+
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".grok", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".grok", "agents", "trellis-implement.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".grok", "agents", "trellis-check.md")),
+    ).toBe(true);
+    const researchAgentPath = path.join(
+      tmpDir,
+      ".grok",
+      "agents",
+      "trellis-research.md",
+    );
+    expect(fs.existsSync(researchAgentPath)).toBe(true);
+    expect(fs.readFileSync(researchAgentPath, "utf-8")).not.toContain(
+      "Load Trellis Context First",
+    );
+    expect(
+      fs.readFileSync(
+        path.join(tmpDir, ".grok", "agents", "trellis-implement.md"),
+        "utf-8",
+      ),
+    ).toContain("Load Trellis Context First");
+
+    const templates = collectPlatformTemplates("grok");
+    expect(templates?.has(".grok/commands/trellis-start.md")).toBe(true);
+    expect(templates?.has(".grok/commands/trellis/start.md")).toBe(false);
+    expect(
+      [...(templates?.keys() ?? [])].some((key) =>
+        key.startsWith(".agents/skills/"),
+      ),
+    ).toBe(false);
+    expect(templates?.has(".grok/agents/trellis-implement.md")).toBe(true);
+    expect(templates?.has(".grok/agents/trellis-research.md")).toBe(true);
+  });
+
   it("configurePlatform('zcode') writes only .zcode-owned skills", async () => {
     await configurePlatform("zcode", tmpDir);
 

@@ -1022,6 +1022,7 @@ interface InitOptions {
   zcode?: boolean;
   trae?: boolean;
   omp?: boolean;
+  grok?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

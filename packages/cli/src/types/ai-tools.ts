@@ -25,7 +25,8 @@ export type AITool =
   | "reasonix"
   | "zcode"
   | "trae"
-  | "omp";
+  | "omp"
+  | "grok";
 
 /**
  * Template directory categories
@@ -49,7 +50,8 @@ export type TemplateDir =
   | "reasonix"
   | "zcode"
   | "trae"
-  | "omp";
+  | "omp"
+  | "grok";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -73,7 +75,8 @@ export type CliFlag =
   | "reasonix"
   | "zcode"
   | "trae"
-  | "omp";
+  | "omp"
+  | "grok";
 
 /**
  * Template context for placeholder resolution.
@@ -460,6 +463,31 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: true,
       cliFlag: "omp",
+    },
+  },
+  /**
+   * Grok Build (xAI) — class-2 pull-based platform.
+   *
+   * Phase 0 verified (Grok 0.2.101): skills/agents/AGENTS.md load correctly;
+   * Claude-style hook `additionalContext` is NOT injected into the model.
+   * Do not set hasHooks/hasPythonHooks true until Grok consumes hook stdout.
+   * Commands are flat under `.grok/commands/trellis-*.md` (Grok slash-command layout).
+   */
+  grok: {
+    name: "Grok Build",
+    templateDirs: ["common", "grok"],
+    configDir: ".grok",
+    extraManagedPaths: [".grok/skills", ".grok/commands", ".grok/agents"],
+    cliFlag: "grok",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "/trellis-",
+      executorAI: "Bash scripts or Agent calls",
+      userActionLabel: "Skills",
+      agentCapable: true,
+      hasHooks: false,
+      cliFlag: "grok",
     },
   },
 };

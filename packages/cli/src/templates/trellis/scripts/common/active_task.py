@@ -44,6 +44,7 @@ _KNOWN_PLATFORMS = {
     "copilot",
     "pi",
     "trae",
+    "grok",
 }
 
 _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (

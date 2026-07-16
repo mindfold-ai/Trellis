@@ -442,4 +442,22 @@ describe("collectPlatformTemplates", () => {
     expect(result?.has(".zcode/agents/trellis-check.md")).toBe(true);
     expect(result?.has(".zcode/agents/trellis-research.md")).toBe(true);
   });
+
+  it("grok collectTemplates includes flat commands and .grok-owned skills", () => {
+    const result = collectPlatformTemplates("grok");
+    expect(result).toBeInstanceOf(Map);
+    expect(
+      [...(result?.keys() ?? [])].some((key) =>
+        key.startsWith(".agents/skills/"),
+      ),
+    ).toBe(false);
+    expect(result?.has(".grok/commands/trellis-start.md")).toBe(true);
+    expect(result?.has(".grok/commands/trellis-continue.md")).toBe(true);
+    expect(result?.has(".grok/commands/trellis/start.md")).toBe(false);
+    expect(result?.has(".grok/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(result?.has(".grok/skills/trellis-before-dev/SKILL.md")).toBe(true);
+    expect(result?.has(".grok/agents/trellis-implement.md")).toBe(true);
+    expect(result?.has(".grok/agents/trellis-check.md")).toBe(true);
+    expect(result?.has(".grok/agents/trellis-research.md")).toBe(true);
+  });
 });
