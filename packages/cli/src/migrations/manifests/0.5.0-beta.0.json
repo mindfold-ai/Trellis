@@ -1613,7 +1613,7 @@
     {
       "type": "safe-file-delete",
       "from": ".opencode/commands/trellis/start.md",
-      "description": "Removed in v0.5.0 — session-start hook (UserPromptSubmit breadcrumb) replaces the /start command",
+      "description": "Historical hash from a pre-v0.5.0 template variant. OpenCode has no session-start hook (hasHooks: false), so /start remains the live entry point and is still generated today — current-template ownership (see collectSafeFileDeletes) keeps this migration from deleting it.",
       "allowed_hashes": [
         "84e76dea69542515e234f8b551491ca6bb31fe441ef702a43ff12c3b8397d5fe"
       ]

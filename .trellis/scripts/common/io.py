@@ -39,16 +39,23 @@ def write_json(path: Path, data: dict) -> bool:
         fd, tmp = tempfile.mkstemp(
             dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"
         )
+    except OSError:
+        return False
+
+    try:
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(payload)
-            os.replace(tmp, path)
-        except BaseException:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
+            f = os.fdopen(fd, "w", encoding="utf-8")
+        except OSError:
+            # fdopen never took ownership of fd; close it ourselves.
+            os.close(fd)
             raise
+        with f:
+            f.write(payload)
+        os.replace(tmp, path)
         return True
-    except (OSError, IOError):
+    except OSError:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
         return False

@@ -88,7 +88,9 @@ def is_within_tasks_dir(task_dir_abs: Path, repo_root: Path | None = None) -> bo
         tasks_resolved = get_tasks_dir(repo_root).resolve()
     except (OSError, RuntimeError):
         return False
-    return resolved.parent == tasks_resolved
+    if resolved.parent != tasks_resolved:
+        return False
+    return resolved.name != "archive"
 
 
 # =============================================================================

@@ -191,6 +191,12 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     configDir: ".opencode",
     cliFlag: "opencode",
     defaultChecked: false,
+    // hasHooks: false — OpenCode has no session-start hook. The pre-v0.5.0
+    // `.opencode/commands/trellis/start.md` deprecation in
+    // migrations/manifests/0.5.0-beta.0.json assumed a hook would replace it;
+    // that never happened for OpenCode, so `resolveCommands`/`filterCommands`
+    // (see configurators/shared.ts) still generate `/start` as the live
+    // fallback command for this `agentCapable && !hasHooks` platform.
     hasPythonHooks: false,
     templateContext: {
       cmdRefPrefix: "/trellis:",

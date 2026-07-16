@@ -394,20 +394,46 @@ def cmd_create(args: argparse.Namespace) -> int:
     else:
         try:
             from .active_task import resolve_context_key, set_active_task
-            if resolve_context_key():
-                try:
-                    rel_dir = task_dir.relative_to(repo_root).as_posix()
-                except ValueError:
-                    rel_dir = str(task_dir)
-                active = set_active_task(rel_dir, repo_root)
-                if active:
-                    print(
-                        colored(f"Activated task for this session: {active.task_path}", Colors.GREEN),
-                        file=sys.stderr,
-                    )
-                    print(f"Source: {active.source}", file=sys.stderr)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(
+                colored(f"Warning: session activation unavailable (import failed: {exc})", Colors.YELLOW),
+                file=sys.stderr,
+            )
+        else:
+            try:
+                context_key = resolve_context_key()
+            except Exception as exc:
+                print(
+                    colored(f"Warning: session activation failed (context resolution: {exc})", Colors.YELLOW),
+                    file=sys.stderr,
+                )
+            else:
+                # No session identity is the normal CLI-outside-an-AI-session
+                # case (see comment above) — stay silent, not a failure.
+                if context_key:
+                    try:
+                        rel_dir = task_dir.relative_to(repo_root).as_posix()
+                    except ValueError:
+                        rel_dir = str(task_dir)
+                    try:
+                        active = set_active_task(rel_dir, repo_root)
+                    except Exception as exc:
+                        print(
+                            colored(f"Warning: session activation failed (pointer persistence: {exc})", Colors.YELLOW),
+                            file=sys.stderr,
+                        )
+                    else:
+                        if active:
+                            print(
+                                colored(f"Activated task for this session: {active.task_path}", Colors.GREEN),
+                                file=sys.stderr,
+                            )
+                            print(f"Source: {active.source}", file=sys.stderr)
+                        else:
+                            print(
+                                colored("Warning: session activation failed (no pointer returned)", Colors.YELLOW),
+                                file=sys.stderr,
+                            )
 
     print(colored(f"Created task: {dir_name}", Colors.GREEN), file=sys.stderr)
     print("", file=sys.stderr)

@@ -558,6 +558,311 @@ describe("regression: resolve_task_dir path handling", () => {
   });
 });
 
+describe("regression: is_within_tasks_dir archive boundary (issue #428)", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "trellis-within-tasks-dir-"),
+    );
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+    fs.mkdirSync(path.join(tmpDir, ".trellis", "tasks", "archive"), {
+      recursive: true,
+    });
+    fs.mkdirSync(
+      path.join(tmpDir, ".trellis", "tasks", "archive", "2026-07", "old-task"),
+      { recursive: true },
+    );
+    fs.mkdirSync(path.join(tmpDir, ".trellis", "tasks", "live-task"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("[issue-428] rejects the archive root, an archived child, the tasks root, and an external path; accepts a direct child", () => {
+    const probe = `
+import json
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+sys.path.insert(0, str(root / ".trellis" / "scripts"))
+from common.task_utils import is_within_tasks_dir
+
+print(json.dumps({
+    "archive_root": is_within_tasks_dir(root / ".trellis" / "tasks" / "archive", root),
+    "archived_child": is_within_tasks_dir(root / ".trellis" / "tasks" / "archive" / "2026-07" / "old-task", root),
+    "tasks_root": is_within_tasks_dir(root / ".trellis" / "tasks", root),
+    "external_path": is_within_tasks_dir(root / "src", root),
+    "direct_child": is_within_tasks_dir(root / ".trellis" / "tasks" / "live-task", root),
+}))
+`;
+    const result = spawnSync(pythonCmd, ["-c", probe], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      archive_root: false,
+      archived_child: false,
+      tasks_root: false,
+      external_path: false,
+      direct_child: true,
+    });
+  });
+});
+
+describe("regression: write_json fd ownership and cleanup (issue #429)", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-write-json-"));
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function runProbe(probeBody: string): { status: number | null; stdout: string; stderr: string } {
+    const probe = `
+import json
+import os
+import sys
+from pathlib import Path
+from unittest import mock
+
+root = Path.cwd()
+sys.path.insert(0, str(root / ".trellis" / "scripts"))
+from common.io import write_json
+
+${probeBody}
+`;
+    const result = spawnSync(pythonCmd, ["-c", probe], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+  }
+
+  it("[issue-429] closes the raw fd itself when fdopen fails, and leaves no temp file", () => {
+    const { status, stdout, stderr } = runProbe(`
+target = root / "out.json"
+real_close = os.close
+closed_fds = []
+
+def fake_close(fd):
+    closed_fds.append(fd)
+    real_close(fd)
+
+def fake_fdopen(fd, *a, **kw):
+    # fdopen never took ownership: caller must close fd itself.
+    raise OSError("simulated fdopen failure")
+
+with mock.patch("os.close", side_effect=fake_close), \\
+     mock.patch("os.fdopen", side_effect=fake_fdopen):
+    result = write_json(target, {"a": 1})
+
+leftover_tmp = [p.name for p in root.glob("*.tmp")] + [p.name for p in root.glob(".out.json.*")]
+print(json.dumps({
+    "result": result,
+    "fd_closed": len(closed_fds) == 1,
+    "target_exists": target.exists(),
+    "leftover_tmp": leftover_tmp,
+}))
+`);
+    expect(status, stderr).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      result: false,
+      fd_closed: true,
+      target_exists: false,
+      leftover_tmp: [],
+    });
+  });
+
+  it("[issue-429] cleans up the temp file when os.replace fails, without masking the write as a success", () => {
+    const { status, stdout, stderr } = runProbe(`
+target = root / "out.json"
+
+with mock.patch("os.replace", side_effect=OSError("simulated replace failure")):
+    result = write_json(target, {"a": 1})
+
+leftover_tmp = [p.name for p in root.glob(".out.json.*")]
+print(json.dumps({
+    "result": result,
+    "target_exists": target.exists(),
+    "leftover_tmp": leftover_tmp,
+}))
+`);
+    expect(status, stderr).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      result: false,
+      target_exists: false,
+      leftover_tmp: [],
+    });
+  });
+
+  it("[issue-429] a cleanup failure after a write failure does not raise — still reports False", () => {
+    const { status, stdout, stderr } = runProbe(`
+target = root / "out.json"
+
+with mock.patch("os.replace", side_effect=OSError("simulated replace failure")), \\
+     mock.patch("os.unlink", side_effect=OSError("simulated cleanup failure")):
+    result = write_json(target, {"a": 1})
+
+print(json.dumps({"result": result}))
+`);
+    expect(status, stderr).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({ result: false });
+  });
+
+  it("[issue-429] a successful write is atomic and leaves no leftover temp file", () => {
+    const { status, stdout, stderr } = runProbe(`
+target = root / "out.json"
+result = write_json(target, {"a": 1, "b": "text"})
+leftover_tmp = [p.name for p in root.glob(".out.json.*")]
+print(json.dumps({
+    "result": result,
+    "content": json.loads(target.read_text(encoding="utf-8")),
+    "leftover_tmp": leftover_tmp,
+}))
+`);
+    expect(status, stderr).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      result: true,
+      content: { a: 1, b: "text" },
+      leftover_tmp: [],
+    });
+  });
+});
+
+describe("regression: task auto-activation failure diagnostics (issue #430)", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-task-activate-"));
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+    fs.mkdirSync(path.join(tmpDir, ".trellis", "spec", "guides"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", "spec", "guides", "index.md"),
+      "# Guides\n",
+    );
+    fs.writeFileSync(path.join(tmpDir, ".trellis", "workflow.md"), "# Workflow\n");
+    fs.mkdirSync(path.join(tmpDir, ".trellis", "tasks"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, ".trellis", "workspace", "test-dev"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", ".developer"),
+      "name=test-dev\n",
+      "utf-8",
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // Ambient session env vars from the real host session (e.g. this test
+  // running inside Claude Code itself) must not leak into the "no session"
+  // scenario — scrub every platform session/transcript key before overlay.
+  const AMBIENT_SESSION_ENV_KEYS = [
+    "TRELLIS_CONTEXT_ID",
+    "CLAUDE_SESSION_ID",
+    "CLAUDE_CODE_SESSION_ID",
+    "CODEX_SESSION_ID",
+    "CODEX_THREAD_ID",
+    "CURSOR_SESSION_ID",
+    "CURSOR_CONVERSATION_ID",
+    "CURSOR_CONVERSATIONID",
+    "OPENCODE_SESSION_ID",
+    "OPENCODE_SESSIONID",
+    "OPENCODE_RUN_ID",
+    "GEMINI_SESSION_ID",
+    "FACTORY_SESSION_ID",
+    "DROID_SESSION_ID",
+    "QODER_SESSION_ID",
+    "CODEBUDDY_SESSION_ID",
+    "KIRO_SESSION_ID",
+    "COPILOT_SESSION_ID",
+    "COPILOT_SESSIONID",
+    "PI_SESSION_ID",
+  ] as const;
+
+  function runCreate(env: NodeJS.ProcessEnv) {
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const blocked = new Set<string>(AMBIENT_SESSION_ENV_KEYS);
+    const scrubbed: NodeJS.ProcessEnv = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (!blocked.has(key)) scrubbed[key] = value;
+    }
+    return spawnSync(
+      pythonCmd,
+      [taskScriptPath, "create", "issue-430 probe", "--slug", "issue-430-probe"],
+      { cwd: tmpDir, encoding: "utf-8", env: { ...scrubbed, ...env } },
+    );
+  }
+
+  it("[issue-430] no session identity stays silent (normal degraded mode, not a failure)", () => {
+    const result = runCreate({});
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).not.toContain("Warning: session activation");
+    expect(result.stderr).not.toContain("Activated task for this session");
+  });
+
+  it("[issue-430] a real session identity activates normally with no warning", () => {
+    const result = runCreate({ TRELLIS_CONTEXT_ID: "probe-session" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toContain("Activated task for this session");
+    expect(result.stderr).not.toContain("Warning: session activation");
+  });
+
+  it("[issue-430] a pointer-persistence failure is now diagnosable instead of silently swallowed", () => {
+    // Pre-create the session-pointer directory's own path as a *file* so
+    // `_write_json`'s `path.parent.mkdir(parents=True, exist_ok=True)` raises
+    // FileExistsError — a real, portable failure mode (no chmod needed).
+    const sessionsPathAsFile = path.join(
+      tmpDir,
+      ".trellis",
+      ".runtime",
+      "sessions",
+    );
+    fs.mkdirSync(path.dirname(sessionsPathAsFile), { recursive: true });
+    fs.writeFileSync(sessionsPathAsFile, "not a directory");
+
+    const result = runCreate({ TRELLIS_CONTEXT_ID: "probe-session" });
+
+    // Task creation itself must still succeed — activation is best-effort.
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toContain("Warning: session activation failed");
+    expect(result.stderr).not.toContain("Activated task for this session");
+  });
+});
+
 // =============================================================================
 // 3. Semver / Migration Engine Regressions
 // =============================================================================
