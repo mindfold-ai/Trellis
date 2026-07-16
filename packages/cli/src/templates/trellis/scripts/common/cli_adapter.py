@@ -196,19 +196,8 @@ class CLIAdapter:
                     filename = filename[:-3]
                 return prompts_dir / f"trellis-{filename}.md"
             return prompts_dir / Path(*parts)
-        if self.platform == "omp":
-            commands_dir = self.get_config_dir(project_root) / "commands"
-            if not parts:
-                return commands_dir
-            if len(parts) >= 2 and parts[0] == "trellis":
-                filename = parts[-1]
-                if filename.endswith(".md"):
-                    filename = filename[:-3]
-                return commands_dir / f"trellis-{filename}.md"
-            return commands_dir / Path(*parts)
-
-        # Grok: flat slash commands under .grok/commands/trellis-<name>.md
-        if self.platform == "grok":
+        # OMP and Grok: flat slash commands under .{platform}/commands/trellis-<name>.md
+        if self.platform in ("omp", "grok"):
             commands_dir = self.get_config_dir(project_root) / "commands"
             if not parts:
                 return commands_dir
@@ -302,10 +291,8 @@ class CLIAdapter:
             return f".factory/commands/trellis/{name}.md"
         elif self.platform == "pi":
             return f".pi/prompts/trellis-{name}.md"
-        elif self.platform == "omp":
-            return f".omp/commands/trellis-{name}.md"
-        elif self.platform == "grok":
-            return f".grok/commands/trellis-{name}.md"
+        elif self.platform in ("omp", "grok"):
+            return f"{self.config_dir_name}/commands/trellis-{name}.md"
         else:
             return f"{self.config_dir_name}/commands/trellis/{name}.md"
 

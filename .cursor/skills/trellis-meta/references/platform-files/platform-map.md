@@ -93,7 +93,7 @@ Do not delete a custom file just because it is not listed in this path table.
 
 Extension-backed platform. OMP native provider auto-discovers all subdirectories.
 
-```
+```text
 .omp/
 ├── commands/          # Slash commands (flat .md)
 ├── skills/            # Auto-triggered skills (SKILL.md per dir)

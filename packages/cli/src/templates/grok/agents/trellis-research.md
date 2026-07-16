@@ -20,7 +20,7 @@ Conversations get compacted; files don't. Every research output MUST end up as a
 
 On Grok Build, the main session launches this agent with:
 
-```
+```python
 spawn_subagent(
   subagent_type="trellis-research",
   prompt="Active task: <path from task.py current>\n..."

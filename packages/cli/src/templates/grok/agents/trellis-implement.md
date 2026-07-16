@@ -21,7 +21,7 @@ You are already the `trellis-implement` sub-agent that the main session dispatch
 
 On Grok Build, the main session launches this agent with:
 
-```
+```python
 spawn_subagent(
   subagent_type="trellis-implement",
   prompt="Active task: <path from task.py current>\n..."

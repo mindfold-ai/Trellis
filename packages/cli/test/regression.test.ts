@@ -1282,7 +1282,6 @@ describe("regression: current-task path normalization", () => {
     "COPILOT_SESSION_ID",
     "COPILOT_SESSIONID",
     "PI_SESSION_ID",
-    "GROK_SESSION_ID",
     "CLAUDE_TRANSCRIPT_PATH",
     "CODEX_TRANSCRIPT_PATH",
     "CURSOR_TRANSCRIPT_PATH",
@@ -2163,7 +2162,13 @@ print(json.dumps({
     });
   });
 
-  it("[grok] task.py start uses GROK_SESSION_ID for session-scoped state", () => {
+  it("[grok] task.py start ignores GROK_SESSION_ID and enters degraded mode", () => {
+    // GROK_SESSION_ID is a real Grok Build env var, but it is only injected
+    // into hook script processes (confirmed against docs.x.ai and a real
+    // `grok -p` run: the bash-tool subprocess that actually runs task.py only
+    // sees GROK_AGENT=1). Grok therefore has no usable env session key, same
+    // as ZCode/Reasonix, and correctly degrades instead of pretending to
+    // resolve a session that was never available to this process.
     setupTaskRepo();
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
 
@@ -2176,18 +2181,13 @@ print(json.dumps({
       },
     );
 
-    expect(output).toContain("Source: session:grok_native-a");
-    const contextPath = path.join(
-      tmpDir,
-      ".trellis",
-      ".runtime",
-      "sessions",
-      "grok_native-a.json",
+    expect(output).toContain("Session identity not available");
+    expect(output).toContain("degraded");
+    expect(output).not.toContain("session:grok_native-a");
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    expect(fs.existsSync(path.join(sessionsDir, "grok_native-a.json"))).toBe(
+      false,
     );
-    const context = JSON.parse(fs.readFileSync(contextPath, "utf-8")) as {
-      current_task: string;
-    };
-    expect(context.current_task).toBe(".trellis/tasks/issue-106");
   });
 
   it("[session-current-task] task.py start uses Codex Desktop CODEX_THREAD_ID", () => {
@@ -4988,8 +4988,10 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
   it("[grok] cli_adapter.py supports grok platform", () => {
     expect(commonCliAdapter).toContain('"grok"');
     expect(commonCliAdapter).toContain(".grok");
+    // omp and grok share one branch for the trellis-command path (see the
+    // Python-execution test above for the resolved ".grok/commands/..." path).
     expect(commonCliAdapter).toContain(
-      'return f".grok/commands/trellis-{name}.md"',
+      'elif self.platform in ("omp", "grok"):',
     );
     expect(commonCliAdapter).toContain(
       'cmd = ["grok", "-p", prompt, "--yolo"]',
