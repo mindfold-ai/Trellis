@@ -237,6 +237,29 @@ describe("pi templates", () => {
       "Trellis compact SessionStart context",
     );
     expect(first.systemPrompt).toContain("<first-reply-notice>");
+    expect(first.systemPrompt).toContain("the user's current request");
+    expect(first.systemPrompt).toContain(
+      "the user message that triggered this reply",
+    );
+    expect(first.systemPrompt).toContain("has no clear natural language");
+    expect(first.systemPrompt).toContain(
+      "explicitly established project communication language",
+    );
+    expect(first.systemPrompt).toContain("Trellis SessionStart ✓");
+    expect(first.systemPrompt).toContain(
+      "Continue directly with the user's request",
+    );
+    expect(first.systemPrompt).toContain(
+      "must not alter the language used for the remainder of the response",
+    );
+    expect(first.systemPrompt).toContain("This notice is one-shot");
+    expect(first.systemPrompt).not.toContain("say once in Chinese");
+    expect(first.systemPrompt).not.toContain(
+      "exactly one short Chinese sentence",
+    );
+    expect(first.systemPrompt).not.toContain(
+      "Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份、git 状态、active tasks、spec 索引已加载。",
+    );
     expect(first.systemPrompt).toContain("<trellis-workflow>");
     expect(first.systemPrompt).toContain("Phase 1: Plan");
     expect(first.systemPrompt).toContain("No active Trellis task found");

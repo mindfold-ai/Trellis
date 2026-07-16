@@ -556,7 +556,7 @@ For Pi Agent:
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Session start                      | `session_start` extension event (notify-only; context-key is established but no prompt mutation)                                                                                                                                                                      |
 | Per-turn workflow-state breadcrumb | `before_agent_start.message` hidden custom message — persists cached `<workflow-state>` + `<session-overview>` from `getTurnCtx()` without showing it in the UI; skipped when identical to the last persisted runtime context (dedup)                                |
-| Startup context                    | `before_agent_start` builds compact SessionStart-equivalent context (`<first-reply-notice>`, `<session-overview>`, `<trellis-workflow>`) once per context key, memoizes it, and contributes the identical bytes to `systemPrompt` on every turn                       |
+| Startup context                    | `before_agent_start` builds compact SessionStart-equivalent context (`<session-context>`, adaptive `<first-reply-notice>`, `<session-overview>`, `<trellis-workflow>`, `<ready>`) once per context key, memoizes it, and contributes the identical bytes to `systemPrompt` on every turn |
 | Per-agent-invocation context       | `before_agent_start.systemPrompt` carries a per-context-key snapshot of task context (PRD + jsonl) taken on first use; later on-disk task changes are delivered through `before_agent_start.message` as `<trellis-task-context-update>` persisted messages           |
 | Per-Bash-tool session identity     | `tool_call` extension event; mutates `event.input.command` in place via `injectTrellisContextIntoBash()` to prefix `export TRELLIS_CONTEXT_ID=<context-key>;`                                                                                                         |
 | Sub-agent dispatch                 | custom `trellis_subagent` tool with `promptSnippet`/`promptGuidelines = SUBAGENT_DISPATCH_PROTOCOL`; resolves the Pi CLI JS entrypoint when possible, runs `--mode text -p --no-session`, sends the delegated prompt through stdin, and forwards `TRELLIS_CONTEXT_ID` |
@@ -1279,35 +1279,108 @@ if sys.platform == "win32":
 
 ## SessionStart Hook: additionalContext Size Constraint
 
-### First-Reply Notice
+### Adaptive First-Reply Notice
 
-Every Trellis-owned SessionStart implementation that injects model-visible
-context must include a short `<first-reply-notice>` block near the top of the
-injected context, before `<current-state>`. The instruction tells the AI to
-start the first visible assistant reply with exactly one concise Chinese
-sentence:
+#### 1. Scope / Trigger
+
+Trellis uses a one-shot visible acknowledgment as proof that otherwise-hidden
+SessionStart context loaded. This contract applies to every live implementation
+that already provides that proof: the shared Python hook used by Claude Code,
+Cursor, Gemini, Qoder, CodeBuddy, Droid, Kiro, Trae, and ZCode; the Codex hook;
+OpenCode's startup plugin; and Pi's SessionStart-equivalent
+`before_agent_start` context.
+
+The acknowledgment is an instruction inside the existing context string, not a
+new payload field or host UI feature. Copilot remains notice-free until its
+model-visible consumption is verified end to end.
+
+#### 2. Signatures
+
+| Implementation | Injection signature | Adaptive notice? |
+| --- | --- | ---: |
+| `shared-hooks/session-start.py` | Existing shared hook output (`hookSpecificOutput.additionalContext` plus host-specific aliases, or Kiro's plain stdout context) | Yes |
+| `codex/hooks/session-start.py` | Existing Codex SessionStart payload when hooks are enabled and approved | Yes |
+| `opencode/lib/session-utils.js` + `plugins/session-start.js` | Compact context prepended to the first user message and marked for persistence | Yes |
+| `pi/extensions/trellis/index.ts.txt` | Memoized SessionStart-equivalent context added to `before_agent_start.systemPrompt` | Yes |
+| `copilot/hooks/session-start.py` | Microsoft's documented `SessionStart.hookSpecificOutput.additionalContext` payload | No |
+
+#### 3. Contracts
+
+- Put `<first-reply-notice>` near the top of model-visible startup context,
+  before current-state or other orientation blocks.
+- On the first visible assistant reply, briefly acknowledge that Trellis
+  SessionStart context loaded, then continue directly with the user's request.
+- Choose the acknowledgment language in this exact order:
+  1. the language of the user's current request, meaning the user message that
+     triggered the first visible reply;
+  2. if that request has no clear natural language, an explicitly established
+     project communication language;
+  3. if neither provides a language, the language-neutral fallback exactly
+     `Trellis SessionStart ✓`.
+- The acknowledgment must not alter the language used for the remainder of the
+  response.
+- Emit the acknowledgment only once per session. Do not repeat it on later
+  assistant replies.
+- Do not infer a fallback language from operating-system locale, source files,
+  README frequency, commit history, or other repository content.
+- Keep hook payload keys, compact context content, event timing, and
+  per-session deduplication unchanged.
+- OpenCode persists startup context once per session. Pi memoizes identical
+  startup `systemPrompt` bytes per context key.
+
+#### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| First request has a clear natural language | Acknowledgment uses that request language; the rest of the response keeps its intended language |
+| Request has no clear natural language and project instructions explicitly establish a communication language | Acknowledgment uses the explicit project language |
+| Neither request nor project instructions provide a language | Acknowledgment is exactly `Trellis SessionStart ✓` |
+| Later assistant reply in the same session | No repeated acknowledgment |
+| Repeated OpenCode message in one session | Startup context is not prepended again |
+| Repeated Pi turn with the same context key | Memoized startup `systemPrompt` bytes remain stable |
+| Shared or Codex hook output | Existing payload keys and `SessionStart` event name remain unchanged |
+| Copilot SessionStart | Context remains notice-free |
+
+#### 5. Good / Base / Bad Cases
+
+- **Good:** an English request receives a brief English proof-of-load sentence,
+  then the requested work continues in English.
+- **Base:** a code-only request in a project that explicitly establishes Japanese
+  as its communication language receives a brief Japanese acknowledgment.
+- **Fallback:** a request and project with no language signal receive
+  `Trellis SessionStart ✓`, then processing continues directly.
+- **Bad:** the notice says `say once in Chinese`, requires `exactly one short
+  Chinese sentence`, includes a fixed Chinese acknowledgment, or causes the
+  remainder of an otherwise non-Chinese response to switch languages.
+
+#### 6. Tests Required
+
+- Execute shared and Codex hook templates; assert exact payload shape, normal
+  compact context blocks, the adaptive priority, neutral fallback, one-shot
+  rule, and absence of fixed Chinese wording.
+- Build OpenCode context and exercise its plugin entry point; assert adaptive
+  notice content, first-message prefix and persistence, and no second injection
+  in the same session.
+- Exercise Pi `before_agent_start`; assert normal startup/workflow context,
+  adaptive notice content, and byte-stable memoized `systemPrompt` behavior.
+- Keep Copilot regression assertions notice-free.
+- Validate the injected instruction contract deterministically. Do not attempt
+  to test an LLM's actual language classification in template tests.
+
+#### 7. Wrong vs Correct
 
 ```text
-Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份、git 状态、active tasks、spec 索引已加载。
+# Wrong: fixed language steers the conversation
+<first-reply-notice>Say once in Chinese that Trellis loaded.</first-reply-notice>
+
+# Correct: request language -> explicit project language -> neutral fallback
+<first-reply-notice>
+Use the language of the user message that triggered this reply. If it has no
+clear natural language, use an explicitly established project communication
+language. Otherwise output exactly `Trellis SessionStart ✓`. Continue directly
+without altering the language of the remainder of the response. Emit once.
+</first-reply-notice>
 ```
-
-Then it must continue directly with the user's request and never repeat the
-notice after that first assistant reply in the same session.
-
-This is an instruction-only proof surface, not a host UI feature. It belongs
-only in implementations where Trellis can actually put context into the model
-conversation:
-
-| Implementation                       | Include notice? | Reason                                                                                                                                                                                                                                                                                |
-| ------------------------------------ | --------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shared-hooks/session-start.py`      |              ✅ | Claude/Cursor/Gemini/Qoder/CodeBuddy/Droid/Trae-style shared hook context                                                                                                                                                                                                             |
-| `codex/hooks/session-start.py`       |              ✅ | Codex accepts SessionStart stdout / `additionalContext` when `features.hooks = true` (legacy: `codex_hooks = true`)                                                                                                                                                                   |
-| `opencode/plugins/session-start.js`  |              ✅ | Plugin prepends Trellis context into the first user message and persists it                                                                                                                                                                                                           |
-| `pi/extensions/trellis/index.ts.txt` |              ✅ | Pi cannot inject through `session_start`, so the first `before_agent_start` adds compact SessionStart-equivalent context to `systemPrompt`                                                                                                                                            |
-| `copilot/hooks/session-start.py`     |              ❌ | Microsoft documents `SessionStart.hookSpecificOutput.additionalContext` (preview, VS Code 1.110+), but consumption depends on the user's VS Code/Copilot version. Trellis emits the spec-compliant payload; do not add a first-reply notice until consumption is verified end-to-end. |
-
-Keep hook payload shapes unchanged. Add this as text inside the existing
-context string, not as a new JSON key.
 
 ### Per-Platform Output Schema
 

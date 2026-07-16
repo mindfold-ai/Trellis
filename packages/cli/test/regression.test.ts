@@ -3218,7 +3218,7 @@ print(json.dumps({
     }
   });
 
-  it("[session-start-proof] shared and Codex contexts include one-shot first-reply notice without changing payload shape", () => {
+  it("[#412] shared and Codex contexts include an adaptive one-shot notice without changing payload shape", () => {
     setupTaskRepo();
 
     writeProjectFile(
@@ -3234,6 +3234,7 @@ print(json.dumps({
       runPython(path.join(".claude", "hooks", "session-start.py")),
     ) as {
       hookSpecificOutput: { hookEventName: string; additionalContext: string };
+      additional_context: string;
     };
     const codexPayload = JSON.parse(
       runPython(
@@ -3241,11 +3242,29 @@ print(json.dumps({
         JSON.stringify({ cwd: tmpDir }),
       ),
     ) as {
+      suppressOutput: boolean;
+      systemMessage: string;
       hookSpecificOutput: { hookEventName: string; additionalContext: string };
     };
 
+    expect(Object.keys(sharedPayload)).toEqual([
+      "hookSpecificOutput",
+      "additional_context",
+    ]);
+    expect(sharedPayload.additional_context).toBe(
+      sharedPayload.hookSpecificOutput.additionalContext,
+    );
+    expect(Object.keys(codexPayload)).toEqual([
+      "suppressOutput",
+      "systemMessage",
+      "hookSpecificOutput",
+    ]);
+    expect(codexPayload.suppressOutput).toBe(true);
+    expect(codexPayload.systemMessage).toMatch(
+      /^Trellis context injected \(\d+ chars\)$/,
+    );
+
     for (const payload of [sharedPayload, codexPayload]) {
-      expect(Object.keys(payload)).not.toContain("firstReplyNotice");
       expect(Object.keys(payload.hookSpecificOutput)).toEqual([
         "hookEventName",
         "additionalContext",
@@ -3253,14 +3272,37 @@ print(json.dumps({
       expect(payload.hookSpecificOutput.hookEventName).toBe("SessionStart");
 
       const ctx = payload.hookSpecificOutput.additionalContext;
+      expect(ctx.startsWith("<session-context>")).toBe(true);
+      expect(ctx).toContain("Trellis compact SessionStart context");
       expect(ctx).toContain("<first-reply-notice>");
-      expect(ctx).toMatch(
-        /first visible assistant reply|First visible reply|Trellis SessionStart 已注入/,
+      expect(ctx).toContain("the user's current request");
+      expect(ctx).toContain("the user message that triggered this reply");
+      expect(ctx).toContain("has no clear natural language");
+      expect(ctx).toContain(
+        "explicitly established project communication language",
       );
-      expect(ctx).toMatch(/one-shot/i);
+      expect(ctx).toContain("Trellis SessionStart ✓");
+      expect(ctx).toContain("Continue directly with the user's request");
+      expect(ctx).toContain(
+        "must not alter the language used for the remainder of the response",
+      );
+      expect(ctx).toContain("This notice is one-shot");
+      expect(ctx.indexOf("the user's current request")).toBeLessThan(
+        ctx.indexOf("explicitly established project communication language"),
+      );
+      expect(
+        ctx.indexOf("explicitly established project communication language"),
+      ).toBeLessThan(ctx.indexOf("Trellis SessionStart ✓"));
       expect(ctx.indexOf("<first-reply-notice>")).toBeLessThan(
         ctx.indexOf("<current-state>"),
       );
+      expect(ctx).toContain("<current-state>");
+      expect(ctx).toContain("<trellis-workflow>");
+      expect(ctx).toContain("<guidelines>");
+      expect(ctx).toContain("<task-status>");
+      expect(ctx).not.toContain("say once in Chinese");
+      expect(ctx).not.toContain("exactly one short Chinese sentence");
+      expect(ctx).not.toContain(firstReplyNoticeSentence);
     }
   });
 

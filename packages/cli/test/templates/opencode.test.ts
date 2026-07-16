@@ -72,7 +72,11 @@ describe("opencode session context dedupe", () => {
 });
 
 describe("opencode session-start history detection", () => {
-  it("includes the one-shot first-reply notice in injected context", () => {
+  afterEach((): void => {
+    contextCollector.clear("session-a");
+  });
+
+  it("builds compact startup context with an adaptive one-shot acknowledgment", () => {
     const context = buildSessionContext({
       directory: "/tmp/trellis-opencode-test",
       getActiveTask: () => ({ taskPath: null, source: "none", stale: false }),
@@ -84,13 +88,104 @@ describe("opencode session-start history detection", () => {
       runScript: () => "",
     });
 
+    expect(context.startsWith("<session-context>")).toBe(true);
+    expect(context).toContain("Trellis compact SessionStart context");
     expect(context).toContain("<first-reply-notice>");
-    expect(context).toContain("First visible reply");
-    expect(context).toContain("Trellis SessionStart context is loaded");
-    expect(context).toContain("This notice is one-shot");
-    expect(context.indexOf("<first-reply-notice>")).toBeLessThan(
-      context.indexOf("<guidelines>"),
+    expect(context).toContain("the user's current request");
+    expect(context).toContain("the user message that triggered this reply");
+    expect(context).toContain("has no clear natural language");
+    expect(context).toContain(
+      "explicitly established project communication language",
     );
+    expect(context).toContain("Trellis SessionStart ✓");
+    expect(context).toContain("Continue directly with the user's request");
+    expect(context).toContain(
+      "must not alter the language used for the remainder of the response",
+    );
+    expect(context).toContain("This notice is one-shot");
+    expect(context.indexOf("the user's current request")).toBeLessThan(
+      context.indexOf("explicitly established project communication language"),
+    );
+    expect(
+      context.indexOf("explicitly established project communication language"),
+    ).toBeLessThan(context.indexOf("Trellis SessionStart ✓"));
+    expect(context.indexOf("<first-reply-notice>")).toBeLessThan(
+      context.indexOf("<current-state>"),
+    );
+    expect(context).toContain("<guidelines>");
+    expect(context).toContain("<ready>");
+    expect(context).not.toContain("say once in Chinese");
+    expect(context).not.toContain("exactly one short Chinese sentence");
+    expect(context).not.toContain(
+      "Trellis SessionStart 已注入：workflow、当前任务状态、开发者身份、git 状态、active tasks、spec 索引已加载。",
+    );
+  });
+
+  it("persists startup context and suppresses reinjection from history", async () => {
+    interface ChatOutput {
+      parts: {
+        type: string;
+        text: string;
+        metadata?: { trellis?: { sessionStart?: boolean } };
+      }[];
+    }
+
+    let historyReads = 0;
+    let persistedParts: ChatOutput["parts"] = [];
+    const hooks = (await sessionStartPlugin({
+      directory: "/tmp/trellis-opencode-test",
+      client: {
+        session: {
+          messages: async () => {
+            historyReads += 1;
+            return {
+              data:
+                persistedParts.length === 0
+                  ? []
+                  : [{ info: { role: "user" }, parts: persistedParts }],
+            };
+          },
+        },
+      },
+    })) as {
+      "chat.message": (
+        input: { sessionID: string; agent: string },
+        output: ChatOutput,
+      ) => Promise<void>;
+    };
+
+    const firstOutput: ChatOutput = {
+      parts: [{ type: "text", text: "First request" }],
+    };
+    await hooks["chat.message"](
+      { sessionID: "session-a", agent: "build" },
+      firstOutput,
+    );
+
+    expect(firstOutput.parts[0].text).toMatch(
+      /^<session-context>[\s\S]*\n\n---\n\nFirst request$/,
+    );
+    expect(firstOutput.parts[0].text).toContain("<first-reply-notice>");
+    expect(firstOutput.parts[0].text).toContain("Trellis SessionStart ✓");
+    expect(firstOutput.parts[0].metadata).toEqual({
+      trellis: { sessionStart: true },
+    });
+
+    persistedParts = firstOutput.parts;
+    contextCollector.clear("session-a");
+
+    const secondOutput: ChatOutput = {
+      parts: [{ type: "text", text: "Second request" }],
+    };
+    await hooks["chat.message"](
+      { sessionID: "session-a", agent: "build" },
+      secondOutput,
+    );
+
+    expect(secondOutput.parts).toEqual([
+      { type: "text", text: "Second request" },
+    ]);
+    expect(historyReads).toBe(2);
   });
 
   it("detects persisted Trellis context from metadata", () => {
