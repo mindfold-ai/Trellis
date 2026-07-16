@@ -1,1 +1,17 @@
 pnpm lint-staged
+
+# Keep the marketplace submodule initialized — several tests diff templates
+# against its mirrored content (e.g. workflows/native/workflow.md), and a
+# missing/stale checkout lets drift slip past this hook (only caught in CI).
+git submodule update --init marketplace
+
+# Git sets GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/GIT_COMMON_DIR for the hook's
+# own process so it can operate on the commit-in-progress. Some integration
+# tests (e.g. task-archive.integration.test.ts) shell out to `git` inside
+# their own tmp fixture repos; without unsetting these first, those nested
+# git calls inherit this repo's real coordinates instead of the fixture's,
+# and can corrupt the real repo/worktree metadata. Verified: this happened
+# and required manually repairing every worktree's core.worktree/core.bare.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY
+
+pnpm test
