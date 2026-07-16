@@ -591,7 +591,7 @@ describe("wrapWithOmpFrontmatter", () => {
     const content = "# Finish Work\n\nWrap up the current session.";
     const result = wrapWithOmpFrontmatter("finish-work", content);
     expect(result).toMatch(
-      /^---\ndescription: .+\nargument-hint: \[task-name\]\n---\n\n/,
+      /^---\ndescription: .+\nargument-hint: "\[task-name\]"\n---\n\n/,
     );
     expect(result).not.toContain("# Finish Work");
     expect(result).toContain("Wrap up the current session.");
