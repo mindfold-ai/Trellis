@@ -100,11 +100,12 @@ channel:
 # Codex (dispatch behavior)
 #-------------------------------------------------------------------------------
 # Codex-only knob; other platforms ignore it. Default ("inline") makes the
-# main Codex agent edit code directly because Codex sub-agents run with
-# `fork_turns="none"` isolation and can't inherit the parent session's
-# task context. Set to "sub-agent" to opt into the legacy dispatch model
-# (main agent spawns trellis-implement / trellis-check / trellis-research
-# sub-agents).
+# main Codex agent edit code directly. This is a Trellis policy choice to
+# avoid relying on inherited parent transcripts, not a Codex limitation —
+# `fork_turns` is caller-controlled, and fresh-history sub-agents still
+# receive their explicit delegated task and inherited session config. Set
+# to "sub-agent" to opt into the legacy dispatch model (main agent spawns
+# trellis-implement / trellis-check / trellis-research sub-agents).
 #
 # codex:
 #   dispatch_mode: inline  # or "sub-agent" to dispatch trellis-* sub-agents
