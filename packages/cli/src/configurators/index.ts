@@ -51,7 +51,6 @@ import {
   wrapWithCommandFrontmatter,
   collectSkillTemplates,
   applyPullBasedPreludeMarkdown,
-  applyPullBasedPreludeToml,
   normalizeCopilotMarkdownAgents,
   type PlatformConfigureOptions,
 } from "./shared.js";
@@ -232,7 +231,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       for (const skill of getCodexPlatformSkills()) {
         files.set(`.codex/skills/${skill.name}/SKILL.md`, skill.content);
       }
-      for (const agent of applyPullBasedPreludeToml(getCodexAgents())) {
+      for (const agent of getCodexAgents()) {
         files.set(`.codex/agents/${agent.name}.toml`, agent.content);
       }
       for (const hook of getCodexHooks()) {

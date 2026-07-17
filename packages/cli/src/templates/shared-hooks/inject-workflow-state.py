@@ -232,27 +232,33 @@ def _codex_mode_banner(config: dict) -> str:
     """Emit a `<codex-mode>` banner for the additionalContext payload.
 
     Reads `codex.dispatch_mode` from .trellis/config.yaml; defaults to
-    `inline` when missing or invalid. Trellis defaults Codex dispatch to
-    `inline` to avoid relying on inherited parent transcripts — Codex
-    sub-agents may use fresh, full, or bounded conversation history
-    (`fork_turns`), and fresh-history agents still receive their explicit
-    delegated task and inherited session configuration; this is a Trellis
-    policy choice, not a Codex limitation. The banner makes the active
-    mode explicit to Codex AI per turn, complementing the workflow-state
-    body which is per-status. Mode tells AI which dispatch protocol to
-    follow; workflow-state tells AI what step it's at.
+    `auto`, which dispatches Trellis sub-agents using native Codex context
+    injection with a child-side fallback. This does not rely on inherited
+    parent transcripts: `fork_turns` remains caller-controlled, and
+    fresh-history sub-agents still receive their explicit delegated task and
+    inherited session configuration. `inline` is an explicit opt-out; the
+    legacy `sub-agent` value is an alias for `auto`. Invalid explicit values
+    fall back to `inline` without per-turn warnings. The banner makes the
+    active mode explicit to Codex AI per turn, complementing the workflow-state
+    body which is per-status. Mode tells AI which dispatch protocol to follow;
+    workflow-state tells AI what step it's at.
     """
-    mode = "inline"
+    mode = "auto"
     if isinstance(config, dict):
         codex_cfg = config.get("codex")
         if isinstance(codex_cfg, dict):
-            cfg_mode = codex_cfg.get("dispatch_mode")
-            if cfg_mode in ("inline", "sub-agent"):
-                mode = cfg_mode
-    if mode == "sub-agent":
+            cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
+            if cfg_mode == "inline":
+                mode = "inline"
+            elif cfg_mode in ("auto", "sub-agent"):
+                mode = "auto"
+            else:
+                mode = "inline"
+    if mode == "auto":
         meaning = (
-            "sub-agent: implement/check work defaults to Trellis sub-agents; "
-            "the main session still coordinates, clarifies, updates specs, commits, and finishes."
+            "auto: implement/check work defaults to Trellis sub-agents; native Codex "
+            "context injection is preferred and child-side loading is the fallback. "
+            "The main session still coordinates, clarifies, updates specs, commits, and finishes."
         )
     else:
         meaning = (
@@ -267,24 +273,27 @@ def resolve_breadcrumb_key(
 ) -> str:
     """Pick the breadcrumb tag key based on Codex dispatch_mode.
 
-    Codex defaults to ``inline`` as a Trellis policy choice to avoid relying
-    on inherited parent transcripts, not because Codex sub-agents are
-    technically unable to receive context (``fork_turns`` is caller-controlled
-    and fresh-history agents still get their explicit task + session config).
-    Users can opt into ``codex.dispatch_mode: sub-agent`` in
-    ``.trellis/config.yaml`` to use the parallel ``<status>-inline`` tag →
-    ``<status>`` flip. Invalid or missing values fall back to inline.
+    Codex defaults to ``auto`` and therefore uses the ordinary ``<status>``
+    breadcrumb for native SubagentStart dispatch with child-side fallback;
+    it does not depend on an inherited parent transcript. ``inline`` selects
+    the parallel ``<status>-inline`` tag; ``sub-agent`` remains an alias for
+    ``auto``. Invalid explicit values fall back to inline without per-turn
+    warnings.
 
     Non-codex platforms return the plain status unchanged.
     """
     if platform == "codex":
-        mode = "inline"
+        mode = "auto"
         if isinstance(config, dict):
             codex_cfg = config.get("codex")
             if isinstance(codex_cfg, dict):
-                cfg_mode = codex_cfg.get("dispatch_mode")
-                if cfg_mode in ("inline", "sub-agent"):
-                    mode = cfg_mode
+                cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
+                if cfg_mode == "inline":
+                    mode = "inline"
+                elif cfg_mode in ("auto", "sub-agent"):
+                    mode = "auto"
+                else:
+                    mode = "inline"
         return f"{status}-inline" if mode == "inline" else status
     return status
 

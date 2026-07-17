@@ -322,27 +322,12 @@ describe("configurePlatform", () => {
       const agentPath = path.join(codexAgentsRoot, `${agent.name}.toml`);
       expect(fs.existsSync(agentPath)).toBe(true);
       const written = fs.readFileSync(agentPath, "utf-8");
-      // Codex is a class-2 (pull-based) platform. Prelude is injected into
-      // implement/check only — research is orthogonal (searches spec tree,
-      // no task dependency) and must stay pristine.
-      const needsPrelude = ["trellis-implement", "trellis-check"].includes(
-        agent.name,
-      );
-      if (needsPrelude) {
-        expect(written).toContain("Required: Load Trellis Context First");
-        expect(written).toContain("task.py current --source");
-        // Original body must still be present (prepend, not replace)
-        const originalBody = agent.content
-          .split("developer_instructions")[1]
-          ?.split('"""')[1]
-          ?.trim()
-          .split("\n")[0];
-        if (originalBody) {
-          expect(written).toContain(originalBody);
-        }
-      } else {
-        expect(written).toBe(replacePythonCommandLiterals(agent.content));
-      }
+      // Native SubagentStart injects context, while every profile retains a
+      // marker-gated active-task pull fallback when the hook is unavailable.
+      expect(written).toBe(replacePythonCommandLiterals(agent.content));
+      expect(written).toContain("<!-- trellis-hook-injected -->");
+      expect(written).toContain("Active task: <path>");
+      expect(written).not.toContain("Required: Load Trellis Context First");
     }
 
     const config = getCodexConfigTemplate();
@@ -363,6 +348,9 @@ describe("configurePlatform", () => {
       process.platform === "win32" ? "python" : "python3";
     expect(content).toContain(
       `"command": "${expectedPythonCmd} -X utf8 .codex/hooks/inject-workflow-state.py"`,
+    );
+    expect(content).toContain(
+      `"command": "${expectedPythonCmd} -X utf8 .codex/hooks/inject-subagent-context.py"`,
     );
     expect(content).not.toContain("{{PYTHON_CMD}}");
   });
@@ -1301,6 +1289,12 @@ describe("configurePlatform", () => {
     const rawTemplate = getCodexHooksConfig();
     expect(rawTemplate).toContain(
       "{{PYTHON_CMD}} -X utf8 .codex/hooks/inject-workflow-state.py",
+    );
+    expect(rawTemplate).toContain(
+      "{{PYTHON_CMD}} -X utf8 .codex/hooks/inject-subagent-context.py",
+    );
+    expect(rawTemplate).toContain(
+      '"matcher": "trellis-implement|trellis-check|trellis-research"',
     );
   });
 

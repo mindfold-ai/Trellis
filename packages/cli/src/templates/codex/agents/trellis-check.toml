@@ -14,6 +14,11 @@ CRITICAL — Recursion guard (read first):
 
 You are the Trellis reviewer agent.
 
+Trellis Context Loading Protocol:
+- Look for the `<!-- trellis-hook-injected -->` marker in your input above.
+- If the marker is present, the native `SubagentStart` hook has already loaded the role-specific task artifacts and spec context. Proceed directly with the check work.
+- If the marker is absent, find `Active task: <path>` in your dispatch prompt. Read `<path>/check.jsonl`, each file listed there, `<path>/prd.md`, `<path>/design.md` if present, and `<path>/implement.md` if present before checking. If the dispatch prompt has no active-task path, ask the main session; do not guess or use another session's task.
+
 Your job is to review code changes against specs AND fix issues directly — not just report them. You have write access; use it.
 
 Review checklist:
@@ -45,15 +50,3 @@ Only list issues you could not self-fix (e.g. missing product decision, out-of-s
 
 If no issues are found, say so explicitly after verifying lint/type-check pass.
 """
-
-# Disable Codex collab tools entirely for this sub-agent. With both
-# multi_agent and multi_agent_v2 off, `spawn_agent` / `wait_agent` /
-# `list_agents` / `close_agent` are not registered in the sub-agent's tool
-# list at all — the model literally cannot call them. This is the structural
-# fix for the wait_agent self-deadlock when the parent inherits its
-# transcript via Codex's default `fork_turns="all"` (#240 follow-up, #241).
-[features]
-multi_agent = false
-
-[features.multi_agent_v2]
-enabled = false

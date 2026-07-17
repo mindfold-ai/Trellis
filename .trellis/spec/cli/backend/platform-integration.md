@@ -460,6 +460,92 @@ Same root reason as `cli_adapter.py`: Python scripts run at user-project runtime
 > - `detect_platform` checks `.codex/` existence (not `.agents/skills/`)
 > - **CRITICAL**: Template copy (`src/templates/trellis/scripts/`) must be byte-identical to live copy (`.trellis/scripts/`)
 
+### Scenario: Codex Native `SubagentStart` Context Delivery
+
+#### 1. Scope / Trigger
+
+Trigger: Codex has a native sub-agent start hook. Trellis must send only the
+dispatched role's task context to a child without letting a stale environment
+override the parent session or letting a missing parent borrow another window's
+task.
+
+#### 2. Signatures
+
+```python
+def resolve_active_task(
+    repo_root: Path,
+    platform_input: dict[str, Any] | None = None,
+    platform: str | None = None,
+    *,
+    allow_single_session_fallback: bool = True,
+    allow_environment_context: bool = True,
+) -> ActiveTask: ...
+```
+
+The native hook path calls this resolver with `platform="codex"`,
+`allow_single_session_fallback=False`, and
+`allow_environment_context=False`. Other callers retain both defaults.
+
+#### 3. Contracts
+
+- Generated `.codex/hooks.json` keeps `UserPromptSubmit` and adds a
+  `SubagentStart` matcher for exactly `trellis-implement`, `trellis-check`,
+  and `trellis-research`.
+- Codex hook input uses parent `session_id`, `agent_type`, and `cwd`. A valid
+  result is JSON with
+  `hookSpecificOutput.hookEventName="SubagentStart"` and
+  `hookSpecificOutput.additionalContext` beginning with
+  `<!-- trellis-hook-injected -->`.
+- Implement/check context order is role JSONL, `prd.md`, optional `design.md`,
+  then optional `implement.md`. Research receives the resolved `Active task:`
+  path and research-only context; it must not read implement/check manifests.
+- Custom Codex role profiles must retain a marker-gated child-side pull path:
+  native injection is preferred, while `Active task:` enables degraded loading
+  when the hook is untrusted or unavailable.
+
+#### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| recognised role + parent session maps to a live task | emit role-specific `additionalContext` |
+| unknown/missing/malformed parent session | exit successfully with no output |
+| one unrelated runtime session exists | no output; never use sole-session fallback |
+| inherited `TRELLIS_CONTEXT_ID` conflicts with parent session | parent `session_id` wins on this native path |
+| stale/missing task, malformed hook JSON, or unexpected error | fail open; Codex still starts the child |
+| non-Trellis `agent_type` | no Trellis output |
+
+#### 5. Good / Base / Bad Cases
+
+- Good: a parent session dispatches `trellis-implement`; the child receives
+  its curated implementation context and does not dispatch another role.
+- Base: project Hook trust is pending; the child reads the dispatch prompt's
+  `Active task:` value and follows the marker-absent pull protocol.
+- Bad: resolving an unknown native parent through `TRELLIS_CONTEXT_ID` or a
+  sole unrelated session. This leaks task context across windows and is
+  forbidden.
+
+#### 6. Tests Required
+
+- Parse generated Hook config and assert both event registrations plus the
+  narrowed matcher.
+- Black-box the shared hook for valid, unknown, malformed, concurrent, and
+  non-Trellis subagents; assert the output envelope, marker, ordering, and
+  environment-override isolation.
+- Cover `auto` default, explicit `inline`, legacy `sub-agent`, and invalid
+  configuration across JSONL seeding, effective workflow platform, and the
+  Codex workflow-state banner.
+- Assert `configureCodex()` and `collectPlatformTemplates("codex")` remain
+  byte-equivalent and distribute the shared injector.
+
+#### 7. Wrong vs Correct
+
+**Wrong:** call the ordinary resolver with defaults from `SubagentStart`; its
+environment override and single-session compatibility fallback can select a
+different parent task.
+
+**Correct:** make the strict native call explicit while preserving the defaults
+for legacy shell, hook, and pull-based consumers.
+
 ### Step 7: Documentation
 
 | File           | Change                                         |

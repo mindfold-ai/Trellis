@@ -220,7 +220,7 @@ Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `trellis-bef
      therefore must cover every required step from implementation through
      commit, including Phase 3.3 spec update and Phase 3.4 commit. -->
 
-Sub-agent dispatch protocol applies to all platforms and all sub-agents, including class-2 Codex/Gemini/Qoder/Copilot/Reasonix/Trae/Grok, hook-backed ZCode, and `trellis-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions. On Grok Build, use `spawn_subagent` with `subagent_type` set to the Trellis agent name (e.g. `trellis-implement`).
+Sub-agent dispatch protocol applies to all platforms and all sub-agents, including native Codex `SubagentStart` context injection with child-side pull fallback, class-2 Gemini/Qoder/Copilot/Reasonix/Trae/Grok, hook-backed ZCode, and `trellis-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions. On Grok Build, use `spawn_subagent` with `subagent_type` set to the Trellis agent name (e.g. `trellis-implement`).
 
 [workflow-state:in_progress]
 Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-update-spec` is a skill. `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
@@ -365,7 +365,7 @@ Spawn the research sub-agent:
 
 [codex-inline, Kilo, Antigravity, Devin]
 
-Do the research in the main session directly and write findings into `{TASK_DIR}/research/`. (For `codex-inline` this avoids the `fork_turns="none"` isolation that prevents `trellis-research` sub-agents from resolving the active task path.)
+Do the research in the main session directly and write findings into `{TASK_DIR}/research/`. `codex-inline` is the explicit mode that keeps work in the main session.
 
 [/codex-inline, Kilo, Antigravity, Devin]
 
@@ -472,7 +472,7 @@ Goal: turn reviewed planning artifacts into code that passes quality checks.
 
 #### 2.1 Implement `[required · repeatable]`
 
-[Claude Code, Cursor, OpenCode, CodeBuddy, Droid, Pi, ZCode, Oh My Pi]
+[Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Oh My Pi]
 
 Spawn the implement sub-agent:
 
@@ -483,10 +483,11 @@ Spawn the implement sub-agent:
 The platform hook/plugin auto-handles:
 - Reads `implement.jsonl` and injects referenced spec/research files into the agent prompt
 - Injects `prd.md`, `design.md` if present, and `implement.md` if present
+- For Codex, `SubagentStart` supplies native context injection; the agent profile keeps child-side loading as the fallback
 
-[/Claude Code, Cursor, OpenCode, CodeBuddy, Droid, Pi, ZCode, Oh My Pi]
+[/Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Oh My Pi]
 
-[codex-sub-agent, Gemini, Qoder, Copilot, Reasonix, Trae, Grok]
+[Gemini, Qoder, Copilot, Reasonix, Trae, Grok]
 
 Spawn the implement sub-agent:
 
@@ -498,7 +499,7 @@ The pull-based sub-agent definition auto-handles the context load requirement:
 - Resolves the active task with `task.py current --source`, then reads `prd.md`, `design.md` if present, and `implement.md` if present
 - Reads `implement.jsonl` and requires the agent to load each referenced spec/research file before coding
 
-[/codex-sub-agent, Gemini, Qoder, Copilot, Reasonix, Trae, Grok]
+[/Gemini, Qoder, Copilot, Reasonix, Trae, Grok]
 
 [Kiro]
 

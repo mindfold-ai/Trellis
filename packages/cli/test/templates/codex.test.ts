@@ -6,6 +6,7 @@ import {
   getAllAgents,
   getAllCodexSkills,
   getConfigTemplate,
+  getHooksConfig,
 } from "../../src/templates/codex/index.js";
 import { resolveAllAsSkills } from "../../src/configurators/shared.js";
 import { AI_TOOLS } from "../../src/types/ai-tools.js";
@@ -57,6 +58,31 @@ describe("codex getAllAgents", () => {
       expect(agent.content).toContain("description = ");
       expect(agent.content).toContain("developer_instructions = ");
     }
+  });
+});
+
+describe("codex native sub-agent hooks", () => {
+  it("preserves main-session workflow injection and scopes SubagentStart to Trellis roles", () => {
+    const config = JSON.parse(getHooksConfig()) as {
+      hooks: Record<
+        string,
+        { matcher?: string; hooks: { command: string }[] }[]
+      >;
+    };
+
+    expect(config.hooks.UserPromptSubmit).toHaveLength(1);
+    expect(config.hooks.UserPromptSubmit[0]?.hooks[0]?.command).toContain(
+      ".codex/hooks/inject-workflow-state.py",
+    );
+
+    expect(config.hooks.SubagentStart).toHaveLength(1);
+    const subagentStart = config.hooks.SubagentStart[0];
+    expect(subagentStart?.matcher).toBe(
+      "trellis-implement|trellis-check|trellis-research",
+    );
+    expect(subagentStart?.hooks[0]?.command).toContain(
+      ".codex/hooks/inject-subagent-context.py",
+    );
   });
 });
 
@@ -113,6 +139,42 @@ describe("codex sub-agent recursion guard (issue #234)", () => {
       expect(content).toMatch(/SessionStart|dispatch.*main session|breadcrumb/i);
     });
   }
+});
+
+describe("codex two-channel sub-agent context (native SubagentStart)", () => {
+  for (const name of [
+    "trellis-implement",
+    "trellis-check",
+    "trellis-research",
+  ] as const) {
+    it(`${name}.toml uses a marker-gated active-task fallback without legacy collaboration disables`, () => {
+      const tomlPath = path.join(
+        repoRoot,
+        "packages/cli/src/templates/codex/agents",
+        `${name}.toml`,
+      );
+      const content = fs.readFileSync(tomlPath, "utf-8");
+
+      expect(content).toContain("<!-- trellis-hook-injected -->");
+      expect(content).toContain("Active task: <path>");
+      expect(content).not.toContain("[features]");
+      expect(content).not.toContain("multi_agent = false");
+      expect(content).not.toContain("[features.multi_agent_v2]");
+    });
+  }
+
+  it("keeps research task resolution role-isolated from implement/check manifests", () => {
+    const researchPath = path.join(
+      repoRoot,
+      "packages/cli/src/templates/codex/agents/trellis-research.toml",
+    );
+    const content = fs.readFileSync(researchPath, "utf-8");
+
+    expect(content).toContain("Do not load `implement.jsonl` or `check.jsonl`");
+    expect(content).not.toContain(
+      "Run `python3 ./.trellis/scripts/task.py current --source`",
+    );
+  });
 });
 
 describe("codex session-start.py compact SessionStart context", () => {

@@ -55,10 +55,11 @@ export type SharedHookPlatform =
  * - `inject-workflow-state.py` — every platform with a UserPromptSubmit
  *   (or equivalent) event. Kiro + codex self-included; platforms without
  *   per-turn main-session hooks are excluded.
- * - `inject-subagent-context.py` — class-1 (push-based) platforms only.
- *   Class-2 (pull-based) platforms such as codex, copilot, gemini, qoder,
- *   and trae can't have hooks mutate sub-agent prompts — their sub-agents load context
- *   via a prelude instead.
+ * - `inject-subagent-context.py` — platforms with native sub-agent context
+ *   delivery. Most use a PreToolUse prompt mutation; Codex uses its
+ *   SubagentStart `additionalContext` event. Class-2 (pull-based) platforms
+ *   such as copilot, gemini, qoder, and trae still load context from a
+ *   self-loading agent profile.
  * - Kiro supports per-turn + spawn hooks on both surfaces (per the official
  *   docs https://kiro.dev/docs/cli/hooks/): the CLI custom agent declares
  *   `hooks.userPromptSubmit` + `hooks.agentSpawn`, and the IDE declares a
@@ -92,7 +93,7 @@ export const SHARED_HOOKS_BY_PLATFORM: Record<
     "inject-shell-session-context.py",
     "inject-subagent-context.py",
   ],
-  codex: ["inject-workflow-state.py"],
+  codex: ["inject-workflow-state.py", "inject-subagent-context.py"],
   gemini: ["session-start.py", "inject-workflow-state.py"],
   qoder: ["session-start.py", "inject-workflow-state.py"],
   copilot: ["inject-workflow-state.py"],
