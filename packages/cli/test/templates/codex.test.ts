@@ -78,8 +78,13 @@ describe("codex native sub-agent hooks", () => {
     expect(config.hooks.SubagentStart).toHaveLength(1);
     const subagentStart = config.hooks.SubagentStart[0];
     expect(subagentStart?.matcher).toBe(
-      "trellis-implement|trellis-check|trellis-research",
+      "^(?:trellis-implement|trellis-check|trellis-research)$",
     );
+    const matcher = new RegExp(subagentStart?.matcher ?? "");
+    expect(matcher.test("trellis-implement")).toBe(true);
+    expect(matcher.test("trellis-check")).toBe(true);
+    expect(matcher.test("trellis-research")).toBe(true);
+    expect(matcher.test("trellis-implement-extra")).toBe(false);
     expect(subagentStart?.hooks[0]?.command).toContain(
       ".codex/hooks/inject-subagent-context.py",
     );

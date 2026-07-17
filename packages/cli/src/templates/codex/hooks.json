@@ -13,7 +13,7 @@
     ],
     "SubagentStart": [
       {
-        "matcher": "trellis-implement|trellis-check|trellis-research",
+        "matcher": "^(?:trellis-implement|trellis-check|trellis-research)$",
         "hooks": [
           {
             "type": "command",

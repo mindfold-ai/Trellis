@@ -160,14 +160,17 @@ def resolve_effective_platform(platform: str, config: dict) -> str:
     if platform == "codex":
         mode = "auto"
         codex_cfg = config.get("codex") if isinstance(config, dict) else None
-        if isinstance(codex_cfg, dict):
-            cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
-            if cfg_mode == "inline":
+        if codex_cfg is not None:
+            if not isinstance(codex_cfg, dict):
                 mode = "inline"
-            elif cfg_mode in ("auto", "sub-agent"):
-                mode = "auto"
             else:
-                mode = "inline"
+                cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
+                if cfg_mode == "inline":
+                    mode = "inline"
+                elif cfg_mode in ("auto", "sub-agent"):
+                    mode = "auto"
+                else:
+                    mode = "inline"
         return "codex-sub-agent" if mode == "auto" else "codex-inline"
     return platform
 

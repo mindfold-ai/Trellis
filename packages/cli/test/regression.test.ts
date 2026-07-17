@@ -5338,6 +5338,7 @@ print(len(entries))
         "  'codex_explicit_subagent': resolve_effective_platform('codex', {'codex': {'dispatch_mode': 'sub-agent'}}),",
         "  'codex_inline': resolve_effective_platform('codex', {'codex': {'dispatch_mode': 'inline'}}),",
         "  'codex_invalid_mode': resolve_effective_platform('codex', {'codex': {'dispatch_mode': 'invalid'}}),",
+        "  'codex_invalid_config': resolve_effective_platform('codex', {'codex': True}),",
         "  'claude_passthrough': resolve_effective_platform('claude', {'codex': {'dispatch_mode': 'inline'}}),",
         "}",
         "print(json.dumps(result))",
@@ -5359,6 +5360,8 @@ print(len(entries))
     expect(result.codex_inline).toBe("codex-inline");
     // Invalid mode falls back to explicit inline rather than dispatching.
     expect(result.codex_invalid_mode).toBe("codex-inline");
+    // A malformed codex section must match config.py's safe inline fallback.
+    expect(result.codex_invalid_config).toBe("codex-inline");
     // Non-codex platforms ignore the codex.dispatch_mode setting.
     expect(result.claude_passthrough).toBe("claude");
   });

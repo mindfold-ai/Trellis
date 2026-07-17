@@ -934,18 +934,19 @@ Trellis sub-agents (implement / check / research) need task context (`prd.md` + 
 
 | Class                          | Mechanism                                                                                                                                                                                                      | Platforms                                                     |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **Class-1** — Hook-inject      | Python hook (or JS plugin) under `.{platform}/hooks/` fires on the sub-agent spawn tool and rewrites the tool's prompt input                                                                                   | Claude Code, Cursor, OpenCode, Kiro, CodeBuddy, Factory Droid, ZCode |
-| **Class-2** — Pull-based       | Platform's hook can't reliably mutate sub-agent prompts; Trellis injects a "Required: Load Trellis Context First" prelude into each sub-agent definition file so the sub-agent reads context itself at startup | Codex, Gemini CLI, Qoder, Copilot, Reasonix, Trae IDE  |
+| **Class-1** — Hook-inject      | Native hook or plugin fires at sub-agent start and injects context before the child runs, either by rewriting the spawn prompt or adding developer context                                                        | Claude Code, Cursor, OpenCode, Kiro, CodeBuddy, Codex, Factory Droid, ZCode |
+| **Class-2** — Pull-based       | Platform lacks a Trellis-supported native sub-agent context injection hook; Trellis injects a "Required: Load Trellis Context First" prelude into each definition so the sub-agent reads context at startup     | Gemini CLI, Qoder, Copilot, Reasonix, Trae IDE  |
 | **Class-3** — Extension-backed | Platform exposes hook-equivalent events and custom tools through a project-local TypeScript extension; Trellis owns the sub-agent tool and the context injection path                                          | Pi Agent, Oh My Pi                                           |
 
-### Class-1 — Hook-inject (7 platforms)
+### Class-1 — Hook-inject (8 platforms)
 
-Platform's PreToolUse-equivalent hook can fire on the sub-agent spawn tool AND modify the tool's prompt input. Trellis's `inject-subagent-context.py` (or OpenCode's plugin) reads `prd.md` + the JSONL-referenced spec files and rewrites the sub-agent's initial prompt.
+Platform's native sub-agent-start hook delivers context before the child runs. Most platforms rewrite the spawn prompt; Codex emits developer context through `SubagentStart`. Trellis's `inject-subagent-context.py` (or OpenCode's plugin) reads `prd.md` + the JSONL-referenced spec files for that delivery.
 
 | Platform      | Hook event                            | Mechanism                               |
 | ------------- | ------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Claude Code   | `PreToolUse` + matcher `Task`/`Agent` | `updatedInput.prompt`                   |
 | CodeBuddy     | `PreToolUse` + matcher `Task`         | `modifiedInput.prompt` (same as Claude) |
+| Codex         | `SubagentStart` + exact Trellis-role matcher | `hookSpecificOutput.additionalContext`; child-side pull fallback |
 | Cursor        | `preToolUse` + matcher `Task          | Subagent`                               | `updated_input.prompt` (Cursor staff marked Task prompt mutation fixed on 2026-04-07; current Cursor may emit native sub-agent calls as tool name `Subagent`, and native Task args may encode custom agents as `subagent_type.custom.name`) |
 | Factory Droid | `PreToolUse` + matcher `Task`         | `updatedInput.prompt`                   |
 | Kiro          | per-agent `agentSpawn` hook           | direct stdout context                   |
@@ -984,15 +985,14 @@ import { isTrellisSubagent } from "../lib/trellis-context.js"
 
 `getActiveTask()` in `lib/trellis-context.js` itself includes the single-session fallback so any caller (`workflow-state` breadcrumb, `session-start` task status) sees the same resolved task as the prompt injector. The fallback only activates when the explicit context-key lookup misses, so multi-window setups remain isolated.
 
-### Class-2 — Pull-based (6 platforms)
+### Class-2 — Pull-based (5 platforms)
 
-Platform's hook either doesn't expose a sub-agent spawn event or can't modify the prompt. Sub-agents must Read context themselves at startup. Trellis injects a "Required: Load Trellis Context First" prelude into each sub-agent definition file.
+Platform's hook either does not expose a sub-agent-start event or cannot inject Trellis context. Sub-agents must read context themselves at startup. Trellis injects a "Required: Load Trellis Context First" prelude into each sub-agent definition file.
 
-| Platform | Why hook-inject is unavailable |
+| Platform | Why native context injection is unavailable |
 |---|---|
 | Gemini CLI | `BeforeTool` fires but [#18128](https://github.com/google-gemini/gemini-cli/issues/18128) hides chain-of-thought; reliability margin too thin |
 | Qoder | No `Task` tool concept; `SubagentStart` input has no `prompt` field; Context Isolation |
-| Codex | `PreToolUse` only fires for Bash; `CollabAgentSpawn` hook unimplemented ([#15486](https://github.com/openai/codex/issues/15486)) |
 | Copilot | `preToolUse` doesn't enforce on subagents ([#2392](https://github.com/github/copilot-cli/issues/2392), [#2540](https://github.com/github/copilot-cli/issues/2540)) |
 | Reasonix | Sub-agent skills run with `runAs: subagent`; no prompt-mutation hook exists, so workflow dispatch must carry the active task and the sub-agent skill reads task artifacts itself. |
 | Trae IDE | `SessionStart` / `UserPromptSubmit` hooks cover main-session context, but no Trellis-supported sub-agent prompt mutation surface exists; generated `.trae/agents/*.md` files receive the pull-based prelude. |
