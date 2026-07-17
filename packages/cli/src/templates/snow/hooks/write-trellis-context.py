@@ -129,12 +129,45 @@ def build_context(repo: Path) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def main() -> int:
-    # Drain stdin so hosts that pipe JSON context do not get SIGPIPE.
+def _drain_stdin(timeout_sec: float = 0.5) -> None:
+    """Best-effort drain of host-piped hook context without hanging on TTY."""
     try:
-        sys.stdin.read()
+        if sys.stdin is None or sys.stdin.closed:
+            return
+        # Interactive terminal: do not block waiting for EOF.
+        if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
+            return
+
+        # Hosts (Snow) pipe JSON then close stdin. Manual CLI runs must not hang.
+        if sys.platform.startswith("win"):
+            import threading
+
+            def _read() -> None:
+                try:
+                    sys.stdin.read()
+                except Exception:
+                    pass
+
+            t = threading.Thread(target=_read, daemon=True)
+            t.start()
+            t.join(timeout_sec)
+            return
+
+        import select
+
+        while True:
+            ready, _, _ = select.select([sys.stdin], [], [], timeout_sec)
+            if not ready:
+                break
+            chunk = sys.stdin.read(4096)
+            if not chunk:
+                break
     except Exception:
         pass
+
+
+def main() -> int:
+    _drain_stdin()
 
     cwd = Path(os.environ.get("SNOW_CWD") or os.getcwd())
     repo = _find_repo_root(cwd)
