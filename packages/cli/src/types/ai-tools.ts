@@ -27,7 +27,8 @@ export type AITool =
   | "trae"
   | "omp"
   | "grok"
-  | "kimi";
+  | "kimi"
+  | "snow";
 
 /**
  * Template directory categories
@@ -53,7 +54,8 @@ export type TemplateDir =
   | "trae"
   | "omp"
   | "grok"
-  | "kimi";
+  | "kimi"
+  | "snow";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -79,7 +81,9 @@ export type CliFlag =
   | "trae"
   | "omp"
   | "grok"
-  | "kimi";
+  | "kimi"
+  | "snow"
+  | "snocli";
 
 /**
  * Template context for placeholder resolution.
@@ -546,6 +550,44 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: false,
       cliFlag: "kimi",
+    },
+  },
+  /**
+   * Snow CLI (snocli) - class-1 platform (snow-cli #194+).
+   *
+   * Skills: `.snow/skills/` (Claude Code Skills compatible)
+   * Commands: `.snow/commands/trellis-*.json` (type: prompt)
+   * Agents: `.snow/agents/` (project discovery + pull-based prelude)
+   * Hooks: `.snow/hooks/` emit additionalContext JSON (session/user/sub-agent)
+   *
+   * hasHooks=true: SessionStart injects context -> trellis-start is filtered out.
+   * hasPythonHooks=true: ships write-trellis-context.py under .snow/hooks/.
+   *
+   * CLI flags: `--snow` (canonical) and `--snocli` (alias, same platform).
+   * Detection uses configDir `.snow/skills` so bare `.snow/settings.json` is not
+   * a false-positive "configured" project.
+   */
+  snow: {
+    name: "Snow CLI (snocli)",
+    templateDirs: ["common", "snow"],
+    configDir: ".snow/skills",
+    extraManagedPaths: [
+      ".snow/commands",
+      ".snow/agents",
+      ".snow/hooks",
+      ".snow/sub-agents.trellis.json",
+      ".snow/SNOW.md",
+    ],
+    cliFlag: "snow",
+    defaultChecked: false,
+    hasPythonHooks: true,
+    templateContext: {
+      cmdRefPrefix: "/trellis-",
+      executorAI: "Bash scripts or Agent calls",
+      userActionLabel: "Skills",
+      agentCapable: true,
+      hasHooks: true,
+      cliFlag: "snow",
     },
   },
 };

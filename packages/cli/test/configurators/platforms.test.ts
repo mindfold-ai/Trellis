@@ -801,6 +801,49 @@ describe("configurePlatform", () => {
     }
   });
 
+  it("configurePlatform('snow') writes class-1 hooks, skills, commands, and agents", async () => {
+    await configurePlatform("snow", tmpDir);
+
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".snow", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".snow", "commands", "trellis-continue.json"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".snow", "agents", "trellis-implement.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".snow", "hooks", "onSessionStart.json")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".snow", "hooks", "beforeSubAgentStart.json"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".snow", "hooks", "write-trellis-context.py"),
+      ),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".snow", "SNOW.md"))).toBe(true);
+
+    const templates = collectPlatformTemplates("snow");
+    expect(templates?.has(".snow/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(templates?.has(".snow/commands/trellis-continue.json")).toBe(true);
+    expect(templates?.has(".snow/agents/trellis-implement.md")).toBe(true);
+    expect(templates?.has(".snow/hooks/onSessionStart.json")).toBe(true);
+    expect(templates?.has(".snow/SNOW.md")).toBe(true);
+    expect(AI_TOOLS.snow.templateContext.hasHooks).toBe(true);
+    expect(AI_TOOLS.snow.hasPythonHooks).toBe(true);
+  });
+
   it("configurePlatform('zcode') writes only .zcode-owned skills", async () => {
     await configurePlatform("zcode", tmpDir);
 

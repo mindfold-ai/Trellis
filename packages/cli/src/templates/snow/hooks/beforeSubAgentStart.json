@@ -1,0 +1,15 @@
+{
+  "beforeSubAgentStart": [
+    {
+      "description": "Inject Trellis active-task context before sub-agent buildInitialMessages",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python -X utf8 .snow/hooks/write-trellis-context.py",
+          "timeout": 15000,
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}

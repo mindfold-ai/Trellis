@@ -1024,6 +1024,9 @@ interface InitOptions {
   omp?: boolean;
   grok?: boolean;
   kimi?: boolean;
+  snow?: boolean;
+  /** Alias for `snow` - same platform (Snow CLI / snocli). */
+  snocli?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;
@@ -1113,6 +1116,12 @@ export async function init(options: InitOptions): Promise<void> {
   if (options.windsurf) {
     options.devin = true;
     delete options.windsurf;
+  }
+
+  // Alias: --snocli -> --snow (Snow CLI)
+  if (options.snocli) {
+    options.snow = true;
+    delete options.snocli;
   }
 
   const cwd = process.cwd();

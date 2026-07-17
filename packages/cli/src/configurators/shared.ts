@@ -301,7 +301,9 @@ export function wrapWithCommandFrontmatter(
   // when the description contains a colon (an unquoted plain scalar cannot
   // contain ": " — some parsers reject it outright, e.g. Trae CLI's SlashCommand
   // schema; others silently truncate at the second colon).
-  return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${content}`;
+  return `---\nname: ${name}\ndescription: ${JSON.stringify(
+    description,
+  )}\n---\n\n${content}`;
 }
 
 /**
@@ -333,7 +335,9 @@ export function wrapWithOmpFrontmatter(name: string, content: string): string {
   // description contains a colon (see wrapWithCommandFrontmatter).
   const quotedDescription = JSON.stringify(description);
   const frontmatter = hint
-    ? `---\ndescription: ${quotedDescription}\nargument-hint: ${JSON.stringify(hint)}\n---`
+    ? `---\ndescription: ${quotedDescription}\nargument-hint: ${JSON.stringify(
+        hint,
+      )}\n---`
     : `---\ndescription: ${quotedDescription}\n---`;
   return `${frontmatter}\n\n${body}`;
 }
@@ -376,6 +380,7 @@ export interface ResolvedSkillFile {
  * `agentCapable && !hasHooks` platforms (Codex, ZCode, OpenCode, Reasonix, Grok)
  * have no such hook (or use an out-of-band plugin), so they need the
  * user-invocable `trellis-start` skill / `start.md` command as fallback.
+ * Snow is class-1 (`hasHooks: true`) once snow-cli#194 inject ships.
  * Agent-less platforms (Kilo, Antigravity, Devin) also keep `start` since
  * they rely entirely on user-triggered workflows.
  */

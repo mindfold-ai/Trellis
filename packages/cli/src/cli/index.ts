@@ -91,6 +91,8 @@ program
   .option("--trae", "Include Trae IDE commands")
   .option("--grok", "Include Grok Build skills and agents")
   .option("--kimi", "Include Kimi Code skills")
+  .option("--snow", "Include Snow CLI (snocli) skills and commands")
+  .option("--snocli", "Alias for --snow (Snow CLI)")
   .option(
     "--with-statusline",
     "Install the Trellis statusLine for Claude Code (off by default)",
