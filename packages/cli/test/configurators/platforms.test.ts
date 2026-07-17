@@ -1294,7 +1294,7 @@ describe("configurePlatform", () => {
       "{{PYTHON_CMD}} -X utf8 .codex/hooks/inject-subagent-context.py",
     );
     expect(rawTemplate).toContain(
-      '"matcher": "trellis-implement|trellis-check|trellis-research"',
+      '"matcher": "^(?:trellis-implement|trellis-check|trellis-research)$"',
     );
   });
 

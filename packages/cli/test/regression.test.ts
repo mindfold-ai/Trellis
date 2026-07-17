@@ -6593,7 +6593,7 @@ describe("regression: Codex uses native SubagentStart context delivery", () => {
 
     expect(config.hooks.UserPromptSubmit).toBeDefined();
     expect(subagentStart?.matcher).toBe(
-      "trellis-implement|trellis-check|trellis-research",
+      "^(?:trellis-implement|trellis-check|trellis-research)$",
     );
     expect(subagentStart?.hooks?.[0]?.command).toContain(
       ".codex/hooks/inject-subagent-context.py",
