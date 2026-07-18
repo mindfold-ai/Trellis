@@ -2,17 +2,21 @@
  * Snow CLI (snocli) configurator.
  *
  * Snow CLI is a class-1 platform (agentCapable + auto context inject +
- * project agent discovery + beforeSubAgentStart).
+ * project agent discovery + beforeSubAgentStart), same capability class as
+ * Claude Code / OMP — host protocol differs, workflow surface matches.
  *
  * Output paths:
  * - `.snow/skills/` — workflow + bundled skills (Claude Code Skills layout)
  * - `.snow/commands/trellis-*.json` — custom prompt slash commands (no trellis-start)
- * - `.snow/agents/` — project sub-agents (auto-discovered by Snow)
+ * - `.snow/agents/` — project sub-agents (auto-discovered by Snow; primary path)
  * - `.snow/hooks/` — inject hooks (session / user / beforeSubAgentStart)
- * - `.snow/sub-agents.trellis.json` — optional legacy fragment only
  * - `.snow/SNOW.md` — operator guide
  *
+ * Modern Snow does NOT ship `.snow/sub-agents.trellis.json` (legacy merge
+ * fragment for older hosts without project-agent discovery).
+ *
  * hasHooks=true → filterCommands drops `start`; SessionStart injects context.
+ * Agents are written without class-2 pull-based prelude (hook inject is primary).
  */
 
 import path from "node:path";
@@ -30,20 +34,8 @@ import {
   resolveCommands,
   writeSkills,
   writeAgents,
-  applyPullBasedPreludeMarkdown,
   replacePythonCommandLiterals,
-  type AgentContent,
 } from "./shared.js";
-
-/** Match snow-cli SubAgent shape enough for optional merge into sub-agents.json. */
-interface SnowSubAgentExport {
-  id: string;
-  name: string;
-  description: string;
-  role: string;
-  tools: string[];
-  systemPrompt?: string;
-}
 
 function buildSnowCommandJson(name: string, content: string): string {
   const description =
@@ -65,132 +57,6 @@ function buildSnowCommandJson(name: string, content: string): string {
       2,
     ) + "\n"
   );
-}
-
-function stripMarkdownFrontmatter(content: string): {
-  body: string;
-  frontmatter: string;
-} {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (!match) {
-    return { body: content, frontmatter: "" };
-  }
-  return {
-    frontmatter: match[1] ?? "",
-    body: content.slice(match[0].length),
-  };
-}
-
-function parseSimpleYamlList(frontmatter: string, key: string): string[] {
-  const lines = frontmatter.split(/\r?\n/);
-  const out: string[] = [];
-  let inList = false;
-  for (const line of lines) {
-    if (!inList) {
-      if (line.trim() === `${key}:`) {
-        inList = true;
-      }
-      continue;
-    }
-    const item = line.match(/^\s+-\s+(.+?)\s*$/);
-    if (item) {
-      out.push(item[1].replace(/^['"]|['"]$/g, ""));
-      continue;
-    }
-    if (/^\S/.test(line) && !line.startsWith(" ") && !line.startsWith("\t")) {
-      break;
-    }
-    if (line.trim() === "" && out.length > 0) {
-      break;
-    }
-  }
-  return out;
-}
-
-function parseSimpleYamlScalar(
-  frontmatter: string,
-  key: string,
-): string | null {
-  const re = new RegExp("^" + key + ":\\s*(.+?)\\s*$", "m");
-  const m = frontmatter.match(re);
-  if (!m) return null;
-  let v = m[1].trim();
-  if (v === "|" || v === ">") return null;
-  if (
-    (v.startsWith('"') && v.endsWith('"')) ||
-    (v.startsWith("'") && v.endsWith("'"))
-  ) {
-    v = v.slice(1, -1);
-  }
-  return v;
-}
-
-function parseSimpleYamlBlock(frontmatter: string, key: string): string | null {
-  const lines = frontmatter.split(/\r?\n/);
-  const header = `${key}: |`;
-  const idx = lines.findIndex(
-    (l) => l.trim() === header || l.trim() === `${key}:`,
-  );
-  if (idx < 0) return null;
-  if (lines[idx].trim() === `${key}:`) {
-    return null;
-  }
-  const body: string[] = [];
-  for (let i = idx + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^[a-zA-Z_][\w-]*:/.test(line)) break;
-    body.push(line.replace(/^ {2}/, ""));
-  }
-  const text = body.join("\n").trim();
-  return text || null;
-}
-
-function agentToSnowExport(agent: AgentContent): SnowSubAgentExport {
-  const { body, frontmatter } = stripMarkdownFrontmatter(agent.content);
-  const id =
-    parseSimpleYamlScalar(frontmatter, "id") ??
-    parseSimpleYamlScalar(frontmatter, "name") ??
-    agent.name;
-  const name = parseSimpleYamlScalar(frontmatter, "name") ?? agent.name;
-  const description =
-    parseSimpleYamlBlock(frontmatter, "description") ??
-    parseSimpleYamlScalar(frontmatter, "description") ??
-    `Trellis ${agent.name}`;
-  const tools = parseSimpleYamlList(frontmatter, "tools");
-  const role = body.trim();
-
-  return {
-    id,
-    name,
-    description: description.replace(/\s+/g, " ").trim(),
-    role,
-    tools:
-      tools.length > 0
-        ? tools
-        : [
-            "filesystem-read",
-            "filesystem-create",
-            "filesystem-replaceedit",
-            "filesystem-edit",
-            "terminal-execute",
-            "ace-search",
-            "codebase-search",
-            "todo-manage",
-            "notebook-manage",
-            "skill-execute",
-          ],
-    systemPrompt: role,
-  };
-}
-
-function buildSubAgentsFragment(agents: readonly AgentContent[]): string {
-  const payload = {
-    _comment:
-      "OPTIONAL LEGACY ONLY. Modern Snow auto-loads .snow/agents/*.md — do not merge this unless you are on an older Snow without project-agent discovery.",
-    _docs: "See .snow/SNOW.md",
-    agents: agents.map(agentToSnowExport),
-  };
-  return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
 function collectSnowStaticFiles(): Map<string, string> {
@@ -228,12 +94,10 @@ export function collectSnowTemplates(): Map<string, string> {
     );
   }
 
-  const agents = applyPullBasedPreludeMarkdown(getAllAgents());
-  for (const agent of agents) {
+  // class-1: no applyPullBasedPreludeMarkdown (hook inject is primary)
+  for (const agent of getAllAgents()) {
     files.set(`.snow/agents/${agent.name}.md`, agent.content);
   }
-
-  files.set(".snow/sub-agents.trellis.json", buildSubAgentsFragment(agents));
 
   for (const [filePath, content] of collectSnowStaticFiles()) {
     files.set(filePath, content);
@@ -244,7 +108,7 @@ export function collectSnowTemplates(): Map<string, string> {
 
 /**
  * Configure Snow CLI at init time: write skills, prompt commands, agents,
- * inject hooks, optional sub-agent fragment, and operator guide.
+ * inject hooks, and operator guide.
  */
 export async function configureSnow(cwd: string): Promise<void> {
   const config = AI_TOOLS.snow;
@@ -266,13 +130,8 @@ export async function configureSnow(cwd: string): Promise<void> {
     );
   }
 
-  const agents = applyPullBasedPreludeMarkdown(getAllAgents());
-  await writeAgents(path.join(cwd, ".snow", "agents"), agents);
-
-  await writeFile(
-    path.join(cwd, ".snow", "sub-agents.trellis.json"),
-    buildSubAgentsFragment(agents),
-  );
+  // class-1: no applyPullBasedPreludeMarkdown (hook inject is primary)
+  await writeAgents(path.join(cwd, ".snow", "agents"), getAllAgents());
 
   const hooksDir = path.join(cwd, ".snow", "hooks");
   ensureDir(hooksDir);

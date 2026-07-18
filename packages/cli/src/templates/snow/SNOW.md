@@ -35,9 +35,9 @@ Active task: .trellis/tasks/<id>
 ## Agents
 
 Snow loads project agents from `.snow/agents/**/*.md` (priority over `~/.snow/sub-agents.json`).
-Primary path: project agent discovery — no manual merge required.
+Primary path: project agent discovery — no manual merge required. Do not use legacy sub-agent JSON merge files.
 
-`.snow/sub-agents.trellis.json` is **optional legacy only** (older Snow without project-agent discovery). Modern Snow ignores the need to merge it.
+Context loading is class-1 hook inject (`beforeSubAgentStart` / session / user). Agents are **not** shipped with class-2 pull-based prelude text.
 
 ## Tool names (Snow-native)
 
@@ -63,26 +63,25 @@ Session / user / sub-agent hooks emit:
 
 Hook modes (same script, different depth):
 
-| Hook | argv mode | Payload |
-| ---- | --------- | ------- |
-| `onSessionStart` | `session` | full (~7.5KB): task.py, artifacts, prd summary, workflow/session |
-| `onUserMessage` | `user` | compact (~2.8KB): task.py + artifact presence only |
-| `beforeSubAgentStart` | `subagent` | full + agent-kind tailoring (implement/check/research) |
+| Hook                  | argv mode  | Payload                                                          |
+| --------------------- | ---------- | ---------------------------------------------------------------- |
+| `onSessionStart`      | `session`  | full (~7.5KB): task.py, artifacts, prd summary, workflow/session |
+| `onUserMessage`       | `user`     | compact (~2.8KB): task.py + artifact presence only               |
+| `beforeSubAgentStart` | `subagent` | full + agent-kind tailoring (implement/check/research)           |
 
 ## Session identity (multi-session)
 
 Snow injects these env vars into hook commands, `terminal-execute`, bash mode, and sub-agent children:
 
-| Variable | Example | Purpose |
-| --- | --- | --- |
-| `SNOW_SESSION_ID` | `c2343752-...` | Native Snow session uuid |
+| Variable             | Example             | Purpose                                   |
+| -------------------- | ------------------- | ----------------------------------------- |
+| `SNOW_SESSION_ID`    | `c2343752-...`      | Native Snow session uuid                  |
 | `TRELLIS_CONTEXT_ID` | `snow-c2343752-...` | Preferred Trellis active-task context key |
-| `SNOW_CWD` | project root | Working directory for hooks/tools |
-| `SNOW_PLATFORM` | `snow` | Platform tag |
+| `SNOW_CWD`           | project root        | Working directory for hooks/tools         |
+| `SNOW_PLATFORM`      | `snow`              | Platform tag                              |
 
 Notes:
 
 - `TRELLIS_CONTEXT_ID` wins when already set (explicit override).
 - Otherwise Trellis resolves `SNOW_SESSION_ID` via `active_task.py` as platform `snow`.
 - Hook stdin may also include dual keys: `sessionId` / `session_id`.
-

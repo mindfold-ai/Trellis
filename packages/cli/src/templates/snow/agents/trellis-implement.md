@@ -59,7 +59,7 @@ Active task: <path from task.py current>
 ```
 
 - `beforeSubAgentStart` injects Trellis breadcrumb into the sub-agent prompt.
-- Main session also receives session/user injects; pull-based prelude below remains defense-in-depth.
+- Main session also receives session/user injects (class-1 hook path; no class-2 pull prelude).
 - Optionally Read `.snow/log/trellis-context.txt` if present.
 
 ## Context

@@ -768,6 +768,7 @@ describe("configurePlatform", () => {
       "trellis-research.md",
     );
     expect(fs.existsSync(researchAgentPath)).toBe(true);
+    // class-1: neither research nor implement ships class-2 pull prelude
     expect(fs.readFileSync(researchAgentPath, "utf-8")).not.toContain(
       "Load Trellis Context First",
     );
@@ -776,7 +777,7 @@ describe("configurePlatform", () => {
         path.join(tmpDir, ".snow", "agents", "trellis-implement.md"),
         "utf-8",
       ),
-    ).toContain("Load Trellis Context First");
+    ).not.toContain("Load Trellis Context First");
     expect(
       fs.readFileSync(
         path.join(tmpDir, ".snow", "agents", "trellis-implement.md"),
@@ -810,7 +811,7 @@ describe("configurePlatform", () => {
     expect(templates?.has(".snow/commands/trellis-continue.json")).toBe(true);
     expect(templates?.has(".snow/agents/trellis-implement.md")).toBe(true);
     expect(templates?.has(".snow/agents/trellis-research.md")).toBe(true);
-    expect(templates?.has(".snow/sub-agents.trellis.json")).toBe(true);
+    expect(templates?.has(".snow/sub-agents.trellis.json")).toBe(false);
     expect(templates?.has(".snow/hooks/onSessionStart.json")).toBe(true);
     expect(templates?.has(".snow/hooks/onUserMessage.json")).toBe(true);
     expect(templates?.has(".snow/hooks/beforeSubAgentStart.json")).toBe(true);
@@ -848,8 +849,10 @@ describe("configurePlatform", () => {
       path.join(tmpDir, ".snow", "SNOW.md"),
       "utf-8",
     );
-    expect(snowGuide).toContain("optional legacy only");
+    expect(snowGuide).toContain("Do not use legacy sub-agent JSON merge files");
+    expect(snowGuide).toContain("class-1 hook inject");
     expect(snowGuide.toLowerCase()).not.toContain("until snow-cli#194");
+    expect(snowGuide).not.toContain("sub-agents.trellis.json");
     expect(snowGuide).toContain("Session identity");
     expect(snowGuide).toContain("SNOW_SESSION_ID");
     expect(snowGuide).toContain("TRELLIS_CONTEXT_ID");
@@ -860,10 +863,17 @@ describe("configurePlatform", () => {
     );
     expect(implementAgent.toLowerCase()).not.toContain("until snow-cli#194");
     expect(implementAgent).toContain("auto-loaded from");
+    // class-1: no class-2 pull-based prelude text
+    expect(implementAgent).not.toContain(
+      "This platform does NOT auto-inject task context via hook",
+    );
+    expect(implementAgent).toContain("no class-2 pull prelude");
+    expect(implementAgent).toContain("filesystem-read");
+    expect(implementAgent).toContain("terminal-execute");
 
     expect(
       fs.existsSync(path.join(tmpDir, ".snow", "sub-agents.trellis.json")),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       fs.existsSync(path.join(tmpDir, ".snow", "hooks", "onSessionStart.json")),
     ).toBe(true);
@@ -882,25 +892,11 @@ describe("configurePlatform", () => {
       fs.readFileSync(path.join(tmpDir, ".snow", "SNOW.md"), "utf-8"),
     ).toContain("class-1");
 
-    const fragment = JSON.parse(
-      fs.readFileSync(
-        path.join(tmpDir, ".snow", "sub-agents.trellis.json"),
-        "utf-8",
-      ),
-    ) as {
-      agents: Array<{ id: string; tools: string[] }>;
-      _comment?: string;
-    };
-    expect(fragment._comment ?? "").toMatch(/LEGACY ONLY/i);
-    expect(fragment.agents.some((a) => a.id === "trellis-implement")).toBe(
-      true,
-    );
-    const implement = fragment.agents.find((a) => a.id === "trellis-implement");
-    expect(implement?.tools).toContain("filesystem-read");
-    expect(implement?.tools).toContain("terminal-execute");
-
     expect(AI_TOOLS.snow.templateContext.hasHooks).toBe(true);
     expect(AI_TOOLS.snow.hasPythonHooks).toBe(true);
+    expect(AI_TOOLS.snow.extraManagedPaths ?? []).not.toContain(
+      ".snow/sub-agents.trellis.json",
+    );
   });
 
   it("configurePlatform('zcode') writes only .zcode-owned skills", async () => {
