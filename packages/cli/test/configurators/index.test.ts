@@ -318,7 +318,9 @@ describe("collectPlatformTemplates", () => {
     codebuddy: ".codebuddy/skills",
     copilot: ".github/skills",
     droid: ".factory/skills",
-    pi: ".pi/skills",
+    // Pi discovers `.agents/skills/` natively; Trellis writes there (shared
+    // with Codex/Gemini) instead of a private `.pi/skills/` copy (#447).
+    pi: ".agents/skills",
     zcode: ".zcode/skills",
   };
 

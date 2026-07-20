@@ -1,0 +1,15 @@
+{
+  "version": "0.6.8",
+  "description": "Pi Agent now shares the `.agents/skills/` skill root with Codex/Gemini CLI instead of keeping a private `.pi/skills/` copy, fixing duplicate/conflicting skill installs when a project has both platforms enabled.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "migrations": [
+    {
+      "type": "rename-dir",
+      "from": ".pi/skills",
+      "to": ".agents/skills",
+      "description": "Pi Agent: move installed skills from the private `.pi/skills/` root to the shared `.agents/skills/` root also used by Codex and Gemini CLI.",
+      "reason": "Pi already discovers `.agents/skills/` natively, so keeping a separate `.pi/skills/` copy of the same Trellis skills caused Pi to see the same skill twice (once from each root) when Codex or Gemini was also installed (#447)."
+    }
+  ]
+}

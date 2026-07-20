@@ -128,7 +128,7 @@ describe("pi templates", () => {
     }
   });
 
-  it("settings keep Pi-owned skills until shared Agent Skills are platform-neutral", () => {
+  it("settings no longer list a private skills root — Pi discovers shared .agents/skills/ natively (#447)", () => {
     const settings = JSON.parse(getSettingsTemplate().content) as {
       enableSkillCommands?: boolean;
       extensions?: string[];
@@ -139,9 +139,20 @@ describe("pi templates", () => {
 
     expect(settings.enableSkillCommands).toBe(true);
     expect(settings.extensions).toEqual(["./extensions/trellis/index.ts"]);
-    expect(settings.skills).toEqual(["./skills"]);
+    expect(settings.skills).toBeUndefined();
     expect(settings.prompts).toEqual(["./prompts"]);
     expect(settings.packages).toBeUndefined();
+  });
+
+  it("writes shared skills to .agents/skills/, not a private .pi/skills/ root (#447)", () => {
+    const templates = collectPiTemplates();
+
+    expect(
+      templates.get(".agents/skills/trellis-check/SKILL.md"),
+    ).toBeDefined();
+    for (const key of templates.keys()) {
+      expect(key.startsWith(".pi/skills/")).toBe(false);
+    }
   });
 
   it("collects a manual trellis-start prompt for Pi fallback bootstrap", () => {

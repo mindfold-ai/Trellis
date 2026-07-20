@@ -380,9 +380,10 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     },
   },
   pi: {
-    name: "Pi Agent",
+    name: "Pi Agent (also writes .agents/skills/ — read by Cursor, Gemini CLI, GitHub Copilot, Amp, Kimi Code)",
     templateDirs: ["common", "pi"],
     configDir: ".pi",
+    supportsAgentSkills: true,
     cliFlag: "pi",
     defaultChecked: false,
     hasPythonHooks: false,

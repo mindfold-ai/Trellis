@@ -3,9 +3,6 @@
   "extensions": [
     "./extensions/trellis/index.ts"
   ],
-  "skills": [
-    "./skills"
-  ],
   "prompts": [
     "./prompts"
   ]

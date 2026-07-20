@@ -1114,19 +1114,22 @@ describe("configurePlatform", () => {
     expect(
       fs.existsSync(path.join(tmpDir, ".pi", "prompts", "trellis-start.md")),
     ).toBe(true);
+    // Shared skills go to `.agents/skills/`, deduped with Codex/Gemini (#447) —
+    // Pi no longer keeps a private `.pi/skills/` copy.
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".pi", "skills", "trellis-check", "SKILL.md"),
+        path.join(tmpDir, ".agents", "skills", "trellis-check", "SKILL.md"),
       ),
     ).toBe(true);
     expect(
-      fs.existsSync(path.join(tmpDir, ".pi", "skills", BUNDLED_REFERENCE)),
+      fs.existsSync(path.join(tmpDir, ".agents", "skills", BUNDLED_REFERENCE)),
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".pi", "skills", SPEC_BOOTSTRAP_REFERENCE),
+        path.join(tmpDir, ".agents", "skills", SPEC_BOOTSTRAP_REFERENCE),
       ),
     ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".pi", "skills"))).toBe(false);
     expect(
       fs.existsSync(path.join(tmpDir, ".pi", "agents", "trellis-implement.md")),
     ).toBe(true);
@@ -1189,7 +1192,9 @@ describe("configurePlatform", () => {
           }
       )[];
     };
-    expect(settings.skills).toEqual(["./skills"]);
+    // No private `.pi/skills/` root anymore — Pi discovers shared
+    // `.agents/skills/` natively (#447).
+    expect(settings.skills).toBeUndefined();
   });
 
   it("configurePlatform('pi') writes tracked templates exactly", async () => {
@@ -1226,15 +1231,17 @@ describe("configurePlatform", () => {
     expect(templates?.get(".pi/prompts/trellis-start.md")).toBeDefined();
     expect(templates?.get(".pi/prompts/trellis-finish-work.md")).toBeDefined();
     expect(templates?.get(".pi/prompts/trellis-continue.md")).toBeDefined();
-    expect(templates?.get(".pi/skills/trellis-check/SKILL.md")).toBeDefined();
+    expect(
+      templates?.get(".agents/skills/trellis-check/SKILL.md"),
+    ).toBeDefined();
     expect(
       templates?.get(
-        ".pi/skills/trellis-meta/references/local-architecture/overview.md",
+        ".agents/skills/trellis-meta/references/local-architecture/overview.md",
       ),
     ).toBeDefined();
     expect(
       templates?.get(
-        ".pi/skills/trellis-spec-bootstrap/references/spec-writing.md",
+        ".agents/skills/trellis-spec-bootstrap/references/spec-writing.md",
       ),
     ).toBeDefined();
     expect(templates?.get(".pi/agents/trellis-implement.md")).toContain(
