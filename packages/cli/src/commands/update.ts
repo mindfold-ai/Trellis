@@ -1370,6 +1370,39 @@ function collectAllFiles(dirPath: string, cwd = process.cwd()): string[] {
 }
 
 /**
+ * Whether every file under `dirRelativePath` byte-matches the CURRENT
+ * template content for its path. Stricter than {@link isDirectorySafeToReplace},
+ * which also accepts files that are merely unmodified relative to an old
+ * stored hash (i.e. stale-but-untouched). Used to decide the safe *direction*
+ * of a rename-dir merge when both source and target exist: if the target
+ * already holds canonical current-version bytes, the source (however it got
+ * there) must not be allowed to overwrite it with older/differently-flavored
+ * content (#447 — a legacy `.pi/skills/` copy rendered with the Pi-specific
+ * resolver must not clobber the shared, neutral `.agents/skills/` content
+ * Codex/Gemini already wrote).
+ */
+function dirMatchesCurrentTemplates(
+  cwd: string,
+  dirRelativePath: string,
+  templates: Map<string, string>,
+): boolean {
+  const dirFullPath = path.join(cwd, dirRelativePath);
+  if (!fs.existsSync(dirFullPath)) return false;
+
+  const files = collectAllFiles(dirFullPath, cwd);
+  if (files.length === 0) return false;
+
+  for (const fullPath of files) {
+    const relativePath = toPosix(path.relative(cwd, fullPath));
+    const templateContent = templates.get(relativePath);
+    if (templateContent === undefined) return false;
+    if (fs.readFileSync(fullPath, "utf-8") !== templateContent) return false;
+  }
+
+  return true;
+}
+
+/**
  * Check if a directory only contains unmodified template files
  * Returns true if safe to delete:
  * - All files are tracked and unmodified, OR
@@ -1785,10 +1818,11 @@ export function sortMigrationsForExecution(
  * @param options.skipAll - Skip all modified files without asking
  * If neither is set, prompts interactively for modified files
  */
-async function executeMigrations(
+export async function executeMigrations(
   classified: ClassifiedMigrations,
   cwd: string,
   options: { force?: boolean; skipAll?: boolean },
+  templates: Map<string, string>,
 ): Promise<MigrationResult> {
   const result: MigrationResult = {
     renamed: 0,
@@ -1825,6 +1859,31 @@ async function executeMigrations(
     } else if (item.type === "rename-dir" && item.to) {
       const oldPath = path.join(cwd, item.from);
       const newPath = path.join(cwd, item.to);
+      const oldPrefix = item.from.endsWith("/") ? item.from : item.from + "/";
+      const newPrefix = item.to.endsWith("/") ? item.to : item.to + "/";
+
+      // Target already exists and already holds canonical, current-version
+      // content (e.g. Codex/Gemini already wrote the shared `.agents/skills/`
+      // root before Pi's legacy `.pi/skills/` copy gets retired). Renaming
+      // the source in would clobber good content with older/differently-
+      // flavored bytes, so just drop the now-redundant source instead (#447).
+      if (
+        fs.existsSync(newPath) &&
+        dirMatchesCurrentTemplates(cwd, item.to, templates)
+      ) {
+        removeDirectoryRecursive(oldPath);
+
+        const hashes = loadHashes(cwd);
+        const updatedHashes: TemplateHashes = {};
+        for (const [hashPath, hashValue] of Object.entries(hashes)) {
+          if (hashPath.startsWith(oldPrefix)) continue; // source retired
+          updatedHashes[hashPath] = hashValue;
+        }
+        saveHashes(cwd, updatedHashes);
+
+        result.deleted++;
+        continue;
+      }
 
       // If target exists (safe to replace, already checked in classification)
       // delete it first before renaming
@@ -1840,8 +1899,6 @@ async function executeMigrations(
 
       // Batch update hash tracking for all files in the directory
       const hashes = loadHashes(cwd);
-      const oldPrefix = item.from.endsWith("/") ? item.from : item.from + "/";
-      const newPrefix = item.to.endsWith("/") ? item.to : item.to + "/";
 
       const updatedHashes: TemplateHashes = {};
       for (const [hashPath, hashValue] of Object.entries(hashes)) {
@@ -2474,10 +2531,15 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Execute migrations if --migrate flag is set
   if (options.migrate && classifiedMigrations) {
-    const migrationResult = await executeMigrations(classifiedMigrations, cwd, {
-      force: options.force,
-      skipAll: options.skipAll,
-    });
+    const migrationResult = await executeMigrations(
+      classifiedMigrations,
+      cwd,
+      {
+        force: options.force,
+        skipAll: options.skipAll,
+      },
+      templates,
+    );
     printMigrationResult(migrationResult);
 
     // Hardcoded: Rename traces-*.md to journal-*.md in workspace directories

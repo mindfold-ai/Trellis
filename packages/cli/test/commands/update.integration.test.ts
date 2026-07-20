@@ -51,7 +51,11 @@ vi.mock("giget", async () => {
 // === Imports ===
 
 import { init } from "../../src/commands/init.js";
-import { update } from "../../src/commands/update.js";
+import {
+  update,
+  classifyMigrations,
+  executeMigrations,
+} from "../../src/commands/update.js";
 import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { computeHash } from "../../src/utils/template-hash.js";
@@ -62,7 +66,15 @@ import {
   COPILOT_INSTRUCTIONS_PATH,
   getCopilotInstructions,
 } from "../../src/templates/copilot/index.js";
-import { replacePythonCommandLiterals } from "../../src/configurators/shared.js";
+import {
+  replacePythonCommandLiterals,
+  resolveSkills,
+  resolveSkillsNeutral,
+  resolveAllAsSkillsNeutral,
+  resolveBundledSkills,
+  collectSkillTemplates,
+} from "../../src/configurators/shared.js";
+import { AI_TOOLS } from "../../src/types/ai-tools.js";
 
 // A managed template file that update always handles (Python script)
 const MANAGED_FILE = `${PATHS.SCRIPTS}/get_context.py`;
@@ -295,6 +307,105 @@ describe("update() integration", () => {
       fs.existsSync(projectFile(".zcode/agents/trellis-research.md")),
     ).toBe(true);
     expect(fs.existsSync(projectFile(".agents/skills"))).toBe(false);
+  });
+
+  it("[issue-447] 0.6.8 rename-dir migration moves legacy .pi/skills/ into shared .agents/skills/ even when Codex already installed the shared root", async () => {
+    // Simulate a pre-0.6.8 project: Pi + Codex both installed. Pre-fix Pi
+    // wrote its own Pi-flavored copy under `.pi/skills/` (via resolveSkills,
+    // not resolveSkillsNeutral), while Codex already wrote the shared,
+    // neutral `.agents/skills/` root. Reproduces the #447 repro shape.
+    //
+    // This exercises classifyMigrations()/executeMigrations() directly
+    // (like the existing "rename-dir ownership gate" tests in
+    // update-internals.test.ts) rather than the full update() CLI flow,
+    // because the 0.6.8 manifest only becomes "pending" once the CLI's own
+    // package.json version reaches 0.6.8 — a release-time bump orthogonal to
+    // this bug fix.
+    await init({ yes: true, force: true, pi: true, codex: true });
+
+    // `.agents/skills/` now holds the correct, neutral, current-version
+    // content (written by both Codex and current Pi in current code).
+    const neutralContent = readProjectFile(
+      ".agents/skills/trellis-update-spec/SKILL.md",
+    );
+
+    // Fabricate the pre-fix `.pi/skills/` leftover with Pi-flavored bytes
+    // (old pi.ts used resolveSkills(ctx), not resolveSkillsNeutral(ctx)).
+    const piCtx = AI_TOOLS.pi.templateContext;
+    const legacyPiSkillFiles = collectSkillTemplates(
+      ".pi/skills",
+      resolveSkills(piCtx),
+      resolveBundledSkills(piCtx),
+    );
+
+    const legacyContent = legacyPiSkillFiles.get(
+      ".pi/skills/trellis-update-spec/SKILL.md",
+    );
+    expect(legacyContent).toBeDefined();
+    // Sanity: the Pi-flavored bytes actually differ from the shared neutral
+    // bytes already on disk (otherwise this test wouldn't be exercising the
+    // reported bug at all).
+    expect(legacyContent).not.toBe(neutralContent);
+
+    const hashes = readHashesV2(hashFilePath());
+    for (const [relativePath, content] of legacyPiSkillFiles) {
+      writeProjectFile(relativePath, content);
+      hashes[relativePath] = computeHash(content);
+    }
+    writeHashesV2(hashFilePath(), hashes);
+
+    expect(fs.existsSync(projectFile(".pi/skills/trellis-update-spec"))).toBe(
+      true,
+    );
+    expect(
+      fs.existsSync(projectFile(".agents/skills/trellis-update-spec")),
+    ).toBe(true);
+
+    // Build the current-version templates map for `.agents/skills/` the way
+    // both real writers (Codex, Pi) produce it — mirrors what update()'s
+    // collectTemplateFiles() would assemble for this project.
+    const codexCtx = AI_TOOLS.codex.templateContext;
+    const currentTemplates = new Map<string, string>([
+      ...collectSkillTemplates(
+        ".agents/skills",
+        resolveAllAsSkillsNeutral(codexCtx),
+        resolveBundledSkills(codexCtx),
+      ),
+      ...collectSkillTemplates(
+        ".agents/skills",
+        resolveSkillsNeutral(piCtx),
+        resolveBundledSkills(piCtx),
+      ),
+    ]);
+
+    const migrationItem = {
+      type: "rename-dir" as const,
+      from: ".pi/skills",
+      to: ".agents/skills",
+    };
+    const finalHashes = readHashesV2(hashFilePath());
+    const classified = classifyMigrations(
+      [migrationItem],
+      tmpDir,
+      finalHashes,
+      currentTemplates,
+    );
+
+    // The merged 0.6.8 migration must resolve this automatically — not
+    // punt to the user as an unresolved conflict.
+    expect(classified.conflict).toHaveLength(0);
+    expect(classified.auto).toHaveLength(1);
+
+    await executeMigrations(classified, tmpDir, { force: true, skipAll: false }, currentTemplates);
+
+    // No duplicate/leftover `.pi/skills/` directory should survive.
+    expect(fs.existsSync(projectFile(".pi/skills"))).toBe(false);
+
+    // `.agents/skills/` must end up with the correct, current, neutral
+    // content — not the stale Pi-flavored bytes from the deleted legacy dir.
+    expect(
+      readProjectFile(".agents/skills/trellis-update-spec/SKILL.md"),
+    ).toBe(neutralContent);
   });
 
   it("#2 dry run makes no file changes even when changes exist", async () => {
