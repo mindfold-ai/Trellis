@@ -179,6 +179,12 @@ describe("getConfiguredPlatforms", () => {
     expect(result.has("pi")).toBe(true);
   });
 
+  it("detects .kimi-code directory as kimi", () => {
+    fs.mkdirSync(path.join(tmpDir, ".kimi-code"));
+    const result = getConfiguredPlatforms(tmpDir);
+    expect(result.has("kimi")).toBe(true);
+  });
+
   it("detects multiple platforms simultaneously", () => {
     for (const id of PLATFORM_IDS) {
       fs.mkdirSync(path.join(tmpDir, AI_TOOLS[id].configDir), {
@@ -700,6 +706,99 @@ describe("configurePlatform", () => {
     ).toBe(false);
     expect(templates?.has(".grok/agents/trellis-implement.md")).toBe(true);
     expect(templates?.has(".grok/agents/trellis-research.md")).toBe(true);
+  });
+
+  it("configurePlatform('kimi') writes shared skills and .kimi-code skills", async () => {
+    await configurePlatform("kimi", tmpDir);
+
+    // Shared workflow + bundled skills → .agents/skills/ (neutral rendering)
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-meta", "SKILL.md"),
+      ),
+    ).toBe(true);
+    // Command-as-skill entry points stay Kimi-private (Codex owns the shared
+    // trellis-start fallback copy when Codex is installed).
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(false);
+
+    // Kimi-private skills: commands-as-skills + agent prompts
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".kimi-code", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          tmpDir,
+          ".kimi-code",
+          "skills",
+          "trellis-finish-work",
+          "SKILL.md",
+        ),
+      ),
+    ).toBe(true);
+    const implementSkillPath = path.join(
+      tmpDir,
+      ".kimi-code",
+      "skills",
+      "trellis-implement",
+      "SKILL.md",
+    );
+    expect(fs.existsSync(implementSkillPath)).toBe(true);
+    expect(fs.readFileSync(implementSkillPath, "utf-8")).toContain(
+      "Load Trellis Context First",
+    );
+    const researchSkillPath = path.join(
+      tmpDir,
+      ".kimi-code",
+      "skills",
+      "trellis-research",
+      "SKILL.md",
+    );
+    expect(fs.existsSync(researchSkillPath)).toBe(true);
+    expect(fs.readFileSync(researchSkillPath, "utf-8")).not.toContain(
+      "Load Trellis Context First",
+    );
+
+    // No project-level hooks/settings/extension surface for Kimi.
+    expect(fs.existsSync(path.join(tmpDir, ".kimi-code", "hooks"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".kimi-code", "agents"))).toBe(
+      false,
+    );
+    expect(
+      fs.existsSync(path.join(tmpDir, ".kimi-code", "settings.json")),
+    ).toBe(false);
+
+    // configurePlatform and collectPlatformTemplates agree on the file set
+    // (update hash tracking depends on it).
+    const templates = collectPlatformTemplates("kimi");
+    expect(templates).toBeInstanceOf(Map);
+    expect(templates?.has(".kimi-code/skills/trellis-start/SKILL.md")).toBe(
+      true,
+    );
+    expect(
+      templates?.has(".kimi-code/skills/trellis-implement/SKILL.md"),
+    ).toBe(true);
+    expect(templates?.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
+    for (const [filePath, content] of templates ?? []) {
+      const diskPath = path.join(tmpDir, filePath);
+      expect(fs.existsSync(diskPath), `${filePath} written on disk`).toBe(
+        true,
+      );
+      expect(fs.readFileSync(diskPath, "utf-8"), `${filePath} bytes`).toBe(
+        content,
+      );
+    }
   });
 
   it("configurePlatform('zcode') writes only .zcode-owned skills", async () => {

@@ -45,6 +45,7 @@ _KNOWN_PLATFORMS = {
     "pi",
     "trae",
     "grok",
+    "kimi",
     "zcode",
 }
 

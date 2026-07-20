@@ -136,6 +136,8 @@ When adding a new platform `{platform}`, update the following:
 > - Codex hooks require `features.hooks = true` in user config (Codex 0.129+; older versions accept legacy `codex_hooks = true`); 0.129+ also gates per-hook activation behind a one-time `/hooks` TUI review
 > - Platform detection uses `.codex/` only — `.agents/skills/` alone does NOT trigger codex detection
 > - `configDir` is `".codex"`, with `supportsAgentSkills: true` to auto-include `.agents/skills` in managed paths
+>
+> **Kimi Code is a hybrid skills platform** — workflow/bundled skills go to the shared `.agents/skills/` root via `resolveSkillsNeutral()` (byte-identical to Codex/Gemini/Pi; Kimi discovers that root natively), while the session-boundary commands (`start` / `continue` / `finish-work`, invoked as `/skill:trellis-<name>`) and the Trellis agent prompts are written as Kimi-private skills under `.kimi-code/skills/<name>/SKILL.md`. Kimi has no project-level hooks/settings file (hooks are user-level `~/.kimi-code/config.toml` only) and no custom sub-agent definitions (built-in coder/explore/plan only), so no hooks, settings, extension, or `agents/` directory is written, and the agent prompts ship as skills with the pull-based prelude on implement/check (class-2).
 
 #### Rule: `.agents/skills/` writes use `resolvePlaceholdersNeutral()`
 
@@ -905,6 +907,7 @@ These are now **automatically derived** from the registry:
 | Pi Agent    | `/trellis-xxx` prompt templates + `/skill:<name>` skills               | Markdown (`.md`) + `SKILL.md` + TypeScript extension          | `/trellis-finish-work` |
 | Trae IDE    | `/trellis-xxx` commands + skills                                       | Markdown (`.md` with frontmatter) + `SKILL.md` + `hooks.json` | `/trellis-finish-work` |
 | Oh My Pi    | `/trellis-xxx`                                                         | Markdown (`.md` with YAML frontmatter) + TypeScript extension | `/trellis-finish-work` |
+| Kimi Code   | `/skill:trellis-<name>` skills                                         | Markdown (`SKILL.md`)                                         | `/skill:trellis-finish-work` |
 
 When creating platform templates, ensure references match the platform's interaction format and file format.
 
@@ -921,7 +924,7 @@ Commands emitted by `resolveCommands(ctx)` / `resolveAllAsSkills(ctx)` / `resolv
 **Rule**: filter is by `ctx.agentCapable && ctx.hasHooks` — **both flags required** (changed in 0.6.4; the prior single-flag rule silently dropped `start` from Codex / ZCode / OpenCode / Reasonix). `agentCapable` alone is not a proxy for "has a session-start mechanism" because some agent-capable platforms ship without a SessionStart-equivalent hook and rely on user-invocable `start` instead.
 
 - `agentCapable && hasHooks`: `claude-code, cursor, kiro, gemini, qoder, codebuddy, copilot, droid, pi, trae, zcode, omp`
-- `agentCapable && !hasHooks`: `codex, opencode, reasonix` — Codex has a UserPromptSubmit hook but no SessionStart; OpenCode has a `plugins/session-start.js` plugin but registry-`hasHooks` is reserved for the SessionStart-style hook protocol; Reasonix has neither.
+- `agentCapable && !hasHooks`: `codex, opencode, reasonix, grok, kimi` — Codex has a UserPromptSubmit hook but no SessionStart; OpenCode has a `plugins/session-start.js` plugin but registry-`hasHooks` is reserved for the SessionStart-style hook protocol; Reasonix and Grok have neither; Kimi has hooks only in the user-level `~/.kimi-code/config.toml` (no project-level hook file Trellis may write).
 - `!agentCapable`: `kilo, antigravity, devin`
 
 > ZCode joined `agentCapable && hasHooks` in the zcode-hook-support task: it ships a workspace hook config at `.zcode/config.json` covering SessionStart + UserPromptSubmit (reusing the shared `session-start.py` / `inject-workflow-state.py`). Live probing confirmed ZCode PreToolUse with matcher `Agent|Task` can mutate the sub-agent prompt through `hookSpecificOutput.updatedInput`, so ZCode is **class-1** for sub-agent context and ships `inject-subagent-context.py`.
@@ -935,7 +938,7 @@ Trellis sub-agents (implement / check / research) need task context (`prd.md` + 
 | Class                          | Mechanism                                                                                                                                                                                                      | Platforms                                                     |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | **Class-1** — Hook-inject      | Native hook or plugin fires at sub-agent start and injects context before the child runs, either by rewriting the spawn prompt or adding developer context                                                        | Claude Code, Cursor, OpenCode, Kiro, CodeBuddy, Codex, Factory Droid, ZCode |
-| **Class-2** — Pull-based       | Platform lacks a Trellis-supported native sub-agent context injection hook; Trellis injects a "Required: Load Trellis Context First" prelude into each definition so the sub-agent reads context at startup     | Gemini CLI, Qoder, Copilot, Reasonix, Trae IDE  |
+| **Class-2** — Pull-based       | Platform lacks a Trellis-supported native sub-agent context injection hook; Trellis injects a "Required: Load Trellis Context First" prelude into each definition so the sub-agent reads context at startup     | Gemini CLI, Qoder, Copilot, Reasonix, Trae IDE, Grok Build, Kimi Code  |
 | **Class-3** — Extension-backed | Platform exposes hook-equivalent events and custom tools through a project-local TypeScript extension; Trellis owns the sub-agent tool and the context injection path                                          | Pi Agent, Oh My Pi                                           |
 
 ### Class-1 — Hook-inject (8 platforms)
@@ -985,7 +988,7 @@ import { isTrellisSubagent } from "../lib/trellis-context.js"
 
 `getActiveTask()` in `lib/trellis-context.js` itself includes the single-session fallback so any caller (`workflow-state` breadcrumb, `session-start` task status) sees the same resolved task as the prompt injector. The fallback only activates when the explicit context-key lookup misses, so multi-window setups remain isolated.
 
-### Class-2 — Pull-based (5 platforms)
+### Class-2 — Pull-based (7 platforms)
 
 Platform's hook either does not expose a sub-agent-start event or cannot inject Trellis context. Sub-agents must read context themselves at startup. Trellis injects a "Required: Load Trellis Context First" prelude into each sub-agent definition file.
 
@@ -996,6 +999,8 @@ Platform's hook either does not expose a sub-agent-start event or cannot inject 
 | Copilot | `preToolUse` doesn't enforce on subagents ([#2392](https://github.com/github/copilot-cli/issues/2392), [#2540](https://github.com/github/copilot-cli/issues/2540)) |
 | Reasonix | Sub-agent skills run with `runAs: subagent`; no prompt-mutation hook exists, so workflow dispatch must carry the active task and the sub-agent skill reads task artifacts itself. |
 | Trae IDE | `SessionStart` / `UserPromptSubmit` hooks cover main-session context, but no Trellis-supported sub-agent prompt mutation surface exists; generated `.trae/agents/*.md` files receive the pull-based prelude. |
+| Grok Build | Hook stdout `additionalContext` is not consumed (verified on 0.2.x), so no Trellis hook is installed; dispatch goes through `spawn_subagent` and generated `.grok/agents/*.md` files receive the pull-based prelude. |
+| Kimi Code | Hooks exist only in the user-level `~/.kimi-code/config.toml` (no project-level hook/settings file Trellis may write) and there are no custom sub-agent definitions (built-in coder/explore/plan only), so the Trellis agent prompts ship as `.kimi-code/skills/trellis-*/SKILL.md` with the pull-based prelude. |
 
 #### Active task discovery on class-2 platforms (issue #225)
 

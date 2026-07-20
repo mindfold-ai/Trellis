@@ -110,6 +110,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".github", "copilot"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".factory"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".pi"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".kimi-code"))).toBe(false);
 
     // Root files
     expect(fs.existsSync(path.join(tmpDir, "AGENTS.md"))).toBe(true);
@@ -177,6 +178,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".github", "copilot"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".factory"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".pi"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".kimi-code"))).toBe(false);
     expect(
       fs.existsSync(
         path.join(tmpDir, ".claude", "skills", "trellis-meta", "SKILL.md"),
@@ -200,6 +202,7 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".devin", "workflows"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".github", "copilot"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".pi"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".kimi-code"))).toBe(false);
   });
 
   it("#3b codex platform creates skills plus .codex assets", async () => {
@@ -579,6 +582,89 @@ describe("init() integration", () => {
     }
     const expectedPiPaths = [...piTemplates.keys()];
     expect(trackedPaths).toEqual(expect.arrayContaining(expectedPiPaths));
+  });
+
+  it("#3m kimi platform creates shared skills and .kimi-code skills", async () => {
+    await init({ yes: true, kimi: true });
+
+    // Shared workflow + bundled skills → .agents/skills/
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-meta", "SKILL.md"),
+      ),
+    ).toBe(true);
+
+    // Kimi-private skills: commands-as-skills + agent prompts
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".kimi-code", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          tmpDir,
+          ".kimi-code",
+          "skills",
+          "trellis-continue",
+          "SKILL.md",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          tmpDir,
+          ".kimi-code",
+          "skills",
+          "trellis-finish-work",
+          "SKILL.md",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          tmpDir,
+          ".kimi-code",
+          "skills",
+          "trellis-implement",
+          "SKILL.md",
+        ),
+      ),
+    ).toBe(true);
+
+    // Kimi has no project-level hooks/settings surface.
+    expect(fs.existsSync(path.join(tmpDir, ".kimi-code", "hooks"))).toBe(false);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".kimi-code", "settings.json")),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
+
+    const hashFile = path.join(
+      tmpDir,
+      DIR_NAMES.WORKFLOW,
+      ".template-hashes.json",
+    );
+    const hashesFile = JSON.parse(fs.readFileSync(hashFile, "utf-8")) as {
+      __version?: number;
+      hashes?: Record<string, string>;
+    };
+    const hashes = hashesFile.hashes ?? {};
+    const trackedPaths = Object.keys(hashes).map((p) => p.replace(/\\/g, "/"));
+    const kimiTemplates = collectPlatformTemplates("kimi");
+    expect(kimiTemplates).toBeInstanceOf(Map);
+    if (!kimiTemplates) {
+      throw new Error("Expected Kimi templates to be collectable");
+    }
+    const expectedKimiPaths = [...kimiTemplates.keys()];
+    expect(trackedPaths).toEqual(expect.arrayContaining(expectedKimiPaths));
   });
 
   it("#3l trae platform writes hooks, commands, agents, and tracked templates", async () => {

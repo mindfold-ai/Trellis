@@ -26,7 +26,8 @@ export type AITool =
   | "zcode"
   | "trae"
   | "omp"
-  | "grok";
+  | "grok"
+  | "kimi";
 
 /**
  * Template directory categories
@@ -51,7 +52,8 @@ export type TemplateDir =
   | "zcode"
   | "trae"
   | "omp"
-  | "grok";
+  | "grok"
+  | "kimi";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -76,7 +78,8 @@ export type CliFlag =
   | "zcode"
   | "trae"
   | "omp"
-  | "grok";
+  | "grok"
+  | "kimi";
 
 /**
  * Template context for placeholder resolution.
@@ -84,7 +87,13 @@ export type CliFlag =
  */
 export interface TemplateContext {
   /** Prefix for cross-referencing other commands/skills */
-  cmdRefPrefix: "/trellis:" | "/trellis-" | "$" | "/" | "/skill trellis-";
+  cmdRefPrefix:
+    | "/trellis:"
+    | "/trellis-"
+    | "$"
+    | "/"
+    | "/skill trellis-"
+    | "/skill:trellis-";
   /** Description of AI executor actions shown in role tables */
   executorAI:
     | "Bash scripts or Task calls"
@@ -504,6 +513,39 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: false,
       cliFlag: "grok",
+    },
+  },
+  /**
+   * Kimi Code CLI — class-2 pull-based platform.
+   *
+   * Kimi reads project skills from `.kimi-code/skills/` AND the shared
+   * `.agents/skills/` (agentskills.io standard), so workflow/bundled skills go
+   * to the shared root via the neutral resolver (byte-identical to
+   * Codex/Gemini/Pi writes) while user-invocable entry points
+   * (`trellis-start` / `trellis-continue` / `trellis-finish-work`, invoked as
+   * `/skill:trellis-<name>`) and the Trellis sub-agent prompts live under
+   * `.kimi-code/skills/`.
+   *
+   * Kimi has no project-level hooks/settings file Trellis may write (hooks are
+   * user-level `~/.kimi-code/config.toml` only) and no project-level custom
+   * sub-agent definitions (only the built-in coder/explore/plan sub-agents), so
+   * the Trellis agent prompts ship as skills with the pull-based prelude.
+   */
+  kimi: {
+    name: "Kimi Code",
+    templateDirs: ["common", "kimi"],
+    configDir: ".kimi-code",
+    supportsAgentSkills: true,
+    cliFlag: "kimi",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "/skill:trellis-",
+      executorAI: "Bash scripts or Agent calls",
+      userActionLabel: "Slash commands",
+      agentCapable: true,
+      hasHooks: false,
+      cliFlag: "kimi",
     },
   },
 };

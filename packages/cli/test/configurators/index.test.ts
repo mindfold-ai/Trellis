@@ -462,4 +462,37 @@ describe("collectPlatformTemplates", () => {
     expect(result?.has(".grok/agents/trellis-check.md")).toBe(true);
     expect(result?.has(".grok/agents/trellis-research.md")).toBe(true);
   });
+
+  it("kimi collectTemplates includes shared skills and .kimi-code skills", () => {
+    const result = collectPlatformTemplates("kimi");
+    expect(result).toBeInstanceOf(Map);
+    // Shared neutral skills
+    expect(result?.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(result?.has(".agents/skills/trellis-before-dev/SKILL.md")).toBe(
+      true,
+    );
+    expect(result?.has(".agents/skills/trellis-meta/SKILL.md")).toBe(true);
+    // Kimi-private entry points + agent prompts
+    expect(result?.has(".kimi-code/skills/trellis-start/SKILL.md")).toBe(true);
+    expect(result?.has(".kimi-code/skills/trellis-continue/SKILL.md")).toBe(
+      true,
+    );
+    expect(
+      result?.has(".kimi-code/skills/trellis-finish-work/SKILL.md"),
+    ).toBe(true);
+    expect(
+      result?.has(".kimi-code/skills/trellis-implement/SKILL.md"),
+    ).toBe(true);
+    expect(result?.has(".kimi-code/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(
+      result?.has(".kimi-code/skills/trellis-research/SKILL.md"),
+    ).toBe(true);
+    // No project-level hooks/settings for Kimi
+    expect(
+      [...(result?.keys() ?? [])].some((key) =>
+        key.startsWith(".kimi-code/hooks"),
+      ),
+    ).toBe(false);
+    expect(result?.has(".kimi-code/settings.json")).toBe(false);
+  });
 });

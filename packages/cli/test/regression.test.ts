@@ -1047,6 +1047,7 @@ describe("regression: update only configured platforms (beta.16)", () => {
       "zcode",
       "omp",
       "grok",
+      "kimi",
     ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);
@@ -2497,6 +2498,45 @@ print(json.dumps({
       run: ["grok", "-p", "test prompt", "--yolo"],
       resume: ["grok", "-c"],
       detected: "grok",
+    });
+  });
+
+  it("[kimi] Python CLIAdapter executes Kimi paths, commands, and detection", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".kimi-code"), { recursive: true });
+    const probe = `
+import json
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+sys.path.insert(0, str(root / ".trellis" / "scripts"))
+from common.cli_adapter import CLIAdapter, detect_platform
+
+adapter = CLIAdapter("kimi")
+print(json.dumps({
+    "config_dir_name": adapter.config_dir_name,
+    "commands_path": adapter.get_commands_path(root, "trellis", "start.md").relative_to(root).as_posix(),
+    "command_path": adapter.get_trellis_command_path("start"),
+    "run": adapter.build_run_command("implement", "test prompt"),
+    "resume": adapter.build_resume_command("session-abc"),
+    "detected": detect_platform(root),
+}))
+`;
+
+    const result = spawnSync(pythonCmd, ["-c", probe], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      env: sessionEnv(),
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      config_dir_name: ".kimi-code",
+      commands_path: ".kimi-code/skills/trellis-start/SKILL.md",
+      command_path: ".kimi-code/skills/trellis-start/SKILL.md",
+      run: ["kimi", "-p", "test prompt", "--yolo"],
+      resume: ["kimi", "--session", "session-abc"],
+      detected: "kimi",
     });
   });
 
@@ -4342,6 +4382,33 @@ print(json.dumps({
     }
   });
 
+  it("[kimi] task.py create seeds jsonl when Kimi is the only sub-agent platform", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".kimi-code"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "kimi task" --slug kimi-task --assignee test-dev`,
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    const tasksDir = path.join(tmpDir, ".trellis", "tasks");
+    const taskName = fs
+      .readdirSync(tasksDir)
+      .find((name) => name.includes("kimi-task"));
+    expect(taskName).toBeDefined();
+    const taskDir = path.join(tasksDir, taskName as string);
+
+    for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
+      const jsonlPath = path.join(taskDir, jsonlName);
+      expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
+      const seed = JSON.parse(
+        fs.readFileSync(jsonlPath, "utf-8").trim(),
+      ) as Record<string, unknown>;
+      expect(seed).toHaveProperty("_example");
+      expect(seed).not.toHaveProperty("file");
+    }
+  });
+
   it("[issue-373] task.py create does NOT seed jsonl for Codex inline mode", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
@@ -4554,6 +4621,8 @@ print(len(entries))
       "pi/agents/trellis-check.md",
       "qoder/agents/trellis-implement.md",
       "qoder/agents/trellis-check.md",
+      "kimi/agents/trellis-implement.md",
+      "kimi/agents/trellis-check.md",
     ];
 
     for (const relativePath of agentFiles) {
@@ -5885,6 +5954,18 @@ describe("regression: platform additions (beta.9, beta.13, beta.16)", () => {
     expect(AI_TOOLS.grok.templateContext.cmdRefPrefix).toBe("/trellis-");
   });
 
+  it("[kimi] Kimi Code platform is registered as pull-based class-2", () => {
+    expect(AI_TOOLS).toHaveProperty("kimi");
+    expect(AI_TOOLS.kimi.name).toBe("Kimi Code");
+    expect(AI_TOOLS.kimi.configDir).toBe(".kimi-code");
+    expect(AI_TOOLS.kimi.cliFlag).toBe("kimi");
+    expect(AI_TOOLS.kimi.supportsAgentSkills).toBe(true);
+    expect(AI_TOOLS.kimi.hasPythonHooks).toBe(false);
+    expect(AI_TOOLS.kimi.templateContext.agentCapable).toBe(true);
+    expect(AI_TOOLS.kimi.templateContext.hasHooks).toBe(false);
+    expect(AI_TOOLS.kimi.templateContext.cmdRefPrefix).toBe("/skill:trellis-");
+  });
+
   it("[beta.9] all platforms have consistent required fields", () => {
     for (const id of PLATFORM_IDS) {
       const tool = AI_TOOLS[id];
@@ -5983,6 +6064,20 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     );
     expect(commonCliAdapter).toContain(
       'cmd = ["grok", "-p", prompt, "--yolo"]',
+    );
+  });
+
+  it("[kimi] cli_adapter.py supports kimi platform", () => {
+    expect(commonCliAdapter).toContain('"kimi"');
+    expect(commonCliAdapter).toContain(".kimi-code");
+    expect(commonCliAdapter).toContain(
+      'cmd = ["kimi", "-p", prompt, "--yolo"]',
+    );
+    expect(commonCliAdapter).toContain(
+      'return ["kimi", "--session", session_id]',
+    );
+    expect(commonCliAdapter).toContain(
+      'return f".kimi-code/skills/trellis-{name}/SKILL.md"',
     );
   });
 
@@ -6136,6 +6231,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(taskStore as string).toContain('".pi"');
     expect(taskStore as string).toContain('".zcode"');
     expect(taskStore as string).toContain('".grok"');
+    expect(taskStore as string).toContain('".kimi-code"');
     expect(taskStore as string).toContain('_CODEX_CONFIG_DIR = ".codex"');
     expect(taskStore as string).toContain(
       'get_codex_dispatch_mode(repo_root) == "auto"',

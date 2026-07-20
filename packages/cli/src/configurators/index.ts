@@ -37,6 +37,7 @@ import { configureZcode, collectZcodeTemplates } from "./zcode.js";
 import { configureTrae } from "./trae.js";
 import { configureOmp, collectOmpTemplates } from "./omp.js";
 import { configureGrok, collectGrokTemplates } from "./grok.js";
+import { configureKimi, collectKimiTemplates } from "./kimi.js";
 
 // Shared utilities
 import {
@@ -498,6 +499,10 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
   grok: {
     configure: configureGrok,
     collectTemplates: () => collectGrokTemplates(),
+  },
+  kimi: {
+    configure: configureKimi,
+    collectTemplates: () => collectKimiTemplates(),
   },
 };
 

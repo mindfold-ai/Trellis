@@ -1023,6 +1023,7 @@ interface InitOptions {
   trae?: boolean;
   omp?: boolean;
   grok?: boolean;
+  kimi?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

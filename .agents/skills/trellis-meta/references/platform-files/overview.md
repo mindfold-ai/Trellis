@@ -5,7 +5,7 @@ Trellis connects the same local architecture to different AI tools. `.trellis/` 
 When a local AI modifies Trellis, it should distinguish two file categories first:
 
 - **Shared files**: `.trellis/workflow.md`, `.trellis/tasks/`, `.trellis/spec/`, `.trellis/scripts/`.
-- **Platform files**: `.claude/`, `.codex/`, `.cursor/`, `.opencode/`, `.kiro/`, `.gemini/`, `.qoder/`, `.codebuddy/`, `.github/`, `.factory/`, `.pi/`, `.kilocode/`, `.agent/`, `.devin/`, `.reasonix/`, `.zcode/`, and similar directories.
+- **Platform files**: `.claude/`, `.codex/`, `.cursor/`, `.opencode/`, `.kiro/`, `.gemini/`, `.qoder/`, `.codebuddy/`, `.github/`, `.factory/`, `.pi/`, `.trae/`, `.kilocode/`, `.agent/`, `.devin/`, `.reasonix/`, `.zcode/`, `.kimi-code/`, and similar directories.
 
 Platform files do not store business state. They let the corresponding AI tool read Trellis state, call Trellis scripts, and load Trellis skills/agents/hooks.
 
@@ -13,11 +13,11 @@ Platform files do not store business state. They let the corresponding AI tool r
 
 | Category | Common paths | Purpose |
 | --- | --- | --- |
-| settings/config | `.claude/settings.json`, `.codex/hooks.json`, `.qoder/settings.json` | Register hooks, plugins, extensions, or platform behavior. |
+| settings/config | `.claude/settings.json`, `.codex/hooks.json`, `.qoder/settings.json`, `.trae/hooks.json` | Register hooks, plugins, extensions, or platform behavior. |
 | hooks/plugins/extensions | `.claude/hooks/`, `.opencode/plugins/`, `.pi/extensions/` | Inject context at session start, user input, agent startup, shell execution, and similar events. |
-| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/` | Define `trellis-research`, `trellis-implement`, and `trellis-check`. |
-| skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/` | Capability descriptions that auto-trigger or can be read on demand. |
-| commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.devin/workflows/` | Entry points explicitly invoked by the user. |
+| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/`, `.zcode/agents/` | Define `trellis-research`, `trellis-implement`, and `trellis-check`. |
+| skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/`, `.zcode/skills/` | Capability descriptions that auto-trigger or can be read on demand. |
+| commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.devin/workflows/`, `.zcode/commands/` | Entry points explicitly invoked by the user. |
 
 ## Three Platform Integration Modes
 
