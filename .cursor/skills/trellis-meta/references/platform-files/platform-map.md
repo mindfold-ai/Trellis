@@ -47,7 +47,7 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 - Reasonix (delivered as skills with `runAs: subagent` under `.reasonix/skills/`, not as a separate `agents/` directory)
 - ZCode
 - Grok Build (`.grok/agents/`; dispatch via `spawn_subagent` with `subagent_type`)
-- Kimi Code (delivered as skills under `.kimi-code/skills/`; dispatched to the built-in coder/explore sub-agents)
+- Kimi Code (delivered as skills under `.kimi-code/skills/`; dispatched to the built-in coder/explore/plan sub-agents)
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
 
