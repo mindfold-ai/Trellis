@@ -183,6 +183,12 @@ smoke_test/
 # Claude Code scheduled tasks session lock
 .claude/scheduled_tasks.lock
 
+# Snow CLI local runtime / host prefs (dogfood .snow/* assets are tracked)
+.snow/log/
+.snow/notebook/
+.snow/permissions.json
+.snow/sub-agents.trellis.json
+
 tmp/
 tmp1/
 .playwright-mcp
