@@ -1,0 +1,31 @@
+{
+  "id": "task-context-seed-validation-alignment",
+  "name": "task-context-seed-validation-alignment",
+  "title": "Align task context validation with PR preflight",
+  "description": "Make newly scaffolded task context manifests obey the same validity contract in task.py validate and downstream PR preflight, so generated placeholder rows fail early or are not written at all.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-07-22",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "packages/cli/src/templates/trellis/scripts/common/task_store.py",
+    "packages/cli/src/templates/trellis/scripts/common/task_context.py",
+    "packages/cli/test/regression.test.ts",
+    "packages/cli/test/scripts/context-injection-limits.integration.test.ts"
+  ],
+  "notes": "Created from downstream SE PR preflight evidence. Keep the independent SD preflight check as defense in depth.",
+  "meta": {}
+}
