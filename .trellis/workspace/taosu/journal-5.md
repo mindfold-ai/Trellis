@@ -1195,3 +1195,37 @@ Reviewed PRs #452 (Kimi Code, merged after marketplace#10) and #443 (Snow CLI, f
 ### Next Steps
 
 - None - task complete
+
+
+## Session 171: no-trellis skip keyword (#427) + stale task cleanup
+
+**Date**: 2026-07-22
+**Task**: no-trellis skip keyword (#427) + stale task cleanup
+**Package**: cli
+**Branch**: `main`
+
+### Summary
+
+Implemented prompt_injection.skip_keyword (default no-trellis): word-boundary case-insensitive keyword in user prompt mutes per-turn workflow-state injection for that turn; Python shared hook + OpenCode plugin + dogfood .claude/.codex copies; Pi documented coverage gap (no input handler / systemPrompt cache stability); quoted-empty-string YAML parser fix; 20 new tests, 1491 green. Spec contract added to platform-integration.md. Closed #427. Earlier: archived 4 stale tasks (kiro-injection done fbb38c93, #292 closed, #320 closed, #344 discussion closed/superseded by #445).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `64df8759` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

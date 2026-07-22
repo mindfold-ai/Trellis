@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-5.md`
-- **Total Sessions**: 170
+- **Total Sessions**: 171
 - **Last Active**: 2026-07-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-5.md` | ~1197 | Active |
+| `journal-5.md` | ~1231 | Active |
 | `journal-4.md` | ~1975 | Archived |
 | `journal-3.md` | ~1988 | Archived |
 | `journal-2.md` | ~1963 | Archived |
@@ -33,6 +33,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 171 | 2026-07-22 | no-trellis skip keyword (#427) + stale task cleanup | `64df8759` | `main` |
 | 170 | 2026-07-22 | 0.6.8 release + PR reviews + context injection caps (#441) | `ea399def`, `26ca25f8`, `dc68f5a9`, `65a83d7d`, `bfa7f99d` | `main` |
 | 169 | 2026-06-22 | filterCommands 根因修：agentCapable && !hasHooks 平台 start 输出 | `40791b8b` | `main` |
 | 168 | 2026-06-18 | Spec maintainer audit | `db07899e`, `3c2f947f` | `main` |
