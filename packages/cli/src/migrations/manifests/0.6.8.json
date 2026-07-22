@@ -1,8 +1,9 @@
 {
   "version": "0.6.8",
-  "description": "Pi Agent now shares the `.agents/skills/` skill root with Codex/Gemini CLI instead of keeping a private `.pi/skills/` copy, fixing duplicate/conflicting skill installs when a project has both platforms enabled.",
+  "description": "Two new platforms (Grok Build, Kimi Code), Codex native subagent dispatch, machine-readable platform/task state, and the Pi shared-skills migration to `.agents/skills/`.",
   "breaking": false,
   "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(cli): add Grok Build platform support — `trellis init --grok` (#433)\n- feat(cli): add Kimi Code platform support — `trellis init --kimi` (#452)\n- feat(zcode): hooks + mem session support (#411)\n- feat(codex): enable native subagent dispatch (#445)\n- feat(cli): `trellis platforms --json` machine-readable platform state (#396)\n- feat(scripts): `task.py list/current --json` output (#395)\n- feat(channel): `--sandbox` override for Codex workers (#413)\n- feat(scripts): stamp base_branch from repo default + `--base-branch` override (#399)\n\n**Bug Fixes:**\n- fix(pi): write shared skills to `.agents/skills/` instead of a private `.pi/skills/` root (#447)\n- fix(update): rename-dir merge must not clobber canonical target with stale source bytes (#447)\n- fix(update): preserve reintroduced templates (#425)\n- fix(cli): drop preferOffline for registry template downloads (#383)\n- fix(omp): bridge session context into bash env (#424)\n- fix(configurators): quote YAML frontmatter descriptions to survive embedded colons (#437)\n- fix(hooks): adapt SessionStart acknowledgment language (#439)\n- fix(brainstorm): require explicit planning approval before task creation (#416)\n- fix(codex): pin agents.max_depth=1 in project config.toml (#445)\n- fix: 0.6.7 fleet review batch — task boundary, atomic write, activation diagnostics, OpenCode start.md (#438)",
   "migrations": [
     {
       "type": "rename-dir",
@@ -11,5 +12,6 @@
       "description": "Pi Agent: move installed skills from the private `.pi/skills/` root to the shared `.agents/skills/` root also used by Codex and Gemini CLI.",
       "reason": "Pi already discovers `.agents/skills/` natively, so keeping a separate `.pi/skills/` copy of the same Trellis skills caused Pi to see the same skill twice (once from each root) when Codex or Gemini was also installed (#447)."
     }
-  ]
+  ],
+  "notes": "Pi Agent users: skills moved from .pi/skills/ to the shared .agents/skills/ root. Run `trellis update --migrate` to move existing installs (optional but recommended)."
 }
