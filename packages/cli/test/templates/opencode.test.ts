@@ -628,9 +628,10 @@ describe("opencode inject-subagent-context (issue #264)", () => {
     );
   });
 
-  it("inlines JSONL-referenced spec content into the implement prompt", async () => {
+  it("renders JSONL-referenced specs as an index entry in the implement prompt", async () => {
     // Cover AC #1: "JSONL-referenced context" — the seed-only jsonl path
-    // is exercised above; this one verifies a curated entry is inlined.
+    // is exercised above; this one verifies a curated entry renders as an
+    // index line (path + reason + size), not an inlined body (#441).
     const specPath = join(dir, ".trellis", "spec", "demo.md");
     mkdirSync(join(dir, ".trellis", "spec"), { recursive: true });
     writeFileSync(specPath, "# Demo Spec\n\nUNIQUE_SPEC_MARKER_42");
@@ -653,9 +654,129 @@ describe("opencode inject-subagent-context (issue #264)", () => {
     );
 
     expect(output.args.prompt).toContain("<!-- trellis-hook-injected -->");
-    expect(output.args.prompt).toContain("=== .trellis/spec/demo.md ===");
-    expect(output.args.prompt).toContain("UNIQUE_SPEC_MARKER_42");
+    expect(output.args.prompt).toContain("## Curated Reference Index");
+    expect(output.args.prompt).toContain("- .trellis/spec/demo.md (");
+    expect(output.args.prompt).toContain("KB) — test");
+    expect(output.args.prompt).not.toContain("UNIQUE_SPEC_MARKER_42");
     expect(output.args.prompt).toContain("Demo PRD");
+  });
+
+  it("truncates oversized prd.md with a read-more notice (#441)", async () => {
+    writeFileSync(
+      join(dir, ".trellis", "tasks", "demo-task", "prd.md"),
+      "x".repeat(25000) + "TOKEN_OPENCODE_PRD_TAIL",
+    );
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
+
+    const output: TaskToolOutput = {
+      args: {
+        subagent_type: "trellis-implement",
+        prompt: "do the implementation",
+      },
+    };
+
+    await hooks["tool.execute.before"](
+      { tool: "task", sessionID: "stranger" },
+      output,
+    );
+
+    expect(output.args.prompt).toContain(
+      "... [truncated at 20000 chars — read .trellis/tasks/demo-task/prd.md for the full content]",
+    );
+    expect(output.args.prompt).not.toContain("TOKEN_OPENCODE_PRD_TAIL");
+  });
+
+  it("notes manifest rows beyond the 50-entry cap as omitted (#441)", async () => {
+    const rows =
+      Array.from({ length: 60 }, (_, i) =>
+        JSON.stringify({ file: `src/entry-${i}.md`, reason: `r${i}` }),
+      ).join("\n") + "\n";
+    writeFileSync(
+      join(dir, ".trellis", "tasks", "demo-task", "implement.jsonl"),
+      rows,
+    );
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
+
+    const output: TaskToolOutput = {
+      args: {
+        subagent_type: "trellis-implement",
+        prompt: "do the implementation",
+      },
+    };
+
+    await hooks["tool.execute.before"](
+      { tool: "task", sessionID: "stranger" },
+      output,
+    );
+
+    expect(output.args.prompt).toContain("src/entry-49.md");
+    expect(output.args.prompt).not.toContain("src/entry-50.md");
+    expect(output.args.prompt).toContain(
+      "... [10 more curated entries omitted — read implement.jsonl for the full list]",
+    );
+  });
+
+  it("drops trailing sections past the aggregate context budget with a notice (#441)", async () => {
+    // Three artifacts at the 20000-char cap each exceed the 60000-char
+    // aggregate budget, forcing the trailing section(s) to be omitted.
+    for (const name of ["prd.md", "design.md", "implement.md"]) {
+      writeFileSync(
+        join(dir, ".trellis", "tasks", "demo-task", name),
+        "y".repeat(21000),
+      );
+    }
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
+
+    const output: TaskToolOutput = {
+      args: {
+        subagent_type: "trellis-implement",
+        prompt: "do the implementation",
+      },
+    };
+
+    await hooks["tool.execute.before"](
+      { tool: "task", sessionID: "stranger" },
+      output,
+    );
+
+    expect(output.args.prompt).toContain(
+      "section(s) omitted — total context cap of 60000 chars reached",
+    );
+  });
+
+  it("lists directory manifest entries as files with sizes, not contents (#441)", async () => {
+    mkdirSync(join(dir, "docs", "guides"), { recursive: true });
+    writeFileSync(join(dir, "docs", "guides", "a.md"), "TOKEN_OPENCODE_DIR_A");
+    writeFileSync(join(dir, "docs", "guides", "b.md"), "TOKEN_OPENCODE_DIR_B");
+    writeFileSync(
+      join(dir, ".trellis", "tasks", "demo-task", "implement.jsonl"),
+      JSON.stringify({
+        file: "docs/guides/",
+        type: "directory",
+        reason: "guides overview",
+      }) + "\n",
+    );
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
+
+    const output: TaskToolOutput = {
+      args: {
+        subagent_type: "trellis-implement",
+        prompt: "do the implementation",
+      },
+    };
+
+    await hooks["tool.execute.before"](
+      { tool: "task", sessionID: "stranger" },
+      output,
+    );
+
+    expect(output.args.prompt).toContain(
+      "- docs/guides/ (directory) — guides overview",
+    );
+    expect(output.args.prompt).toContain("- docs/guides/a.md (");
+    expect(output.args.prompt).toContain("- docs/guides/b.md (");
+    expect(output.args.prompt).not.toContain("TOKEN_OPENCODE_DIR_A");
+    expect(output.args.prompt).not.toContain("TOKEN_OPENCODE_DIR_B");
   });
 
   it("mutates check prompt using Active task hint when runtime resolution fails", async () => {

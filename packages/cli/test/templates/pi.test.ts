@@ -38,6 +38,7 @@ interface PiExtensionInternals {
   ) => PiRunConfig;
   cmdHasTrellisCtx: (cmd: string) => boolean;
   shellQuote: (v: string) => string;
+  buildContext: (root: string, agent: string, key: string | null) => string;
   trellisExtension: (pi: {
     registerTool?: (tool: unknown) => void;
     registerShortcut?: (key: string, opts: unknown) => void;
@@ -56,6 +57,7 @@ export {
   resolveRunCfg,
   cmdHasTrellisCtx,
   shellQuote,
+  buildContext,
   trellisExtension,
 };
 `;
@@ -585,5 +587,119 @@ fallbackModels:
     expect(extension).toContain("isTrellisAgent(root, agentName)");
     expect(extension).toContain("npm:@tintinweb/pi-subagents");
     expect(extension).toContain("npm:pi-subagents");
+  });
+});
+
+describe("pi extension buildContext index semantics (#441)", () => {
+  // Curated jsonl manifests render as an INDEX (path + reason + metadata),
+  // task artifacts are truncated per-file, and the aggregate payload is
+  // capped with explicit omission notices.
+  function setupTaskRoot(): { root: string; key: string; taskDir: string } {
+    const root = createMinimalTrellisRoot();
+    const taskDir = join(root, ".trellis", "tasks", "demo-task");
+    mkdirSync(taskDir, { recursive: true });
+    mkdirSync(join(root, ".trellis", ".runtime", "sessions"), {
+      recursive: true,
+    });
+    writeFileSync(join(taskDir, "prd.md"), "# Demo PRD");
+    writeFileSync(join(taskDir, "implement.jsonl"), "");
+    writeFileSync(
+      join(root, ".trellis", ".runtime", "sessions", "pi_441.json"),
+      JSON.stringify({ current_task: ".trellis/tasks/demo-task" }),
+    );
+    return { root, key: "pi_441", taskDir };
+  }
+
+  it("renders curated jsonl entries as an index (path + reason + size), no file bodies", () => {
+    const { root, key, taskDir } = setupTaskRoot();
+    mkdirSync(join(root, ".trellis", "spec"), { recursive: true });
+    writeFileSync(join(root, ".trellis", "spec", "demo.md"), "TOKEN_PI_SPEC_BODY");
+    writeFileSync(
+      join(taskDir, "implement.jsonl"),
+      JSON.stringify({ file: ".trellis/spec/demo.md", reason: "spec contract" }) +
+        "\n",
+    );
+
+    const { buildContext } = loadExtensionInternals(root);
+    const ctx = buildContext(root, "trellis-implement", key);
+
+    expect(ctx).toContain("### Curated Reference Index");
+    expect(ctx).toContain("NOT inlined");
+    expect(ctx).toContain("- .trellis/spec/demo.md (");
+    expect(ctx).toContain("KB) — spec contract");
+    expect(ctx).not.toContain("TOKEN_PI_SPEC_BODY");
+  });
+
+  it("truncates oversized prd.md with a read-more notice", () => {
+    const { root, key, taskDir } = setupTaskRoot();
+    writeFileSync(
+      join(taskDir, "prd.md"),
+      "x".repeat(25000) + "TOKEN_PI_PRD_TAIL",
+    );
+
+    const { buildContext } = loadExtensionInternals(root);
+    const ctx = buildContext(root, "trellis-implement", key);
+
+    expect(ctx).toContain("... [truncated at 20000 chars — read");
+    expect(ctx).toContain("/prd.md for the full content]");
+    expect(ctx).not.toContain("TOKEN_PI_PRD_TAIL");
+  });
+
+  it("notes manifest rows beyond the 50-entry cap as omitted", () => {
+    const { root, key, taskDir } = setupTaskRoot();
+    const rows =
+      Array.from({ length: 60 }, (_, i) =>
+        JSON.stringify({ file: `src/entry-${i}.md`, reason: `r${i}` }),
+      ).join("\n") + "\n";
+    writeFileSync(join(taskDir, "implement.jsonl"), rows);
+
+    const { buildContext } = loadExtensionInternals(root);
+    const ctx = buildContext(root, "trellis-implement", key);
+
+    expect(ctx).toContain("src/entry-49.md");
+    expect(ctx).not.toContain("src/entry-50.md");
+    expect(ctx).toContain(
+      "... [10 more curated entries omitted — read implement.jsonl for the full list]",
+    );
+  });
+
+  it("drops trailing sections past the aggregate context budget with a notice", () => {
+    const { root, key, taskDir } = setupTaskRoot();
+    // Three artifacts at the 20000-char cap each exceed the 60000-char
+    // aggregate budget, forcing the trailing section(s) to be omitted.
+    for (const name of ["prd.md", "design.md", "implement.md"]) {
+      writeFileSync(join(taskDir, name), "y".repeat(21000));
+    }
+
+    const { buildContext } = loadExtensionInternals(root);
+    const ctx = buildContext(root, "trellis-implement", key);
+
+    expect(ctx).toContain(
+      "section(s) omitted — total context cap of 60000 chars reached",
+    );
+  });
+
+  it("lists directory manifest entries as files with sizes, not contents", () => {
+    const { root, key, taskDir } = setupTaskRoot();
+    mkdirSync(join(root, "docs", "guides"), { recursive: true });
+    writeFileSync(join(root, "docs", "guides", "a.md"), "TOKEN_PI_DIR_A");
+    writeFileSync(join(root, "docs", "guides", "b.md"), "TOKEN_PI_DIR_B");
+    writeFileSync(
+      join(taskDir, "implement.jsonl"),
+      JSON.stringify({
+        file: "docs/guides/",
+        type: "directory",
+        reason: "guides overview",
+      }) + "\n",
+    );
+
+    const { buildContext } = loadExtensionInternals(root);
+    const ctx = buildContext(root, "trellis-implement", key);
+
+    expect(ctx).toContain("- docs/guides/ (directory) — guides overview");
+    expect(ctx).toContain("- docs/guides/a.md (");
+    expect(ctx).toContain("- docs/guides/b.md (");
+    expect(ctx).not.toContain("TOKEN_PI_DIR_A");
+    expect(ctx).not.toContain("TOKEN_PI_DIR_B");
   });
 });

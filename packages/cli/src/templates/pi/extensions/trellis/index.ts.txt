@@ -80,6 +80,11 @@ const MAX_LINE_BUFFER = 1024 * 1024;
 const MAX_TOOL_ARG_CHARS = 2048;
 const MAX_TOOLS = 256;
 const MAX_PARALLEL_PROMPTS = 6;
+// Context budget — identical caps across the Python hook, Pi, and OpenCode implementations
+const MAX_MANIFEST_ENTRIES = 50;
+const MAX_DIR_LISTING_FILES = 20;
+const MAX_ARTIFACT_CHARS = 20000;
+const MAX_TOTAL_CONTEXT_CHARS = 60000;
 const ABORT_KILL_GRACE_MS = 1500;
 const SESSION_OVERVIEW_TIMEOUT_MS = 1500;
 const THROTTLE_MS = 500;
@@ -938,6 +943,111 @@ function buildStartupContext(
     .join("\n\n");
 }
 
+function humanSize(bytes: number): string {
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function fileSizeLabel(p: string): string {
+  try {
+    return humanSize(statSync(p).size);
+  } catch {
+    return "missing";
+  }
+}
+
+function truncateArtifact(text: string, displayPath: string): string {
+  if (text.length <= MAX_ARTIFACT_CHARS) return text;
+  return (
+    text.slice(0, MAX_ARTIFACT_CHARS) +
+    `\n\n... [truncated at ${MAX_ARTIFACT_CHARS} chars — read ${displayPath} for the full content]`
+  );
+}
+
+function joinContextParts(parts: string[]): string {
+  let result = "";
+  let omitted = 0;
+  for (const part of parts) {
+    if (!part) continue;
+    const candidate = result ? `${result}\n\n${part}` : part;
+    if (candidate.length > MAX_TOTAL_CONTEXT_CHARS) {
+      omitted += 1;
+      continue;
+    }
+    result = candidate;
+  }
+  if (omitted)
+    result += `\n\n... [${omitted} section(s) omitted — total context cap of ${MAX_TOTAL_CONTEXT_CHARS} chars reached; read the referenced files directly]`;
+  return result;
+}
+
+/**
+ * Render a curated jsonl manifest as a reference index: path + reason +
+ * file metadata per entry (size for files, a capped .md listing for
+ * directories). Referenced contents are never inlined — the sub-agent
+ * reads them itself.
+ */
+function buildReferenceIndex(
+  root: string,
+  dir: string,
+  jsonlName: string,
+): string {
+  const rows: { file: string; type: string; reason: string }[] = [];
+  for (const line of readText(join(dir, jsonlName)).split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t) continue;
+    try {
+      const r = JSON.parse(t) as JsonObject;
+      const f =
+        typeof r.file === "string"
+          ? r.file
+          : typeof r.path === "string"
+            ? r.path
+            : "";
+      if (!f) continue;
+      rows.push({
+        file: f,
+        type: typeof r.type === "string" ? r.type : "file",
+        reason: typeof r.reason === "string" ? r.reason : "",
+      });
+    } catch {}
+  }
+  if (!rows.length) return "";
+
+  const lines = [
+    "### Curated Reference Index",
+    "",
+    "These references were curated for this task. Their contents are NOT inlined — read them yourself with your file tools before relying on them.",
+    "",
+  ];
+  for (const row of rows.slice(0, MAX_MANIFEST_ENTRIES)) {
+    const suffix = row.reason ? ` — ${row.reason}` : "";
+    if (row.type === "directory") {
+      lines.push(`- ${row.file} (directory)${suffix}`);
+      let names: string[] = [];
+      try {
+        names = readdirSync(join(root, row.file))
+          .filter((n) => n.endsWith(".md"))
+          .sort();
+      } catch {}
+      for (const name of names.slice(0, MAX_DIR_LISTING_FILES)) {
+        const p = `${row.file.replace(/\/+$/, "")}/${name}`;
+        lines.push(`  - ${p} (${fileSizeLabel(join(root, p))})`);
+      }
+      if (names.length > MAX_DIR_LISTING_FILES)
+        lines.push(
+          `  - ... [${names.length - MAX_DIR_LISTING_FILES} more files omitted]`,
+        );
+    } else {
+      lines.push(`- ${row.file} (${fileSizeLabel(join(root, row.file))})${suffix}`);
+    }
+  }
+  if (rows.length > MAX_MANIFEST_ENTRIES)
+    lines.push(
+      `... [${rows.length - MAX_MANIFEST_ENTRIES} more curated entries omitted — read ${jsonlName} for the full list]`,
+    );
+  return lines.join("\n");
+}
+
 function buildContext(root: string, agent: string, key: string | null): string {
   const dir = readTaskDir(root, key);
   if (!dir)
@@ -946,32 +1056,22 @@ function buildContext(root: string, agent: string, key: string | null): string {
   const design = readText(join(dir, "design.md"));
   const impl = readText(join(dir, "implement.md"));
   const jsonlName = TRELLIS_AGENT_JSONL[agent] ?? "";
-  let spec = "";
-  if (jsonlName) {
-    const chunks: string[] = [];
-    for (const line of readText(join(dir, jsonlName)).split(/\r?\n/)) {
-      const t = line.trim();
-      if (!t) continue;
-      try {
-        const r = JSON.parse(t) as JsonObject;
-        const f = typeof r.file === "string" ? r.file : "";
-        if (f) {
-          const c = readText(join(root, f));
-          if (c) chunks.push(`## ${f}\n\n${c}`);
-        }
-      } catch {}
-    }
-    spec = chunks.join("\n\n---\n\n");
-  }
+  const spec = jsonlName ? buildReferenceIndex(root, dir, jsonlName) : "";
+  const parts = [
+    "### prd.md\n" + (prd ? truncateArtifact(prd, `${dir}/prd.md`) : "(missing)"),
+  ];
+  if (design)
+    parts.push("### design.md\n" + truncateArtifact(design, `${dir}/design.md`));
+  if (impl)
+    parts.push(
+      "### implement.md\n" + truncateArtifact(impl, `${dir}/implement.md`),
+    );
+  if (spec) parts.push(spec);
   return [
     `## Trellis Task Context`,
     `Task directory: ${dir}`,
     "",
-    "### prd.md",
-    prd || "(missing)",
-    design ? "\n### design.md\n" + design : "",
-    impl ? "\n### implement.md\n" + impl : "",
-    spec ? "\n### Curated Spec / Research Context\n" + spec : "",
+    joinContextParts(parts),
   ].join("\n");
 }
 

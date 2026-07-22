@@ -5,7 +5,7 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, readdirSync } from "fs"
+import { existsSync, readFileSync, appendFileSync, readdirSync, statSync } from "fs"
 import { isAbsolute, join } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
@@ -15,6 +15,22 @@ import process from "process"
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 // Debug logging
 const DEBUG_LOG = "/tmp/trellis-plugin-debug.log"
+
+// Context budget (keep in sync with inject-subagent-context.py / pi extension)
+const MAX_MANIFEST_ENTRIES = 50
+const MAX_DIR_LISTING_FILES = 20
+const MAX_ARTIFACT_CHARS = 20000
+const MAX_TOTAL_CONTEXT_CHARS = 60000
+
+// Header for the curated reference index: tells the sub-agent the listed
+// references are NOT inlined and must be read on demand.
+const REFERENCE_INDEX_HEADER = `## Curated Reference Index
+
+The references below were curated for this task. Their contents are NOT inlined here — read the files yourself with your file tools (Read/Glob/Grep) before relying on them.`
+
+function humanSize(bytes) {
+  return `${(bytes / 1024).toFixed(1)} KB`
+}
 
 function debugLog(prefix, ...args) {
   const timestamp = new Date().toISOString()
@@ -279,44 +295,69 @@ export class TrellisContext {
   }
 
   // ============================================================
-  // JSONL Reading
+  // JSONL Reading (reference index — contents are never inlined)
   // ============================================================
 
-  readDirectoryMdFiles(dirPath, maxFiles = 20) {
-    const results = []
+  fileSizeLabel(filePath) {
+    try {
+      return humanSize(statSync(filePath).size)
+    } catch {
+      return "missing"
+    }
+  }
+
+  /**
+   * Read a task artifact, truncating at MAX_ARTIFACT_CHARS with a notice.
+   * `displayPath` is the path shown in the truncation notice.
+   */
+  readArtifact(filePath, displayPath) {
+    const content = this.readFile(filePath)
+    if (content && content.length > MAX_ARTIFACT_CHARS) {
+      return (
+        content.slice(0, MAX_ARTIFACT_CHARS) +
+        `\n\n... [truncated at ${MAX_ARTIFACT_CHARS} chars — read ${displayPath} for the full content]`
+      )
+    }
+    return content
+  }
+
+  /**
+   * List .md files in a directory with sizes (no contents).
+   * Returns { entries: [{ path, size }], omitted }.
+   */
+  listDirectoryMdFiles(dirPath, maxFiles = MAX_DIR_LISTING_FILES) {
+    const entries = []
+    let omitted = 0
     const fullPath = join(this.directory, dirPath)
 
     if (!existsSync(fullPath)) {
-      return results
+      return { entries, omitted }
     }
 
     try {
       const files = readdirSync(fullPath)
         .filter(f => f.endsWith(".md"))
         .sort()
-        .slice(0, maxFiles)
-
-      for (const filename of files) {
+      omitted = Math.max(0, files.length - maxFiles)
+      for (const filename of files.slice(0, maxFiles)) {
         const filePath = join(dirPath, filename)
-        const content = this.readProjectFile(filePath)
-        if (content) {
-          results.push({ path: filePath, content })
-        }
+        entries.push({ path: filePath, size: this.fileSizeLabel(join(this.directory, filePath)) })
       }
     } catch {
       // Ignore directory read errors
     }
 
-    return results
+    return { entries, omitted }
   }
 
   /**
-   * Read a JSONL file and load referenced files/directories
+   * Read a JSONL manifest as curated index entries (no file bodies)
    * Supports:
    *   {"file": "path/to/file.md", "reason": "..."}
    *   {"file": "path/to/dir/", "type": "directory", "reason": "..."}
+   * Returns: [{ path, type, reason }, ...]
    */
-  readJsonlWithFiles(jsonlPath) {
+  readJsonlEntries(jsonlPath) {
     const results = []
     const content = this.readFile(jsonlPath)
     if (!content) return results
@@ -326,20 +367,14 @@ export class TrellisContext {
       try {
         const item = JSON.parse(line)
         const file = item.file || item.path
-        const entryType = item.type || "file"
 
         if (!file) continue
 
-        if (entryType === "directory") {
-          const dirEntries = this.readDirectoryMdFiles(file)
-          results.push(...dirEntries)
-        } else {
-          const fullPath = join(this.directory, file)
-          const fileContent = this.readFile(fullPath)
-          if (fileContent) {
-            results.push({ path: file, content: fileContent })
-          }
-        }
+        results.push({
+          path: file,
+          type: item.type || "file",
+          reason: typeof item.reason === "string" ? item.reason : "",
+        })
       } catch {
         // Ignore parse errors for individual lines
       }
@@ -347,8 +382,64 @@ export class TrellisContext {
     return results
   }
 
-  buildContextFromEntries(entries) {
-    return entries.map(e => `=== ${e.path} ===\n${e.content}`).join("\n\n")
+  /**
+   * Render a JSONL manifest as a reference index: path + reason + file
+   * metadata per entry (size for files, a capped .md listing for
+   * directories). Referenced contents are never inlined.
+   */
+  buildReferenceIndex(jsonlPath, jsonlName) {
+    const entries = this.readJsonlEntries(jsonlPath)
+    if (entries.length === 0) return ""
+
+    const lines = [REFERENCE_INDEX_HEADER, ""]
+    for (const entry of entries.slice(0, MAX_MANIFEST_ENTRIES)) {
+      const suffix = entry.reason ? ` — ${entry.reason}` : ""
+      if (entry.type === "directory") {
+        lines.push(`- ${entry.path} (directory)${suffix}`)
+        const { entries: dirEntries, omitted } = this.listDirectoryMdFiles(entry.path)
+        for (const dirEntry of dirEntries) {
+          lines.push(`  - ${dirEntry.path} (${dirEntry.size})`)
+        }
+        if (omitted > 0) {
+          lines.push(`  - ... [${omitted} more files omitted]`)
+        }
+      } else {
+        const size = this.fileSizeLabel(join(this.directory, entry.path))
+        lines.push(`- ${entry.path} (${size})${suffix}`)
+      }
+    }
+
+    const omittedEntries = entries.length - MAX_MANIFEST_ENTRIES
+    if (omittedEntries > 0) {
+      lines.push(
+        `... [${omittedEntries} more curated entries omitted — read ${jsonlName} for the full list]`
+      )
+    }
+
+    return lines.join("\n")
+  }
+
+  /**
+   * Join context sections, enforcing the aggregate MAX_TOTAL_CONTEXT_CHARS
+   * budget. Sections that would overflow the budget are dropped and
+   * reported with an explicit omission notice.
+   */
+  joinContextParts(parts) {
+    let result = ""
+    let omitted = 0
+    for (const part of parts) {
+      if (!part) continue
+      const candidate = result ? `${result}\n\n${part}` : part
+      if (candidate.length > MAX_TOTAL_CONTEXT_CHARS) {
+        omitted += 1
+        continue
+      }
+      result = candidate
+    }
+    if (omitted > 0) {
+      result += `\n\n... [${omitted} section(s) omitted — total context cap of ${MAX_TOTAL_CONTEXT_CHARS} chars reached; read the referenced files directly]`
+    }
+    return result
   }
 }
 

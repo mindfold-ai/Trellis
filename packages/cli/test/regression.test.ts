@@ -3162,7 +3162,11 @@ print(json.dumps({
     expect(context).toContain("Trellis Native Implement Subagent");
     expect(context).toContain("`trellis-implement` role");
     expect(context).toContain("Active task: .trellis/tasks/issue-106");
-    expect(context).toContain("TOKEN_CODEX_IMPLEMENT");
+    // [issue-441] curated references render as an index entry
+    // (path + reason + size), never as an inlined file body.
+    expect(context).toContain("src/implement-context.md");
+    expect(context).toContain("implement contract");
+    expect(context).not.toContain("TOKEN_CODEX_IMPLEMENT");
     expect(context).toContain("TOKEN_CODEX_DESIGN");
     expect(context).toContain("TOKEN_CODEX_PLAN");
   });
@@ -3209,9 +3213,9 @@ print(json.dumps({
       ),
     );
 
-    for (const [agentType, curatedToken] of [
-      ["trellis-implement", "TOKEN_IMPLEMENT_ORDER"],
-      ["trellis-check", "TOKEN_CHECK_ORDER"],
+    for (const [agentType, curatedPath, curatedBody] of [
+      ["trellis-implement", "src/implement-order.md", "TOKEN_IMPLEMENT_ORDER"],
+      ["trellis-check", "src/check-order.md", "TOKEN_CHECK_ORDER"],
     ] as const) {
       const output = runPython(
         hookPath,
@@ -3226,8 +3230,10 @@ print(json.dumps({
         hookSpecificOutput: { additionalContext: string };
       };
       const context = parsed.hookSpecificOutput.additionalContext;
+      // [issue-441] curated entries are index lines (path), not bodies.
+      expect(context).not.toContain(curatedBody);
       const positions = [
-        context.indexOf(curatedToken),
+        context.indexOf(curatedPath),
         context.indexOf("TOKEN_PRD_ORDER"),
         context.indexOf("TOKEN_DESIGN_ORDER"),
         context.indexOf("TOKEN_PLAN_ORDER"),
@@ -3389,12 +3395,15 @@ print(json.dumps({
       TRELLIS_CONTEXT_ID: "codex_parent-b",
     });
 
-    expect(sessionA).toContain("TOKEN_CODEX_SESSION_A");
-    expect(sessionA).not.toContain("TOKEN_CODEX_SESSION_B");
-    expect(sessionB).toContain("TOKEN_CODEX_SESSION_B");
-    expect(sessionB).not.toContain("TOKEN_CODEX_SESSION_A");
-    expect(parentWins).toContain("TOKEN_CODEX_SESSION_A");
-    expect(parentWins).not.toContain("TOKEN_CODEX_SESSION_B");
+    // [issue-441] curated entries appear as index paths, not inlined bodies.
+    expect(sessionA).toContain("src/session-a.md");
+    expect(sessionA).not.toContain("src/session-b.md");
+    expect(sessionA).not.toContain("TOKEN_CODEX_SESSION_A");
+    expect(sessionB).toContain("src/session-b.md");
+    expect(sessionB).not.toContain("src/session-a.md");
+    expect(sessionB).not.toContain("TOKEN_CODEX_SESSION_B");
+    expect(parentWins).toContain("src/session-a.md");
+    expect(parentWins).not.toContain("src/session-b.md");
   });
 
   it("[codex-native-subagents] non-Trellis SubagentStart agents stay silent", () => {
@@ -4520,6 +4529,135 @@ print(len(entries))
       stdio: ["pipe", "pipe", "pipe"],
     });
     expect(result.trim()).toBe("0");
+  });
+
+  // ------------------------------------------------------------
+  // [issue-441] Unbounded sub-agent context injection
+  //   Curated jsonl manifests render as an INDEX (path + reason +
+  //   metadata), task artifacts are truncated per-file, and the
+  //   aggregate payload is capped with explicit omission notices.
+  // ------------------------------------------------------------
+
+  function runClaudeImplementHook(sessionId: string): string {
+    const sharedInject = getSharedHookScripts().find(
+      (hook) => hook.name === "inject-subagent-context.py",
+    )?.content;
+    writeProjectFile(
+      path.join(".claude", "hooks", "inject-subagent-context.py"),
+      expectTemplateContent(sharedInject, "shared inject-subagent-context"),
+    );
+    const hookOutput = runPython(
+      path.join(".claude", "hooks", "inject-subagent-context.py"),
+      JSON.stringify({
+        tool_name: "Task",
+        tool_input: { subagent_type: "trellis-implement", prompt: "do work" },
+        cwd: tmpDir,
+        session_id: sessionId,
+      }),
+    );
+    const parsed = JSON.parse(hookOutput) as {
+      hookSpecificOutput?: { updatedInput?: { prompt?: string } };
+    };
+    return parsed.hookSpecificOutput?.updatedInput?.prompt ?? "";
+  }
+
+  it("[issue-441] jsonl entries render as an index (path + reason + size), no file bodies", () => {
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "implement.jsonl"),
+      '{"file":"src/spec-441.md","reason":"spec contract"}\n',
+    );
+    writeProjectFile("src/spec-441.md", "TOKEN_441_SPEC_BODY\n");
+    writeSessionContext("claude_ctx-441", ".trellis/tasks/issue-106");
+
+    const prompt = runClaudeImplementHook("ctx-441");
+
+    expect(prompt).toContain("## Curated Reference Index");
+    expect(prompt).toContain("NOT inlined");
+    expect(prompt).toContain("- src/spec-441.md (");
+    expect(prompt).toContain("KB) — spec contract");
+    expect(prompt).not.toContain("TOKEN_441_SPEC_BODY");
+  });
+
+  it("[issue-441] oversized prd.md is truncated at MAX_ARTIFACT_CHARS with a notice", () => {
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "prd.md"),
+      "x".repeat(25000) + "TOKEN_441_PRD_TAIL",
+    );
+    writeSessionContext("claude_ctx-441", ".trellis/tasks/issue-106");
+
+    const prompt = runClaudeImplementHook("ctx-441");
+
+    expect(prompt).toContain(
+      "... [truncated at 20000 chars — read .trellis/tasks/issue-106/prd.md for the full content]",
+    );
+    expect(prompt).not.toContain("TOKEN_441_PRD_TAIL");
+  });
+
+  it("[issue-441] manifests over 50 entries note the omitted rows", () => {
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    const rows =
+      Array.from({ length: 60 }, (_, i) =>
+        JSON.stringify({ file: `src/entry-${i}.md`, reason: `r${i}` }),
+      ).join("\n") + "\n";
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "implement.jsonl"),
+      rows,
+    );
+    writeSessionContext("claude_ctx-441", ".trellis/tasks/issue-106");
+
+    const prompt = runClaudeImplementHook("ctx-441");
+
+    expect(prompt).toContain("src/entry-49.md");
+    expect(prompt).not.toContain("src/entry-50.md");
+    expect(prompt).toContain(
+      "... [10 more curated entries omitted — read .trellis/tasks/issue-106/implement.jsonl for the full list]",
+    );
+  });
+
+  it("[issue-441] aggregate payload over MAX_TOTAL_CONTEXT_CHARS drops trailing sections with a notice", () => {
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    // Three artifacts at the 20000-char cap each exceed the 60000-char
+    // aggregate budget, forcing the trailing section(s) to be omitted.
+    for (const name of ["prd.md", "design.md", "implement.md"]) {
+      writeProjectFile(
+        path.join(".trellis", "tasks", "issue-106", name),
+        "y".repeat(21000),
+      );
+    }
+    writeSessionContext("claude_ctx-441", ".trellis/tasks/issue-106");
+
+    const prompt = runClaudeImplementHook("ctx-441");
+
+    expect(prompt).toContain(
+      "section(s) omitted — total context cap of 60000 chars reached",
+    );
+    expect(prompt).toContain("read the referenced files directly");
+  });
+
+  it("[issue-441] directory entries list .md files with sizes instead of contents", () => {
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    writeProjectFile("docs/guides/a.md", "TOKEN_441_DIR_A\n");
+    writeProjectFile("docs/guides/b.md", "TOKEN_441_DIR_B\n");
+    writeProjectFile(
+      path.join(".trellis", "tasks", "issue-106", "implement.jsonl"),
+      '{"file":"docs/guides/","type":"directory","reason":"guides overview"}\n',
+    );
+    writeSessionContext("claude_ctx-441", ".trellis/tasks/issue-106");
+
+    const prompt = runClaudeImplementHook("ctx-441");
+
+    expect(prompt).toContain("- docs/guides/ (directory) — guides overview");
+    expect(prompt).toContain("- docs/guides/a.md (");
+    expect(prompt).toContain("- docs/guides/b.md (");
+    expect(prompt).not.toContain("TOKEN_441_DIR_A");
+    expect(prompt).not.toContain("TOKEN_441_DIR_B");
   });
 
   it("[init-context-removal] task.py validate treats seed-only jsonl as 0 errors", () => {

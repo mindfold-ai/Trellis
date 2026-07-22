@@ -28,35 +28,36 @@ function extractActiveTaskHint(prompt) {
 /**
  * Get context for implement agent. `taskDir` may be relative
  * (`.trellis/tasks/foo`) or absolute; both are resolved via
- * `ctx.resolveTaskDir`.
+ * `ctx.resolveTaskDir`. The jsonl manifest is rendered as a reference
+ * index (path + reason + metadata); task artifacts are inlined with
+ * per-file truncation and an aggregate budget.
  */
 function getImplementContext(ctx, taskDir) {
   const parts = []
   const taskDirFull = ctx.resolveTaskDir(taskDir)
   if (!taskDirFull) return ""
 
-  const jsonlPath = join(taskDirFull, "implement.jsonl")
-  const entries = ctx.readJsonlWithFiles(jsonlPath)
-  if (entries.length > 0) {
-    parts.push(ctx.buildContextFromEntries(entries))
+  const index = ctx.buildReferenceIndex(join(taskDirFull, "implement.jsonl"), "implement.jsonl")
+  if (index) {
+    parts.push(index)
   }
 
-  const prd = ctx.readFile(join(taskDirFull, "prd.md"))
+  const prd = ctx.readArtifact(join(taskDirFull, "prd.md"), `${taskDir}/prd.md`)
   if (prd) {
     parts.push(`=== ${taskDir}/prd.md (Requirements) ===\n${prd}`)
   }
 
-  const design = ctx.readFile(join(taskDirFull, "design.md"))
+  const design = ctx.readArtifact(join(taskDirFull, "design.md"), `${taskDir}/design.md`)
   if (design) {
     parts.push(`=== ${taskDir}/design.md (Technical Design) ===\n${design}`)
   }
 
-  const implementPlan = ctx.readFile(join(taskDirFull, "implement.md"))
+  const implementPlan = ctx.readArtifact(join(taskDirFull, "implement.md"), `${taskDir}/implement.md`)
   if (implementPlan) {
     parts.push(`=== ${taskDir}/implement.md (Execution Plan) ===\n${implementPlan}`)
   }
 
-  return parts.join("\n\n")
+  return ctx.joinContextParts(parts)
 }
 
 /**
@@ -67,28 +68,27 @@ function getCheckContext(ctx, taskDir) {
   const taskDirFull = ctx.resolveTaskDir(taskDir)
   if (!taskDirFull) return ""
 
-  const jsonlPath = join(taskDirFull, "check.jsonl")
-  const entries = ctx.readJsonlWithFiles(jsonlPath)
-  if (entries.length > 0) {
-    parts.push(ctx.buildContextFromEntries(entries))
+  const index = ctx.buildReferenceIndex(join(taskDirFull, "check.jsonl"), "check.jsonl")
+  if (index) {
+    parts.push(index)
   }
 
-  const prd = ctx.readFile(join(taskDirFull, "prd.md"))
+  const prd = ctx.readArtifact(join(taskDirFull, "prd.md"), `${taskDir}/prd.md`)
   if (prd) {
     parts.push(`=== ${taskDir}/prd.md (Requirements) ===\n${prd}`)
   }
 
-  const design = ctx.readFile(join(taskDirFull, "design.md"))
+  const design = ctx.readArtifact(join(taskDirFull, "design.md"), `${taskDir}/design.md`)
   if (design) {
     parts.push(`=== ${taskDir}/design.md (Technical Design) ===\n${design}`)
   }
 
-  const implementPlan = ctx.readFile(join(taskDirFull, "implement.md"))
+  const implementPlan = ctx.readArtifact(join(taskDirFull, "implement.md"), `${taskDir}/implement.md`)
   if (implementPlan) {
     parts.push(`=== ${taskDir}/implement.md (Execution Plan) ===\n${implementPlan}`)
   }
 
-  return parts.join("\n\n")
+  return ctx.joinContextParts(parts)
 }
 
 /**
@@ -179,7 +179,7 @@ ${originalPrompt}
 
 ## Workflow
 
-1. **Understand specs** - All dev specs are injected above
+1. **Understand specs** - Read the curated references listed in the index above
 2. **Understand task artifacts** - Read requirements, technical design if present, and execution plan if present
 3. **Implement feature** - Follow specs and task artifacts
 4. **Self-check** - Ensure code quality
@@ -187,7 +187,7 @@ ${originalPrompt}
 ## Important Constraints
 
 - Do NOT execute git commit
-- Follow all dev specs injected above
+- Follow all dev specs referenced above
 - Report list of modified/created files when done`,
 
     check: isFinish ? `<!-- trellis-hook-injected -->
@@ -246,7 +246,7 @@ ${originalPrompt}
 ## Workflow
 
 1. **Get changes** - Run \`git diff --name-only\` and \`git diff\`
-2. **Check against specs** - Check item by item
+2. **Check against specs** - Read the curated references in the index above, then check item by item
 3. **Self-fix** - Fix issues directly, don't just report
 4. **Run verification** - Run lint and typecheck
 

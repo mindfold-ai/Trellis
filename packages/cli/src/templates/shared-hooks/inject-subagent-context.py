@@ -6,8 +6,12 @@ Multi-Platform Sub-Agent Context Injection Hook
 Injects task-specific context when sub-agents (implement, check, research) are spawned.
 
 Core Design Philosophy:
-- Hook is responsible for injecting all context, subagent works autonomously with complete info
-- Each agent has a dedicated jsonl file defining its context
+- Hook injects a bounded context payload: task artifacts (prd.md/design.md/
+  implement.md) are inlined with per-file truncation, while jsonl manifests
+  act as INDEXES — each curated entry is rendered as path + reason + file
+  metadata so the sub-agent reads the referenced files itself with its own
+  file tools before relying on them
+- Each agent has a dedicated jsonl file defining its context manifest
 - No resume needed, no segmentation, behavior controlled by code not prompt
 
 Trigger: PreToolUse (before Task tool call)
@@ -62,6 +66,28 @@ AGENT_RESEARCH = "trellis-research"
 AGENTS_REQUIRE_TASK = (AGENT_IMPLEMENT, AGENT_CHECK)
 # All supported agents
 AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_RESEARCH)
+
+# =============================================================================
+# Context Budget Constants (keep in sync with the pi / opencode implementations)
+# =============================================================================
+
+# Max curated jsonl manifest entries rendered into the reference index
+MAX_MANIFEST_ENTRIES = 50
+# Max .md files listed per directory-type manifest entry
+MAX_DIR_LISTING_FILES = 20
+# Max chars inlined per task artifact (prd.md / design.md / implement.md)
+MAX_ARTIFACT_CHARS = 20000
+# Max chars of the aggregate injected context payload
+MAX_TOTAL_CONTEXT_CHARS = 60000
+
+# Header for the curated reference index: tells the sub-agent the listed
+# references are NOT inlined and must be read on demand.
+REFERENCE_INDEX_HEADER = (
+    "## Curated Reference Index\n\n"
+    "The references below were curated for this task. Their contents are NOT "
+    "inlined here — read the files yourself with your file tools "
+    "(Read/Glob/Grep) before relying on them."
+)
 
 
 def find_repo_root(start_path: str) -> str | None:
@@ -160,27 +186,54 @@ def read_file_content(base_path: str, file_path: str) -> str | None:
     return None
 
 
-def read_directory_contents(
-    base_path: str, dir_path: str, max_files: int = 20
-) -> list[tuple[str, str]]:
+def read_artifact_content(base_path: str, file_path: str) -> str | None:
+    """Read a task artifact, truncating at MAX_ARTIFACT_CHARS with a notice."""
+    content = read_file_content(base_path, file_path)
+    if content and len(content) > MAX_ARTIFACT_CHARS:
+        content = (
+            content[:MAX_ARTIFACT_CHARS]
+            + f"\n\n... [truncated at {MAX_ARTIFACT_CHARS} chars — "
+            f"read {file_path} for the full content]"
+        )
+    return content
+
+
+def _human_size(size_bytes: int) -> str:
+    """Human-readable file size in KB."""
+    return f"{size_bytes / 1024:.1f} KB"
+
+
+def _file_size_label(base_path: str, file_path: str) -> str:
+    """Human-readable size for a file, or 'missing' when it does not exist."""
+    full_path = os.path.join(base_path, file_path)
+    try:
+        return _human_size(os.path.getsize(full_path))
+    except OSError:
+        return "missing"
+
+
+def list_directory_md_files(
+    base_path: str, dir_path: str, max_files: int = MAX_DIR_LISTING_FILES
+) -> tuple[list[tuple[str, str]], int]:
     """
-    Read all .md files in a directory
+    List .md files in a directory with sizes (no contents)
 
     Args:
         base_path: Base path (usually repo_root)
         dir_path: Directory relative path
-        max_files: Max files to read (prevent huge directories)
+        max_files: Max files to list (prevent huge directories)
 
     Returns:
-        [(file_path, content), ...]
+        ([(file_path, size_label), ...], omitted_count)
     """
     full_path = os.path.join(base_path, dir_path)
     if not os.path.exists(full_path) or not os.path.isdir(full_path):
-        return []
+        return [], 0
 
     results = []
+    omitted = 0
     try:
-        # Only read .md files, sorted by filename
+        # Only list .md files, sorted by filename
         md_files = sorted(
             [
                 f
@@ -188,25 +241,19 @@ def read_directory_contents(
                 if f.endswith(".md") and os.path.isfile(os.path.join(full_path, f))
             ]
         )
-
+        omitted = max(0, len(md_files) - max_files)
         for filename in md_files[:max_files]:
-            file_full_path = os.path.join(full_path, filename)
             relative_path = os.path.join(dir_path, filename)
-            try:
-                with open(file_full_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    results.append((relative_path, content))
-            except Exception:
-                continue
+            results.append((relative_path, _file_size_label(base_path, relative_path)))
     except Exception:
         pass
 
-    return results
+    return results, omitted
 
 
-def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]:
+def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict[str, str]]:
     """
-    Read all file/directory contents referenced in jsonl file
+    Read curated entries from a jsonl manifest as an INDEX (no file bodies)
 
     Schema:
         {"file": "path/to/file.md", "reason": "..."}
@@ -219,7 +266,7 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
     emitted so the operator can debug missing context.
 
     Returns:
-        [(path, content), ...]
+        [{"path": ..., "type": "file"|"directory", "reason": ...}, ...]
     """
     full_path = os.path.join(base_path, jsonl_path)
     if not os.path.exists(full_path):
@@ -241,22 +288,19 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
                 try:
                     item = json.loads(line)
                     file_path = item.get("file") or item.get("path")
-                    entry_type = item.get("type", "file")
 
                     if not file_path:
                         # Seed / comment row — skip silently
                         continue
 
                     saw_real_entry = True
-                    if entry_type == "directory":
-                        # Read all .md files in directory
-                        dir_contents = read_directory_contents(base_path, file_path)
-                        results.extend(dir_contents)
-                    else:
-                        # Read single file
-                        content = read_file_content(base_path, file_path)
-                        if content:
-                            results.append((file_path, content))
+                    results.append(
+                        {
+                            "path": file_path,
+                            "type": item.get("type", "file"),
+                            "reason": item.get("reason", "") or "",
+                        }
+                    )
                 except json.JSONDecodeError:
                     continue
     except Exception:
@@ -273,20 +317,74 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
     return results
 
 
+def build_reference_index(base_path: str, jsonl_path: str) -> str:
+    """
+    Render a jsonl manifest as a reference index: each curated entry becomes
+    a line with path + reason + file metadata (size for files, a capped .md
+    listing for directories). Referenced contents are never inlined.
+    """
+    entries = read_jsonl_entries(base_path, jsonl_path)
+    if not entries:
+        return ""
+
+    lines = [REFERENCE_INDEX_HEADER, ""]
+    for entry in entries[:MAX_MANIFEST_ENTRIES]:
+        entry_path = entry["path"]
+        suffix = f" — {entry['reason']}" if entry["reason"] else ""
+        if entry["type"] == "directory":
+            lines.append(f"- {entry_path} (directory){suffix}")
+            dir_listing, dir_omitted = list_directory_md_files(base_path, entry_path)
+            for file_path, size_label in dir_listing:
+                lines.append(f"  - {file_path} ({size_label})")
+            if dir_omitted:
+                lines.append(f"  - ... [{dir_omitted} more files omitted]")
+        else:
+            size_label = _file_size_label(base_path, entry_path)
+            lines.append(f"- {entry_path} ({size_label}){suffix}")
+
+    omitted = len(entries) - MAX_MANIFEST_ENTRIES
+    if omitted > 0:
+        lines.append(
+            f"... [{omitted} more curated entries omitted — "
+            f"read {jsonl_path} for the full list]"
+        )
+
+    return "\n".join(lines)
+
+
+def join_context_parts(context_parts: list[str]) -> str:
+    """
+    Join context sections, enforcing the aggregate MAX_TOTAL_CONTEXT_CHARS
+    budget. Sections that would overflow the budget are dropped and reported
+    with an explicit omission notice.
+    """
+    result = ""
+    omitted = 0
+    for part in context_parts:
+        candidate = part if not result else f"{result}\n\n{part}"
+        if len(candidate) > MAX_TOTAL_CONTEXT_CHARS:
+            omitted += 1
+            continue
+        result = candidate
+
+    if omitted:
+        result += (
+            f"\n\n... [{omitted} section(s) omitted — total context cap of "
+            f"{MAX_TOTAL_CONTEXT_CHARS} chars reached; "
+            f"read the referenced files directly]"
+        )
+    return result
+
+
 
 
 def get_agent_context(repo_root: str, task_dir: str, agent_type: str) -> str:
     """
     Get context from {agent_type}.jsonl for the specified agent.
     Only reads implement.jsonl or check.jsonl (the two JSONL files the task system creates).
+    The manifest is rendered as a reference index, not inlined file bodies.
     """
-    context_parts = []
-
-    agent_jsonl = f"{task_dir}/{agent_type}.jsonl"
-    for file_path, content in read_jsonl_entries(repo_root, agent_jsonl):
-        context_parts.append(f"=== {file_path} ===\n{content}")
-
-    return "\n\n".join(context_parts)
+    return build_reference_index(repo_root, f"{task_dir}/{agent_type}.jsonl")
 
 
 def get_implement_context(repo_root: str, task_dir: str) -> str:
@@ -294,66 +392,67 @@ def get_implement_context(repo_root: str, task_dir: str) -> str:
     Complete context for Implement Agent
 
     Read order:
-    1. All files in implement.jsonl (spec/research manifests)
+    1. Reference index from implement.jsonl (spec/research manifests)
     2. prd.md (requirements)
     3. design.md if present (technical design)
     4. implement.md if present (execution plan)
     """
     context_parts = []
 
-    # 1. Read implement.jsonl
+    # 1. Read implement.jsonl as a reference index
     base_context = get_agent_context(repo_root, task_dir, "implement")
     if base_context:
         context_parts.append(base_context)
 
     # 2. Requirements document
-    prd_content = read_file_content(repo_root, f"{task_dir}/prd.md")
+    prd_content = read_artifact_content(repo_root, f"{task_dir}/prd.md")
     if prd_content:
         context_parts.append(f"=== {task_dir}/prd.md (Requirements) ===\n{prd_content}")
 
     # 3. Technical design for complex tasks
-    design_content = read_file_content(repo_root, f"{task_dir}/design.md")
+    design_content = read_artifact_content(repo_root, f"{task_dir}/design.md")
     if design_content:
         context_parts.append(
             f"=== {task_dir}/design.md (Technical Design) ===\n{design_content}"
         )
 
     # 4. Execution plan for complex tasks
-    implement_plan_content = read_file_content(repo_root, f"{task_dir}/implement.md")
+    implement_plan_content = read_artifact_content(repo_root, f"{task_dir}/implement.md")
     if implement_plan_content:
         context_parts.append(
             f"=== {task_dir}/implement.md (Execution Plan) ===\n{implement_plan_content}"
         )
 
-    return "\n\n".join(context_parts)
+    return join_context_parts(context_parts)
 
 
 def get_check_context(repo_root: str, task_dir: str) -> str:
     """
-    Context for Check Agent: check.jsonl + task artifacts.
+    Context for Check Agent: check.jsonl reference index + task artifacts.
     """
     context_parts = []
 
-    for file_path, content in read_jsonl_entries(repo_root, f"{task_dir}/check.jsonl"):
-        context_parts.append(f"=== {file_path} ===\n{content}")
+    index = build_reference_index(repo_root, f"{task_dir}/check.jsonl")
+    if index:
+        context_parts.append(index)
 
-    prd_content = read_file_content(repo_root, f"{task_dir}/prd.md")
+    prd_content = read_artifact_content(repo_root, f"{task_dir}/prd.md")
     if prd_content:
         context_parts.append(f"=== {task_dir}/prd.md (Requirements) ===\n{prd_content}")
 
-    design_content = read_file_content(repo_root, f"{task_dir}/design.md")
+    design_content = read_artifact_content(repo_root, f"{task_dir}/design.md")
     if design_content:
         context_parts.append(
             f"=== {task_dir}/design.md (Technical Design) ===\n{design_content}"
         )
 
-    implement_plan_content = read_file_content(repo_root, f"{task_dir}/implement.md")
+    implement_plan_content = read_artifact_content(repo_root, f"{task_dir}/implement.md")
     if implement_plan_content:
         context_parts.append(
             f"=== {task_dir}/implement.md (Execution Plan) ===\n{implement_plan_content}"
         )
 
-    return "\n\n".join(context_parts)
+    return join_context_parts(context_parts)
 
 
 def get_finish_context(repo_root: str, task_dir: str) -> str:
@@ -374,7 +473,7 @@ You are the Implement Agent in the Multi-Agent Pipeline.
 
 ## Your Context
 
-All the information you need has been prepared for you:
+Task artifacts are inlined below (truncated when large); curated references are listed as an index — read them yourself before relying on them:
 
 {context}
 
@@ -388,7 +487,7 @@ All the information you need has been prepared for you:
 
 ## Workflow
 
-1. **Understand specs** - All dev specs are injected above, understand them
+1. **Understand specs** - Read the curated references listed in the index above
     2. **Understand task artifacts** - Read requirements, technical design if present, and execution plan if present
     3. **Implement feature** - Implement following specs and task artifacts
 4. **Self-check** - Ensure code quality against check specs
@@ -396,7 +495,7 @@ All the information you need has been prepared for you:
 ## Important Constraints
 
 - Do NOT execute git commit, only code modifications
-- Follow all dev specs injected above
+- Follow all dev specs referenced above
 - Report list of modified/created files when done"""
 
 
@@ -409,7 +508,7 @@ You are the Check Agent in the Multi-Agent Pipeline (code and cross-layer checke
 
 ## Your Context
 
-All check specs and dev specs you need:
+Task artifacts are inlined below (truncated when large); curated check/dev specs are listed as an index — read them yourself before relying on them:
 
 {context}
 
@@ -424,7 +523,7 @@ All check specs and dev specs you need:
 ## Workflow
 
 1. **Get changes** - Run `git diff --name-only` and `git diff` to get code changes
-2. **Check against specs** - Check item by item against specs above
+2. **Check against specs** - Read the curated references in the index above, then check item by item
 3. **Self-fix** - Fix issues directly, don't just report
 4. **Run verification** - Run project's lint and typecheck commands
 
@@ -444,7 +543,7 @@ You are performing the final check before creating a PR.
 
 ## Your Context
 
-Finish checklist and requirements:
+Task artifacts are inlined below (truncated when large); the finish checklist is listed as an index — read the referenced files yourself:
 
 {context}
 
