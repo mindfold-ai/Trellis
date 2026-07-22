@@ -24,7 +24,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | `.zcode/hooks/` + `.zcode/config.json` (SessionStart + UserPromptSubmit + PreToolUse Agent/Task); sub-agents use hook-injected context |
 | Grok Build | `--grok` | `.grok/` | `.grok/skills/` | `.grok/agents/` | pull-based prelude (no hooks; flat `.grok/commands/trellis-*.md`) |
-| Kimi Code | `--kimi` | `.kimi-code/` | `.agents/skills/` (shared) + `.kimi-code/skills/` | None — agent prompts are skills under `.kimi-code/skills/` (built-in coder/explore/plan sub-agents only) | None (pull-based prelude; no project hooks/settings) |
+| Kimi Code | `--kimi` | `.kimi-code/` | `.agents/skills/` (shared) + `.kimi-code/skills/` | None — agent prompts are skills under `.kimi-code/skills/` and dispatch to the built-in `coder` | None (pull-based prelude; no project hooks/settings) |
 
 ## Capability Groups
 
@@ -47,7 +47,7 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 - Reasonix (delivered as skills with `runAs: subagent` under `.reasonix/skills/`, not as a separate `agents/` directory)
 - ZCode
 - Grok Build (`.grok/agents/`; dispatch via `spawn_subagent` with `subagent_type`)
-- Kimi Code (delivered as skills under `.kimi-code/skills/`; dispatched to the built-in coder/explore/plan sub-agents)
+- Kimi Code (delivered as skills under `.kimi-code/skills/`; dispatched to the built-in `coder`, including research because it must persist files)
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
 

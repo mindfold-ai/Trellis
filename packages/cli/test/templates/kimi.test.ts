@@ -28,6 +28,21 @@ describe("kimi getAllAgents", () => {
       expect(content).toContain("built-in");
     }
   });
+
+  it("dispatches research through the writable coder sub-agent", () => {
+    const research = getAllAgents().find(
+      (agent) => agent.name === "trellis-research",
+    );
+    expect(research).toBeDefined();
+    if (!research) return;
+
+    expect(research.content).toContain("built-in `coder` sub-agent");
+    expect(research.content).toContain("`explore` sub-agent is read-only");
+    expect(research.content).toContain("may write only under");
+    expect(research.content).not.toContain(
+      "dispatches the built-in `explore` sub-agent",
+    );
+  });
 });
 
 describe("kimi pull-based prelude injection", () => {
@@ -70,9 +85,7 @@ describe("kimi collectKimiTemplates", () => {
       true,
     );
     expect(files.has(".kimi-code/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".kimi-code/skills/trellis-research/SKILL.md")).toBe(
-      true,
-    );
+    expect(files.has(".kimi-code/skills/trellis-research/SKILL.md")).toBe(true);
 
     const implement = files.get(".kimi-code/skills/trellis-implement/SKILL.md");
     expect(implement).toContain("Load Trellis Context First");

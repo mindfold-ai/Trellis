@@ -4,8 +4,8 @@ description: |
   Code and tech search expert for Trellis. Finds files, patterns, and tech
   solutions, and PERSISTS every finding to the current task's research/
   directory. No code modifications outside that directory. On Kimi Code the
-  main session dispatches the built-in explore sub-agent with these
-  instructions.
+  main session dispatches the built-in coder sub-agent with these instructions
+  because it is the only built-in sub-agent with file-editing tools.
 ---
 # Research Agent
 
@@ -19,7 +19,11 @@ Conversations get compacted; files don't. Every research output MUST end up as a
 
 ## Dispatch note (main session)
 
-Kimi Code has no project-level custom sub-agent definitions — only the built-in `coder` / `explore` / `plan` sub-agents. The main session dispatches the built-in `explore` sub-agent via the Agent tool with a prompt that starts with `Active task: <path from task.py current>` and includes this skill's instructions (`.kimi-code/skills/trellis-research/SKILL.md`).
+Kimi Code has no project-level custom sub-agent definitions — only the built-in `coder` / `explore` / `plan` sub-agents. The built-in `explore` sub-agent is read-only, so it cannot satisfy this agent's persistence contract. The main session dispatches the built-in `coder` sub-agent via the Agent tool with a prompt that:
+
+1. Starts with `Active task: <path from task.py current>`
+2. Includes this skill's instructions (`.kimi-code/skills/trellis-research/SKILL.md`)
+3. States that the spawned agent is already `trellis-research` and may write only under the active task's `research/` directory
 
 ---
 
