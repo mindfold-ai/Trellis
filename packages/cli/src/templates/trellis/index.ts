@@ -21,6 +21,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { injectMethodSkillsPreludeMarkdown } from "../../configurators/shared.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -54,6 +55,9 @@ export const commonSessionContext = readTemplate(
 );
 export const commonPackagesContext = readTemplate(
   "scripts/common/packages_context.py",
+);
+export const commonMethodSkills = readTemplate(
+  "scripts/common/method_skills.py",
 );
 export const commonWorkflowPhase = readTemplate(
   "scripts/common/workflow_phase.py",
@@ -110,6 +114,7 @@ export function getAllScripts(): Map<string, string> {
   scripts.set("common/task_store.py", commonTaskStore);
   scripts.set("common/session_context.py", commonSessionContext);
   scripts.set("common/packages_context.py", commonPackagesContext);
+  scripts.set("common/method_skills.py", commonMethodSkills);
   scripts.set("common/workflow_phase.py", commonWorkflowPhase);
   scripts.set("common/trellis_config.py", commonTrellisConfig);
   scripts.set("common/safe_commit.py", commonSafeCommit);
@@ -134,7 +139,13 @@ export function getAllScripts(): Map<string, string> {
  */
 export function getAllAgents(): Map<string, string> {
   const agents = new Map<string, string>();
-  agents.set("implement.md", implementAgentTemplate);
-  agents.set("check.md", checkAgentTemplate);
+  agents.set(
+    "implement.md",
+    injectMethodSkillsPreludeMarkdown(implementAgentTemplate, "implement"),
+  );
+  agents.set(
+    "check.md",
+    injectMethodSkillsPreludeMarkdown(checkAgentTemplate, "check"),
+  );
   return agents;
 }

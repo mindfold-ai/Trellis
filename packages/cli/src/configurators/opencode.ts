@@ -10,6 +10,8 @@ import {
   resolveBundledSkills,
   resolveCommands,
   resolveSkills,
+  detectSubAgentType,
+  injectMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 
 /**
@@ -61,7 +63,13 @@ function walkOpenCodeTemplateDir(): Map<string, string> {
         if (relEntry === "commands") continue;
         walk(relEntry);
       } else {
-        const content = readFileSync(absEntry, "utf-8");
+        let content = readFileSync(absEntry, "utf-8");
+        if (toPosix(relEntry).startsWith("agents/")) {
+          const agentType = detectSubAgentType(entry);
+          if (agentType) {
+            content = injectMethodSkillsPreludeMarkdown(content, agentType);
+          }
+        }
         // Map keys are logical paths used as cross-platform hash keys / lookup
         // keys downstream. Always POSIX, regardless of host OS.
         files.set(

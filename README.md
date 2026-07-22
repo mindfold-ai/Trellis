@@ -84,6 +84,27 @@ Trellis runs a 4-phase loop with auto-invoked skills and sub-agents:
 3. **Verify** — a `trellis-check` sub-agent reviews the diff against specs and runs lint, type-check, and tests, self-fixing where it can.
 4. **Finish** — a final check runs, then `trellis-update-spec` promotes new learnings back into `.trellis/spec/` so the next session starts smarter.
 
+## Compose Method Skills
+
+Trellis can apply compatible Agent Skills inside a workflow role without replacing that role. For example, Trellis can keep ownership of planning artifacts while `grilling` supplies the questioning method, or keep implementation scope and Git restrictions while `tdd` supplies the coding method.
+
+Configure existing project-local or global skill directories in `.trellis/config.yaml`:
+
+```yaml
+method_skills:
+  brainstorm:
+    - global:grilling
+  implement:
+    - global:tdd
+    - global:codebase-design
+  check:
+    - global:code-review
+  debug:
+    - global:diagnosing-bugs
+```
+
+Project-local references are relative to the repository root. `global:<name>` resolves to `~/.agents/skills/<name>/SKILL.md`. Methods run in configuration order, Trellis workflow rules take precedence, and invalid references warn before the built-in role continues. Trellis reads existing skills only; it does not install or update them.
+
 ## Resources
 
 | Need                            | Link                                                                           |

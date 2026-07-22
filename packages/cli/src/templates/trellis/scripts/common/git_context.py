@@ -27,6 +27,11 @@ from .packages_context import (
     get_context_packages_text,
     get_context_packages_json,
 )
+from .method_skills import (
+    METHOD_SLOTS,
+    get_method_skills_text,
+    resolve_method_skills,
+)
 from .trellis_config import read_trellis_config
 from .workflow_phase import (
     filter_platform,
@@ -57,9 +62,19 @@ def main() -> None:
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["default", "record", "packages", "phase"],
+        choices=[
+            "default",
+            "record",
+            "packages",
+            "phase",
+            "method-skills",
+        ],
         default="default",
-        help="Output mode: default (full context), record (for record-session), packages (package info only), phase (workflow step extraction)",
+        help=(
+            "Output mode: default (full context), record (for record-session), "
+            "packages (package info only), phase (workflow step extraction), "
+            "method-skills (resolved methods for a workflow role)"
+        ),
     )
     parser.add_argument(
         "--step",
@@ -68,6 +83,11 @@ def main() -> None:
     parser.add_argument(
         "--platform",
         help="Platform name for --mode phase, e.g. cursor, claude-code. Filters platform-tagged blocks.",
+    )
+    parser.add_argument(
+        "--slot",
+        choices=METHOD_SLOTS,
+        help="Workflow role for --mode method-skills.",
     )
 
     args = parser.parse_args()
@@ -95,6 +115,19 @@ def main() -> None:
             )
             content = filter_platform(content, effective)
         print(content, end="")
+    elif args.mode == "method-skills":
+        if not args.slot:
+            parser.error("--slot is required for --mode method-skills")
+        if args.json:
+            print(
+                json.dumps(
+                    resolve_method_skills(args.slot),
+                    indent=2,
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(get_method_skills_text(args.slot))
     else:
         if args.json:
             output_json()

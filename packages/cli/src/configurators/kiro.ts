@@ -7,6 +7,7 @@ import {
   writeSkills,
   writeAgents,
   writeSharedHooks,
+  applyMethodSkillsPreludeJson,
 } from "./shared.js";
 import { ensureDir, writeFile } from "../utils/file-writer.js";
 import { getAllAgents, getIdeHooks } from "../templates/kiro/index.js";
@@ -31,7 +32,7 @@ export async function configureKiro(cwd: string): Promise<void> {
   );
 
   // Agents (JSON format, with {{PYTHON_CMD}} resolved)
-  const agents = getAllAgents().map((a) => ({
+  const agents = applyMethodSkillsPreludeJson(getAllAgents()).map((a) => ({
     ...a,
     content: resolvePlaceholders(a.content),
   }));

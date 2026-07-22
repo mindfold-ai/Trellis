@@ -26,6 +26,7 @@ import {
   writeSkills,
   writeAgents,
   writeSharedHooks,
+  applyMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 
 /** Shared hooks directory written for ZCode (mirrors the configure path). */
@@ -55,7 +56,7 @@ export function collectZcodeTemplates(): Map<string, string> {
   }
 
   // 3. Sub-agents → .zcode/agents/ (hook-inject; templates carry fallback).
-  for (const agent of getAllAgents()) {
+  for (const agent of applyMethodSkillsPreludeMarkdown(getAllAgents())) {
     files.set(`.zcode/agents/${agent.name}.md`, agent.content);
   }
 
@@ -99,7 +100,10 @@ export async function configureZcode(cwd: string): Promise<void> {
   }
 
   // 3. Sub-agents → .zcode/agents/ (hook-inject; templates carry fallback).
-  await writeAgents(path.join(zcodeRoot, "agents"), getAllAgents());
+  await writeAgents(
+    path.join(zcodeRoot, "agents"),
+    applyMethodSkillsPreludeMarkdown(getAllAgents()),
+  );
 
   // 4. Shared hooks → .zcode/hooks/
   await writeSharedHooks(path.join(zcodeRoot, "hooks"), "zcode");

@@ -2,7 +2,10 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { AI_TOOLS } from "../types/ai-tools.js";
 import { getClaudeTemplatePath } from "../templates/extract.js";
-import { getStatuslineHook } from "../templates/claude/index.js";
+import {
+  getAllAgents,
+  getStatuslineHook,
+} from "../templates/claude/index.js";
 import { ensureDir, writeFile } from "../utils/file-writer.js";
 import {
   resolvePlaceholders,
@@ -13,6 +16,8 @@ import {
   writeSharedHooks,
   replacePythonCommandLiterals,
   type PlatformConfigureOptions,
+  applyMethodSkillsPreludeMarkdown,
+  writeAgents,
 } from "./shared.js";
 
 const EXCLUDE_PATTERNS = [
@@ -113,8 +118,15 @@ export async function configureClaude(
   await copyDirFiltered(
     sourcePath,
     destPath,
-    ["commands", "hooks"],
+    ["commands", "hooks", "agents"],
     withStatusline,
+  );
+
+  // Render role agents through the same method-skill composer used by update
+  // collection so init and update stay byte-identical.
+  await writeAgents(
+    path.join(destPath, "agents"),
+    applyMethodSkillsPreludeMarkdown(getAllAgents()),
   );
 
   // Shared hook scripts (same source as 7 other platforms)

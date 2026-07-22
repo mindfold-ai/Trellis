@@ -20,6 +20,7 @@ import {
   resolveAllAsSkills,
   resolveBundledSkills,
   writeSkills,
+  applyMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 
 /**
@@ -32,7 +33,8 @@ export function collectReasonixTemplates(): Map<string, string> {
   const files = new Map<string, string>();
 
   // Subagent skill names that replace common-skill equivalents.
-  const agentNames = new Set(getAllAgents().map((a) => a.name));
+  const agents = applyMethodSkillsPreludeMarkdown(getAllAgents());
+  const agentNames = new Set(agents.map((a) => a.name));
 
   // Workflow skills filtered to avoid collision with subagent skills.
   const skills = resolveAllAsSkills(ctx).filter((s) => !agentNames.has(s.name));
@@ -47,7 +49,7 @@ export function collectReasonixTemplates(): Map<string, string> {
 
   // Subagent skills (trellis-implement, trellis-check) — written with
   // runAs: subagent frontmatter for isolated subagent loops.
-  for (const agent of getAllAgents()) {
+  for (const agent of agents) {
     files.set(`.reasonix/skills/${agent.name}/SKILL.md`, agent.content);
   }
 
@@ -64,14 +66,15 @@ export async function configureReasonix(cwd: string): Promise<void> {
   const skillsRoot = path.join(cwd, config.configDir, "skills");
 
   // Subagent skill names that replace common-skill equivalents.
-  const agentNames = new Set(getAllAgents().map((a) => a.name));
+  const agents = applyMethodSkillsPreludeMarkdown(getAllAgents());
+  const agentNames = new Set(agents.map((a) => a.name));
 
   // Write workflow skills, filtering out any that have subagent equivalents.
   const skills = resolveAllAsSkills(ctx).filter((s) => !agentNames.has(s.name));
   await writeSkills(skillsRoot, skills, resolveBundledSkills(ctx));
 
   // Subagent skills with runAs: subagent frontmatter
-  for (const agent of getAllAgents()) {
+  for (const agent of agents) {
     const agentDir = path.join(skillsRoot, agent.name);
     ensureDir(agentDir);
     await writeFile(path.join(agentDir, "SKILL.md"), agent.content);

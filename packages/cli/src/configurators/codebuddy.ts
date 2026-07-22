@@ -9,6 +9,7 @@ import {
   writeSkills,
   writeAgents,
   writeSharedHooks,
+  applyMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 import {
   getAllAgents,
@@ -40,7 +41,10 @@ export async function configureCodebuddy(cwd: string): Promise<void> {
     resolveSkills(ctx),
     resolveBundledSkills(ctx),
   );
-  await writeAgents(path.join(configRoot, "agents"), getAllAgents());
+  await writeAgents(
+    path.join(configRoot, "agents"),
+    applyMethodSkillsPreludeMarkdown(getAllAgents()),
+  );
   await writeSharedHooks(path.join(configRoot, "hooks"), "codebuddy");
 
   const settings = getSettingsTemplate();

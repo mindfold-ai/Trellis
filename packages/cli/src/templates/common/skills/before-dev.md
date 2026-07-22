@@ -1,5 +1,17 @@
 Read the relevant development guidelines before starting your task.
 
+## Optional Method Skills
+
+At role entry, run:
+
+```bash
+{{PYTHON_CMD}} ./.trellis/scripts/get_context.py --mode method-skills --slot implement
+```
+
+If the command lists method skills, load each listed `SKILL.md` in order and apply those methods while implementing. The first method is primary; later methods are supporting.
+
+The Trellis workflow contract takes precedence over method-skill instructions. Trellis continues to own task scope, artifacts, Git restrictions, dispatch, and reporting. If no methods are configured, continue with the built-in role unchanged.
+
 Execute these steps:
 
 1. **Read current task artifacts**:

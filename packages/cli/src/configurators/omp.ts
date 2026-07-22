@@ -10,6 +10,7 @@ import {
   wrapWithOmpFrontmatter,
   writeAgents,
   writeSkills,
+  applyMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 import { getAllAgents, getExtensionTemplate } from "../templates/omp/index.js";
 
@@ -40,7 +41,7 @@ export function collectOmpTemplates(): Map<string, string> {
   }
 
   // Agents (class-1: no pull-based prelude)
-  for (const agent of getAllAgents()) {
+  for (const agent of applyMethodSkillsPreludeMarkdown(getAllAgents())) {
     files.set(`.omp/agents/${agent.name}.md`, agent.content);
   }
 
@@ -79,7 +80,10 @@ export async function configureOmp(cwd: string): Promise<void> {
   );
 
   // Agents (class-1: no applyPullBasedPreludeMarkdown)
-  await writeAgents(path.join(configRoot, "agents"), getAllAgents());
+  await writeAgents(
+    path.join(configRoot, "agents"),
+    applyMethodSkillsPreludeMarkdown(getAllAgents()),
+  );
 
   // Extension
   ensureDir(path.join(configRoot, "extensions", "trellis"));

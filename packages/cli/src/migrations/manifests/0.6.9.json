@@ -1,0 +1,16 @@
+{
+  "version": "0.6.9",
+  "description": "Compose optional project-local and global method skills inside Trellis workflow roles.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(workflow): add optional method-skills composition for brainstorm, implement, check, and debug roles. Trellis keeps lifecycle ownership while compatible SKILL.md methods provide reusable procedures.",
+  "migrations": [],
+  "configSectionsAdded": [
+    {
+      "file": ".trellis/config.yaml",
+      "sentinel": "method_skills:",
+      "sectionHeading": "Method Skills"
+    }
+  ],
+  "notes": "Run `trellis update` to refresh generated runtime and role files. Existing config.yaml files receive the optional commented method-skills section additively."
+}

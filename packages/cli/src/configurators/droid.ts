@@ -9,6 +9,7 @@ import {
   writeSkills,
   writeAgents,
   writeSharedHooks,
+  applyMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 import { getAllDroids, getSettingsTemplate } from "../templates/droid/index.js";
 
@@ -37,7 +38,10 @@ export async function configureDroid(cwd: string): Promise<void> {
     resolveSkills(ctx),
     resolveBundledSkills(ctx),
   );
-  await writeAgents(path.join(configRoot, "droids"), getAllDroids());
+  await writeAgents(
+    path.join(configRoot, "droids"),
+    applyMethodSkillsPreludeMarkdown(getAllDroids()),
+  );
   await writeSharedHooks(path.join(configRoot, "hooks"), "droid");
 
   const settings = getSettingsTemplate();

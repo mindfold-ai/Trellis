@@ -138,3 +138,29 @@ channel:
 #
 # prompt_injection:
 #   skip_keyword: "no-trellis"   # "" disables the escape hatch entirely
+
+#-------------------------------------------------------------------------------
+# Method Skills
+#-------------------------------------------------------------------------------
+# Compose reusable Agent Skills inside Trellis workflow roles. Trellis still
+# owns task state, artifacts, phase gates, Git restrictions, dispatch, and
+# reporting; these skills contribute only the method used inside that role.
+#
+# References are evaluated in list order. The first resolved method is primary;
+# later methods are supporting. Invalid references warn and fall back to the
+# built-in Trellis role.
+#
+# Reference forms:
+# - Project-local skill directory, relative to the project root
+# - global:<name>, resolved as ~/.agents/skills/<name>/SKILL.md
+#
+# method_skills:
+#   brainstorm:
+#     - global:grilling
+#   implement:
+#     - global:tdd
+#     - global:codebase-design
+#   check:
+#     - global:code-review
+#   debug:
+#     - global:diagnosing-bugs

@@ -455,6 +455,32 @@ def _materialize_artifact(
     return _budgeted_block(budget, header_label, file_path, content, reason, size)
 
 
+def get_method_skills_context(repo_root: str, slot: str) -> str:
+    """Return optional method-skill instructions for a workflow role."""
+    scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.method_skills import (  # type: ignore[import-not-found]
+            format_method_skills,
+            resolve_method_skills,
+        )
+
+        result = resolve_method_skills(slot, Path(repo_root))
+        if not result["methods"] and not result["diagnostics"]:
+            return ""
+        return (
+            f"=== Method Skills ({slot}) ===\n"
+            f"{format_method_skills(result)}"
+        )
+    except (ImportError, OSError, RuntimeError) as error:
+        return (
+            f"=== Method Skills ({slot}) ===\n"
+            f"[WARN] method_skills.{slot}: unable to load configured methods: {error}\n"
+            "Continue with the built-in Trellis role."
+        )
+
+
 def get_implement_context(repo_root: str, task_dir: str) -> str:
     """
     Complete context for Implement Agent
@@ -468,6 +494,10 @@ def get_implement_context(repo_root: str, task_dir: str) -> str:
     limits = _get_limits(repo_root)
     budget = _Budget(limits["max_total_bytes"])
     context_parts = []
+
+    method_context = get_method_skills_context(repo_root, "implement")
+    if method_context:
+        context_parts.append(method_context)
 
     # 1. Read implement.jsonl
     base_context = get_agent_context(repo_root, task_dir, "implement", limits, budget)
@@ -520,6 +550,10 @@ def get_check_context(repo_root: str, task_dir: str) -> str:
     limits = _get_limits(repo_root)
     budget = _Budget(limits["max_total_bytes"])
     context_parts = []
+
+    method_context = get_method_skills_context(repo_root, "check")
+    if method_context:
+        context_parts.append(method_context)
 
     base_context = get_agent_context(repo_root, task_dir, "check", limits, budget)
     if base_context:

@@ -2,6 +2,18 @@
 
 Comprehensive quality verification for recently written code. Combines spec compliance, cross-layer safety, and pre-commit checks.
 
+## Optional Method Skills
+
+At role entry, run:
+
+```bash
+{{PYTHON_CMD}} ./.trellis/scripts/get_context.py --mode method-skills --slot check
+```
+
+If the command lists method skills, load each listed `SKILL.md` in order and apply those methods while checking. The first method is primary; later methods are supporting.
+
+The Trellis workflow contract takes precedence over method-skill instructions. Trellis continues to own verification scope, completion gates, spec sync, and reporting. If no methods are configured, continue with the built-in role unchanged.
+
 ---
 
 ## Step 1: Identify What Changed

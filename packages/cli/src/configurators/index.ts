@@ -51,6 +51,9 @@ import {
   resolveSkillsNeutral,
   wrapWithCommandFrontmatter,
   collectSkillTemplates,
+  applyMethodSkillsPreludeJson,
+  applyMethodSkillsPreludeMarkdown,
+  applyMethodSkillsPreludeToml,
   applyPullBasedPreludeMarkdown,
   normalizeCopilotMarkdownAgents,
   type PlatformConfigureOptions,
@@ -178,7 +181,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
         (n) => `.claude/commands/trellis/${n}.md`,
         ".claude/skills",
       );
-      for (const agent of getClaudeAgents()) {
+      for (const agent of applyMethodSkillsPreludeMarkdown(getClaudeAgents())) {
         files.set(`.claude/agents/${agent.name}.md`, agent.content);
       }
       for (const [k, v] of collectSharedHooks(".claude/hooks", "claude")) {
@@ -200,7 +203,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
         (n) => `.cursor/commands/trellis-${n}.md`,
         ".cursor/skills",
       );
-      for (const agent of getCursorAgents()) {
+      for (const agent of applyMethodSkillsPreludeMarkdown(getCursorAgents())) {
         files.set(`.cursor/agents/${agent.name}.md`, agent.content);
       }
       for (const [k, v] of collectSharedHooks(".cursor/hooks", "cursor")) {
@@ -232,7 +235,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       for (const skill of getCodexPlatformSkills()) {
         files.set(`.codex/skills/${skill.name}/SKILL.md`, skill.content);
       }
-      for (const agent of getCodexAgents()) {
+      for (const agent of applyMethodSkillsPreludeToml(getCodexAgents())) {
         files.set(`.codex/agents/${agent.name}.toml`, agent.content);
       }
       for (const hook of getCodexHooks()) {
@@ -272,7 +275,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
       )) {
         files.set(filePath, content);
       }
-      for (const agent of getKiroAgents()) {
+      for (const agent of applyMethodSkillsPreludeJson(getKiroAgents())) {
         files.set(
           `.kiro/agents/${agent.name}.json`,
           resolvePlaceholders(agent.content),
@@ -374,7 +377,9 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
         (n) => `.codebuddy/commands/trellis/${n}.md`,
         ".codebuddy/skills",
       );
-      for (const agent of getCodebuddyAgents()) {
+      for (const agent of applyMethodSkillsPreludeMarkdown(
+        getCodebuddyAgents(),
+      )) {
         files.set(`.codebuddy/agents/${agent.name}.md`, agent.content);
       }
       for (const [k, v] of collectSharedHooks(
@@ -440,7 +445,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
         (n) => `.factory/commands/trellis/${n}.md`,
         ".factory/skills",
       );
-      for (const droid of getDroidDroids()) {
+      for (const droid of applyMethodSkillsPreludeMarkdown(getDroidDroids())) {
         files.set(`.factory/droids/${droid.name}.md`, droid.content);
       }
       for (const [k, v] of collectSharedHooks(".factory/hooks", "droid")) {

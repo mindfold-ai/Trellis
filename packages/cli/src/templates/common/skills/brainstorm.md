@@ -18,6 +18,18 @@ Do not ask the user to confirm facts that the repository can answer. Ask only fo
 
 Repository evidence establishes current behavior and technical constraints. The user's intended behavior, feature scope boundaries, and UX preferences are never answerable by repository evidence alone, even when an existing pattern exists; existing patterns are options and recommendation evidence, not decisions.
 
+## Optional Method Skills
+
+At role entry, run:
+
+```bash
+{{PYTHON_CMD}} ./.trellis/scripts/get_context.py --mode method-skills --slot brainstorm
+```
+
+If the command lists method skills, load each listed `SKILL.md` in order and use those methods while following the Planning Flow below. The first method is primary; later methods are supporting.
+
+The Trellis workflow contract takes precedence over method-skill instructions. Trellis continues to own task state, planning artifacts, phase gates, and implementation authorization. If no methods are configured, continue with the built-in flow unchanged.
+
 ---
 
 Use this skill during Phase 1 planning to turn the user's request into clear requirements and planning artifacts.

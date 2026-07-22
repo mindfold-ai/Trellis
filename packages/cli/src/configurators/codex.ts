@@ -15,6 +15,7 @@ import {
   writeSkills,
   writeSharedHooks,
   replacePythonCommandLiterals,
+  applyMethodSkillsPreludeToml,
 } from "./shared.js";
 
 /**
@@ -59,7 +60,7 @@ export async function configureCodex(cwd: string): Promise<void> {
   // Native Codex SubagentStart hooks push role-specific context. Each agent
   // also carries a marker-gated pull fallback for untrusted or unavailable
   // hooks, so install the source profiles without an unconditional prelude.
-  for (const agent of getAllAgents()) {
+  for (const agent of applyMethodSkillsPreludeToml(getAllAgents())) {
     await writeFile(
       path.join(codexAgentsRoot, `${agent.name}.toml`),
       replacePythonCommandLiterals(agent.content),

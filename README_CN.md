@@ -84,6 +84,27 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 3. **Verify（验证）** —— `trellis-check` 子代理基于 diff 对照 Spec 逐项核查，并运行 lint、type-check 与测试，在能力范围内自动修复。
 4. **Finish（收尾）** —— 执行最终检查后，`trellis-update-spec` 将本轮新增的认知沉淀回 `.trellis/spec/`，为下一次会话积累上下文。
 
+## 组合方法型 Skills
+
+Trellis 可以在不替换工作流角色的前提下，将兼容的 Agent Skills 组合进角色内部。例如，Trellis 继续负责规划产物，而由 `grilling` 提供提问方法；Trellis 继续约束实现范围和 Git 操作，而由 `tdd` 提供编码方法。
+
+在 `.trellis/config.yaml` 中配置已经存在的项目级或全局 skill 目录：
+
+```yaml
+method_skills:
+  brainstorm:
+    - global:grilling
+  implement:
+    - global:tdd
+    - global:codebase-design
+  check:
+    - global:code-review
+  debug:
+    - global:diagnosing-bugs
+```
+
+项目级引用相对于仓库根目录解析；`global:<name>` 解析为 `~/.agents/skills/<name>/SKILL.md`。方法按配置顺序执行，Trellis 工作流规则始终优先；无效引用会给出警告，然后继续使用内置角色。Trellis 只读取已有 skills，不负责安装或升级它们。
+
 ## 资源
 
 | 需求 | 链接 |

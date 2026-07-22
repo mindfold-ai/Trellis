@@ -583,6 +583,21 @@ export async function writeSharedHooks(
 
 export type SubAgentType = "implement" | "check";
 
+/** Build the standard optional method-skills role-entry block. */
+export function buildMethodSkillsPrelude(agentType: SubAgentType): string {
+  return replacePythonCommandLiterals(`## Optional Method Skills
+
+At role entry, run \`python3 ./.trellis/scripts/get_context.py --mode method-skills --slot ${agentType}\`.
+
+If the command lists method skills, load each listed \`SKILL.md\` in order before performing the role. The first method is primary and later methods are supporting.
+
+The Trellis workflow contract takes precedence over method-skill instructions, including task scope, artifacts, Git constraints, and reporting. If no methods are configured, continue with the built-in role unchanged.
+
+---
+
+`);
+}
+
 /** Build the standard "load Trellis context first" prelude block. */
 export function buildPullBasedPrelude(agentType: SubAgentType): string {
   // JSONL filenames stay as implement.jsonl / check.jsonl — they are internal
@@ -617,12 +632,7 @@ If the resolved task path has no \`prd.md\`, ask the user what to work on; do NO
 `);
 }
 
-/** Insert prelude into a markdown agent definition (after YAML frontmatter). */
-export function injectPullBasedPreludeMarkdown(
-  content: string,
-  agentType: SubAgentType,
-): string {
-  const prelude = buildPullBasedPrelude(agentType);
+function injectPreludeMarkdown(content: string, prelude: string): string {
   const sections = splitMarkdownFrontmatter(content);
 
   if (!sections) {
@@ -634,18 +644,67 @@ export function injectPullBasedPreludeMarkdown(
   return `${head}\n\n${prelude}${tailTrimmed}`;
 }
 
-/** Insert prelude into a TOML agent (codex `developer_instructions`). */
-export function injectPullBasedPreludeToml(
+/** Insert prelude into a markdown agent definition (after YAML frontmatter). */
+export function injectPullBasedPreludeMarkdown(
   content: string,
   agentType: SubAgentType,
 ): string {
-  const prelude = buildPullBasedPrelude(agentType);
+  const prelude =
+    buildPullBasedPrelude(agentType) + buildMethodSkillsPrelude(agentType);
+  return injectPreludeMarkdown(content, prelude);
+}
+
+/** Insert only the method-skills block into a markdown agent definition. */
+export function injectMethodSkillsPreludeMarkdown(
+  content: string,
+  agentType: SubAgentType,
+): string {
+  return injectPreludeMarkdown(content, buildMethodSkillsPrelude(agentType));
+}
+
+function injectPreludeToml(content: string, prelude: string): string {
   // Match: developer_instructions = """  followed by newline
   const re = /(developer_instructions\s*=\s*""")(\r?\n)/;
   if (!re.test(content)) {
     return content;
   }
   return content.replace(re, `$1$2${prelude}`);
+}
+
+/** Insert prelude into a TOML agent (codex `developer_instructions`). */
+export function injectPullBasedPreludeToml(
+  content: string,
+  agentType: SubAgentType,
+): string {
+  const prelude =
+    buildPullBasedPrelude(agentType) + buildMethodSkillsPrelude(agentType);
+  return injectPreludeToml(content, prelude);
+}
+
+/** Insert only the method-skills block into a TOML agent definition. */
+export function injectMethodSkillsPreludeToml(
+  content: string,
+  agentType: SubAgentType,
+): string {
+  return injectPreludeToml(content, buildMethodSkillsPrelude(agentType));
+}
+
+/** Insert the method-skills block into a JSON agent's prompt field. */
+export function injectMethodSkillsPreludeJson(
+  content: string,
+  agentType: SubAgentType,
+): string {
+  let agent: Record<string, unknown>;
+  try {
+    agent = JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    return content;
+  }
+  if (typeof agent.prompt !== "string") {
+    return content;
+  }
+  agent.prompt = buildMethodSkillsPrelude(agentType) + agent.prompt;
+  return `${JSON.stringify(agent, null, 2)}\n`;
 }
 
 /** Best-effort detect agent type from filename ("trellis-implement.md" → "implement").
@@ -697,6 +756,19 @@ export function applyPullBasedPreludeMarkdown(
     return {
       ...a,
       content: injectPullBasedPreludeMarkdown(a.content, t),
+    };
+  });
+}
+
+export function applyMethodSkillsPreludeMarkdown(
+  agents: readonly AgentContent[],
+): AgentContent[] {
+  return agents.map((agent) => {
+    const agentType = detectSubAgentType(agent.name);
+    if (!agentType) return { ...agent };
+    return {
+      ...agent,
+      content: injectMethodSkillsPreludeMarkdown(agent.content, agentType),
     };
   });
 }
@@ -783,6 +855,32 @@ export function applyPullBasedPreludeToml(
     return {
       ...a,
       content: injectPullBasedPreludeToml(a.content, t),
+    };
+  });
+}
+
+export function applyMethodSkillsPreludeToml(
+  agents: readonly AgentContent[],
+): AgentContent[] {
+  return agents.map((agent) => {
+    const agentType = detectSubAgentType(agent.name);
+    if (!agentType) return { ...agent };
+    return {
+      ...agent,
+      content: injectMethodSkillsPreludeToml(agent.content, agentType),
+    };
+  });
+}
+
+export function applyMethodSkillsPreludeJson(
+  agents: readonly AgentContent[],
+): AgentContent[] {
+  return agents.map((agent) => {
+    const agentType = detectSubAgentType(agent.name);
+    if (!agentType) return { ...agent };
+    return {
+      ...agent,
+      content: injectMethodSkillsPreludeJson(agent.content, agentType),
     };
   });
 }

@@ -9,6 +9,7 @@ import {
   writeSkills,
   writeAgents,
   writeSharedHooks,
+  applyMethodSkillsPreludeMarkdown,
 } from "./shared.js";
 import { getAllAgents, getHooksConfig } from "../templates/cursor/index.js";
 
@@ -39,7 +40,10 @@ export async function configureCursor(cwd: string): Promise<void> {
     resolveSkills(ctx),
     resolveBundledSkills(ctx),
   );
-  await writeAgents(path.join(configRoot, "agents"), getAllAgents());
+  await writeAgents(
+    path.join(configRoot, "agents"),
+    applyMethodSkillsPreludeMarkdown(getAllAgents()),
+  );
   await writeSharedHooks(path.join(configRoot, "hooks"), "cursor");
 
   // Hooks config (separate file, not settings.json)

@@ -1983,6 +1983,34 @@ if (!hadDeveloperFileBefore) {
 
 ---
 
+## Method-skill composition contract
+
+Trellis workflow roles may compose optional external `SKILL.md` methods through
+the `method_skills` configuration slots: `brainstorm`, `implement`, `check`, and
+`debug`.
+
+- Trellis owns lifecycle state, task scope, artifacts, phase gates, Git
+  restrictions, dispatch, and reporting. Method instructions are subordinate.
+- Project-local references resolve from the repository root and must remain
+  inside it. `global:<name>` resolves below `~/.agents/skills/` and accepts a
+  single safe skill name, not an arbitrary path.
+- A reference names a directory containing a readable `SKILL.md`. Resolution
+  preserves configuration order and drops canonical-path duplicates after the
+  first occurrence.
+- Invalid or missing references emit structured diagnostics and never stop the
+  built-in Trellis role.
+- Inline and delegated roles resolve methods through
+  `get_context.py --mode method-skills`. Every generated implement/check agent
+  prompt carries that self-load contract; native hooks may additionally inject
+  the already-resolved method list. New platform integrations must preserve the
+  prompt-level fallback so hook availability cannot remove the capability.
+- Init and update share the managed resolver runtime. Config additions use the
+  additive `configSectionsAdded` migration path so user-edited config files are
+  not overwritten.
+- Method installation, registry discovery, dependency recursion, automatic
+  selection, version locking, and complete Trellis-role replacement are outside
+  this contract.
+
 ## Reference PRs
 
 | PR                            | Platform         | Pattern                                        | Notes                                                                                          |
