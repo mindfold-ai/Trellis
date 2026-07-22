@@ -50,11 +50,13 @@ jobs:
       - name: Lint (core + cli)
         run: pnpm lint
 
-      - name: Test (core + cli)
-        run: pnpm test
-
+      # Build before test: integration tests spawn the real CLI via
+      # bin/trellis.js, which imports dist/ and needs build output to exist.
       - name: Build (core then cli)
         run: pnpm build
+
+      - name: Test (core + cli)
+        run: pnpm test
 
       - name: Verify build output
         run: |
