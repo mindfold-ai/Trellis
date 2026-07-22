@@ -5,11 +5,12 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, readdirSync } from "fs"
+import { existsSync, readFileSync, appendFileSync, readdirSync, statSync } from "fs"
 import { isAbsolute, join } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
 import { createHash } from "crypto"
+import { Buffer } from "buffer"
 import process from "process"
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
@@ -76,6 +77,227 @@ export function isTrellisSubagent(input) {
   if (!input || typeof input !== "object") return false
   const agent = typeof input.agent === "string" ? input.agent.trim() : ""
   return TRELLIS_SUBAGENT_RE.test(agent)
+}
+
+// ============================================================
+// Context Injection Limits (issue #441)
+//
+// Notice text and behavior mirrored byte-for-byte from the shared-hooks
+// Python sub-agent context injection hook and the Pi extension. Changing
+// wording here requires changing it there too.
+// ============================================================
+
+const DEFAULT_CONTEXT_INJECTION_LIMITS = {
+  max_file_bytes: 32768,
+  max_artifact_bytes: 65536,
+  max_total_bytes: 131072,
+}
+
+/**
+ * Truncate `buf` to at most `cap` bytes without splitting a UTF-8
+ * multi-byte sequence. `cap <= 0` means "no limit".
+ */
+function truncateUtf8(buf, cap) {
+  if (cap <= 0 || buf.length <= cap) return buf
+  let i = cap
+  // Back off over continuation bytes (10xxxxxx) to find the lead byte.
+  while (i > 0 && (buf[i - 1] & 0xc0) === 0x80) i--
+  if (i === 0) return Buffer.alloc(0)
+  const lead = buf[i - 1]
+  if (lead & 0x80) {
+    let seqLen = 1
+    if ((lead & 0xe0) === 0xc0) seqLen = 2
+    else if ((lead & 0xf0) === 0xe0) seqLen = 3
+    else if ((lead & 0xf8) === 0xf0) seqLen = 4
+    // Drop the lead byte too if its full sequence didn't fit.
+    if (i - 1 + seqLen > cap) i--
+  }
+  return buf.subarray(0, i)
+}
+
+function stripInlineComment(value) {
+  let inQuote = null
+  for (let idx = 0; idx < value.length; idx++) {
+    const ch = value[idx]
+    if (inQuote) {
+      if (ch === inQuote) inQuote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      inQuote = ch
+      continue
+    }
+    if (ch === "#" && (idx === 0 || /\s/.test(value[idx - 1]))) {
+      return value.slice(0, idx)
+    }
+  }
+  return value
+}
+
+function unquoteYaml(s) {
+  if (s.length >= 2 && s[0] === s[s.length - 1] && (s[0] === '"' || s[0] === "'")) {
+    return s.slice(1, -1)
+  }
+  return s
+}
+
+/**
+ * Line-based parser for ONLY the `context_injection:` block of
+ * `.trellis/config.yaml`. Not a general YAML parser — mirrors
+ * `common.config.get_context_injection_limits()` semantics for this
+ * section only (missing keys keep the default; invalid/negative values
+ * fall back to the default for that key with a debugLog warning).
+ */
+function readContextInjectionLimits(repoRoot) {
+  const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS }
+  let text = null
+  try {
+    text = readFileSync(join(repoRoot, ".trellis", "config.yaml"), "utf-8")
+  } catch {
+    return limits
+  }
+  if (!text) return limits
+
+  let inSection = false
+  let sectionIndent = -1
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = rawLine.trim()
+    if (!inSection) {
+      if (/^context_injection\s*:\s*(#.*)?$/.test(trimmed)) {
+        inSection = true
+        sectionIndent = rawLine.length - rawLine.trimStart().length
+      }
+      continue
+    }
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const indent = rawLine.length - rawLine.trimStart().length
+    if (indent <= sectionIndent) break
+    const m = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/)
+    if (!m) continue
+    const key = m[1]
+    if (!(key in limits)) continue
+    const raw = unquoteYaml(stripInlineComment(m[2]).trim()).trim()
+    if (!/^-?\d+$/.test(raw) || parseInt(raw, 10) < 0) {
+      // invalid/negative -> keep default (Python warns on stderr)
+      debugLog("context", `invalid context_injection.${key} value: ${raw}; using default ${limits[key]}`)
+      continue
+    }
+    limits[key] = parseInt(raw, 10)
+  }
+  return limits
+}
+
+/** Tracks the running total of bytes emitted into the sub-agent context. */
+class ContextBudget {
+  constructor(maxTotalBytes) {
+    this.maxTotalBytes = maxTotalBytes
+    this.used = 0
+  }
+
+  hasRoom(size) {
+    if (this.maxTotalBytes <= 0) return true
+    return this.used + size <= this.maxTotalBytes
+  }
+
+  add(size) {
+    this.used += size
+  }
+}
+
+function truncateNotice(path, cap) {
+  return `\n[Trellis: truncated at ${cap} bytes — read ${path} for the full content]`
+}
+
+function indexNotice(path, size, reason) {
+  return `[Trellis: not inlined (total context limit reached) — ${path} (${size} bytes): ${reason}]`
+}
+
+/**
+ * Return an inlined `=== header ===` block, or degrade to an index
+ * notice once the total context budget is exhausted.
+ */
+function budgetedBlock(budget, header, plainPath, content, reason, sizeForIndex) {
+  const block = `=== ${header} ===\n${content}`
+  const blockBytes = Buffer.byteLength(block, "utf-8")
+  if (!budget.hasRoom(blockBytes)) {
+    const notice = indexNotice(plainPath, sizeForIndex, reason)
+    budget.add(Buffer.byteLength(notice, "utf-8"))
+    return notice
+  }
+  budget.add(blockBytes)
+  return block
+}
+
+/** Read raw file bytes, return null if file doesn't exist. */
+function readFileBytes(basePath, filePath) {
+  const fullPath = isAbsolute(filePath) ? filePath : join(basePath, filePath)
+  try {
+    if (!statSync(fullPath).isFile()) return null
+  } catch {
+    return null
+  }
+  try {
+    return readFileSync(fullPath)
+  } catch {
+    return null
+  }
+}
+
+/** Read a JSONL-referenced file, apply the per-file cap, then budget it. */
+function materializeFile(basePath, filePath, reason, limits, budget) {
+  const data = readFileBytes(basePath, filePath)
+  if (data === null) return null
+
+  const size = data.length
+  const cap = limits.max_file_bytes
+  const truncated = truncateUtf8(data, cap)
+  let content = truncated.toString("utf-8")
+  if (truncated.length < size) content += truncateNotice(filePath, cap)
+
+  return budgetedBlock(budget, filePath, filePath, content, reason, size)
+}
+
+/**
+ * Read all .md files in a directory, applying the same per-file and
+ * total caps as a single-file JSONL entry.
+ */
+function materializeDirectory(basePath, dirPath, reason, limits, budget, maxFiles = 20) {
+  const blocks = []
+  const fullPath = isAbsolute(dirPath) ? dirPath : join(basePath, dirPath)
+
+  let files
+  try {
+    if (!statSync(fullPath).isDirectory()) return blocks
+    files = readdirSync(fullPath)
+      .filter(f => f.endsWith(".md") && statSync(join(fullPath, f)).isFile())
+      .sort()
+  } catch {
+    return blocks
+  }
+
+  for (const filename of files.slice(0, maxFiles)) {
+    const relativePath = join(dirPath, filename)
+    const block = materializeFile(basePath, relativePath, reason, limits, budget)
+    if (block) blocks.push(block)
+  }
+  return blocks
+}
+
+/**
+ * Read a task artifact (prd/design/implement.md), apply the per-artifact
+ * cap, then budget it.
+ */
+function materializeArtifact(basePath, filePath, headerLabel, reason, limits, budget) {
+  const data = readFileBytes(basePath, filePath)
+  if (data === null) return null
+
+  const size = data.length
+  const cap = limits.max_artifact_bytes
+  const truncated = truncateUtf8(data, cap)
+  let content = truncated.toString("utf-8")
+  if (truncated.length < size) content += truncateNotice(filePath, cap)
+
+  return budgetedBlock(budget, headerLabel, filePath, content, reason, size)
 }
 
 /**
@@ -282,44 +504,21 @@ export class TrellisContext {
   // JSONL Reading
   // ============================================================
 
-  readDirectoryMdFiles(dirPath, maxFiles = 20) {
-    const results = []
-    const fullPath = join(this.directory, dirPath)
-
-    if (!existsSync(fullPath)) {
-      return results
-    }
-
-    try {
-      const files = readdirSync(fullPath)
-        .filter(f => f.endsWith(".md"))
-        .sort()
-        .slice(0, maxFiles)
-
-      for (const filename of files) {
-        const filePath = join(dirPath, filename)
-        const content = this.readProjectFile(filePath)
-        if (content) {
-          results.push({ path: filePath, content })
-        }
-      }
-    } catch {
-      // Ignore directory read errors
-    }
-
-    return results
-  }
-
   /**
-   * Read a JSONL file and load referenced files/directories
+   * Read a JSONL file and materialize referenced files/directories into
+   * context blocks, applying per-file caps and the shared total budget
+   * (issue #441). Mirrors Python `_materialize_jsonl_entries`.
    * Supports:
    *   {"file": "path/to/file.md", "reason": "..."}
    *   {"file": "path/to/dir/", "type": "directory", "reason": "..."}
+   *
+   * Missing referenced files are skipped silently (Python `_materialize_file`
+   * returns None for them).
    */
-  readJsonlWithFiles(jsonlPath) {
-    const results = []
+  readJsonlWithFiles(jsonlPath, limits, budget) {
+    const blocks = []
     const content = this.readFile(jsonlPath)
-    if (!content) return results
+    if (!content) return blocks
 
     for (const line of content.split("\n")) {
       if (!line.trim()) continue
@@ -327,28 +526,25 @@ export class TrellisContext {
         const item = JSON.parse(line)
         const file = item.file || item.path
         const entryType = item.type || "file"
+        const reason = item.reason || "-"
 
         if (!file) continue
 
         if (entryType === "directory") {
-          const dirEntries = this.readDirectoryMdFiles(file)
-          results.push(...dirEntries)
+          blocks.push(...materializeDirectory(this.directory, file, reason, limits, budget))
         } else {
-          const fullPath = join(this.directory, file)
-          const fileContent = this.readFile(fullPath)
-          if (fileContent) {
-            results.push({ path: file, content: fileContent })
-          }
+          const block = materializeFile(this.directory, file, reason, limits, budget)
+          if (block) blocks.push(block)
         }
       } catch {
         // Ignore parse errors for individual lines
       }
     }
-    return results
+    return blocks
   }
 
-  buildContextFromEntries(entries) {
-    return entries.map(e => `=== ${e.path} ===\n${e.content}`).join("\n\n")
+  buildContextFromEntries(blocks) {
+    return blocks.join("\n\n")
   }
 }
 
@@ -379,3 +575,14 @@ export const contextCollector = new ContextCollector()
 
 // Export debug log for plugins
 export { debugLog }
+
+// Context injection limits (issue #441) — exported for plugins and tests
+export {
+  DEFAULT_CONTEXT_INJECTION_LIMITS,
+  truncateUtf8,
+  readContextInjectionLimits,
+  ContextBudget,
+  materializeFile,
+  materializeDirectory,
+  materializeArtifact,
+}

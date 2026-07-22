@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   contextCollector,
   isTrellisSubagent,
+  readContextInjectionLimits,
   TrellisContext,
+  truncateUtf8,
 } from "../../src/templates/opencode/lib/trellis-context.js";
 import {
   buildSessionContext,
@@ -812,5 +814,309 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
 
     expect(parts[0].text).toContain("<workflow-state>");
     expect(parts[0].text).toContain("user prompt");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Issue #441 — sub-agent context injection limits
+// ---------------------------------------------------------------------------
+
+describe("opencode context injection limits (issue #441)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = setupTrellisProject();
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function writeConfig(yaml: string): void {
+    writeFileSync(join(dir, ".trellis", "config.yaml"), yaml, "utf-8");
+  }
+
+  function writeJsonlEntries(entries: Record<string, string>[]): void {
+    writeFileSync(
+      join(dir, ".trellis", "tasks", "demo-task", "implement.jsonl"),
+      entries.map(e => JSON.stringify(e)).join("\n") + "\n",
+      "utf-8",
+    );
+  }
+
+  async function runImplementHook(): Promise<string> {
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
+    const hooks = (await injectSubagentContextPlugin({
+      directory: dir,
+      platform: "linux",
+      env: {},
+    })) as TaskToolHooks;
+    const output: TaskToolOutput = {
+      args: {
+        subagent_type: "trellis-implement",
+        prompt: "do the implementation",
+      },
+    };
+    await hooks["tool.execute.before"](
+      { tool: "task", sessionID: "stranger" },
+      output,
+    );
+    return output.args.prompt ?? "";
+  }
+
+  describe("truncateUtf8", () => {
+    it("leaves data untouched when cap is 0 (unlimited)", () => {
+      const data = Buffer.from("X".repeat(1000));
+      expect(truncateUtf8(data, 0)).toEqual(data);
+    });
+
+    it("leaves data untouched when data is at or under the cap", () => {
+      const data = Buffer.from("hello world");
+      expect(truncateUtf8(data, data.length)).toEqual(data);
+      expect(truncateUtf8(data, data.length + 5)).toEqual(data);
+    });
+
+    it("truncates ASCII data exactly at the cap (1 byte over cap)", () => {
+      const data = Buffer.from("abcdefghij"); // 10 bytes
+      expect(truncateUtf8(data, 9)).toEqual(Buffer.from("abcdefghi"));
+    });
+
+    it("never splits a 2-byte UTF-8 sequence at the boundary (café)", () => {
+      const data = Buffer.from("café", "utf-8");
+      for (let cap = 0; cap <= data.length; cap++) {
+        // Buffer#toString replaces invalid sequences with U+FFFD; a correct
+        // cut never produces one.
+        expect(truncateUtf8(data, cap).toString("utf-8")).not.toContain("�");
+      }
+      expect(truncateUtf8(data, 4).toString("utf-8")).toBe("caf");
+    });
+
+    it("never splits a 3-byte UTF-8 sequence at the boundary (euro sign)", () => {
+      const data = Buffer.from("x€", "utf-8"); // x + 3-byte euro sign
+      for (let cap = 0; cap <= data.length; cap++) {
+        expect(truncateUtf8(data, cap).toString("utf-8")).not.toContain("�");
+      }
+    });
+  });
+
+  describe("readContextInjectionLimits", () => {
+    it("returns built-in defaults when config.yaml is absent", () => {
+      expect(readContextInjectionLimits(dir)).toEqual({
+        max_file_bytes: 32768,
+        max_artifact_bytes: 65536,
+        max_total_bytes: 131072,
+      });
+    });
+
+    it("returns built-in defaults when config.yaml has no context_injection section", () => {
+      writeConfig("session_auto_commit: true\n");
+      expect(readContextInjectionLimits(dir)).toEqual({
+        max_file_bytes: 32768,
+        max_artifact_bytes: 65536,
+        max_total_bytes: 131072,
+      });
+    });
+
+    it("applies explicit overrides for all three keys", () => {
+      writeConfig(
+        [
+          "context_injection:",
+          "  max_file_bytes: 100",
+          "  max_artifact_bytes: 200",
+          "  max_total_bytes: 300",
+        ].join("\n"),
+      );
+      expect(readContextInjectionLimits(dir)).toEqual({
+        max_file_bytes: 100,
+        max_artifact_bytes: 200,
+        max_total_bytes: 300,
+      });
+    });
+
+    it("0 means unlimited and is preserved as-is (not replaced by default)", () => {
+      writeConfig(["context_injection:", "  max_total_bytes: 0"].join("\n"));
+      expect(readContextInjectionLimits(dir).max_total_bytes).toBe(0);
+    });
+
+    it("falls back to default for a negative value", () => {
+      writeConfig(["context_injection:", "  max_file_bytes: -5"].join("\n"));
+      expect(readContextInjectionLimits(dir).max_file_bytes).toBe(32768);
+    });
+
+    it("falls back to default for a non-integer value", () => {
+      writeConfig(
+        ["context_injection:", "  max_artifact_bytes: not-a-number"].join("\n"),
+      );
+      expect(readContextInjectionLimits(dir).max_artifact_bytes).toBe(65536);
+    });
+  });
+
+  describe("inject-subagent-context plugin", () => {
+    it("inlines under-cap content unchanged with no notices (golden)", async () => {
+      writeFileSync(join(dir, "small.md"), "small spec content\n", "utf-8");
+      writeJsonlEntries([{ file: "small.md", reason: "r" }]);
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain("=== small.md ===\nsmall spec content");
+      expect(prompt).toContain(
+        "=== .trellis/tasks/demo-task/prd.md (Requirements) ===\n# Demo PRD",
+      );
+      expect(prompt).not.toContain("[Trellis: truncated");
+      expect(prompt).not.toContain("[Trellis: not inlined");
+    });
+
+    it("truncates an oversized jsonl-referenced file at max_file_bytes with a notice", async () => {
+      writeFileSync(join(dir, "big.txt"), "A".repeat(2 * 1024 * 1024), "utf-8");
+      writeJsonlEntries([{ file: "big.txt", reason: "big" }]);
+
+      const prompt = await runImplementHook();
+
+      expect(Buffer.byteLength(prompt, "utf-8")).toBeLessThanOrEqual(
+        128 * 1024 + 4096, // total cap + slack for the prompt template/notices
+      );
+      expect(prompt).toContain(
+        "[Trellis: truncated at 32768 bytes — read big.txt for the full content]",
+      );
+    });
+
+    it("never splits a multi-byte UTF-8 sequence at the 32768-byte cut point", async () => {
+      // 32767 ASCII bytes + Chinese text: the default cap lands inside the
+      // first 3-byte character and must back off, not emit mojibake.
+      writeFileSync(
+        join(dir, "zh.md"),
+        "a".repeat(32767) + "中文内容",
+        "utf-8",
+      );
+      writeJsonlEntries([{ file: "zh.md", reason: "zh" }]);
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).not.toContain("�");
+      expect(prompt).toContain(
+        "a".repeat(32767) +
+          "\n[Trellis: truncated at 32768 bytes — read zh.md for the full content]",
+      );
+    });
+
+    it("truncates an oversized artifact (prd.md) at max_artifact_bytes", async () => {
+      writeFileSync(
+        join(dir, ".trellis", "tasks", "demo-task", "prd.md"),
+        "P".repeat(100000),
+        "utf-8",
+      );
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain("P".repeat(65536));
+      expect(prompt).not.toContain("P".repeat(65537));
+      expect(prompt).toContain(
+        "[Trellis: truncated at 65536 bytes — read .trellis/tasks/demo-task/prd.md for the full content]",
+      );
+    });
+
+    it("degrades to an index line once the total budget is exhausted (3 files)", async () => {
+      writeFileSync(join(dir, "f1.txt"), "1".repeat(50), "utf-8");
+      writeFileSync(join(dir, "f2.txt"), "2".repeat(50), "utf-8");
+      writeFileSync(join(dir, "f3.txt"), "3".repeat(50), "utf-8");
+      writeJsonlEntries([
+        { file: "f1.txt", reason: "first" },
+        { file: "f2.txt", reason: "second" },
+        { file: "f3.txt", reason: "third" },
+      ]);
+      writeConfig(
+        [
+          "context_injection:",
+          "  max_file_bytes: 0",
+          "  max_artifact_bytes: 0",
+          "  max_total_bytes: 120", // fits f1 fully, degrades f2/f3
+        ].join("\n"),
+      );
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain("=== f1.txt ===\n" + "1".repeat(50));
+      expect(prompt).toContain(
+        "[Trellis: not inlined (total context limit reached) — f2.txt (50 bytes): second]",
+      );
+      expect(prompt).toContain(
+        "[Trellis: not inlined (total context limit reached) — f3.txt (50 bytes): third]",
+      );
+      expect(prompt).not.toContain("=== f2.txt ===");
+      expect(prompt).not.toContain("=== f3.txt ===");
+    });
+
+    it("honors a max_file_bytes override from .trellis/config.yaml", async () => {
+      writeFileSync(join(dir, "ref.md"), "R".repeat(100), "utf-8");
+      writeJsonlEntries([{ file: "ref.md", reason: "ref" }]);
+      writeConfig(["context_injection:", "  max_file_bytes: 10"].join("\n"));
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain(
+        "[Trellis: truncated at 10 bytes — read ref.md for the full content]",
+      );
+      expect(prompt).not.toContain("R".repeat(11));
+    });
+
+    it("max_file_bytes: 0 and max_total_bytes: 0 restore fully unlimited inlining", async () => {
+      const bigContent = "Z".repeat(40000); // over the 32768 default file cap
+      writeFileSync(join(dir, "big.txt"), bigContent, "utf-8");
+      writeJsonlEntries([{ file: "big.txt", reason: "big" }]);
+      writeConfig(
+        [
+          "context_injection:",
+          "  max_file_bytes: 0",
+          "  max_total_bytes: 0",
+        ].join("\n"),
+      );
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain("=== big.txt ===\n" + bigContent);
+      expect(prompt).not.toContain("[Trellis: truncated");
+      expect(prompt).not.toContain("[Trellis: not inlined");
+    });
+
+    it("invalid config values fall back to the default cap", async () => {
+      writeFileSync(join(dir, "big.txt"), "A".repeat(40000), "utf-8");
+      writeJsonlEntries([{ file: "big.txt", reason: "big" }]);
+      writeConfig(
+        ["context_injection:", "  max_file_bytes: not-a-number"].join("\n"),
+      );
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain(
+        "[Trellis: truncated at 32768 bytes — read big.txt for the full content]",
+      );
+    });
+
+    it("directory entries respect the per-file cap and only inline .md files", async () => {
+      mkdirSync(join(dir, "refdir"), { recursive: true });
+      writeFileSync(join(dir, "refdir", "a.md"), "A".repeat(1000), "utf-8");
+      writeFileSync(join(dir, "refdir", "b.md"), "B".repeat(1000), "utf-8");
+      writeFileSync(join(dir, "refdir", "c.txt"), "IGNORED_TXT_CONTENT", "utf-8");
+      writeJsonlEntries([
+        { file: "refdir/", type: "directory", reason: "reference dir" },
+      ]);
+      writeConfig(
+        [
+          "context_injection:",
+          "  max_file_bytes: 10",
+          "  max_total_bytes: 0",
+        ].join("\n"),
+      );
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain(
+        "[Trellis: truncated at 10 bytes — read refdir/a.md for the full content]",
+      );
+      expect(prompt).toContain(
+        "[Trellis: truncated at 10 bytes — read refdir/b.md for the full content]",
+      );
+      expect(prompt).not.toContain("IGNORED_TXT_CONTENT");
+    });
   });
 });
