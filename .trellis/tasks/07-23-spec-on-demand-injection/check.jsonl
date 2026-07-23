@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/07-23-spec-on-demand-injection/prd.md", "reason": "Acceptance criteria to verify against"}
+{"file": ".trellis/tasks/07-23-spec-on-demand-injection/design.md", "reason": "Contracts the implementation must match, failure-mode table"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "House quality bar for diff review"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Verify new tests follow conventions"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Hook output protocol and size-budget rules the new hook must respect"}

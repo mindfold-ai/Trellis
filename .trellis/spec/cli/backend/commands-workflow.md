@@ -1,3 +1,10 @@
+---
+name: commands-workflow
+description: Workflow marketplace templates, project-local workflow switching, hash ownership contract, and parser compatibility
+paths:
+  - packages/cli/src/commands/workflow.ts
+  - packages/cli/src/utils/workflow-resolver.ts
+---
 # `trellis workflow` Command
 
 `trellis workflow` lists and switches the project's active `.trellis/workflow.md`

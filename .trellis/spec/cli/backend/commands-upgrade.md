@@ -1,3 +1,9 @@
+---
+name: commands-upgrade
+description: "Global CLI self-upgrade wrapper: channel inference, npm invocation, failure behavior"
+paths:
+  - packages/cli/src/commands/upgrade.ts
+---
 # `trellis upgrade` Command
 
 How `trellis upgrade` upgrades the globally installed Trellis CLI package.

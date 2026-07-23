@@ -1,3 +1,10 @@
+---
+name: commands-uninstall
+description: "Uninstall orchestration: plan composition, structured-file dispatch, execute phases, .trellis/ removal"
+paths:
+  - packages/cli/src/commands/uninstall.ts
+  - packages/cli/src/utils/uninstall-scrubbers.ts
+---
 # `trellis uninstall` Command
 
 Source: `packages/cli/src/commands/uninstall.ts`

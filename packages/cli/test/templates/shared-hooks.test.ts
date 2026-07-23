@@ -11,6 +11,7 @@ const ALL_HOOK_FILES = [
   "inject-shell-session-context.py",
   "inject-workflow-state.py",
   "inject-subagent-context.py",
+  "inject-spec-context.py",
 ] as const;
 
 const EMPTY_EXCEPT_PASS_RE = /except[^\n]*:\n\s*pass\s*$/m;
@@ -74,6 +75,23 @@ describe("shared-hooks capability table", () => {
     expect(SHARED_HOOKS_BY_PLATFORM.codex).toContain(
       "inject-subagent-context.py",
     );
+  });
+
+  it("inject-spec-context.py is distributed to Claude Code only (this iteration)", () => {
+    // PostToolUse spec injection is registered on Claude Code only; other
+    // platforms are a follow-up (class-2 platforms use the
+    // `get_context.py --mode spec` pull mode instead).
+    for (const [platform, hooks] of Object.entries(
+      SHARED_HOOKS_BY_PLATFORM,
+    )) {
+      const has = hooks.includes("inject-spec-context.py");
+      if (platform === "claude") expect(has).toBe(true);
+      else
+        expect(
+          has,
+          `${platform} must not ship inject-spec-context.py — Claude-only this iteration`,
+        ).toBe(false);
+    }
   });
 
   it("codex + copilot do not take the shared session-start.py (they bundle their own)", () => {

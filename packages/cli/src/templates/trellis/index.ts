@@ -61,6 +61,7 @@ export const commonWorkflowPhase = readTemplate(
 export const commonTrellisConfig = readTemplate(
   "scripts/common/trellis_config.py",
 );
+export const commonSpecMatch = readTemplate("scripts/common/spec_match.py");
 export const commonSafeCommit = readTemplate("scripts/common/safe_commit.py");
 
 // Python scripts - main
@@ -112,6 +113,7 @@ export function getAllScripts(): Map<string, string> {
   scripts.set("common/packages_context.py", commonPackagesContext);
   scripts.set("common/workflow_phase.py", commonWorkflowPhase);
   scripts.set("common/trellis_config.py", commonTrellisConfig);
+  scripts.set("common/spec_match.py", commonSpecMatch);
   scripts.set("common/safe_commit.py", commonSafeCommit);
 
   // Main

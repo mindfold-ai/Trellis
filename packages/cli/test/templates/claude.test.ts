@@ -66,6 +66,41 @@ describe("settingsTemplate SessionStart matchers", () => {
   });
 });
 
+// =============================================================================
+// settingsTemplate — PostToolUse spec-injection hook matchers
+// =============================================================================
+
+describe("settingsTemplate PostToolUse matchers", () => {
+  const settings = JSON.parse(settingsTemplate);
+  const postToolUseEntries = settings.hooks.PostToolUse as {
+    matcher: string;
+    hooks: { type: string; command: string; timeout: number }[];
+  }[];
+
+  it("includes Edit, Write, and MultiEdit matchers", () => {
+    const matchers = postToolUseEntries.map((e) => e.matcher);
+    expect(matchers).toContain("Edit");
+    expect(matchers).toContain("Write");
+    expect(matchers).toContain("MultiEdit");
+  });
+
+  it("all PostToolUse entries invoke inject-spec-context.py with timeout 15", () => {
+    expect(postToolUseEntries.length).toBeGreaterThan(0);
+    for (const entry of postToolUseEntries) {
+      expect(entry.hooks).toHaveLength(1);
+      expect(entry.hooks[0].type).toBe("command");
+      expect(entry.hooks[0].command).toContain("inject-spec-context.py");
+      expect(entry.hooks[0].timeout).toBe(15);
+    }
+  });
+
+  it("all PostToolUse entries use {{PYTHON_CMD}} placeholder", () => {
+    for (const entry of postToolUseEntries) {
+      expect(entry.hooks[0].command).toContain("{{PYTHON_CMD}}");
+    }
+  });
+});
+
 // Commands are now sourced from common/ templates and tested in platforms.test.ts
 
 // =============================================================================

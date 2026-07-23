@@ -1,3 +1,10 @@
+---
+name: uninstall-scrubbers
+description: Pure scrubber contract for structured config files (settings.json, hooks.json, package.json, config.toml)
+paths:
+  - packages/cli/src/commands/uninstall.ts
+  - packages/cli/src/utils/uninstall-scrubbers.ts
+---
 # Uninstall Scrubbers
 
 How `trellis uninstall` performs **paragraph-level deletion** on structured config files (`settings.json`, `hooks.json`, `config.toml`, `package.json`) so that Trellis-emitted fields are removed while user-added neighbors stay intact.

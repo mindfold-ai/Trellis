@@ -1,3 +1,11 @@
+---
+name: script-conventions
+description: Python script standards for .trellis/scripts/
+paths:
+  - .trellis/scripts/**
+  - packages/cli/src/templates/trellis/scripts/**
+  - packages/cli/src/templates/shared-hooks/**
+---
 # Script Conventions
 
 > Standards for Python scripts in the `.trellis/scripts/` directory.

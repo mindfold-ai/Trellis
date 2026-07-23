@@ -1,3 +1,9 @@
+---
+name: commands-update
+description: "Update pipeline: flags, plan composition, migration trigger semantics, apply phase, idempotency, boundaries with migrations.md"
+paths:
+  - packages/cli/src/commands/update.ts
+---
 # `trellis update` Command
 
 How `trellis update` upgrades a user project's bundled Trellis assets (Python scripts, workflow.md, AGENTS.md, platform configs) from the version recorded in `.trellis/.version` to the version of the installed CLI.

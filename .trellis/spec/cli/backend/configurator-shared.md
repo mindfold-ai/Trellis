@@ -1,3 +1,9 @@
+---
+name: configurator-shared
+description: "configurators/shared.ts public surface: placeholder substitution, write helpers, pull-based prelude, cross-configurator invariants"
+paths:
+  - packages/cli/src/configurators/shared.ts
+---
 # Configurator Shared Helpers
 
 How `packages/cli/src/configurators/shared.ts` is structured: what it exports, what each helper guarantees, and when a platform configurator should reach for shared logic vs. write its own.

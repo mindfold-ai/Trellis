@@ -1,3 +1,9 @@
+---
+name: commands-mem
+description: "Cross-platform AI session memory: subcommands, schemas, indexing, cleaning pipeline, search relevance"
+paths:
+  - packages/cli/src/commands/mem.ts
+---
 # `tl mem` — Cross-Platform AI Session Memory
 
 How Trellis indexes, searches, and extracts dialogue from on-disk session files

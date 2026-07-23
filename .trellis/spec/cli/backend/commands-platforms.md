@@ -1,3 +1,9 @@
+---
+name: commands-platforms
+description: "Machine-readable report of configured AI platforms: --json shape, registry sourcing, failure behavior"
+paths:
+  - packages/cli/src/cli/index.ts
+---
 # `trellis platforms` Command
 
 Machine-readable report of which AI platforms are configured (active) in the

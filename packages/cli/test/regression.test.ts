@@ -1144,6 +1144,7 @@ describe("regression: hook JSON format (beta.7)", () => {
     const allHookEntries = [
       ...settings.hooks.SessionStart,
       ...settings.hooks.PreToolUse,
+      ...settings.hooks.PostToolUse,
     ];
     for (const entry of allHookEntries) {
       for (const hook of entry.hooks) {
