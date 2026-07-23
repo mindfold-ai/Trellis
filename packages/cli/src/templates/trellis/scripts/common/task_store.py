@@ -56,6 +56,7 @@ from .task_utils import (
     resolve_task_dir,
     run_task_hooks,
 )
+from .workflow_selection import DIR_WORKFLOWS, WORKFLOW_ID_RE
 
 
 # =============================================================================
@@ -254,6 +255,30 @@ def cmd_create(args: argparse.Namespace) -> int:
         # Inferred: default_package → None (no task.json yet for create)
         package = resolve_package(repo_root=repo_root)
 
+    # Validate --workflow (CLI source: fail-fast on invalid id; a missing
+    # library file only warns — it may be saved later via `trellis workflow --save`)
+    workflow_id: str | None = getattr(args, "workflow", None)
+    if workflow_id:
+        if not WORKFLOW_ID_RE.match(workflow_id):
+            print(
+                colored(
+                    f"Error: invalid workflow id '{workflow_id}' (allowed: letters, digits, '-', '_')",
+                    Colors.RED,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        workflow_md = repo_root / DIR_WORKFLOW / DIR_WORKFLOWS / f"{workflow_id}.md"
+        if not workflow_md.is_file():
+            print(
+                colored(
+                    f"Warning: {DIR_WORKFLOW}/{DIR_WORKFLOWS}/{workflow_id}.md does not exist yet; "
+                    "the global workflow.md is used until it is saved (trellis workflow --save).",
+                    Colors.YELLOW,
+                ),
+                file=sys.stderr,
+            )
+
     # Default assignee to current developer
     assignee = args.assignee
     if not assignee:
@@ -385,6 +410,10 @@ def cmd_create(args: argparse.Namespace) -> int:
         "notes": "",
         "meta": meta,
     }
+    # Optional per-task workflow selection: key present only when opted in,
+    # so tasks without a selection keep today's task.json shape byte-for-byte.
+    if workflow_id:
+        task_data["workflow"] = workflow_id
 
     write_json(task_json_path, task_data)
 

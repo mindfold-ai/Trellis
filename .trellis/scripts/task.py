@@ -11,6 +11,7 @@ Usage:
     python3 task.py start <dir>                 # Set active task
     python3 task.py current [--source] [--json] # Show active task
     python3 task.py finish                      # Clear active task
+    python3 task.py workflow <id>|--clear       # Set/clear per-task workflow selection
     python3 task.py set-branch <dir> <branch>   # Set git branch
     python3 task.py set-base-branch <dir> <branch>  # Set PR target branch
     python3 task.py set-scope <dir> <scope>     # Set scope for PR title
@@ -47,6 +48,7 @@ from common.active_task import (
 from common.io import read_json, write_json
 from common.task_utils import resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
+from common.workflow_selection import WORKFLOW_ID_RE, workflow_md_for_task
 
 # Import command handlers from split modules (also re-exports for plan.py compatibility)
 from common.task_store import (
@@ -202,6 +204,72 @@ def cmd_current(args: argparse.Namespace) -> int:
         return 0
 
     return 1
+
+
+# =============================================================================
+# Command: workflow
+# =============================================================================
+
+def cmd_workflow(args: argparse.Namespace) -> int:
+    """Set or clear the workflow selection on the current session's active task."""
+    repo_root = get_repo_root()
+
+    if args.clear and args.id:
+        print(colored("Error: pass either <id> or --clear, not both", Colors.RED))
+        return 1
+    if not args.clear and not args.id:
+        print(colored("Error: workflow id required (or --clear)", Colors.RED))
+        print("Usage: python3 task.py workflow <id> | --clear")
+        return 1
+
+    active = resolve_active_task(repo_root)
+    if not active.task_path:
+        print(colored("Error: No current task set", Colors.RED))
+        print("Hint: run task.py start <dir> first")
+        return 1
+
+    task_dir = repo_root / active.task_path
+    task_json_path = task_dir / FILE_TASK_JSON
+    if not task_json_path.is_file():
+        print(colored(f"Error: task.json not found at {task_dir}", Colors.RED))
+        return 1
+
+    data = read_json(task_json_path)
+    if not data:
+        print(colored(f"Error: failed to read {task_json_path}", Colors.RED))
+        return 1
+
+    if args.clear:
+        if data.pop("workflow", None) is None:
+            print(colored("No workflow selection set on this task", Colors.YELLOW))
+        else:
+            if not write_json(task_json_path, data):
+                print(colored("Error: failed to update task.json", Colors.RED))
+                return 1
+            print(colored("✓ Workflow selection cleared", Colors.GREEN))
+    else:
+        workflow_id = args.id
+        if not WORKFLOW_ID_RE.match(workflow_id):
+            print(colored(
+                f"Error: invalid workflow id '{workflow_id}' (allowed: letters, digits, '-', '_')",
+                Colors.RED,
+            ))
+            return 1
+        data["workflow"] = workflow_id
+        if not write_json(task_json_path, data):
+            print(colored("Error: failed to update task.json", Colors.RED))
+            return 1
+        print(colored(f"✓ Workflow set to: {workflow_id}", Colors.GREEN))
+
+    # workflow_md_for_task warns on stderr itself when the selected variant
+    # file is missing (it can be saved later via `trellis workflow --save`).
+    effective = workflow_md_for_task(repo_root, task_dir)
+    try:
+        effective_display = effective.relative_to(repo_root).as_posix()
+    except ValueError:
+        effective_display = str(effective)
+    print(f"Effective workflow: {effective_display}")
+    return 0
 
 
 # =============================================================================
@@ -382,12 +450,15 @@ Usage:
   python3 task.py create <title> --package <pkg>     Create task for a specific package
   python3 task.py create <title> --parent <dir>      Create task as child of parent
   python3 task.py create <title> --no-start          Create without making it active in this session
+  python3 task.py create <title> --workflow <id>     Create task pinned to a workflow variant
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
   python3 task.py start <dir>                        Set active task
   python3 task.py current [--source]                 Show active task
   python3 task.py finish                             Clear active task
+  python3 task.py workflow <id>                      Select workflow variant for active task
+  python3 task.py workflow --clear                   Clear selection (use global workflow.md)
   python3 task.py set-branch <dir> <branch>          Set git branch
   python3 task.py set-base-branch <dir> <branch>     Set PR target branch
   python3 task.py set-scope <dir> <scope>            Set scope for PR title
@@ -490,6 +561,10 @@ def main() -> int:
         action="store_true",
         help="Create the task without making it active in this session",
     )
+    p_create.add_argument(
+        "--workflow",
+        help="Workflow variant id for this task (.trellis/workflows/<id>.md)",
+    )
 
     # add-context
     p_add = subparsers.add_parser("add-context", help="Add context entry")
@@ -519,6 +594,12 @@ def main() -> int:
 
     # finish
     subparsers.add_parser("finish", help="Clear active task")
+
+    # workflow
+    p_workflow = subparsers.add_parser("workflow", help="Set/clear per-task workflow selection")
+    p_workflow.add_argument("id", nargs="?", help="Workflow id (.trellis/workflows/<id>.md)")
+    p_workflow.add_argument("--clear", action="store_true",
+                            help="Remove the workflow selection (use global workflow.md)")
 
     # set-branch
     p_branch = subparsers.add_parser("set-branch", help="Set git branch")
@@ -580,6 +661,7 @@ def main() -> int:
         "start": cmd_start,
         "current": cmd_current,
         "finish": cmd_finish,
+        "workflow": cmd_workflow,
         "set-branch": cmd_set_branch,
         "set-base-branch": cmd_set_base_branch,
         "set-scope": cmd_set_scope,

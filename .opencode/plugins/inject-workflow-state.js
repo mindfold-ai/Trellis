@@ -1,4 +1,4 @@
-/* global process */
+/* global process, console */
 /**
  * Trellis Workflow State Injection Plugin
  *
@@ -8,7 +8,11 @@
  * <workflow-state> breadcrumb reminding the main AI what task is
  * active and its expected flow. Breadcrumb text is pulled exclusively
  * from the project's workflow.md [workflow-state:STATUS] tag blocks —
- * workflow.md is the single source of truth. There are no fallback
+ * workflow.md is the single source of truth. When the active task's
+ * task.json selects a workflow variant ("workflow": "<id>"), the tag
+ * blocks are read from .trellis/workflows/<id>.md instead (missing
+ * variant file → one stderr warning + fallback to workflow.md; see
+ * resolveWorkflowMd). There are no fallback
  * tables in this plugin: when workflow.md is missing or a tag is
  * absent, the breadcrumb degrades to a generic
  * "Refer to workflow.md for current step." line so users see (and fix)
@@ -23,7 +27,7 @@
  *   - task.json malformed or missing status
  */
 
-import { existsSync, readFileSync } from "fs"
+import { existsSync, readFileSync, statSync } from "fs"
 import { join } from "path"
 import { TrellisContext, debugLog, isTrellisSubagent } from "../lib/trellis-context.js"
 
@@ -31,17 +35,64 @@ import { TrellisContext, debugLog, isTrellisSubagent } from "../lib/trellis-cont
 // (so "in-review" / "blocked-by-team" work alongside "in_progress").
 const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g
 
+// Per-task workflow selection (mirrors the Python resolver in
+// .trellis/scripts/common/workflow_selection.py). Ids are restricted to
+// [A-Za-z0-9_-]+ so a task.json value can never traverse outside
+// .trellis/workflows/.
+const WORKFLOW_ID_RE = /^[A-Za-z0-9_-]+$/
+
 /**
- * Parse workflow.md for [workflow-state:STATUS] blocks.
+ * Resolve which workflow markdown file feeds this turn's breadcrumbs.
  *
- * Returns {status: body}. workflow.md is the single source of truth —
- * there are no fallback tables here. Missing tags (or a missing /
- * unreadable workflow.md) fall back to a generic line in
+ * Rule (identical across all Trellis consumers):
+ * - Active task's task.json has a non-empty string "workflow" field whose
+ *   id matches [A-Za-z0-9_-]+ AND .trellis/workflows/<id>.md is a file →
+ *   use that path.
+ * - Selection present but id invalid / variant file missing → one warning
+ *   line on stderr (never stdout — stdout is hook JSON on other hosts)
+ *   and fall back to the global .trellis/workflow.md.
+ * - No active task / no "workflow" field / anything unreadable → global
+ *   path, silently. Never throws.
+ */
+function resolveWorkflowMd(ctx, directory, platformInput) {
+  const globalPath = join(directory, ".trellis", "workflow.md")
+  let workflowId = ""
+  try {
+    const active = ctx.getActiveTask(platformInput)
+    if (!active.taskPath || active.stale) return globalPath
+    const taskDir = ctx.resolveTaskDir(active.taskPath)
+    if (!taskDir) return globalPath
+    const data = JSON.parse(readFileSync(join(taskDir, "task.json"), "utf-8"))
+    if (data && typeof data.workflow === "string") workflowId = data.workflow
+  } catch {
+    // No active task / unreadable task.json — not a selection, no warning.
+    return globalPath
+  }
+  if (!workflowId) return globalPath
+  if (WORKFLOW_ID_RE.test(workflowId)) {
+    const variantPath = join(directory, ".trellis", "workflows", `${workflowId}.md`)
+    try {
+      if (statSync(variantPath).isFile()) return variantPath
+    } catch {
+      // ENOENT etc. — treated as a missing variant file; warn below.
+    }
+  }
+  console.error(
+    `Warning: active task selects workflow ${JSON.stringify(workflowId)} but .trellis/workflows/ has no matching file; using .trellis/workflow.md`,
+  )
+  return globalPath
+}
+
+/**
+ * Parse the resolved workflow markdown for [workflow-state:STATUS] blocks.
+ *
+ * Returns {status: body}. The workflow file is the single source of
+ * truth — there are no fallback tables here. Missing tags (or a missing /
+ * unreadable workflow file) fall back to a generic line in
  * buildBreadcrumb so users see the broken state and fix workflow.md
  * rather than the plugin silently masking it.
  */
-function loadBreadcrumbs(directory) {
-  const workflowPath = join(directory, ".trellis", "workflow.md")
+function loadBreadcrumbs(workflowPath) {
   if (!existsSync(workflowPath)) return {}
   let content
   try {
@@ -124,7 +175,7 @@ export default async ({ directory }) => {
           if (!ctx.isTrellisProject()) {
             return
           }
-          const templates = loadBreadcrumbs(directory)
+          const templates = loadBreadcrumbs(resolveWorkflowMd(ctx, directory, input))
           const task = getActiveTask(ctx, input)
           const breadcrumb = task
             ? buildBreadcrumb(task.id, task.status, templates, task.source)

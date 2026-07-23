@@ -10,8 +10,10 @@ The emitted ``hookEventName`` field is platform-aware: most hosts expect
 CodeBuddy / Droid / Codex / Copilot wiring), but Gemini CLI 0.40.x renamed
 its per-turn event to ``BeforeAgent`` and its schema validator rejects the
 legacy name. ``_detect_platform`` picks the right value at runtime.
-Breadcrumb text is pulled exclusively from workflow.md
-[workflow-state:STATUS] tag blocks — workflow.md is the single source of
+Breadcrumb text is pulled exclusively from the resolved workflow file's
+[workflow-state:STATUS] tag blocks — the active task may select a
+per-task variant (`.trellis/workflows/<id>.md` via task.json `workflow`),
+otherwise the global workflow.md is the single source of
 truth. There are no fallback dicts in this script: when workflow.md is
 missing or a tag is absent, the breadcrumb degrades to a generic
 "Refer to workflow.md for current step." line so users see (and fix)
@@ -183,16 +185,40 @@ _TAG_RE = re.compile(
     re.DOTALL,
 )
 
-def load_breadcrumbs(root: Path) -> dict[str, str]:
-    """Parse workflow.md for [workflow-state:STATUS] blocks.
+def _resolve_workflow_md(root: Path, input_data: dict) -> Path:
+    """Resolve the active task's workflow file, falling back to the global one.
 
-    Returns {status: body_text}. workflow.md is the single source of
+    The per-task resolution rule lives in common.workflow_selection inside
+    .trellis/scripts. Older installed projects may not ship that module, and
+    hooks must never crash the session — ANY failure (import error, old
+    scripts tree, resolver bug) falls back to the global workflow.md.
+    """
+    try:
+        scripts_dir = root / ".trellis" / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from common.workflow_selection import resolve_workflow_md  # type: ignore[import-not-found]
+
+        return resolve_workflow_md(
+            root, input_data, platform=_detect_platform(input_data)
+        )
+    except Exception:
+        return root / ".trellis" / "workflow.md"
+
+
+def load_breadcrumbs(root: Path, input_data: dict) -> dict[str, str]:
+    """Parse the resolved workflow file for [workflow-state:STATUS] blocks.
+
+    Returns {status: body_text}. The workflow file is the single source of
     truth — there are no fallback dicts in this script. Missing tags
-    (or a missing/unreadable workflow.md) fall back to a generic line
+    (or a missing/unreadable workflow file) fall back to a generic line
     in build_breadcrumb so users see the broken state and fix
     workflow.md, rather than the hook silently masking the issue.
+    The active task's per-task workflow selection (task.json `workflow`
+    field) is honored via _resolve_workflow_md; without a selection this
+    reads the global .trellis/workflow.md exactly as before.
     """
-    workflow = root / ".trellis" / "workflow.md"
+    workflow = _resolve_workflow_md(root, input_data)
     if not workflow.is_file():
         return {}
     try:
@@ -411,7 +437,7 @@ def main() -> int:
     if prompt_has_skip_keyword(data.get("prompt", ""), _resolve_skip_keyword(config)):
         return 0  # user opted out of the per-turn breadcrumb for this turn
 
-    templates = load_breadcrumbs(root)
+    templates = load_breadcrumbs(root, data)
     platform = _detect_platform(data)
     task = get_active_task(root, data)
     if task is None:
