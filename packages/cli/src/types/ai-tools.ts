@@ -82,8 +82,7 @@ export type CliFlag =
   | "omp"
   | "grok"
   | "kimi"
-  | "snow"
-  | "snocli";
+  | "snow";
 
 /**
  * Template context for placeholder resolution.
@@ -553,7 +552,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     },
   },
   /**
-   * Snow CLI (snocli) - class-1 platform.
+   * Snow CLI - class-1 platform.
    *
    * Skills: `.snow/skills/` (Claude Code Skills compatible)
    * Commands: `.snow/commands/trellis-*.json` (type: prompt)
@@ -564,12 +563,12 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
    * hasPythonHooks=true: ships write-trellis-context.py under .snow/hooks/.
    * Primary agent path is `.snow/agents/*.md` only (no legacy JSON fragment).
    *
-   * CLI flags: `--snow` (canonical) and `--snocli` (alias, same platform).
+   * CLI flag: `--snow`.
    * Detection uses configDir `.snow/skills` so bare `.snow/settings.json` is not
    * a false-positive "configured" project.
    */
   snow: {
-    name: "Snow CLI (snocli)",
+    name: "Snow CLI",
     templateDirs: ["common", "snow"],
     configDir: ".snow/skills",
     extraManagedPaths: [

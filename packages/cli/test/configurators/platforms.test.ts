@@ -791,13 +791,18 @@ describe("configurePlatform", () => {
       ),
     ).toContain("beforeSubAgentStart");
 
-    // Bare .snow/settings.json must not alone count as configured
+    // Only Trellis-managed `.snow/skills` counts as configured. Native Snow
+    // projects can legitimately contain settings, commands, or agents.
     const emptyDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "trellis-snow-det-"),
     );
     try {
       fs.mkdirSync(path.join(emptyDir, ".snow"), { recursive: true });
       fs.writeFileSync(path.join(emptyDir, ".snow", "settings.json"), "{}");
+      expect(getConfiguredPlatforms(emptyDir).has("snow")).toBe(false);
+      fs.mkdirSync(path.join(emptyDir, ".snow", "commands"), { recursive: true });
+      expect(getConfiguredPlatforms(emptyDir).has("snow")).toBe(false);
+      fs.mkdirSync(path.join(emptyDir, ".snow", "agents"), { recursive: true });
       expect(getConfiguredPlatforms(emptyDir).has("snow")).toBe(false);
       fs.mkdirSync(path.join(emptyDir, ".snow", "skills"), { recursive: true });
       expect(getConfiguredPlatforms(emptyDir).has("snow")).toBe(true);
@@ -859,7 +864,8 @@ describe("configurePlatform", () => {
     );
     expect(snowGuide).toContain("Do not use legacy sub-agent JSON merge files");
     expect(snowGuide).toContain("class-1 hook inject");
-    expect(snowGuide.toLowerCase()).not.toContain("until snow-cli#194");
+    expect(snowGuide.toLowerCase()).not.toContain("snocli");
+    expect(snowGuide.toLowerCase()).not.toContain("snow-cli");
     expect(snowGuide).not.toContain("sub-agents.trellis.json");
     expect(snowGuide).toContain("Session identity");
     expect(snowGuide).toContain("SNOW_SESSION_ID");
@@ -869,7 +875,8 @@ describe("configurePlatform", () => {
       path.join(tmpDir, ".snow", "agents", "trellis-implement.md"),
       "utf-8",
     );
-    expect(implementAgent.toLowerCase()).not.toContain("until snow-cli#194");
+    expect(implementAgent.toLowerCase()).not.toContain("snocli");
+    expect(implementAgent.toLowerCase()).not.toContain("snow-cli");
     expect(implementAgent).toContain("auto-loaded from");
     // class-1: no class-2 pull-based prelude text
     expect(implementAgent).not.toContain(

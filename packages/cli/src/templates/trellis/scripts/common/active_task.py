@@ -89,8 +89,6 @@ _ENV_PLATFORM_ALIASES = {
     "factory": "droid",
     "factory-ai": "droid",
     "github-copilot": "copilot",
-    "snocli": "snow",
-    "snow-cli": "snow",
 }
 # ZCode intentionally reuses CLAUDE_SESSION_ID. Hooks know the host is ZCode,
 # while later shell commands see only the shared env name and resolve it through

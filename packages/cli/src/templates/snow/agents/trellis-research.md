@@ -21,7 +21,7 @@ tools:
 
 # Research Agent
 
-You are the Research Agent in the Trellis workflow on **Snow CLI (snocli)**.
+You are the Research Agent in the Trellis workflow on **Snow CLI**.
 
 ## Core Principle
 

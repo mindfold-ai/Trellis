@@ -6,7 +6,7 @@ Used by onSessionStart / onUserMessage / beforeSubAgentStart hooks.
 
 1. Writes a breadcrumb file agents/skills can Read:
      .snow/log/trellis-context.txt
-2. Prints stdout JSON for snow-cli inject protocol:
+2. Prints stdout JSON for the Snow inject protocol:
      { "additionalContext": "...", "display": "..." }
 
 Modes (compact vs full):
@@ -20,6 +20,7 @@ Fail-open: never raise out of main().
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import json
 import os
 import re
@@ -113,7 +114,7 @@ def _count_jsonl_lines(path: Path) -> int | None:
 
 
 def _jsonl_summaries(path: Path, max_items: int = 8, line_limit: int = 120) -> list[str]:
-    if not path.is_file():
+    if max_items <= 0 or not path.is_file():
         return []
     items: list[str] = []
     try:
@@ -138,8 +139,8 @@ def _jsonl_summaries(path: Path, max_items: int = 8, line_limit: int = 120) -> l
                 if len(summary) > line_limit:
                     summary = summary[: line_limit - 3] + "..."
                 items.append(f"- {summary}")
-                if len(items) >= max_items:
-                    break
+                if len(items) > max_items:
+                    items.pop(0)
     except Exception:
         return []
     return items
@@ -227,7 +228,9 @@ def _parse_stdin_json(raw: str) -> dict[str, Any]:
         return {}
 
 
-def _resolve_mode(argv: list[str], env: dict[str, str], stdin_ctx: dict[str, Any]) -> str:
+def _resolve_mode(
+    argv: list[str], env: Mapping[str, str], stdin_ctx: dict[str, Any]
+) -> str:
     for arg in argv[1:]:
         a = arg.strip().lower()
         if a in {"session", "user", "subagent", "full", "compact"}:

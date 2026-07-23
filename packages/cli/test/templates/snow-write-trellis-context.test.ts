@@ -88,11 +88,12 @@ function writeFixtureRepo(root: string): void {
   );
   fs.writeFileSync(
     path.join(taskDir, "implement.jsonl"),
-    [
-      JSON.stringify({ id: "step-1", summary: "Add snow hook fixture tests" }),
-      JSON.stringify({ id: "_example", summary: "seed row" }),
-      "",
-    ].join("\n"),
+    Array.from({ length: 11 }, (_, index) =>
+      JSON.stringify({
+        id: `step-${index + 1}`,
+        summary: `Implement summary ${index + 1}`,
+      }),
+    ).join("\n") + "\n",
     "utf-8",
   );
   fs.writeFileSync(
@@ -275,6 +276,10 @@ describe("snow write-trellis-context.py execution", () => {
       );
       expect(implement.payload?.additionalContext).toContain(
         "implement.jsonl (recent)",
+      );
+      expect(implement.payload?.additionalContext).toContain("Implement summary 11");
+      expect(implement.payload?.additionalContext).not.toContain(
+        "- Implement summary 1\n",
       );
       expect(implement.payload?.display).toContain("implement");
 

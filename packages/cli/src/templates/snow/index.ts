@@ -1,5 +1,5 @@
 /**
- * Snow CLI (snocli) template module.
+ * Snow CLI template module.
  *
  * Snow CLI is a class-1 platform:
  * - Skills under `.snow/skills/<name>/SKILL.md`

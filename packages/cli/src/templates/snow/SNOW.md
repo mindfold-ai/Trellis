@@ -1,4 +1,4 @@
-# Trellis on Snow CLI (snocli)
+# Trellis on Snow CLI
 
 Snow is a **class-1** Trellis host: auto context inject + project agent discovery +
 `beforeSubAgentStart` prompt enrichment.
@@ -16,7 +16,6 @@ Snow is a **class-1** Trellis host: auto context inject + project agent discover
 
 ```bash
 trellis init --snow -u your-name
-# or: trellis init --snocli -u your-name
 snow
 ```
 

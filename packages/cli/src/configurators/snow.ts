@@ -1,5 +1,5 @@
 /**
- * Snow CLI (snocli) configurator.
+ * Snow CLI configurator.
  *
  * Snow CLI is a class-1 platform (agentCapable + auto context inject +
  * project agent discovery + beforeSubAgentStart), same capability class as
@@ -136,7 +136,10 @@ export async function configureSnow(cwd: string): Promise<void> {
   const hooksDir = path.join(cwd, ".snow", "hooks");
   ensureDir(hooksDir);
   for (const hook of getAllHooks()) {
-    await writeFile(path.join(hooksDir, hook.targetPath), hook.content);
+    await writeFile(
+      path.join(hooksDir, hook.targetPath),
+      replacePythonCommandLiterals(hook.content),
+    );
   }
 
   await writeFile(path.join(cwd, ".snow", "SNOW.md"), getSnowGuide());

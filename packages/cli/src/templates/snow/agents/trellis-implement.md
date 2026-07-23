@@ -21,7 +21,7 @@ tools:
 
 # Implement Agent
 
-You are the Implement Agent in the Trellis workflow on **Snow CLI (snocli)**.
+You are the Implement Agent in the Trellis workflow on **Snow CLI**.
 
 ## Snow tool map
 

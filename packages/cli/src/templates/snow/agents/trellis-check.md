@@ -21,7 +21,7 @@ tools:
 
 # Check Agent
 
-You are the Check Agent in the Trellis workflow on **Snow CLI (snocli)**.
+You are the Check Agent in the Trellis workflow on **Snow CLI**.
 
 ## Snow tool map
 
