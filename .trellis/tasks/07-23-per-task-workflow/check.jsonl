@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/07-23-per-task-workflow/prd.md", "reason": "Acceptance criteria to verify against"}
+{"file": ".trellis/tasks/07-23-per-task-workflow/design.md", "reason": "Contracts the implementation must match"}
+{"file": ".trellis/spec/cli/backend/commands-workflow.md", "reason": "Verify --save respects hash-ownership contract"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Verify consumers preserve breadcrumb parser contract"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "House quality bar for the diff review"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Verify new tests follow conventions"}

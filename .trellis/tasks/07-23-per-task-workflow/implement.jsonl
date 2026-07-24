@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/07-23-per-task-workflow/prd.md", "reason": "Requirements and acceptance criteria"}
+{"file": ".trellis/tasks/07-23-per-task-workflow/design.md", "reason": "Resolution rule contract, consumer patch sites, --save semantics"}
+{"file": ".trellis/spec/cli/backend/commands-workflow.md", "reason": "Existing trellis workflow command spec: hash-ownership contract --save must NOT violate"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "[workflow-state:*] parser contract every consumer and the marker validation must preserve"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script/hook conventions for .trellis/scripts and shared-hooks changes"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Error/warning conventions: hooks never die, warnings to stderr"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test conventions for workflow.integration.test.ts additions"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Template-vs-live-dogfood mirroring and per-platform parity rules"}

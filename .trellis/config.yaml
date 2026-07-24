@@ -85,6 +85,21 @@ packages:
 default_package: cli
 
 #-------------------------------------------------------------------------------
+# Default workflow
+#-------------------------------------------------------------------------------
+# Team-shared default workflow for tasks that do not pin one. The id names a
+# variant file in `.trellis/workflows/<id>.md` (populate it with
+# `trellis workflow --save <id>`). This value is committed, so the whole team
+# shares the same default. A per-developer override lives in the gitignored
+# `.developer` file as a `workflow=<id>` line and takes precedence over this.
+#
+# Resolution precedence: per-task (task.json `workflow`) > personal
+# (`.developer` `workflow=`) > this `default_workflow` > global
+# `.trellis/workflow.md`.
+#
+# default_workflow: native
+
+#-------------------------------------------------------------------------------
 # Channel worker OOM guard
 #-------------------------------------------------------------------------------
 # Default safeguards for `trellis channel spawn` workers. The guard runs

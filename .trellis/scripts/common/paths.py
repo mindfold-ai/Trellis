@@ -94,6 +94,34 @@ def get_developer(repo_root: Path | None = None) -> str | None:
     return None
 
 
+def get_developer_workflow(repo_root: Path | None = None) -> str | None:
+    """Get the personal workflow override from the .developer file.
+
+    Reads an optional ``workflow=<id>`` line from the gitignored ``.developer``
+    file — the per-developer, git-excluded override that outranks the
+    team-shared ``default_workflow`` in config.yaml. Returns None when the file
+    or the line is absent/blank. Never raises. Additive to ``get_developer``:
+    the ``name=`` reader ignores this line and vice versa.
+    """
+    if repo_root is None:
+        repo_root = get_repo_root()
+
+    dev_file = repo_root / DIR_WORKFLOW / FILE_DEVELOPER
+
+    if not dev_file.is_file():
+        return None
+
+    try:
+        content = dev_file.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            if line.startswith("workflow="):
+                return line.split("=", 1)[1].strip() or None
+    except (OSError, IOError):
+        pass
+
+    return None
+
+
 def check_developer(repo_root: Path | None = None) -> bool:
     """Check if developer is initialized.
 
