@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-5.md`
-- **Total Sessions**: 172
-- **Last Active**: 2026-07-22
+- **Total Sessions**: 174
+- **Last Active**: 2026-07-24
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-5.md` | ~1267 | Active |
+| `journal-5.md` | ~1343 | Active |
 | `journal-4.md` | ~1975 | Archived |
 | `journal-3.md` | ~1988 | Archived |
 | `journal-2.md` | ~1963 | Archived |
@@ -33,6 +33,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 174 | 2026-07-24 | Journal merge=union quick fix (#415 partial) + branch mixup recovery | `a5374864` | `main` |
+| 173 | 2026-07-23 | Snow merge + codex model keys + channel trusted dirs (#443/#459/#414) | `ee4bffcc`, `3dc7ba07`, `530d2091` | `main` |
 | 172 | 2026-07-22 | Script QoL batch: journal flags, task tree, meta flag (#394, #402) | `53a29d41` | `main` |
 | 171 | 2026-07-22 | no-trellis skip keyword (#427) + stale task cleanup | `64df8759` | `main` |
 | 170 | 2026-07-22 | 0.6.8 release + PR reviews + context injection caps (#441) | `ea399def`, `26ca25f8`, `dc68f5a9`, `65a83d7d`, `bfa7f99d` | `main` |

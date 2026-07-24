@@ -60,6 +60,8 @@ import {
   isManagedRootDir,
 } from "../configurators/index.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
+import { preserveCodexAgentModelKeys } from "../configurators/codex.js";
+import { ensureGitattributes } from "../configurators/workflow.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
 import {
   fetchRegistrySpecTemplates,
@@ -908,6 +910,15 @@ async function collectTemplateFiles(
         );
       }
     }
+  }
+
+  // Users configure sub-agent models by editing `model` /
+  // `model_reasoning_effort` directly on the generated agent tomls. Preserve
+  // those two keys from the on-disk files into the freshly rendered desired
+  // content so a project whose only local edit is these keys is not flagged
+  // as a modified-file conflict by the hash comparison below.
+  if (platforms.has("codex")) {
+    preserveCodexAgentModelKeys(cwd, files);
   }
 
   preserveExistingClaudeStatusLine(cwd, files);
@@ -2386,6 +2397,14 @@ export async function update(options: UpdateOptions): Promise<void> {
         "   After this update, hash tracking will accurately detect changes.\n",
       ),
     );
+  }
+
+  // Ensure project-root .gitattributes carries the journal merge=union rule.
+  // Additive-only (see ensureGitattributes) — runs regardless of whether
+  // other template files changed, so it must sit before the "nothing to do"
+  // early-return below. Never touches disk in --dry-run.
+  if (!options.dryRun) {
+    ensureGitattributes(cwd);
   }
 
   // Check if there's anything to do

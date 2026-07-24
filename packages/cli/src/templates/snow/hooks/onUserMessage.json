@@ -1,0 +1,15 @@
+{
+  "onUserMessage": [
+    {
+      "description": "Prepend Trellis breadcrumb on each user message (UI keeps original typed text)",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python -X utf8 .snow/hooks/write-trellis-context.py user",
+          "timeout": 15000,
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}

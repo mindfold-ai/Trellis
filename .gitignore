@@ -183,6 +183,9 @@ smoke_test/
 # Claude Code scheduled tasks session lock
 .claude/scheduled_tasks.lock
 
+# Snow CLI generated project configuration and local runtime data
+/.snow/
+
 tmp/
 tmp1/
 .playwright-mcp

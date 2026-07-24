@@ -41,6 +41,7 @@ from common.paths import (
 )
 from common.developer import ensure_developer
 from common.git import run_git
+from common.log import Colors, colored
 from common.safe_commit import (
     print_gitignore_warning,
     safe_git_add,
@@ -178,6 +179,49 @@ def resolve_session_branch(
         file=sys.stderr,
     )
     return None
+
+
+def is_git_worktree(repo_root: Path) -> bool:
+    """Return True when repo_root is a linked worktree (not the main working tree).
+
+    Standard test: `git rev-parse --git-dir` (per-worktree) differs from
+    `git rev-parse --git-common-dir` (shared across all worktrees) once both
+    are resolved to absolute paths. In the main working tree these are the
+    same directory.
+    """
+    rc_dir, git_dir, _ = run_git(["rev-parse", "--git-dir"], cwd=repo_root)
+    rc_common, git_common_dir, _ = run_git(
+        ["rev-parse", "--git-common-dir"], cwd=repo_root
+    )
+    if rc_dir != 0 or rc_common != 0:
+        return False
+
+    git_dir_path = (repo_root / git_dir.strip()).resolve()
+    git_common_dir_path = (repo_root / git_common_dir.strip()).resolve()
+    return git_dir_path != git_common_dir_path
+
+
+def warn_if_parallel_worktree(repo_root: Path) -> None:
+    """Non-blocking note: index.md conflicts across parallel worktrees/branches
+    are expected and safe. Only fires when running in a linked git worktree
+    (not the main tree) with `session_auto_commit` enabled (#415 quick-fix tier).
+    """
+    if not get_session_auto_commit(repo_root):
+        return
+    if not is_git_worktree(repo_root):
+        return
+    print(
+        colored(
+            "[NOTE] Running in a git worktree with session_auto_commit enabled: "
+            "journal-*.md files auto-merge via .gitattributes, but index.md "
+            "conflicts across parallel worktrees/branches are expected and safe "
+            "to resolve by picking either side (task state lives in task.json, "
+            "not index.md). See .trellis/spec/cli/backend/directory-structure.md "
+            '("Workspace Journal Merge Behavior").',
+            Colors.YELLOW,
+        ),
+        file=sys.stderr,
+    )
 
 
 def create_new_journal_file(
@@ -476,6 +520,7 @@ def add_session(
 ) -> int:
     """Add a new session."""
     repo_root = get_repo_root()
+    warn_if_parallel_worktree(repo_root)
     ensure_developer(repo_root)
 
     developer = get_developer(repo_root)

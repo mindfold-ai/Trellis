@@ -15,7 +15,8 @@
  *   ├── scripts-shell-archive/ # Archived shell scripts (for reference)
  *   ├── workflow.md           # Workflow guide
  *   ├── config.yaml            # Trellis configuration
- *   └── gitignore.txt         # .gitignore content
+ *   ├── gitignore.txt         # .gitignore content
+ *   └── gitattributes.txt     # project-root .gitattributes content
  */
 
 import { readFileSync } from "node:fs";
@@ -74,6 +75,7 @@ export const addSessionScript = readTemplate("scripts/add_session.py");
 export const workflowMdTemplate = readTemplate("workflow.md");
 export const configYamlTemplate = readTemplate("config.yaml");
 export const gitignoreTemplate = readTemplate("gitignore.txt");
+export const gitattributesTemplate = readTemplate("gitattributes.txt");
 
 // Channel runtime agent definitions (loaded by
 // `packages/cli/src/commands/channel/agent-loader.ts` from `.trellis/agents/`).

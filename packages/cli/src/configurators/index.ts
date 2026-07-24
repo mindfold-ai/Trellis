@@ -38,6 +38,7 @@ import { configureTrae } from "./trae.js";
 import { configureOmp, collectOmpTemplates } from "./omp.js";
 import { configureGrok, collectGrokTemplates } from "./grok.js";
 import { configureKimi, collectKimiTemplates } from "./kimi.js";
+import { configureSnow, collectSnowTemplates } from "./snow.js";
 
 // Shared utilities
 import {
@@ -503,6 +504,10 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
   kimi: {
     configure: configureKimi,
     collectTemplates: () => collectKimiTemplates(),
+  },
+  snow: {
+    configure: configureSnow,
+    collectTemplates: () => collectSnowTemplates(),
   },
 };
 

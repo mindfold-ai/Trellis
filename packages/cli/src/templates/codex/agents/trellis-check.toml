@@ -1,6 +1,8 @@
 name = "trellis-check"
 description = "Workspace-write Trellis reviewer that self-fixes spec drift, lint/type-check failures, and missing tests."
 sandbox_mode = "workspace-write"
+# model = "gpt-5.6-terra"
+# model_reasoning_effort = "high"
 
 developer_instructions = """
 You are running as the `trellis-check` sub-agent. The main session has dispatched you to review and self-fix.

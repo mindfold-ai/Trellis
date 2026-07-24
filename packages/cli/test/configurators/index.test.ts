@@ -213,6 +213,11 @@ describe("resolveCliFlag", () => {
     expect(resolveCliFlag("unknown")).toBeUndefined();
   });
 
+  it("does not resolve removed Snow aliases", () => {
+    expect(resolveCliFlag("snocli")).toBeUndefined();
+    expect(resolveCliFlag("snow-cli")).toBeUndefined();
+  });
+
   it("returns undefined for empty string", () => {
     expect(resolveCliFlag("")).toBeUndefined();
   });

@@ -39,7 +39,11 @@ export function createTemplateReader(importMetaUrl: string): TemplateReader {
 
   function listFiles(dir: string): string[] {
     try {
-      return readdirSync(join(__dirname, dir)).sort();
+      // Only regular files — skip dirs like __pycache__ that break readTemplate.
+      return readdirSync(join(__dirname, dir), { withFileTypes: true })
+        .filter((e) => e.isFile())
+        .map((e) => e.name)
+        .sort();
     } catch {
       return [];
     }

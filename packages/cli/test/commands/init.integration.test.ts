@@ -147,6 +147,19 @@ describe("init() integration", () => {
     ).toBe(true);
   });
 
+  it("#1a writes .gitattributes with the journal merge=union rule (#415)", async () => {
+    await init({ yes: true });
+
+    const gitattributes = fs.readFileSync(
+      path.join(tmpDir, ".gitattributes"),
+      "utf-8",
+    );
+    expect(gitattributes).toContain(
+      ".trellis/workspace/*/journal-*.md merge=union",
+    );
+    expect(gitattributes).not.toContain("index.md merge=union");
+  });
+
   it("#1b does not print the promotional pain-point block", async () => {
     await init({ yes: true });
 

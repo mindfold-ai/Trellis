@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/commands-channel.md", "reason": "Channel command contracts; the trust-set change must slot into documented loader behavior"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Filesystem safety conventions from the 2026-07-10 audit; the fix must preserve them"}

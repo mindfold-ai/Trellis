@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Codex dispatch-mode and hook integration contract; default change must update its text"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script conventions for the config.py change"}

@@ -47,6 +47,7 @@ _KNOWN_PLATFORMS = {
     "grok",
     "kimi",
     "zcode",
+    "snow",
 }
 
 _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -67,6 +68,9 @@ _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # only fires when the resolver already detected "zcode" — no collision with
     # the claude entry above.
     ("zcode", ("CLAUDE_SESSION_ID",)),
+    # Snow CLI exports SNOW_SESSION_ID into hook/terminal/sub-agent children.
+    # TRELLIS_CONTEXT_ID remains the preferred override when present.
+    ("snow", ("SNOW_SESSION_ID",)),
 )
 _ENV_CONVERSATION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("cursor", ("CURSOR_CONVERSATION_ID", "CURSOR_CONVERSATIONID")),

@@ -1,6 +1,8 @@
 name = "trellis-research"
 description = "Trellis researcher for specs, code patterns, and affected files. Writes findings into {TASK_DIR}/research/ — read-only elsewhere."
 sandbox_mode = "workspace-write"
+# model = "gpt-5.6-terra"
+# model_reasoning_effort = "high"
 
 developer_instructions = """
 You are the Trellis researcher agent.

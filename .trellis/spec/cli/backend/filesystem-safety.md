@@ -132,3 +132,25 @@ without the guard**:
 - [`trellis channel` Command](./commands-channel.md) — store paths, project buckets
 - [Script Conventions](./script-conventions.md) — Python `io.py` contract
 - [Migrations](./migrations.md) — rename/rename-dir/delete semantics
+
+## Channel Context Trust Set (`channel.trusted_context_dirs`, #414)
+
+Worker context containment (context-loader `jailedRealpath`, agent-loader,
+OMP extension `resolveProjectFile`) accepts realpaths inside worker cwd **or**
+inside a trusted root. Trusted roots resolve once per spawn
+(`channel/context-trust.ts` `resolveTrustedRoots(cwd)`):
+
+1. `.trellis/config.yaml` → `channel.trusted_context_dirs` (list; relative
+   entries resolve against cwd; missing dirs warn + skip; each entry is
+   realpath-canonicalized).
+2. Auto-trust (disable with `channel.auto_trust_trellis_symlinks: false`):
+   ONLY the top-level `.trellis/tasks` and `.trellis/workspace` entries, when
+   they are themselves symlinks, contribute their realpath targets. No
+   recursion — a nested symlink planted inside a task dir stays refused.
+
+Containment predicate (identical at all three sites, byte-comparable):
+`real === root || real.startsWith(root + path.sep)` — the `path.sep` suffix is
+load-bearing (blocks `/work/ws-evil` matching trusted `/work/ws`). The OMP
+template carries a standalone verbatim copy of the parser/resolver; changes
+must be mirrored there. Do not relax to lexical checks — realpath containment
+is the defense from the 2026-07-10 audit (#409 family).

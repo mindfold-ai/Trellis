@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { DIR_NAMES, PATHS } from "../constants/paths.js";
@@ -8,6 +9,7 @@ import {
   workflowMdTemplate,
   configYamlTemplate,
   gitignoreTemplate,
+  gitattributesTemplate,
   getAllAgents,
 } from "../templates/trellis/index.js";
 
@@ -71,6 +73,43 @@ export interface WorkflowOptions {
 }
 
 /**
+ * Regex used to detect an existing `journal-*.md merge=union` gitattributes
+ * rule (any whitespace variant), so `ensureGitattributes` never appends a
+ * duplicate entry to a project's pre-existing `.gitattributes`.
+ */
+const JOURNAL_MERGE_UNION_PATTERN = /journal-\*\.md\s+merge=union/;
+
+/**
+ * Ensure the project-root `.gitattributes` carries the journal `merge=union`
+ * rule, without ever overwriting a user's existing file wholesale.
+ *
+ * - No `.gitattributes` yet: write the bundled template directly.
+ * - Existing file that already has a `journal-*.md merge=union` rule (user's
+ *   own or from a previous `trellis init`/`update`): no-op, avoids duplicates.
+ * - Existing file without that rule: append the bundled template content.
+ *
+ * Intentionally does NOT go through the standard `writeFile` conflict-prompt
+ * flow — this file is additive-only and never a candidate for whole-file
+ * overwrite.
+ */
+export function ensureGitattributes(cwd: string): void {
+  const targetPath = path.join(cwd, ".gitattributes");
+
+  if (!fs.existsSync(targetPath)) {
+    fs.writeFileSync(targetPath, gitattributesTemplate);
+    return;
+  }
+
+  const existing = fs.readFileSync(targetPath, "utf-8");
+  if (JOURNAL_MERGE_UNION_PATTERN.test(existing)) {
+    return;
+  }
+
+  const separator = existing.endsWith("\n") ? "\n" : "\n\n";
+  fs.writeFileSync(targetPath, existing + separator + gitattributesTemplate);
+}
+
+/**
  * Create workflow structure based on project type
  *
  * This function creates the .trellis/ directory structure by:
@@ -118,6 +157,10 @@ export async function createWorkflowStructure(
     path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml"),
     configYamlTemplate,
   );
+
+  // Ensure project-root .gitattributes carries the journal merge=union rule
+  // (additive-only — never overwrites a user's existing file wholesale).
+  ensureGitattributes(cwd);
 
   // Dispatch channel runtime agent definitions. These are platform-agnostic
   // Trellis runtime files consumed by `trellis channel spawn --agent <name>`

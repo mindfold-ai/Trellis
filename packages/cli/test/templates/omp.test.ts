@@ -92,7 +92,7 @@ describe("omp templates", () => {
     expect(extension).not.toContain("process.env.TRELLIS_CONTEXT_ID =");
     expect(extension).toContain('buildContextKey("omp", "session", sessionId)');
     expect(extension).toContain("realpathSync");
-    expect(extension).toContain("resolveProjectFile(projectRoot, file)");
+    expect(extension).toContain("resolveProjectFile(projectRoot, file, trustedRoots)");
     expect(extension).toContain("readFileSync(targetPath");
     expect(extension).toContain("if (!key) return null;");
     expect(extension).toContain("return key;");

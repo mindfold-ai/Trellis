@@ -401,6 +401,40 @@ Packages that received a remote template download (tracked via `remoteSpecPackag
 
 ---
 
+## Workspace Journal Merge Behavior (parallel sessions / worktrees)
+
+Parallel Trellis sessions (multiple git worktrees, or overlapping branches)
+regularly touch `.trellis/workspace/<developer>/` at the same time. The two
+files there behave differently on merge, and this is intentional:
+
+- **`journal-N.md` auto-resolves.** The project ships `.gitattributes` with
+  `.trellis/workspace/*/journal-*.md merge=union` (project root; both the
+  bundled template at `packages/cli/src/templates/trellis/gitattributes.txt`
+  and this repo's own dogfooded copy carry the rule). Each session only
+  appends a new session block, so a union merge keeps both sides' blocks with
+  no conflict markers — there is nothing semantically to resolve.
+- **`index.md` conflicts ARE EXPECTED and safe.** No merge attribute applies
+  to `index.md` — it is fully rewritten every session (current-status
+  counters, active-documents table, session-history table), so a union merge
+  would silently interleave two different rewrites of the same marker blocks
+  into structurally broken output. When two parallel worktrees/branches both
+  touch `index.md`, git's normal 3-way conflict is the correct outcome.
+  Picking either side to resolve it is safe: `index.md` is a **derived
+  summary**, not a source of truth. Real task state lives in each task's
+  `task.json`, not in the workspace index.
+
+`ensureGitattributes()` (`packages/cli/src/configurators/workflow.ts`) writes
+this rule additively — it is called from both `trellis init` and
+`trellis update`, never overwrites an existing project-root `.gitattributes`
+wholesale, and is a no-op if a `journal-*.md merge=union` rule already exists
+(user-authored or from a previous run).
+
+`add_session.py` prints a one-time-per-process warning (stderr, non-blocking)
+when it detects it is running inside a git worktree (not the main working
+tree) with `session_auto_commit` enabled, pointing back at this section.
+
+---
+
 ## Design Decisions
 
 ### Remote Template Download (giget)

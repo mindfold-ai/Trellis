@@ -91,10 +91,21 @@ max_journal_lines: 2000
 # unless explicitly killed or given `--timeout`).
 # `max_live_workers: 0` disables the spawn-time budget check.
 #
+# `trusted_context_dirs` extends the `--file`/`--jsonl`/`--agent` containment
+# check beyond the worker cwd — useful when `.trellis/tasks` or
+# `.trellis/workspace` is a symlink to an external directory. Realpaths under
+# any listed dir are accepted in addition to cwd.
+# `auto_trust_trellis_symlinks: false` disables the narrow auto-trust of
+# `.trellis/tasks` / `.trellis/workspace` when either is itself a top-level
+# symlink (auto-trust is on by default).
+#
 channel:
   worker_guard:
     idle_timeout: 5m
     max_live_workers: 6
+  # trusted_context_dirs:
+  #   - /work/user/trellis_workspace
+  # auto_trust_trellis_symlinks: false
 
 #-------------------------------------------------------------------------------
 # Codex (dispatch behavior)
@@ -107,6 +118,13 @@ channel:
 # unavailable. Set to "inline" only to keep implementation and checks in the
 # main session. "sub-agent" remains a backwards-compatible alias for "auto".
 # Invalid explicit values safely use inline mode.
+#
+# In "auto" mode, dispatched sub-agents inherit the main session's model
+# unless you pin one. To use a cheaper/faster model for implement/check/
+# research sub-agent work, edit `model` / `model_reasoning_effort` directly
+# on the generated `.codex/agents/trellis-*.toml` files (see the commented
+# hint lines in those files) — there is no config.yaml knob for this,
+# `trellis update` preserves your edits across regeneration.
 #
 # codex:
 #   dispatch_mode: auto  # or "inline"; legacy alias: "sub-agent"

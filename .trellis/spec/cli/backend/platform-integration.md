@@ -504,6 +504,20 @@ The native hook path calls this resolver with `platform="codex"`,
 - Custom Codex role profiles must retain a marker-gated child-side pull path:
   native injection is preferred, while `Active task:` enables degraded loading
   when the hook is untrusted or unavailable.
+- Native dispatch (`codex.dispatch_mode: auto`) does not set a model on the
+  spawned sub-agent by default — Codex's own precedence (spawn value ->
+  `[agents]` default -> parent) means the child **inherits the main
+  session's model** unless the generated `.codex/agents/trellis-*.toml`
+  pins one. Users tune this by editing `model` / `model_reasoning_effort`
+  directly on those three files (matches Codex's own docs); there is no
+  `.trellis/config.yaml` indirection. `configureCodex()` and
+  `collectTemplateFiles()` (via `preserveCodexAgentModelKeys()` in
+  `configurators/codex.ts`) both extract any existing top-level `model` /
+  `model_reasoning_effort` lines from the on-disk file and re-insert them
+  after `sandbox_mode` in the freshly rendered template before writing or
+  hashing, so `trellis init` / `trellis update` never clobber a user-pinned
+  model and never flag the pinned lines as a modified-file conflict. Static
+  templates ship these as commented hint lines only.
 
 #### 4. Validation & Error Matrix
 
