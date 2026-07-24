@@ -1,3 +1,9 @@
+---
+name: trellis-core-sdk
+description: "@mindfoldhq/trellis-core / CLI package boundary, public exports, build and versioning contracts"
+paths:
+  - packages/core/**
+---
 # Trellis Core SDK
 
 > Package boundary and coding rules for `@mindfoldhq/trellis-core` and the CLI.

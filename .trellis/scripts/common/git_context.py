@@ -27,6 +27,8 @@ from .packages_context import (
     get_context_packages_text,
     get_context_packages_json,
 )
+from .paths import get_repo_root
+from .spec_match import match_specs_for_file
 from .trellis_config import read_trellis_config
 from .workflow_phase import (
     filter_platform,
@@ -57,9 +59,9 @@ def main() -> None:
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["default", "record", "packages", "phase"],
+        choices=["default", "record", "packages", "phase", "spec"],
         default="default",
-        help="Output mode: default (full context), record (for record-session), packages (package info only), phase (workflow step extraction)",
+        help="Output mode: default (full context), record (for record-session), packages (package info only), phase (workflow step extraction), spec (specs governing a file)",
     )
     parser.add_argument(
         "--step",
@@ -68,6 +70,10 @@ def main() -> None:
     parser.add_argument(
         "--platform",
         help="Platform name for --mode phase, e.g. cursor, claude-code. Filters platform-tagged blocks.",
+    )
+    parser.add_argument(
+        "--file",
+        help="File path (absolute or repo-relative) for --mode spec. Lists spec files whose frontmatter paths match it.",
     )
 
     args = parser.parse_args()
@@ -95,6 +101,15 @@ def main() -> None:
             )
             content = filter_platform(content, effective)
         print(content, end="")
+    elif args.mode == "spec":
+        if not args.file:
+            parser.error("--file is required with --mode spec")
+        matches = match_specs_for_file(get_repo_root(), args.file)
+        if matches:
+            for match in matches:
+                print(f"{match.rel_path} — {match.description or '(no description)'}")
+        else:
+            print(f"No spec files declare paths matching {args.file}.")
     else:
         if args.json:
             output_json()

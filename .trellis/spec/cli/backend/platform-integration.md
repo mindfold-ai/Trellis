@@ -1,3 +1,11 @@
+---
+name: platform-integration
+description: How to add support for new AI CLI platforms
+paths:
+  - packages/cli/src/configurators/**
+  - packages/cli/src/templates/**
+  - packages/cli/src/commands/init.ts
+---
 # Platform Integration Guide
 
 How to add support for a new AI CLI platform (like Claude Code, Cursor, Gemini CLI, OpenCode, Codex, Kilo, Kiro, Qoder, CodeBuddy, Copilot, Droid, Pi, Devin, Antigravity).

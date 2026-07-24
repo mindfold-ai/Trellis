@@ -1,3 +1,9 @@
+---
+name: commands-channel
+description: "Multi-agent collaboration runtime: events.jsonl protocol, per-worker supervisor, provider adapters (claude / codex), project buckets, ephemeral / run lifecycle, ShutdownController state machine"
+paths:
+  - packages/cli/src/commands/channel/**
+---
 # `trellis channel` — Multi-Agent Collaboration Runtime (Code Spec)
 
 Executable contracts for `packages/cli/src/commands/channel/`. Read this

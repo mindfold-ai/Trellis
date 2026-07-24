@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/07-23-spec-on-demand-injection/prd.md", "reason": "Requirements, thresholds (10K char additionalContext ceiling), acceptance criteria"}
+{"file": ".trellis/tasks/07-23-spec-on-demand-injection/design.md", "reason": "Frontmatter/glob contracts, hook flow, dedup state, budget defaults, failure-mode table"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script/hook conventions for scripts and shared-hooks"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Never-crash hook conventions, stderr-only warnings"}
+{"file": ".trellis/spec/cli/backend/configurator-shared.md", "reason": "SHARED_HOOKS_BY_PLATFORM distribution table conventions"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test conventions incl. python-harness patterns"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Template-vs-live mirroring and platform degradation posture"}
