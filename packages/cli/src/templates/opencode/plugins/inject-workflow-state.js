@@ -117,45 +117,94 @@ function promptHasSkipKeyword(text, keyword) {
 // .trellis/workflows/.
 const WORKFLOW_ID_RE = /^[A-Za-z0-9_-]+$/
 
+// Map a workflow id to its .trellis/workflows/<id>.md file if valid and
+// present, else "". Shared by every resolution layer. Never throws.
+function libraryVariant(directory, workflowId) {
+  if (!workflowId || !WORKFLOW_ID_RE.test(workflowId)) return ""
+  const variantPath = join(directory, ".trellis", "workflows", `${workflowId}.md`)
+  try {
+    if (statSync(variantPath).isFile()) return variantPath
+  } catch {
+    // ENOENT etc. — missing variant file.
+  }
+  return ""
+}
+
+// Personal override id from the gitignored .developer file (`workflow=<id>`
+// line). "" when absent/unreadable. Never throws.
+function developerWorkflowId(directory) {
+  try {
+    const text = readFileSync(join(directory, ".trellis", ".developer"), "utf-8")
+    for (const line of text.split(/\r?\n/)) {
+      if (line.startsWith("workflow=")) return line.slice("workflow=".length).trim()
+    }
+  } catch {
+    // No .developer / unreadable — no personal override.
+  }
+  return ""
+}
+
+// Team-shared default id from config.yaml's top-level `default_workflow:` key.
+// Commented lines (starting with '#') are naturally excluded by the anchor.
+// "" when unset/unreadable. Never throws.
+const DEFAULT_WORKFLOW_RE = /^default_workflow:\s*(['"]?)([A-Za-z0-9_-]+)\1\s*(?:#.*)?$/m
+function configDefaultWorkflowId(directory) {
+  try {
+    const text = readFileSync(join(directory, ".trellis", "config.yaml"), "utf-8")
+    const m = text.match(DEFAULT_WORKFLOW_RE)
+    if (m) return m[2]
+  } catch {
+    // No config.yaml / unreadable — no team default.
+  }
+  return ""
+}
+
 /**
  * Resolve which workflow markdown file feeds this turn's breadcrumbs.
  *
- * Rule (identical across all Trellis consumers):
- * - Active task's task.json has a non-empty string "workflow" field whose
- *   id matches [A-Za-z0-9_-]+ AND .trellis/workflows/<id>.md is a file →
- *   use that path.
- * - Selection present but id invalid / variant file missing → one warning
- *   line on stderr (never stdout — stdout is hook JSON on other hosts)
- *   and fall back to the global .trellis/workflow.md.
- * - No active task / no "workflow" field / anything unreadable → global
- *   path, silently. Never throws.
+ * Precedence (identical across all Trellis consumers), highest to lowest —
+ * each layer resolves an id to .trellis/workflows/<id>.md and falls through
+ * when unset, invalid, or naming a missing file:
+ *   1. Per-task pin  — active task's task.json "workflow" (session-bound; a
+ *      bad id / missing file warns once on stderr, then falls through).
+ *   2. Personal      — .developer `workflow=<id>` (gitignored, per-developer).
+ *   3. Team default  — config.yaml `default_workflow` (git-tracked, shared).
+ *   4. Global        — .trellis/workflow.md.
+ * With neither a pin nor the personal/team keys set, this is the global path.
+ * Never throws.
  */
 function resolveWorkflowMd(ctx, directory, platformInput) {
   const globalPath = join(directory, ".trellis", "workflow.md")
+
+  // 1. Per-task pin (session-bound explicit choice).
   let workflowId = ""
   try {
     const active = ctx.getActiveTask(platformInput)
-    if (!active.taskPath || active.stale) return globalPath
-    const taskDir = ctx.resolveTaskDir(active.taskPath)
-    if (!taskDir) return globalPath
-    const data = JSON.parse(readFileSync(join(taskDir, "task.json"), "utf-8"))
-    if (data && typeof data.workflow === "string") workflowId = data.workflow
-  } catch {
-    // No active task / unreadable task.json — not a selection, no warning.
-    return globalPath
-  }
-  if (!workflowId) return globalPath
-  if (WORKFLOW_ID_RE.test(workflowId)) {
-    const variantPath = join(directory, ".trellis", "workflows", `${workflowId}.md`)
-    try {
-      if (statSync(variantPath).isFile()) return variantPath
-    } catch {
-      // ENOENT etc. — treated as a missing variant file; warn below.
+    if (active.taskPath && !active.stale) {
+      const taskDir = ctx.resolveTaskDir(active.taskPath)
+      if (taskDir) {
+        const data = JSON.parse(readFileSync(join(taskDir, "task.json"), "utf-8"))
+        if (data && typeof data.workflow === "string") workflowId = data.workflow
+      }
     }
+  } catch {
+    // No active task / unreadable task.json — not a selection.
+    workflowId = ""
   }
-  console.error(
-    `Warning: active task selects workflow ${JSON.stringify(workflowId)} but .trellis/workflows/ has no matching file; using .trellis/workflow.md`,
-  )
+  if (workflowId) {
+    const pinned = libraryVariant(directory, workflowId)
+    if (pinned) return pinned
+    console.error(
+      `Warning: active task selects workflow ${JSON.stringify(workflowId)} but .trellis/workflows/ has no matching file; using default workflow resolution`,
+    )
+  }
+
+  // 2. Personal override, then 3. team default — silent on miss (defaults,
+  // not an explicit per-task choice). 4. Global fallback.
+  const personal = libraryVariant(directory, developerWorkflowId(directory))
+  if (personal) return personal
+  const team = libraryVariant(directory, configDefaultWorkflowId(directory))
+  if (team) return team
   return globalPath
 }
 

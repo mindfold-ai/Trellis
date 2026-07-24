@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/07-24-workflow-config-default/prd.md", "reason": "Transcript-cited requirements, precedence, flagged assumptions"}
+{"file": ".trellis/tasks/07-24-workflow-config-default/design.md", "reason": "Exact function contracts, reuse map, edit sites"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Per-task resolution section to extend with the 4-layer chain"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script conventions for config.py/paths.py/workflow_selection.py edits"}

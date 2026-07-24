@@ -120,16 +120,37 @@ by storing `"workflow": "<id>"` in its task.json (writers: `task.py create
 in the user-managed library `.trellis/workflows/<id>.md`, populated by
 `trellis workflow --save <id>` (see `commands-workflow.md`). Every runtime
 consumer of workflow markdown resolves the path with the same rule, whose
-single source is `.trellis/scripts/common/workflow_selection.py`:
+single source is `.trellis/scripts/common/workflow_selection.py`. It is a
+**precedence chain**, highest to lowest — each layer maps an id to
+`.trellis/workflows/<id>.md` and falls through when the id is unset, invalid
+(fails `^[A-Za-z0-9_-]+$`), or names a missing file:
 
-1. Active task's task.json has a non-empty string `workflow` field matching
-   `^[A-Za-z0-9_-]+$` AND `.trellis/workflows/<id>.md` is a file → use that
-   path.
-2. Selection present but id invalid or variant file missing → one warning
-   line on **stderr** (never stdout — stdout is hook JSON), fall back to
-   `.trellis/workflow.md`.
-3. No active task / no `workflow` field / anything unreadable →
-   `.trellis/workflow.md`, silently.
+1. **Per-task pin** — active task's task.json `workflow` (session-bound,
+   explicit; writers: `task.py create --workflow <id>`, `task.py workflow
+   <id>` / `--clear`). An invalid id or missing variant file emits one warning
+   line on **stderr** (never stdout — stdout is hook JSON) and then falls
+   through to the default chain below (it does not abort to global).
+2. **Personal override** — `.developer` `workflow=<id>` line. The `.developer`
+   file is gitignored and per-developer, so this is a local, un-committed
+   override that outranks the team default. Silent on miss (a default, not an
+   explicit per-task choice — a per-turn warning would be noise).
+3. **Team default** — config.yaml `default_workflow: <id>` (top-level key).
+   Committed, so the whole team shares it. Silent on miss.
+4. **Global** — `.trellis/workflow.md`.
+
+With neither a per-task pin nor the personal/team keys set, resolution is
+byte-identical to reading the global `.trellis/workflow.md` (the pre-feature
+behavior).
+
+> **Precedence provenance (2026-07-23 colleague transcript)**: the personal >
+> team layering and "personal not in git, higher priority" come directly from
+> the transcript (16:44:23 team-shared config default; 16:44:39 personal layer,
+> not uploaded to git, higher priority). Two orderings the transcript did **not**
+> pin, chosen here and flagged for confirmation: (a) storing the personal id in
+> the existing gitignored `.developer` file (transcript named the layer, not the
+> file); (b) placing the per-task pin **above** the personal override (explicit
+> task intent beats a developer-wide default). See task
+> `07-24-workflow-config-default/prd.md`.
 
 The resolver never raises. The hooks additionally wrap the
 `common.workflow_selection` import itself in try/except and fall back to the
@@ -151,8 +172,9 @@ Known degradation: the Pi and OMP extensions keep injecting the global
 live inside monolithic TS extensions); per-task parity there is a tracked
 follow-up.
 
-Absent a `workflow` field, every consumer takes the fallback branch
-immediately — output is byte-identical to a project without the feature.
+Absent a per-task pin **and** the personal/team default keys, every consumer
+resolves to the global `.trellis/workflow.md` — output is byte-identical to a
+project without the feature.
 Variant files must satisfy the same parser contract as `workflow.md` (marker
 syntax above, `## Phase Index`, `#### X.Y` step headings, platform markers);
 `trellis workflow --save` warns at save time when markers are missing.

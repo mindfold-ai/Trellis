@@ -281,6 +281,24 @@ def get_codex_dispatch_mode(repo_root: Path | None = None) -> str:
     return "inline"
 
 
+def get_default_workflow(repo_root: Path | None = None) -> str | None:
+    """Return the team-shared default workflow id from config.yaml.
+
+    Reads the top-level ``default_workflow`` key — a slug naming a variant in
+    ``.trellis/workflows/<id>.md``. Returns None when unset or blank. This is
+    the git-tracked, team-shared default; a per-developer override lives in the
+    gitignored ``.developer`` file (``workflow=<id>``, see
+    ``paths.get_developer_workflow``) and outranks it. Fail-open: a missing or
+    non-string value simply means "no team default" — no warning (this is read
+    on every turn by hooks and must not add per-turn noise).
+    """
+    config = _load_config(repo_root)
+    raw = config.get("default_workflow")
+    if not isinstance(raw, str):
+        return None
+    return raw.strip() or None
+
+
 DEFAULT_CONTEXT_INJECTION_MAX_FILE_BYTES = 32768
 DEFAULT_CONTEXT_INJECTION_MAX_ARTIFACT_BYTES = 65536
 DEFAULT_CONTEXT_INJECTION_MAX_TOTAL_BYTES = 131072

@@ -895,3 +895,77 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     expect(parts[0].text).toContain("<workflow-state>");
   });
 });
+
+describe("opencode inject-workflow-state layered default (parity with Python)", () => {
+  // End-to-end parity for the personal/team default layers so the JS port
+  // cannot silently drift from common/workflow_selection.py. OpenCode plugins
+  // expose only a default export (regression #212), so we drive the real
+  // chat.message handler: with no active task the breadcrumb comes from the
+  // resolved workflow file's [workflow-state:no_task] block. Each candidate
+  // file carries a distinct marker, so the emitted breadcrumb reveals which
+  // file the layered resolver picked. (The per-task pin layer is 467's
+  // unchanged code, covered by the Python matrix.)
+  let dir: string;
+
+  const noTaskBlock = (marker: string): string =>
+    ["# Workflow", "", "[workflow-state:no_task]", marker, "[/workflow-state:no_task]", ""].join(
+      "\n",
+    );
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "wf-layered-js-"));
+    mkdirSync(join(dir, ".trellis", ".runtime", "sessions"), { recursive: true });
+    mkdirSync(join(dir, ".trellis", "workflows"), { recursive: true });
+    writeFileSync(join(dir, ".trellis", "workflow.md"), noTaskBlock("GLOBAL_BREADCRUMB"));
+    writeFileSync(join(dir, ".trellis", "workflows", "tdd.md"), noTaskBlock("TDD_BREADCRUMB"));
+    writeFileSync(
+      join(dir, ".trellis", "workflows", "native.md"),
+      noTaskBlock("NATIVE_BREADCRUMB"),
+    );
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  async function breadcrumb(): Promise<string> {
+    const hooks = (await injectWorkflowStatePlugin({ directory: dir })) as ChatMessageHooks;
+    const parts: ChatMessagePart[] = [{ type: "text", text: "user prompt" }];
+    await hooks["chat.message"]({ sessionID: "main-session", agent: "build" }, { parts });
+    return parts[0].text;
+  }
+
+  it("no config -> global breadcrumb", async () => {
+    expect(await breadcrumb()).toContain("GLOBAL_BREADCRUMB");
+  });
+
+  it("team default routes the breadcrumb to the team variant", async () => {
+    writeFileSync(join(dir, ".trellis", "config.yaml"), "default_workflow: tdd\n");
+    const text = await breadcrumb();
+    expect(text).toContain("TDD_BREADCRUMB");
+    expect(text).not.toContain("GLOBAL_BREADCRUMB");
+  });
+
+  it("personal override outranks the team default", async () => {
+    writeFileSync(join(dir, ".trellis", "config.yaml"), "default_workflow: tdd\n");
+    writeFileSync(join(dir, ".trellis", ".developer"), "name=x\nworkflow=native\n");
+    const text = await breadcrumb();
+    expect(text).toContain("NATIVE_BREADCRUMB");
+    expect(text).not.toContain("TDD_BREADCRUMB");
+  });
+
+  it("commented default_workflow is ignored -> global breadcrumb", async () => {
+    writeFileSync(join(dir, ".trellis", "config.yaml"), "# default_workflow: tdd\n");
+    expect(await breadcrumb()).toContain("GLOBAL_BREADCRUMB");
+  });
+
+  it("team default naming a missing file falls through to global", async () => {
+    writeFileSync(join(dir, ".trellis", "config.yaml"), "default_workflow: nope\n");
+    expect(await breadcrumb()).toContain("GLOBAL_BREADCRUMB");
+  });
+
+  it(".developer with only name= is backward-safe -> global breadcrumb", async () => {
+    writeFileSync(join(dir, ".trellis", ".developer"), "name=tommy\n");
+    expect(await breadcrumb()).toContain("GLOBAL_BREADCRUMB");
+  });
+});
