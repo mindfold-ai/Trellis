@@ -451,6 +451,25 @@ def _strip_breadcrumb_tag_blocks(content: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", stripped).strip()
 
 
+def _resolve_workflow_md(root: Path, input_data: dict) -> Path:
+    """Resolve the active task's workflow file, falling back to the global one.
+
+    The per-task resolution rule lives in common.workflow_selection inside
+    .trellis/scripts. Older installed projects may not ship that module, and
+    hooks must never crash the session — ANY failure (import error, old
+    scripts tree, resolver bug) falls back to the global workflow.md.
+    """
+    try:
+        scripts_dir = root / ".trellis" / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from common.workflow_selection import resolve_workflow_md  # type: ignore[import-not-found]
+
+        return resolve_workflow_md(root, input_data, platform="copilot")
+    except Exception:
+        return root / ".trellis" / "workflow.md"
+
+
 def _build_workflow_toc(workflow_path: Path) -> str:
     """Inject only the compact Phase Index summary for SessionStart."""
     content = read_file(workflow_path)
@@ -502,7 +521,7 @@ Trellis compact SessionStart context. Use it to orient the session; load details
     output.write("\n</current-state>\n\n")
 
     output.write("<trellis-workflow>\n")
-    output.write(_build_workflow_toc(trellis_dir / "workflow.md"))
+    output.write(_build_workflow_toc(_resolve_workflow_md(project_dir, hook_input)))
     output.write("\n</trellis-workflow>\n\n")
 
     output.write("<guidelines>\n")

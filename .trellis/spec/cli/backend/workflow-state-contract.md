@@ -21,8 +21,9 @@ main session will silently skip them. Prior bugs around planning gates and
 Phase 3.4 commit reminders hit exactly this failure mode.
 
 This document is the source of truth for the runtime mechanics. The user-facing
-breadcrumb body lives in `.trellis/workflow.md`; this spec covers everything
-**around** it (parsers, writers, lifecycle, reachability).
+breadcrumb body lives in `.trellis/workflow.md` — or in the active task's
+selected variant file (see "Per-task workflow resolution" below); this spec
+covers everything **around** it (parsers, writers, lifecycle, reachability).
 
 ---
 
@@ -73,8 +74,9 @@ Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za
    per-session active task. If absent → status is the pseudo `no_task`. If
    the pointer is stale (task dir deleted) → status is `stale_<source_type>`.
 4. Otherwise it reads `task.json.status` from the resolved task directory.
-5. It opens `.trellis/workflow.md` and parses every `[workflow-state:STATUS]`
-   block.
+5. It resolves the workflow file (per-task resolution order below: the
+   active task's `.trellis/workflows/<id>.md` when selected, else
+   `.trellis/workflow.md`) and parses every `[workflow-state:STATUS]` block.
 6. Codex may map `planning` / `in_progress` to `planning-inline` /
    `in_progress-inline` based on `codex.dispatch_mode`; all other platforms
    use the plain status.
@@ -110,6 +112,53 @@ Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za
 
 ---
 
+## Per-task workflow resolution
+
+`.trellis/workflow.md` is the **global** workflow. A task may pin a variant
+by storing `"workflow": "<id>"` in its task.json (writers: `task.py create
+--workflow <id>`, `task.py workflow <id>` / `--clear`); variant bodies live
+in the user-managed library `.trellis/workflows/<id>.md`, populated by
+`trellis workflow --save <id>` (see `commands-workflow.md`). Every runtime
+consumer of workflow markdown resolves the path with the same rule, whose
+single source is `.trellis/scripts/common/workflow_selection.py`:
+
+1. Active task's task.json has a non-empty string `workflow` field matching
+   `^[A-Za-z0-9_-]+$` AND `.trellis/workflows/<id>.md` is a file → use that
+   path.
+2. Selection present but id invalid or variant file missing → one warning
+   line on **stderr** (never stdout — stdout is hook JSON), fall back to
+   `.trellis/workflow.md`.
+3. No active task / no `workflow` field / anything unreadable →
+   `.trellis/workflow.md`, silently.
+
+The resolver never raises. The hooks additionally wrap the
+`common.workflow_selection` import itself in try/except and fall back to the
+global path (older installed projects may not ship the module; hooks must
+never crash the session).
+
+Consumers that resolve per-task:
+
+| Consumer | Serves |
+|---|---|
+| `shared-hooks/session-start.py` (`_resolve_workflow_md`) | SessionStart Phase Index (`<trellis-workflow>` block) |
+| `shared-hooks/inject-workflow-state.py` (`load_breadcrumbs`) | per-turn `[workflow-state:*]` breadcrumb bodies |
+| `scripts/common/workflow_phase.py` (`get_context.py --mode phase`) | phase/step detail bodies |
+| `opencode/plugins/inject-workflow-state.js` (`resolveWorkflowMd`) | per-turn breadcrumbs (JS port; mirrors the Python rule for the same inputs) |
+| `codex/hooks/session-start.py` + `copilot/hooks/session-start.py` (`_resolve_workflow_md`) | platform-specific SessionStart Phase Index TOC |
+
+Known degradation: the Pi and OMP extensions keep injecting the global
+`.trellis/workflow.md` regardless of task selection (their workflow reads
+live inside monolithic TS extensions); per-task parity there is a tracked
+follow-up.
+
+Absent a `workflow` field, every consumer takes the fallback branch
+immediately — output is byte-identical to a project without the feature.
+Variant files must satisfy the same parser contract as `workflow.md` (marker
+syntax above, `## Phase Index`, `#### X.Y` step headings, platform markers);
+`trellis workflow --save` warns at save time when markers are missing.
+
+---
+
 ## Source of truth
 
 `workflow.md` is **the only editable source** for breadcrumb body text. The
@@ -124,7 +173,8 @@ tag is absent, the hook degrades to the generic line — visible to the user as
 an obvious bug they can fix, rather than being silently masked.
 
 To customize breadcrumb wording, edit the `[workflow-state:STATUS]` block in
-`.trellis/workflow.md`. No script change required.
+`.trellis/workflow.md` (or in the task's selected variant file). No script
+change required.
 
 ### Update boundary
 
@@ -292,6 +342,8 @@ nested Trellis sub-agents.
 ## Mandatory triggers (must update this spec when changing)
 
 - Marker syntax (regex / charset)
+- Per-task resolution rule change (`workflow_selection` resolution order, id
+  charset, or the per-task consumer list above)
 - Hook script structural change (parser, output envelope, what reads
   `task.json.status`)
 - `workflow.md` update semantics in `trellis update`

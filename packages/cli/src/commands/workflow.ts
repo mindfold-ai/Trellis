@@ -16,6 +16,11 @@
  *
  * - `--create-new`: never touches `.trellis/workflow.md`; writes
  *   `.trellis/workflow.md.new` and leaves the hash file alone.
+ *
+ * - `--save <id>`: resolves a template through the same pipeline but writes it
+ *   to the per-task variant library (`.trellis/workflows/<id>.md`) instead of
+ *   the active workflow. Library files are user-managed by definition: this
+ *   path never touches `.trellis/workflow.md` or `.template-hashes.json`.
  */
 
 import fs from "node:fs";
@@ -47,10 +52,29 @@ export interface WorkflowCommandOptions {
   list?: boolean;
   force?: boolean;
   createNew?: boolean;
+  save?: string;
 }
+
+/**
+ * Per-task workflow variant library. Files here are user-managed: never
+ * hash-tracked, never touched by `trellis update` (same ownership stance as a
+ * non-native `.trellis/workflow.md`).
+ */
+const WORKFLOWS_LIB_REL = `${DIR_NAMES.WORKFLOW}/workflows`;
+
+/**
+ * Library id charset — must match the per-task resolution rule in the runtime
+ * consumers (`common/workflow_selection.py`) so a saved id is resolvable and
+ * cannot traverse paths.
+ */
+const WORKFLOW_ID_RE = /^[A-Za-z0-9_-]+$/;
 
 function workflowFilePath(cwd: string): string {
   return path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE);
+}
+
+function workflowsLibraryDir(cwd: string): string {
+  return path.join(cwd, WORKFLOWS_LIB_REL);
 }
 
 function isInteractive(): boolean {
@@ -68,6 +92,26 @@ function printListing(templates: WorkflowTemplateListing[]): void {
     if (t.description) {
       console.log(chalk.gray(`    ${t.description}`));
     }
+  }
+  console.log("");
+}
+
+/**
+ * `--list` addition: ids already saved to the per-task variant library on
+ * disk. Skipped entirely when the directory is absent or empty.
+ */
+function printLibraryListing(cwd: string): void {
+  const libDir = workflowsLibraryDir(cwd);
+  if (!fs.existsSync(libDir)) return;
+  const ids = fs
+    .readdirSync(libDir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.slice(0, -".md".length))
+    .sort();
+  if (ids.length === 0) return;
+  console.log(chalk.cyan(`Library (${WORKFLOWS_LIB_REL}/):\n`));
+  for (const id of ids) {
+    console.log(`  ${chalk.green(id)}`);
   }
   console.log("");
 }
@@ -228,6 +272,99 @@ async function writeWorkflow(
 }
 
 /**
+ * The six breadcrumb statuses used by the bundled native template. Kept in
+ * sync with `.trellis/spec/cli/backend/workflow-state-contract.md` (status
+ * writer + reachability tables) — update both together.
+ */
+const REQUIRED_WORKFLOW_STATE_IDS = [
+  "no_task",
+  "planning",
+  "planning-inline",
+  "in_progress",
+  "in_progress-inline",
+  "completed",
+];
+
+/**
+ * Soft parser-contract validation for saved library variants: warn (never
+ * block) when runtime markers that SessionStart / per-turn hooks and
+ * `get_context.py --mode phase` rely on are missing. Warnings go to stderr —
+ * stdout stays reserved for command output.
+ */
+function warnAboutMissingMarkers(content: string, relPath: string): void {
+  const problems: string[] = [];
+  if (!content.includes("## Phase Index")) {
+    problems.push('missing "## Phase Index" section');
+  }
+  if (!/^#### \d+\.\d+/m.test(content)) {
+    problems.push('no "#### X.Y" step heading');
+  }
+  const missingStates = REQUIRED_WORKFLOW_STATE_IDS.filter(
+    (id) => !content.includes(`[workflow-state:${id}]`),
+  );
+  if (missingStates.length > 0) {
+    problems.push(
+      `missing [workflow-state:*] blocks: ${missingStates.join(", ")}`,
+    );
+  }
+  if (problems.length === 0) return;
+  process.stderr.write(
+    chalk.yellow(
+      `\n⚠ ${relPath} is missing runtime parser markers:\n` +
+        problems.map((p) => `  - ${p}\n`).join("") +
+        "  Consumers degrade to generic breadcrumbs / partial phase detail where markers are absent.\n",
+    ),
+  );
+}
+
+/**
+ * `--save <id>`: resolve through the same template pipeline as `--template`
+ * and write to the per-task variant library. Never touches
+ * `.trellis/workflow.md` or `.template-hashes.json` — library files are
+ * user-managed by definition.
+ */
+async function saveWorkflowToLibrary(
+  cwd: string,
+  id: string,
+  options: WorkflowCommandOptions,
+): Promise<void> {
+  if (!WORKFLOW_ID_RE.test(id)) {
+    throw new WorkflowCommandError(
+      `Invalid workflow id "${id}". Library ids must match [A-Za-z0-9_-]+ so per-task resolution can find the saved file.`,
+    );
+  }
+
+  let template: ResolvedWorkflowTemplate;
+  try {
+    template = await resolveWorkflowTemplate(id, {
+      source: options.marketplace,
+    });
+  } catch (err) {
+    if (err instanceof WorkflowResolveError) {
+      throw new WorkflowCommandError(err.message);
+    }
+    throw err;
+  }
+
+  const libDir = workflowsLibraryDir(cwd);
+  const destPath = path.join(libDir, `${id}.md`);
+  const destRel = `${WORKFLOWS_LIB_REL}/${id}.md`;
+  if (fs.existsSync(destPath) && !options.force) {
+    throw new WorkflowCommandError(
+      `${destRel} already exists. Re-run with --force to overwrite.`,
+    );
+  }
+  if (!fs.existsSync(libDir)) {
+    fs.mkdirSync(libDir, { recursive: true });
+  }
+  const finalContent = replacePythonCommandLiterals(template.content);
+  fs.writeFileSync(destPath, finalContent, "utf-8");
+  console.log(chalk.green(`  ✓ Saved "${template.id}" to ${destRel}`));
+
+  warnAboutMissingMarkers(finalContent, destRel);
+}
+
+/**
  * Distinct error class so `cli/index.ts` can format these as user errors
  * without dumping stack traces.
  */
@@ -254,9 +391,22 @@ export async function runWorkflowCommand(
       source: options.marketplace,
     });
     printListing(templates);
+    printLibraryListing(cwd);
     if (errorMessage) {
       console.log(chalk.yellow(`⚠ ${errorMessage}`));
     }
+    return;
+  }
+
+  // `--save <id>` populates the per-task variant library; it never composes
+  // with the active-workflow write modes.
+  if (options.save !== undefined) {
+    if (options.template || options.createNew) {
+      throw new WorkflowCommandError(
+        "--save cannot be combined with --template or --create-new.",
+      );
+    }
+    await saveWorkflowToLibrary(cwd, options.save, options);
     return;
   }
 

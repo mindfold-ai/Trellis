@@ -9,6 +9,10 @@
  * - `trellis update` after switch to tdd does NOT silently restore native.
  * - Non-interactive modified workflow.md fails without --force / --create-new.
  * - `--create-new` writes `.new` and leaves workflow.md + hash untouched.
+ * - `--save <id>`: writes the per-task library file (.trellis/workflows/<id>.md)
+ *   without touching workflow.md or the hash file; --force overwrite gate;
+ *   marker warnings on stderr; `--list` Library section; `trellis update`
+ *   leaves library files intact.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -279,6 +283,166 @@ describe("trellis workflow integration", () => {
     // Active workflow file and hash must both be untouched.
     expect(fs.readFileSync(wfPath, "utf-8")).toBe(originalContent);
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBe(originalHash);
+  });
+
+  /**
+   * Capture process.stderr.write output (marker warnings) without printing.
+   * Restored by `vi.restoreAllMocks()` in afterEach.
+   */
+  function captureStderr(): { text: () => string } {
+    const chunks: string[] = [];
+    vi.spyOn(process.stderr, "write").mockImplementation(
+      (chunk: unknown): boolean => {
+        chunks.push(String(chunk));
+        return true;
+      },
+    );
+    return { text: () => chunks.join("") };
+  }
+
+  it("--save tdd writes the library file; workflow.md and .template-hashes.json stay byte-unchanged", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+
+    const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
+    const hashesPath = path.join(tmpDir, ".trellis", ".template-hashes.json");
+    const wfBefore = fs.readFileSync(wfPath, "utf-8");
+    const hashesBefore = fs.readFileSync(hashesPath, "utf-8");
+
+    captureStderr();
+    await runWorkflowCommand({ save: "tdd" });
+
+    const libPath = path.join(tmpDir, ".trellis", "workflows", "tdd.md");
+    expect(fs.readFileSync(libPath, "utf-8")).toBe(
+      replacePythonCommandLiterals(TDD_CONTENT),
+    );
+    expect(fs.readFileSync(wfPath, "utf-8")).toBe(wfBefore);
+    expect(fs.readFileSync(hashesPath, "utf-8")).toBe(hashesBefore);
+  });
+
+  it("--save on an existing library file errors without --force and overwrites with it", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+
+    const libPath = path.join(tmpDir, ".trellis", "workflows", "tdd.md");
+    fs.mkdirSync(path.dirname(libPath), { recursive: true });
+    fs.writeFileSync(libPath, "# my locally-tuned tdd variant", "utf-8");
+
+    captureStderr();
+    await expect(runWorkflowCommand({ save: "tdd" })).rejects.toThrow(
+      /already exists.*--force/,
+    );
+    expect(fs.readFileSync(libPath, "utf-8")).toBe(
+      "# my locally-tuned tdd variant",
+    );
+
+    await runWorkflowCommand({ save: "tdd", force: true });
+    expect(fs.readFileSync(libPath, "utf-8")).toBe(
+      replacePythonCommandLiterals(TDD_CONTENT),
+    );
+  });
+
+  it("--save warns on stderr for a variant missing workflow-state blocks but still writes the file", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+
+    // TDD_CONTENT carries only [workflow-state:in_progress] and no #### X.Y
+    // heading — the other five statuses must be reported as missing.
+    const stderr = captureStderr();
+    await runWorkflowCommand({ save: "tdd" });
+
+    const text = stderr.text();
+    expect(text).toContain("missing runtime parser markers");
+    expect(text).toContain("missing [workflow-state:*] blocks");
+    expect(text).toContain("no_task");
+    expect(text).toContain("completed");
+    expect(text).toContain('no "#### X.Y" step heading');
+    // Warn, never block: the file is written regardless.
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "workflows", "tdd.md")),
+    ).toBe(true);
+  });
+
+  it("--save native emits no marker warning (all parser markers present)", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+
+    const stderr = captureStderr();
+    await runWorkflowCommand({ save: "native" });
+
+    expect(stderr.text()).not.toContain("missing runtime parser markers");
+    expect(
+      fs.readFileSync(
+        path.join(tmpDir, ".trellis", "workflows", "native.md"),
+        "utf-8",
+      ),
+    ).toBe(replacePythonCommandLiterals(workflowMdTemplate));
+  });
+
+  it("--save cannot be combined with --template or --create-new", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+
+    await expect(
+      runWorkflowCommand({ save: "tdd", template: "tdd" }),
+    ).rejects.toThrow(/--save cannot be combined/);
+    await expect(
+      runWorkflowCommand({ save: "tdd", createNew: true }),
+    ).rejects.toThrow(/--save cannot be combined/);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "workflows", "tdd.md")),
+    ).toBe(false);
+  });
+
+  it("--save with an invalid (path-escaping) id fails before any resolve/fetch", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockClear();
+    await expect(
+      runWorkflowCommand({ save: "../evil" }),
+    ).rejects.toThrow(/Invalid workflow id/);
+    // Rejected before the template pipeline: no marketplace fetch, no write.
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fs.existsSync(path.join(tmpDir, ".trellis", "evil.md"))).toBe(false);
+  });
+
+  it("--list shows saved library ids in a Library section", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+    captureStderr();
+    await runWorkflowCommand({ save: "tdd" });
+
+    vi.mocked(console.log).mockClear();
+    await runWorkflowCommand({ list: true });
+
+    const logged = vi
+      .mocked(console.log)
+      .mock.calls.map((call) => call.map(String).join(" "))
+      .join("\n");
+    expect(logged).toContain("Library (.trellis/workflows/)");
+    // Assert "tdd" inside the Library section specifically — the template
+    // listing above it also mentions tdd.
+    const librarySection = logged.slice(
+      logged.indexOf("Library (.trellis/workflows/)"),
+    );
+    expect(librarySection).toContain("tdd");
+  });
+
+  it("trellis update leaves saved library files intact", async () => {
+    stubMarketplaceFetch();
+    await init({ yes: true });
+    captureStderr();
+    await runWorkflowCommand({ save: "tdd" });
+
+    const libPath = path.join(tmpDir, ".trellis", "workflows", "tdd.md");
+    const before = fs.readFileSync(libPath, "utf-8");
+
+    await update({ skipAll: true });
+
+    expect(fs.existsSync(libPath)).toBe(true);
+    expect(fs.readFileSync(libPath, "utf-8")).toBe(before);
   });
 
   it("trellis update after switching to tdd does not silently restore native workflow", async () => {
