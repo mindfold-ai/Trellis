@@ -77,8 +77,9 @@ describe("settingsTemplate PostToolUse matchers", () => {
     hooks: { type: string; command: string; timeout: number }[];
   }[];
 
-  it("includes Edit, Write, and MultiEdit matchers", () => {
+  it("includes Read, Edit, Write, and MultiEdit matchers", () => {
     const matchers = postToolUseEntries.map((e) => e.matcher);
+    expect(matchers).toContain("Read");
     expect(matchers).toContain("Edit");
     expect(matchers).toContain("Write");
     expect(matchers).toContain("MultiEdit");

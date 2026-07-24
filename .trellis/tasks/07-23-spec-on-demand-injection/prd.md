@@ -120,3 +120,77 @@ directories).
 - [ ] `spec_injection.enabled: false` disables injection entirely.
 - [ ] `pnpm lint && pnpm lint:py && pnpm typecheck && pnpm test` — no new
       failures vs the recorded main baseline (5 pre-existing).
+
+---
+
+# PRD v2 upgrade: ticket-refresh model (supersedes the dedup semantics above)
+
+Source: taosu's v2 architecture doc (2026-07-24, "内核当子进程,平台侧只剩薄适配器",
+§4 凭条机制 / §11 spec-inject / §12 会话身份四档阶梯 / §12.1 状态存储). Scope here is
+the FEATURE only — the kernel-ABI refactor (P-1..P4) is explicitly out of scope.
+
+## Why v1 semantics are wrong
+
+v1 injects a spec once per session, then stays silent forever. The original
+problem statement is recency decay: by round 100+ the agent no longer follows
+rules that sit deep in history. Inject-once does not solve that; it recreates it.
+
+## v2 behavior (per spec, per event)
+
+```
+tier = identity ladder (below)
+h    = sha256(spec content)
+last = last emission recorded for (identity, spec)   # tier STATELESS → None
+
+if tier == STATELESS:            emit TICKET          # bounded cost, always
+elif last is None:               emit FULL TEXT
+elif last.sha256 != h:           emit FULL TEXT       # spec changed → re-teach
+elif clock - last.clock < WINDOW: silent               # fixed window: no state append
+else:                            emit TICKET          # refresh attention cheaply
+```
+
+- FIXED window, not sliding: silent hits do NOT extend the window (continuous
+  editing is exactly when drift is worst).
+- A TICKET emission also appends state (tickets are rate-limited by the same window).
+
+## Requirements (delta over v1)
+
+1. **Triggers**: add `Read` to the matchers (Read/Edit/Write/MultiEdit) — touching
+   a file counts; miss path must stay a fast exit.
+2. **Identity ladder** (misfire asymmetry: collision→missed injection is
+   unacceptable; drift→extra injection is fine):
+   - T1: payload `session_id` (also accept `conversation_id`/`sessionID` keys).
+     When payload carries `agent_id` (subagent context), identity includes it —
+     parent and subagent must NOT share state (context is not shared between them).
+   - T2: `transcript_path` (hashed).
+   - T4: stateless — no state IO at all; every hit emits TICKET only.
+   - T3 (ppid+TTL) is documented as reserved for future CLI-only platforms and
+     NOT wired (claude, the only registered platform, always has T1; unreliable
+     CLI-vs-IDE detection would violate the asymmetry principle).
+3. **Clock**: transcript line count when `transcript_path` readable, else epoch
+   seconds. State records both when available; compare lines-to-lines else
+   seconds-to-seconds; units incomparable → treat as past-window (over-inject side).
+4. **State**: user-global, out of the repo —
+   `~/.trellis/spec-inject/<project16>/<identity>.<pid>.jsonl`, append-only JSONL,
+   per-pid shard (merge on read, newest wins), bad lines skipped, best-effort
+   (any state IO failure degrades toward emitting). `TRELLIS_SPEC_STATE_DIR`
+   overrides the base dir (tests/hermeticity). GC: prune files older than 48 h,
+   at most once per hour via a `.last-gc` mtime marker, event-independent.
+5. **Config** (`spec_injection:`): existing keys plus
+   `refresh_window_lines` (default 300) and `refresh_window_seconds` (default 2700,
+   used when the line clock is unavailable). Both 0 → never refresh (v1 behavior).
+6. **Payload shapes** are frozen contracts (see design.md v2 §emissions).
+7. Budgets/truncation/degradation/pull mode/frontmatter engine: unchanged.
+
+## Acceptance criteria (v2)
+
+- [ ] First touch of a matched file → full `<spec-context>` block (with sha256 attr).
+- [ ] Second touch within window → empty output.
+- [ ] Touch past the line window (fixture-controlled transcript) → `<spec-ticket>`
+      block, few-hundred-byte order, containing spec path + sha prefix + Read hint.
+- [ ] Spec content edited between touches → full text again (hash change beats window).
+- [ ] Payload without any identity → ticket-only on every hit, zero state files.
+- [ ] Payload with `agent_id` keeps separate state from same `session_id` without it.
+- [ ] `Read` tool event triggers exactly like Edit.
+- [ ] State lands under `TRELLIS_SPEC_STATE_DIR` when set; stale files pruned by GC.
+- [ ] Full gate green (lint, typecheck, lint:py, full test suite vs baseline).

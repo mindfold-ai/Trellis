@@ -140,3 +140,86 @@ content; harmless `---` block at file top).
 Wait — verify that claim during implementation: grep any spec consumers that
 would choke on a leading `---` block (e.g. spec-refresh hash tracking is
 byte-based, fine; index.md Guidelines tables are prose, fine).
+
+---
+
+# Design v2: ticket-refresh (exact contracts — implementation and tests code to THIS)
+
+Supersedes §4 (session dedup) above. Everything not mentioned here is unchanged.
+
+## Emissions (frozen formats)
+
+FULL (per matched spec; sha256 attr added vs v1):
+
+    <spec-context file="<edited rel>" spec="<spec rel>" sha256="<first 12 hex>">
+    <spec body, budgeted, truncation notice inside when capped>
+    </spec-context>
+
+TICKET (per matched spec):
+
+    <spec-ticket file="<edited rel>" spec="<spec rel>" sha256="<first 12 hex>">
+    You were shown this spec earlier in this session and its content is unchanged.
+    It still governs edits to matching files. If you no longer remember it, Read
+    <spec rel> before continuing.
+    </spec-ticket>
+
+Overflow degradation (`<spec-index>` block) applies to FULL bodies; the index
+block is itself budget-bounded — lines that do not fit collapse into one
+summary line `- (+N more governing specs over budget — run get_context.py
+--mode spec --file <edited rel> to list them)` so the ceiling is honored while
+no governing spec is ever silently dropped. Tickets are counted against the
+total budget last — if even they do not fit, drop with stderr warn, never
+malformed JSON.
+
+## Decision engine
+
+    EDIT_TOOLS = ("Read", "Edit", "Write", "MultiEdit")
+
+    identity, stateless = resolve_identity(payload)
+      # T1: session_id | conversation_id | sessionID  → "s-" + sanitize(value)
+      #     + ("+a-" + sanitize(agent_id)) when payload has non-empty agent_id
+      # T2: transcript_path                            → "t-" + sha256(path)[:16]
+      # T4: none of the above                          → stateless=True
+    clock = {"lines": line_count(transcript_path) or None, "ts": time.time()}
+    for spec in matches:                    # stable rel_path order
+        h = sha256(spec bytes).hexdigest()
+        last = newest state line for spec   # None when stateless or no record
+        decide per PRD v2 state machine; window compare:
+          both have lines → lines delta vs refresh_window_lines
+          else            → ts delta vs refresh_window_seconds
+          incomparable    → past-window
+          NEGATIVE delta  → past-window (transcript compacted shorter / clock
+                            skew: the earlier injection was likely lost — the
+                            over-inject side of the asymmetry principle)
+        emit FULL or TICKET → append state line (mode recorded); silent → no append
+
+## State file contract
+
+Path: `${TRELLIS_SPEC_STATE_DIR:-~/.trellis/spec-inject}/<project16>/<identity>.<pid>.jsonl`
+  project16 = sha256(str(realpath(repo_root)))[:16]
+Line: {"v":1,"spec":"<rel>","sha256":"<64hex>","mode":"full"|"ticket","ts":<float>,"lines":<int|null>,"pid":<int>}
+Read: merge every `<identity>.*.jsonl` shard, newest record per spec wins
+      (ts is the tiebreaker); malformed lines skipped silently.
+Write: O_APPEND single line to own-pid shard; failure → stderr warn, proceed.
+GC: under the base dir, when `.last-gc` mtime older than 1 h: touch it, then
+    unlink any `*.jsonl` with mtime older than 48 h (best-effort, errors ignored).
+
+## Config keys (template + doc)
+
+    spec_injection:
+      enabled: true
+      max_spec_bytes: 8192
+      max_total_bytes: 9000
+      refresh_window_lines: 300     # transcript-line clock; 0 = never refresh
+      refresh_window_seconds: 2700  # wall-clock fallback;  0 = never refresh
+
+## Registration delta
+
+claude settings template + live mirror: PostToolUse matchers gain "Read"
+(same command/timeout shape). No other platform wiring.
+
+## Explicitly rejected in this scope (upstream doc's larger plan)
+
+Kernel ABI / forwarding shells / behavior registry / config.resolved.json /
+heartbeat / doctor / interpreter baking — P-1..P4 territory, separate efforts.
+Tier-3 ppid identity: reserved, unwired (rationale in PRD v2 §2).

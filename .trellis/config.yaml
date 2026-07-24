@@ -140,17 +140,24 @@ channel:
 #-------------------------------------------------------------------------------
 # Path-scoped spec injection
 #-------------------------------------------------------------------------------
-# When the agent edits a file, spec .md files under .trellis/spec/ whose
-# frontmatter `paths:` globs match the edited path are injected into the
-# session right then (at most once per session per spec; touching the spec
-# file re-arms it). Oversized specs are truncated with a notice; once the
-# per-event payload cap is reached, remaining matches degrade to index lines
-# (path + description) instead of being inlined.
+# When the agent touches a file (Read/Edit/Write/MultiEdit), spec .md files
+# under .trellis/spec/ whose frontmatter `paths:` globs match the touched path
+# are surfaced into the session right then. The first time a spec matches it is
+# injected in full; on later touches its content is unchanged and still inside
+# the refresh window it stays silent, and once the window elapses a short
+# `<spec-ticket>` reminder is emitted to counter recency decay. Editing the
+# spec itself re-injects the full text. Oversized specs are truncated with a
+# notice; once the per-event payload cap is reached, remaining full bodies
+# degrade to index lines (path + description) instead of being inlined.
 #
 # Byte values: `0` disables the corresponding limit. Defaults stay under
 # Claude Code's documented 10,000-character additionalContext ceiling.
+# Window values: `0` (either key) = never refresh in that clock mode; setting
+# both to 0 reproduces the legacy inject-once behavior.
 #
 # spec_injection:
 #   enabled: true                # false disables injection entirely
 #   max_spec_bytes: 8192         # per matched spec file
 #   max_total_bytes: 9000        # whole per-event payload; overflow degrades to index lines
+#   refresh_window_lines: 300    # transcript-line clock; touches past this re-emit a ticket
+#   refresh_window_seconds: 2700 # wall-clock fallback when the transcript is unreadable

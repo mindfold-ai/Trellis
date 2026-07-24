@@ -59,6 +59,16 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_CMD}} .claude/hooks/inject-spec-context.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
         "matcher": "Edit",
         "hooks": [
           {

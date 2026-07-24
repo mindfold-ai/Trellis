@@ -74,3 +74,23 @@ PostToolUse stdin against this repo; confirm injection then dedup.
 Hook + registration are additive; reverting the PR restores prior behavior.
 Frontmatter left behind is inert (verify §Rollback claim in design.md during
 implementation: grep spec consumers for leading-`---` sensitivity).
+
+
+---
+
+# Implement v2 (ticket-refresh upgrade)
+
+- [x] V1. Rewrite decision engine + identity ladder + global JSONL state + GC in
+      `packages/cli/src/templates/shared-hooks/inject-spec-context.py`; add Read
+      matcher to `templates/claude/settings.json`; add refresh_window_* keys to
+      `templates/trellis/config.yaml` (per design.md v2 — formats are frozen).
+- [x] V2. Tests: rework `test/scripts/spec-injection.integration.test.ts` to the
+      v2 state machine (PRD v2 acceptance list, incl. agent_id separation,
+      TRELLIS_SPEC_STATE_DIR hermeticity, Read trigger, GC prune);
+      `test/templates/claude.test.ts` Read matcher assertions.
+- [x] V3. Mirrors + docs: live `.claude/hooks/inject-spec-context.py`,
+      `.claude/settings.json`, live `.trellis/config.yaml` comment block;
+      `spec-injection.md` contract doc v2 rewrite (ticket model, ladder, state,
+      windows); config comment style consistent.
+- [ ] V4. Full gate (lint/typecheck/lint:py/full suite LC_ALL=C) + trellis-check
+      + commit + push (updates draft PR #468) + PR body refresh.
