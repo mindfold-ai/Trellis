@@ -326,6 +326,51 @@ print("all-valid")
         expect(out).not.toContain("[Trellis: not inlined");
       });
 
+      it("keeps binary jsonl references as notices even when limits are unlimited", () => {
+        const taskDir = makeTask(tmp, "task-binary-reference");
+        const binary = Buffer.from([
+          0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x41, 0x42,
+        ]);
+        fs.writeFileSync(path.join(tmp, "design.png"), binary);
+        fs.writeFileSync(
+          path.join(tmp, "invalid.bin"),
+          Buffer.from([0xff, 0xfe, 0xfd]),
+        );
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          [
+            JSON.stringify({ file: "design.png", reason: "visual baseline" }),
+            JSON.stringify({ file: "invalid.bin", reason: "legacy export" }),
+          ].join("\n") + "\n",
+          "utf-8",
+        );
+        writeConfig(
+          tmp,
+          [
+            "context_injection:",
+            "  max_file_bytes: 0",
+            "  max_total_bytes: 0",
+          ].join("\n"),
+        );
+        const relTask = path.relative(tmp, taskDir).split(path.sep).join("/");
+
+        const out = runHookProbe(
+          tmp,
+          `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
+        );
+
+        expect(out).toContain(
+          "[Trellis: not inlined (binary file) — design.png (10 bytes): visual baseline]",
+        );
+        expect(out).toContain(
+          "[Trellis: not inlined (binary file) — invalid.bin (3 bytes): legacy export]",
+        );
+        expect(out).not.toContain("=== design.png ===");
+        expect(out).not.toContain("=== invalid.bin ===");
+        expect(out).not.toContain("\u0000");
+        expect(out).not.toContain("�");
+      });
+
       it("truncates an oversized jsonl-referenced file at max_file_bytes with a notice", () => {
         const taskDir = makeTask(tmp, "task-oversize");
         fs.writeFileSync(

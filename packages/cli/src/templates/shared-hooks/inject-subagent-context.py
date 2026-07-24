@@ -246,6 +246,24 @@ def _truncate_notice(path: str, cap: int) -> str:
     return f"\n[Trellis: truncated at {cap} bytes — read {path} for the full content]"
 
 
+def _is_binary_content(data: bytes) -> bool:
+    """Return True when raw bytes should not be decoded into model context."""
+    if b"\x00" in data:
+        return True
+    try:
+        data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return True
+    return False
+
+
+def _binary_notice(path: str, size: int, reason: str) -> str:
+    return (
+        f"[Trellis: not inlined (binary file) — "
+        f"{path} ({size} bytes): {reason}]"
+    )
+
+
 def _index_notice(path: str, size: int, reason: str) -> str:
     return (
         f"[Trellis: not inlined (total context limit reached) — "
@@ -286,6 +304,11 @@ def _materialize_file(
         return None
 
     size = len(data)
+    if _is_binary_content(data):
+        notice = _binary_notice(file_path, size, reason)
+        budget.add(len(notice.encode("utf-8")))
+        return notice
+
     cap = limits["max_file_bytes"]
     truncated_bytes = truncate_utf8(data, cap)
     content = truncated_bytes.decode("utf-8", errors="replace")

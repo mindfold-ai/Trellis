@@ -777,6 +777,46 @@ describe("pi extension: context injection limits (issue #441)", () => {
       expect(out).not.toContain("[Trellis: not inlined");
     });
 
+    it("keeps binary jsonl references as notices even when limits are unlimited", () => {
+      const root = createRoot();
+      const taskDir = activateTask(root, "task-binary-reference");
+      const binary = Buffer.from([
+        0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x41, 0x42,
+      ]);
+      writeFileSync(join(root, "design.png"), binary);
+      writeFileSync(join(root, "invalid.bin"), Buffer.from([0xff, 0xfe, 0xfd]));
+      writeFileSync(
+        join(taskDir, "implement.jsonl"),
+        [
+          JSON.stringify({ file: "design.png", reason: "visual baseline" }),
+          JSON.stringify({ file: "invalid.bin", reason: "legacy export" }),
+        ].join("\n") + "\n",
+        "utf-8",
+      );
+      writeConfig(
+        root,
+        [
+          "context_injection:",
+          "  max_file_bytes: 0",
+          "  max_total_bytes: 0",
+        ].join("\n"),
+      );
+
+      const { buildContextForTest } = loadExtensionInternals();
+      const out = buildContextForTest(root, "trellis-implement", SESSION_KEY);
+
+      expect(out).toContain(
+        "[Trellis: not inlined (binary file) — design.png (10 bytes): visual baseline]",
+      );
+      expect(out).toContain(
+        "[Trellis: not inlined (binary file) — invalid.bin (3 bytes): legacy export]",
+      );
+      expect(out).not.toContain("=== design.png ===");
+      expect(out).not.toContain("=== invalid.bin ===");
+      expect(out).not.toContain("\u0000");
+      expect(out).not.toContain("�");
+    });
+
     it("truncates an oversized jsonl-referenced file at max_file_bytes with a notice", () => {
       const root = createRoot();
       const taskDir = activateTask(root, "task-oversize");
