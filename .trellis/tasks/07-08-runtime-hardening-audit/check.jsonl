@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Verify hard-fail, warn-and-continue, and quiet fallback behavior matches project rules."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Validate regression tests follow Trellis Vitest conventions."}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Check path and hook behavior across macOS, Linux, and Windows assumptions."}
