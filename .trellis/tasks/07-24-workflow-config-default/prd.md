@@ -1,5 +1,23 @@
 # PRD: Layered workflow default (config + personal override)
 
+---
+
+## ⚠️ 待定方向(需同事拍板):按"类型"选 workflow
+
+本任务只做了 per-task / 个人 / 团队三层默认。同事原话"根据场景切换"(16:43:36)的正解
+应是**按工作类型选**(产品 / research / 工程 各一套),**尚未实现,方向未定**。
+
+- 库 `.trellis/workflows/<id>.md` 已支持多套并存;缺"任务类型 → 选哪套"的机制。
+- 任务类型可复用 `task.json` 现有但空置的 `dev_type` 字段。
+- **用户已选方案 A**:把 `type` 写进每个 workflow 文件的 frontmatter。
+  - ⚠️ **风险(用户点出)**:type 分散在各文件,按类型选要扫描匹配,**非确定性**——
+    多个同 type 会歧义、没匹配会静默漏选("本该用它时有概率不会被用到")。
+  - **确定性替代(方案 B)**:在 `config.yaml` 建 `type → workflow` 映射表。
+
+待同事定:分哪几类 / 是否用 `dev_type` / 用 A 还是 B。定清前不实现。
+
+---
+
 ## Source
 
 This task implements the colleague's requirement from the 2026-07-23 conversation
