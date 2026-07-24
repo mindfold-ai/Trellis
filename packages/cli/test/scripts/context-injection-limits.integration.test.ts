@@ -371,6 +371,60 @@ print("all-valid")
         expect(out).not.toContain("�");
       });
 
+      it("does not misclassify legitimate multi-byte UTF-8 content as binary", () => {
+        const taskDir = makeTask(tmp, "task-utf8-not-binary");
+        const multiByteContent =
+          "emoji: 🎉🚀 cjk: 中文测试 bmp: café naïve\n";
+        fs.writeFileSync(
+          path.join(tmp, "multibyte.md"),
+          multiByteContent,
+          "utf-8",
+        );
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: "multibyte.md", reason: "unicode spec" }) +
+            "\n",
+          "utf-8",
+        );
+        writeConfig(tmp, "");
+        const relTask = path.relative(tmp, taskDir).split(path.sep).join("/");
+
+        const out = runHookProbe(
+          tmp,
+          `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
+        );
+
+        expect(out).toContain(`=== multibyte.md ===\n${multiByteContent}`);
+        expect(out).not.toContain("[Trellis: not inlined (binary file)");
+      });
+
+      it("classifies a file as binary when binary bytes appear only at the end", () => {
+        const taskDir = makeTask(tmp, "task-text-head-binary-tail");
+        const mixed = Buffer.concat([
+          Buffer.from("looks like a normal text file up front\n", "utf-8"),
+          Buffer.from([0x00, 0xff, 0xfe]),
+        ]);
+        fs.writeFileSync(path.join(tmp, "mixed.dat"), mixed);
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: "mixed.dat", reason: "mixed content" }) +
+            "\n",
+          "utf-8",
+        );
+        writeConfig(tmp, "");
+        const relTask = path.relative(tmp, taskDir).split(path.sep).join("/");
+
+        const out = runHookProbe(
+          tmp,
+          `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
+        );
+
+        expect(out).toContain(
+          `[Trellis: not inlined (binary file) — mixed.dat (${mixed.length} bytes): mixed content]`,
+        );
+        expect(out).not.toContain("=== mixed.dat ===");
+      });
+
       it("truncates an oversized jsonl-referenced file at max_file_bytes with a notice", () => {
         const taskDir = makeTask(tmp, "task-oversize");
         fs.writeFileSync(

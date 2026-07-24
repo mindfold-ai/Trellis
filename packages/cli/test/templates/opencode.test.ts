@@ -1079,6 +1079,34 @@ describe("opencode context injection limits (issue #441)", () => {
       expect(prompt).not.toContain("�");
     });
 
+    it("does not misclassify legitimate multi-byte UTF-8 content as binary", async () => {
+      const multiByteContent =
+        "emoji: 🎉🚀 cjk: 中文测试 bmp: café naïve\n";
+      writeFileSync(join(dir, "multibyte.md"), multiByteContent, "utf-8");
+      writeJsonlEntries([{ file: "multibyte.md", reason: "unicode spec" }]);
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain(`=== multibyte.md ===\n${multiByteContent}`);
+      expect(prompt).not.toContain("[Trellis: not inlined (binary file)");
+    });
+
+    it("classifies a file as binary when binary bytes appear only at the end", async () => {
+      const mixed = Buffer.concat([
+        Buffer.from("looks like a normal text file up front\n", "utf-8"),
+        Buffer.from([0x00, 0xff, 0xfe]),
+      ]);
+      writeFileSync(join(dir, "mixed.dat"), mixed);
+      writeJsonlEntries([{ file: "mixed.dat", reason: "mixed content" }]);
+
+      const prompt = await runImplementHook();
+
+      expect(prompt).toContain(
+        `[Trellis: not inlined (binary file) — mixed.dat (${mixed.length} bytes): mixed content]`,
+      );
+      expect(prompt).not.toContain("=== mixed.dat ===");
+    });
+
     it("truncates an oversized jsonl-referenced file at max_file_bytes with a notice", async () => {
       writeFileSync(join(dir, "big.txt"), "A".repeat(2 * 1024 * 1024), "utf-8");
       writeJsonlEntries([{ file: "big.txt", reason: "big" }]);
