@@ -257,25 +257,38 @@ else:                      emit TICKET   # refresh attention cheaply
 
 ### Identity ladder
 
-State is keyed by a session identity resolved from the hook payload. **Misfire
-asymmetry** governs the design: a collision that *misses* an injection is
-unacceptable; drift that *over*-injects is merely wasteful — so when in doubt,
-inject.
+State is keyed by a session identity. **Misfire asymmetry** governs the
+design: a collision that *misses* an injection is unacceptable; drift that
+*over*-injects is merely wasteful — so when in doubt, inject.
 
-| Tier | Source | Identity |
-|---|---|---|
-| T1 | payload `session_id` (also `conversation_id` / `sessionID`) | `s-<sanitized>` — plus `+a-<sanitized agent_id>` when the payload carries a non-empty `agent_id`, so a **subagent never shares state with its parent** (their contexts are not shared) |
-| T2 | `transcript_path` | `t-<sha256(path)[:16]>` |
-| T4 | none of the above | **stateless** — no state I/O at all; every hit emits a TICKET |
+The session/window key is **delegated to
+`common.active_task.resolve_context_key`** — the same battle-tested resolver
+every other hook uses. That buys, for free: payload keys in every casing
+(`session_id` / `sessionId` / `sessionID`, conversation and transcript
+variants), nested payload shapes, the explicit `TRELLIS_CONTEXT_ID` override,
+per-platform env fallbacks (`*_SESSION_ID` et al.), Cursor shell tickets, and
+every platform fix accumulated behind them. The hook calls it **payload-first**
+(`allow_environment_context=False`, then a second env-inclusive pass only when
+the payload yields nothing) so two live sessions can never collapse onto one
+exported env value — the collision direction is the unacceptable one.
 
-T3 (ppid + TTL) is **reserved and deliberately unwired**: Claude — the only
-registered platform — always has T1, and unreliable CLI-vs-IDE process
+On top of that key:
+
+| Layer | Rule |
+|---|---|
+| subagent split | `+a-<sanitized agent_id>` appended when the payload carries a non-empty `agent_id`, so a **subagent never shares state with its parent** (their contexts are not shared) |
+| fallback ladder | when `resolve_context_key` is unavailable (older installed scripts tree), a minimal payload-only ladder (session keys, then transcript hash) keeps the hook working |
+| stateless tier | no key from any source → **stateless**: no state I/O at all; every hit emits a TICKET |
+
+ppid-based identity is **deliberately unwired**: Claude — the only registered
+platform — always yields a payload key, and unreliable CLI-vs-IDE process
 detection would risk a cross-session collision, violating the asymmetry
 principle. It is documented for a future CLI-only platform.
 
-Sanitization restricts an id to `[A-Za-z0-9_-]` (no `.`, which would blur the
-`<identity>.<pid>.jsonl` shard boundary); an all-special id falls back to a
-hash so distinct sessions never collide onto one identity.
+Sanitization restricts the final identity to `[A-Za-z0-9_-]` (no `.`, which
+would blur the `<identity>.<pid>.jsonl` shard boundary; no `+`, so the
+subagent suffix is unforgeable); an all-special id falls back to a hash so
+distinct sessions never collide onto one identity.
 
 ### Clock (refresh-window units)
 

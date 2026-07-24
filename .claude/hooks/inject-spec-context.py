@@ -288,27 +288,72 @@ def _sanitize(raw: str) -> str:
     return safe[:120]
 
 
-def resolve_identity(payload: dict) -> tuple[str, bool]:
-    """Return (identity, stateless) per the identity ladder.
+def _shared_context_key(root: Path, payload: dict) -> str | None:
+    """Session/window key from the shared resolver every other hook uses.
 
-    stateless=True means no state IO at all (every hit is a TICKET).
+    ``common.active_task.resolve_context_key`` is the single source of truth
+    for session identity: payload keys in all casings (``session_id`` /
+    ``sessionId`` / ``sessionID``, conversation and transcript variants),
+    nested payload shapes, the explicit ``TRELLIS_CONTEXT_ID`` override,
+    per-platform env fallbacks, and Cursor shell tickets — plus the platform
+    fixes accumulated behind them. Payload identity is preferred over
+    environment context so two live sessions can never collapse onto one
+    exported env value (collision → missed injection is the unacceptable
+    direction); the environment pass still runs when the payload carries
+    nothing.
     """
-    for key in ("session_id", "conversation_id", "sessionID"):
-        value = payload.get(key)
-        if isinstance(value, str) and value.strip():
-            identity = "s-" + _sanitize(value)
-            agent = payload.get("agent_id")
-            if isinstance(agent, str) and agent.strip():
-                # Parent and subagent do NOT share context — keep state separate.
-                identity += "+a-" + _sanitize(agent)
-            return identity, False
+    try:
+        scripts_dir = root / DIR_WORKFLOW / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from common.active_task import resolve_context_key  # type: ignore[import-not-found]
 
-    transcript = payload.get("transcript_path")
-    if isinstance(transcript, str) and transcript.strip():
-        digest = hashlib.sha256(transcript.strip().encode("utf-8")).hexdigest()
-        return "t-" + digest[:16], False
+        key = resolve_context_key(payload, allow_environment_context=False)
+        if key:
+            return key
+        return resolve_context_key(payload)
+    except Exception:
+        return None
 
-    return "", True
+
+def resolve_identity(root: Path, payload: dict) -> tuple[str, bool]:
+    """Return (identity, stateless) for the refresh-state store.
+
+    The session/window key is delegated to the shared resolver (see
+    ``_shared_context_key``); a subagent suffix keeps parent and subagent
+    state separate (their contexts are not shared — a spec shown to one was
+    never seen by the other). When the shared resolver is unavailable (older
+    installed scripts tree), a minimal payload-only ladder keeps the hook
+    working. stateless=True means no state IO at all (every hit is a TICKET).
+    """
+    key = _shared_context_key(root, payload)
+
+    if not key:
+        # Minimal payload-only fallback for scripts trees that predate
+        # resolve_context_key. Mirrors its payload lookup order.
+        for k in ("session_id", "sessionId", "sessionID"):
+            value = payload.get(k)
+            if isinstance(value, str) and value.strip():
+                key = "s-" + value.strip()
+                break
+        if not key:
+            transcript = payload.get("transcript_path")
+            if isinstance(transcript, str) and transcript.strip():
+                digest = hashlib.sha256(
+                    transcript.strip().encode("utf-8")
+                ).hexdigest()
+                key = "t-" + digest[:16]
+
+    if not key:
+        return "", True
+
+    identity = _sanitize(key)
+    agent = payload.get("agent_id")
+    if isinstance(agent, str) and agent.strip():
+        # Parent and subagent do NOT share context — keep state separate.
+        # _sanitize strips "+", so this suffix cannot be forged by an id value.
+        identity += "+a-" + _sanitize(agent)
+    return identity, False
 
 
 def _transcript_line_count(transcript_path: str | None) -> int | None:
@@ -701,7 +746,7 @@ def main() -> int:
     if not matches:
         return 0
 
-    identity, stateless = resolve_identity(input_data)
+    identity, stateless = resolve_identity(root, input_data)
 
     state_records: dict[str, dict] = {}
     shard_path: Path | None = None

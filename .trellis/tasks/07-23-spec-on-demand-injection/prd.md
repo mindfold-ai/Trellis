@@ -159,14 +159,17 @@ else:                            emit TICKET          # refresh attention cheapl
    a file counts; miss path must stay a fast exit.
 2. **Identity ladder** (misfire asymmetry: collision→missed injection is
    unacceptable; drift→extra injection is fine):
-   - T1: payload `session_id` (also accept `conversation_id`/`sessionID` keys).
-     When payload carries `agent_id` (subagent context), identity includes it —
+   - The session/window key is DELEGATED to
+     `common.active_task.resolve_context_key` (the shared, platform-verified
+     resolver every other hook uses), called payload-first so env overrides
+     can never collapse two live sessions onto one identity.
+   - When payload carries `agent_id` (subagent context), identity includes it —
      parent and subagent must NOT share state (context is not shared between them).
-   - T2: `transcript_path` (hashed).
-   - T4: stateless — no state IO at all; every hit emits TICKET only.
-   - T3 (ppid+TTL) is documented as reserved for future CLI-only platforms and
-     NOT wired (claude, the only registered platform, always has T1; unreliable
-     CLI-vs-IDE detection would violate the asymmetry principle).
+   - Resolver unavailable (older scripts tree) → minimal payload-only fallback.
+   - No key from any source → stateless: no state IO; every hit emits TICKET only.
+   - ppid+TTL identity is documented as reserved for future CLI-only platforms
+     and NOT wired (unreliable CLI-vs-IDE detection would violate the
+     asymmetry principle).
 3. **Clock**: transcript line count when `transcript_path` readable, else epoch
    seconds. State records both when available; compare lines-to-lines else
    seconds-to-seconds; units incomparable → treat as past-window (over-inject side).

@@ -175,11 +175,13 @@ malformed JSON.
 
     EDIT_TOOLS = ("Read", "Edit", "Write", "MultiEdit")
 
-    identity, stateless = resolve_identity(payload)
-      # T1: session_id | conversation_id | sessionID  → "s-" + sanitize(value)
-      #     + ("+a-" + sanitize(agent_id)) when payload has non-empty agent_id
-      # T2: transcript_path                            → "t-" + sha256(path)[:16]
-      # T4: none of the above                          → stateless=True
+    identity, stateless = resolve_identity(root, payload)
+      # Session/window key DELEGATED to common.active_task.resolve_context_key
+      # (payload-first: allow_environment_context=False, then an env-inclusive
+      # second pass) — inherits all platform-verified key handling. On top:
+      # "+a-" + sanitize(agent_id) when payload has non-empty agent_id;
+      # minimal payload-only fallback ladder when the resolver is unavailable;
+      # no key from any source → stateless=True (ticket-only, zero state IO)
     clock = {"lines": line_count(transcript_path) or None, "ts": time.time()}
     for spec in matches:                    # stable rel_path order
         h = sha256(spec bytes).hexdigest()

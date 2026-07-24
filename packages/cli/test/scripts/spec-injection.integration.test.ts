@@ -139,6 +139,7 @@ for m in match_specs_for_file(REPO_ROOT, ${JSON.stringify(filePath)}):
 function runHook(
   tmp: string,
   input: string,
+  extraEnv: Record<string, string> = {},
 ): { status: number | null; stdout: string; stderr: string } {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -150,11 +151,24 @@ function runHook(
   };
   delete env.TRELLIS_HOOKS;
   delete env.TRELLIS_DISABLE_HOOKS;
+  // Identity delegates to common.active_task.resolve_context_key, which also
+  // consults env fallbacks (TRELLIS_CONTEXT_ID override plus per-platform
+  // *_SESSION_ID / *_CONVERSATION_ID / *_TRANSCRIPT_PATH keys). The dev shell
+  // running vitest may carry those (e.g. CLAUDE_CODE_SESSION_ID inside a
+  // Claude Code session), so strip every identity-bearing key for hermetic
+  // no-identity cases; tests opt back in via extraEnv.
+  delete env.TRELLIS_CONTEXT_ID;
+  const identityBearing =
+    /(_SESSION_?ID|_CONVERSATION_?ID|_TRANSCRIPT_PATH|_THREAD_ID|_RUN_ID)$/i;
+  const cleanEnv = Object.fromEntries(
+    Object.entries(env).filter(([key]) => !identityBearing.test(key)),
+  );
+  Object.assign(cleanEnv, extraEnv);
   const r = spawnSync("python3", [HOOK_PATH], {
     cwd: tmp,
     encoding: "utf-8",
     input,
-    env,
+    env: cleanEnv,
   });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
@@ -546,6 +560,36 @@ for g in ["/abs/path.ts", "a/../b.ts", "src/{a,b}.ts", "src/app.ts"]:
 
       // Stateless tier does no state IO: no shards written.
       expect(listJsonl(stateBase(tmp))).toEqual([]);
+    });
+
+    it("honors TRELLIS_CONTEXT_ID as identity when the payload carries none (shared-resolver env tier)", () => {
+      writeGoverningSpec();
+      const payload = buildPayload(tmp, { filePath: EDITED, session: null });
+      const env = { TRELLIS_CONTEXT_ID: "explicit-ctx" };
+
+      // With an explicit context override the hook is NOT stateless: first
+      // touch teaches in full and records state.
+      const first = runHook(tmp, payload, env);
+      expect(first.status).toBe(0);
+      expect(additionalContext(first.stdout)).toContain(
+        `<spec-context file="${EDITED}" spec="${SPEC_REL}" sha256="`,
+      );
+      expect(listJsonl(stateBase(tmp)).length).toBe(1);
+
+      // Second touch within the window: silent, like any stateful identity.
+      const second = runHook(tmp, payload, env);
+      expect(second.status).toBe(0);
+      expect(second.stdout.trim()).toBe("");
+
+      // Payload identity beats the env override: a session_id in the payload
+      // resolves to a DIFFERENT identity, so its first touch is full again.
+      const other = runHook(
+        tmp,
+        buildPayload(tmp, { filePath: EDITED, session: "payload-sess" }),
+        env,
+      );
+      expect(other.status).toBe(0);
+      expect(additionalContext(other.stdout)).toContain("<spec-context");
     });
 
     it("keeps agent_id state separate from the same session_id without it (both first touches are full)", () => {
