@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/backend/configurator-shared.md", "reason": "Verify generated Gemini settings remain aligned with cross-configurator generated-file invariants."}
+{"file": ".trellis/spec/cli/backend/commands-platforms.md", "reason": "Verify platform directory classification can rely on registry-backed platform metadata."}
+{"file": ".trellis/spec/cli/backend/directory-structure.md", "reason": "Verify generated settings classification matches directory-structure expectations."}

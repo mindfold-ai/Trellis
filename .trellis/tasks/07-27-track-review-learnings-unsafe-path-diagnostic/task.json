@@ -1,0 +1,33 @@
+{
+  "id": "track-review-learnings-unsafe-path-diagnostic",
+  "name": "track-review-learnings-unsafe-path-diagnostic",
+  "title": "Route review-learnings unsafe path diagnostics",
+  "description": "Ensure unsafe changed paths in review-learnings produce fail-closed diagnostics instead of uncaught ValueError tracebacks, or route the fix to the owning tool.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P3",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/spec/cli/backend/filesystem-safety.md",
+    ".trellis/spec/cli/backend/error-handling.md",
+    ".trellis/spec/cli/backend/script-conventions.md"
+  ],
+  "notes": "Created from item 4 in the cross-session Trellis review. Downstream review-learnings tooling raised ValueError for an unsafe changed path. Treat likely implementation ownership as sd-ai-command-pack review-learnings unless Trellis filesystem-safety helpers are the source.",
+  "meta": {
+    "source_item": "4",
+    "external_owner": "sd-ai-command-pack"
+  }
+}

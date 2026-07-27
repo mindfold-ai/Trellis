@@ -1,0 +1,34 @@
+{
+  "id": "track-no-active-task-completion-receipts",
+  "name": "track-no-active-task-completion-receipts",
+  "title": "Define no-active-task completion receipt contract",
+  "description": "Clarify and route finish-work/final-bundle behavior for journal-only completions that currently fail with completion_archive_move_missing when no active Trellis task exists.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/scripts/task.py",
+    ".trellis/spec/cli/backend/script-conventions.md",
+    ".trellis/spec/cli/backend/workflow-state-contract.md",
+    ".trellis/spec/cli/backend/error-handling.md"
+  ],
+  "notes": "Created from item 2 in the cross-session Trellis review. Downstream lifecycle tooling reported completion_archive_move_missing for no-active-task or journal-only completion flows. Treat likely implementation ownership as sd-ai-command-pack/final-bundle unless Trellis task validation is proven to require a core contract change.",
+  "meta": {
+    "source_item": "2",
+    "external_owner": "sd-ai-command-pack"
+  }
+}

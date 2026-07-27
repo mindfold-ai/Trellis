@@ -1,0 +1,34 @@
+{
+  "id": "track-journal-evidence-contradictions",
+  "name": "track-journal-evidence-contradictions",
+  "title": "Route journal evidence contradiction fixes",
+  "description": "Identify the producer of contradictory generated journal prose and route a durable fix so session records match the validation or review evidence that actually ran.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/scripts/add_session.py",
+    "packages/cli/src/templates/trellis/scripts/add_session.py",
+    ".trellis/spec/cli/backend/script-conventions.md",
+    ".trellis/spec/cli/backend/workflow-state-contract.md"
+  ],
+  "notes": "Created from item 1 in the cross-session Trellis review. Evidence came from generated lifecycle/session wording in downstream repos, not from a confirmed Trellis-core source line. Treat likely implementation ownership as sd-ai-command-pack unless Trellis session contracts are proven to emit the contradictory text.",
+  "meta": {
+    "source_item": "1",
+    "external_owner": "sd-ai-command-pack"
+  }
+}

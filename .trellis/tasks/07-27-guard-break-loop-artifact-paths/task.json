@@ -1,0 +1,33 @@
+{
+  "id": "guard-break-loop-artifact-paths",
+  "name": "guard-break-loop-artifact-paths",
+  "title": "Guard trellis-break-loop artifact paths",
+  "description": "Make trellis-break-loop guidance verify referenced artifacts and files exist before relying on them, and report missing paths diagnostically instead of directing agents to act on absent evidence.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-27",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".agents/skills/trellis-break-loop/SKILL.md",
+    ".claude/skills/trellis-break-loop/SKILL.md",
+    "packages/cli/src/templates/common/skills/break-loop.md",
+    "packages/cli/src/templates/codex/skills/break-loop/SKILL.md",
+    "packages/cli/src/templates/copilot/prompts/break-loop.prompt.md",
+    "packages/cli/test/regression.test.ts"
+  ],
+  "notes": "Created from expanded active-session review. people-profiles PR #3 had a valid Copilot finding against the installed Trellis break-loop instruction: the skill should guard absent referenced artifacts before directing agents to use or update them.",
+  "meta": {}
+}
