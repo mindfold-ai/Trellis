@@ -1,0 +1,9 @@
+{
+  "version": "0.6.11",
+  "description": "Reliable Pi and Codex subagents, UTF-8 hooks, bounded polyrepo scans, and accurate platform detection.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- fix(pi): inherit the invoking session model in subagents and support max thinking\n- fix(channel): surface Codex turn failures and enforce idle timeouts after completed turns\n- fix(hooks): decode hook input as UTF-8 independently of the host locale\n- fix(scripts): cap automatic polyrepo discovery and bound best-effort Git status probes\n- fix(cli): detect configured platforms from Trellis-owned files\n**Internal:**\n- ci(python): compile every tracked Python file on Python 3.9 and run basedpyright",
+  "migrations": [],
+  "notes": "Upgrade to 0.6.11, then run trellis update to refresh Pi and hook templates. No --migrate required."
+}

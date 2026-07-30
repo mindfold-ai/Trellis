@@ -1,0 +1,9 @@
+{
+  "version": "0.7.0-beta.0",
+  "description": "Path-scoped dynamic spec loading for Claude Code and Codex, plus layered workflow selection per task, developer, and team.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(hooks): deliver path-scoped specs dynamically through Claude Code PostToolUse and Codex PreToolUse hooks, with documented session reset handling\n- feat(workflow): save workflow variants and resolve task, developer, team, and global selections through one runtime chain",
+  "migrations": [],
+  "notes": "Run `trellis update` to install the new spec-injection hooks, workflow library support, and layered workflow resolver. No `--migrate` required."
+}

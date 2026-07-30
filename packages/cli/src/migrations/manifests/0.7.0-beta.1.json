@@ -1,0 +1,9 @@
+{
+  "version": "0.7.0-beta.1",
+  "description": "Workflow scaffolding, Pi dynamic workflow selection, and OpenCode dynamic spec loading.",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(workflow): add `trellis workflow create <workflow-id>` to scaffold a user-managed workflow variant and optionally select project and personal defaults\n- feat(pi): resolve task, personal, team, and global workflow selections in Pi breadcrumbs\n- feat(opencode): inject path-scoped governing specs before `write`, `edit`, and `apply_patch`, with model-visible block-and-retry delivery",
+  "migrations": [],
+  "notes": "Run `trellis update` to install the updated Pi extension and OpenCode dynamic spec plugin. No `--migrate` required."
+}
