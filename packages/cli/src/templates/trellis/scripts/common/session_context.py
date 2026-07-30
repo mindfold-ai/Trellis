@@ -148,7 +148,7 @@ def _collect_root_git_info(repo_root: Path) -> dict:
     )
     branch = branch_out.strip() or "unknown"
 
-    _, status_out, _ = run_git(
+    status_rc, status_out, _ = run_git(
         ["status", "--porcelain"],
         cwd=repo_root,
         timeout=_GIT_PROBE_TIMEOUT_SECONDS,
@@ -170,7 +170,7 @@ def _collect_root_git_info(repo_root: Path) -> dict:
     return {
         "isRepo": True,
         "branch": branch,
-        "isClean": len(status_lines) == 0,
+        "isClean": status_rc == 0 and len(status_lines) == 0,
         "uncommittedChanges": len(status_lines),
         "statusShort": short_out.splitlines(),
         "recentCommits": _parse_recent_commits(log_out),

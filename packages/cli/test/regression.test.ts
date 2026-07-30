@@ -1531,10 +1531,12 @@ describe("regression: issue #252 polyrepo Git context", () => {
         "root_calls = []",
         "def fake_git(args, cwd=None, timeout=None):",
         "    root_calls.append({'args': args, 'timeout': timeout})",
+        "    if args == ['status', '--porcelain']:",
+        "        return (1, '', 'timed out')",
         "    return (0, 'true\\n' if args[0] == 'rev-parse' else '', '')",
         "session_context.run_git = fake_git",
-        "session_context._collect_root_git_info(Path.cwd())",
-        "print(json.dumps({'rc': rc, 'out': out, 'err': err, 'rootCalls': root_calls, **captured}))",
+        "root_info = session_context._collect_root_git_info(Path.cwd())",
+        "print(json.dumps({'rc': rc, 'out': out, 'err': err, 'rootCalls': root_calls, 'rootInfo': root_info, **captured}))",
         "",
       ].join("\n"),
       "utf-8",
@@ -1551,6 +1553,7 @@ describe("regression: issue #252 polyrepo Git context", () => {
       err: string;
       timeout: number;
       rootCalls: { args: string[]; timeout: number }[];
+      rootInfo: { isClean: boolean };
     };
 
     expect(result).toEqual(
@@ -1569,6 +1572,7 @@ describe("regression: issue #252 polyrepo Git context", () => {
       "log",
     ]);
     expect(result.rootCalls.every((call) => call.timeout === 2)).toBe(true);
+    expect(result.rootInfo.isClean).toBe(false);
   });
 
   it("marks JSON root Git state as non-repo instead of clean", () => {
