@@ -20,6 +20,10 @@ interface PiToolResult {
 }
 interface PiExtensionContext {
   hasUI?: boolean;
+  model?: {
+    provider?: string;
+    id?: string;
+  };
   sessionManager?: {
     getSessionId?: () => string;
     getSessionFile?: () => string | undefined;
@@ -654,6 +658,7 @@ function resolveRunCfg(
   input: SubagentInput,
   agentCfg: AgentConfig,
   inheritedThinking?: string,
+  inheritedModel?: string,
 ): PiRunConfig {
   const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
   const normalize = (v: unknown): string | undefined => {
@@ -663,7 +668,7 @@ function resolveRunCfg(
   const suffixRe = /:(off|minimal|low|medium|high|xhigh)$/i;
   const inputModel = str(input.model);
   const agentModel = agentCfg.model;
-  const rawModel = inputModel ?? agentModel;
+  const rawModel = inputModel ?? agentModel ?? str(inheritedModel);
   const inputSuffixThinking = normalize(inputModel?.match(suffixRe)?.[1]);
   const agentSuffixThinking = normalize(agentModel?.match(suffixRe)?.[1]);
   const baseModel = rawModel?.replace(suffixRe, "");
@@ -676,6 +681,12 @@ function resolveRunCfg(
   if (baseModel && thinking && thinking !== "off")
     return { model: `${baseModel}:${thinking}`, thinking, tools: agentCfg.tools };
   return { model: baseModel || rawModel, thinking, tools: agentCfg.tools };
+}
+
+function contextModelRef(ctx?: PiExtensionContext): string | undefined {
+  const provider = str(ctx?.model?.provider);
+  const modelId = str(ctx?.model?.id);
+  return provider && modelId ? `${provider}/${modelId}` : undefined;
 }
 
 function buildPiArgs(cfg: PiRunConfig): string[] {
@@ -1502,11 +1513,17 @@ async function runSubagent(
   signal?: AbortSignal,
   onUpdate?: (r: PiToolResult) => void,
   inheritedThinking?: string,
+  inheritedModel?: string,
 ): Promise<{ output: string; details: ProgressDetails; failed: boolean }> {
   const agentName = normalizeAgent(input.agent);
   const agentRaw = readText(join(root, ".pi", "agents", `${agentName}.md`));
   const agentCfg = parseAgentFM(agentRaw);
-  const runCfg = resolveRunCfg(input, agentCfg, inheritedThinking);
+  const runCfg = resolveRunCfg(
+    input,
+    agentCfg,
+    inheritedThinking,
+    inheritedModel,
+  );
   const mode = input.mode ?? "single";
   const startedAt = Date.now();
   const details: ProgressDetails = {
@@ -1811,6 +1828,7 @@ export default function trellisExtension(pi: {
       };
       const key = getKey(cleanInput, ctx);
       const inheritedThinking = pi.getThinkingLevel?.();
+      const inheritedModel = contextModelRef(ctx);
       const result = await runSubagent(
         root,
         cleanInput,
@@ -1818,6 +1836,7 @@ export default function trellisExtension(pi: {
         signal,
         onUpdate,
         inheritedThinking,
+        inheritedModel,
       );
       return {
         content: [{ type: "text", text: result.output }],
