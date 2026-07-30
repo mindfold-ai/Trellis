@@ -1527,7 +1527,14 @@ describe("regression: issue #252 polyrepo Git context", () => {
         "    raise subprocess.TimeoutExpired(args[0], kwargs.get('timeout'))",
         "subprocess.run = fake_run",
         "rc, out, err = run_git(['status'], timeout=0.25)",
-        "print(json.dumps({'rc': rc, 'out': out, 'err': err, **captured}))",
+        "from common import session_context",
+        "root_calls = []",
+        "def fake_git(args, cwd=None, timeout=None):",
+        "    root_calls.append({'args': args, 'timeout': timeout})",
+        "    return (0, 'true\\n' if args[0] == 'rev-parse' else '', '')",
+        "session_context.run_git = fake_git",
+        "session_context._collect_root_git_info(Path.cwd())",
+        "print(json.dumps({'rc': rc, 'out': out, 'err': err, 'rootCalls': root_calls, **captured}))",
         "",
       ].join("\n"),
       "utf-8",
@@ -1538,7 +1545,13 @@ describe("regression: issue #252 polyrepo Git context", () => {
         cwd: tmpDir,
         encoding: "utf-8",
       }),
-    ) as { rc: number; out: string; err: string; timeout: number };
+    ) as {
+      rc: number;
+      out: string;
+      err: string;
+      timeout: number;
+      rootCalls: { args: string[]; timeout: number }[];
+    };
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -1548,6 +1561,14 @@ describe("regression: issue #252 polyrepo Git context", () => {
       }),
     );
     expect(result.err).toContain("timed out");
+    expect(result.rootCalls.map((call) => call.args[0])).toEqual([
+      "rev-parse",
+      "branch",
+      "status",
+      "status",
+      "log",
+    ]);
+    expect(result.rootCalls.every((call) => call.timeout === 2)).toBe(true);
   });
 
   it("marks JSON root Git state as non-repo instead of clean", () => {

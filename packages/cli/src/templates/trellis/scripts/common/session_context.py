@@ -105,7 +105,7 @@ def _collect_git_repo_info(name: str, rel_path: str, repo_dir: Path) -> dict | N
     )
     if status_rc != 0:
         return None
-    changes = len([l for l in status_out.splitlines() if l.strip()])
+    changes = len([line for line in status_out.splitlines() if line.strip()])
 
     _, branch_out, _ = run_git(
         ["branch", "--show-current"],
@@ -141,15 +141,31 @@ def _collect_root_git_info(repo_root: Path) -> dict:
             "recentCommits": [],
         }
 
-    _, branch_out, _ = run_git(["branch", "--show-current"], cwd=repo_root)
+    _, branch_out, _ = run_git(
+        ["branch", "--show-current"],
+        cwd=repo_root,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
     branch = branch_out.strip() or "unknown"
 
-    _, status_out, _ = run_git(["status", "--porcelain"], cwd=repo_root)
+    _, status_out, _ = run_git(
+        ["status", "--porcelain"],
+        cwd=repo_root,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
     status_lines = [line for line in status_out.splitlines() if line.strip()]
 
-    _, short_out, _ = run_git(["status", "--short"], cwd=repo_root)
+    _, short_out, _ = run_git(
+        ["status", "--short"],
+        cwd=repo_root,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
 
-    _, log_out, _ = run_git(["log", "--oneline", "-5"], cwd=repo_root)
+    _, log_out, _ = run_git(
+        ["log", "--oneline", "-5"],
+        cwd=repo_root,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
 
     return {
         "isRepo": True,
