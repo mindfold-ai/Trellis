@@ -1482,6 +1482,74 @@ describe("regression: issue #252 polyrepo Git context", () => {
     expect(output).toContain("init module b");
   });
 
+  it("skips automatic Git status when too many child repos are discovered", () => {
+    writeConfigYaml("# no packages configured\n");
+    for (let i = 0; i < 9; i++) {
+      fs.mkdirSync(path.join(tmpDir, `repo-${i}`, ".git"), {
+        recursive: true,
+      });
+    }
+
+    const output = runSessionContext("text");
+    const rerun = spawnSync(
+      pythonCmd,
+      [path.join(tmpDir, "run-context.py")],
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+      },
+    );
+
+    expect(output).not.toContain("## GIT STATUS (repo-");
+    expect(rerun.status).toBe(0);
+    expect(rerun.stderr).toContain(
+      "found more than 8 child Git repositories",
+    );
+    expect(rerun.stderr).toContain(
+      "Configure explicit packages entries with path and git: true",
+    );
+  });
+
+  it("passes probe timeouts through the shared Git runner", () => {
+    const runnerPath = path.join(tmpDir, "run-git-timeout.py");
+    fs.writeFileSync(
+      runnerPath,
+      [
+        "import json",
+        "import subprocess",
+        "import sys",
+        "from pathlib import Path",
+        "sys.path.insert(0, str(Path.cwd() / '.trellis' / 'scripts'))",
+        "from common.git import run_git",
+        "captured = {}",
+        "def fake_run(*args, **kwargs):",
+        "    captured['timeout'] = kwargs.get('timeout')",
+        "    raise subprocess.TimeoutExpired(args[0], kwargs.get('timeout'))",
+        "subprocess.run = fake_run",
+        "rc, out, err = run_git(['status'], timeout=0.25)",
+        "print(json.dumps({'rc': rc, 'out': out, 'err': err, **captured}))",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const result = JSON.parse(
+      execSync(`${pythonCmd} ${JSON.stringify(runnerPath)}`, {
+        cwd: tmpDir,
+        encoding: "utf-8",
+      }),
+    ) as { rc: number; out: string; err: string; timeout: number };
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        rc: 1,
+        out: "",
+        timeout: 0.25,
+      }),
+    );
+    expect(result.err).toContain("timed out");
+  });
+
   it("marks JSON root Git state as non-repo instead of clean", () => {
     writeConfigYaml(
       [

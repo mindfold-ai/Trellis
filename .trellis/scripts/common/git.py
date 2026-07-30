@@ -10,11 +10,17 @@ import subprocess
 from pathlib import Path
 
 
-def run_git(args: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
+def run_git(
+    args: list[str],
+    cwd: Path | None = None,
+    timeout: float | None = None,
+) -> tuple[int, str, str]:
     """Run a git command and return (returncode, stdout, stderr).
 
     Uses UTF-8 encoding with -c i18n.logOutputEncoding=UTF-8 to ensure
-    consistent output across all platforms (Windows, macOS, Linux).
+    consistent output across all platforms (Windows, macOS, Linux). Callers
+    may provide a timeout for best-effort probes; normal Git operations remain
+    unbounded by default.
     """
     try:
         git_args = ["git", "-c", "i18n.logOutputEncoding=UTF-8"] + args
@@ -25,6 +31,7 @@ def run_git(args: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
             text=True,
             encoding="utf-8",
             errors="replace",
+            timeout=timeout,
         )
         return result.returncode, result.stdout, result.stderr
     except Exception as e:

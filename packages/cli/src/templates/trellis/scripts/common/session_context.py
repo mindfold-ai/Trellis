@@ -17,6 +17,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from .active_task import resolve_context_key
@@ -64,11 +65,17 @@ _POLYREPO_IGNORED_DIRS = {
     "__pycache__",
 }
 _POLYREPO_SCAN_MAX_DEPTH = 2
+_POLYREPO_SCAN_MAX_REPOS = 8
+_GIT_PROBE_TIMEOUT_SECONDS = 2.0
 
 
 def _is_git_worktree(path: Path) -> bool:
     """Return True when path is inside a Git worktree."""
-    rc, out, _ = run_git(["rev-parse", "--is-inside-work-tree"], cwd=path)
+    rc, out, _ = run_git(
+        ["rev-parse", "--is-inside-work-tree"],
+        cwd=path,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
     return rc == 0 and out.strip().lower() == "true"
 
 
@@ -91,13 +98,27 @@ def _collect_git_repo_info(name: str, rel_path: str, repo_dir: Path) -> dict | N
     if not (repo_dir / ".git").exists():
         return None
 
-    _, branch_out, _ = run_git(["branch", "--show-current"], cwd=repo_dir)
-    branch = branch_out.strip() or "unknown"
-
-    _, status_out, _ = run_git(["status", "--porcelain"], cwd=repo_dir)
+    status_rc, status_out, _ = run_git(
+        ["status", "--porcelain"],
+        cwd=repo_dir,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
+    if status_rc != 0:
+        return None
     changes = len([l for l in status_out.splitlines() if l.strip()])
 
-    _, log_out, _ = run_git(["log", "--oneline", "-5"], cwd=repo_dir)
+    _, branch_out, _ = run_git(
+        ["branch", "--show-current"],
+        cwd=repo_dir,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
+    branch = branch_out.strip() or "unknown"
+
+    _, log_out, _ = run_git(
+        ["log", "--oneline", "-5"],
+        cwd=repo_dir,
+        timeout=_GIT_PROBE_TIMEOUT_SECONDS,
+    )
 
     return {
         "name": name,
@@ -143,12 +164,16 @@ def _collect_root_git_info(repo_root: Path) -> dict:
 def _discover_child_git_repos(repo_root: Path) -> list[tuple[str, str]]:
     """Discover child Git repositories using the init-time polyrepo heuristic."""
     found: list[str] = []
+    overflow = False
 
     def is_candidate_dir(path: Path) -> bool:
         name = path.name
         return not name.startswith(".") and name not in _POLYREPO_IGNORED_DIRS
 
     def scan(rel_dir: Path, depth: int) -> None:
+        nonlocal overflow
+        if overflow:
+            return
         if depth >= _POLYREPO_SCAN_MAX_DEPTH:
             return
         abs_dir = repo_root / rel_dir
@@ -165,11 +190,23 @@ def _discover_child_git_repos(repo_root: Path) -> list[tuple[str, str]]:
                 rel_dir / child.name if rel_dir != Path(".") else Path(child.name)
             )
             if (child / ".git").exists():
+                if len(found) >= _POLYREPO_SCAN_MAX_REPOS:
+                    overflow = True
+                    return
                 found.append(child_rel.as_posix())
                 continue
             scan(child_rel, depth + 1)
 
     scan(Path("."), 0)
+    if overflow:
+        print(
+            "warning: found more than "
+            f"{_POLYREPO_SCAN_MAX_REPOS} child Git repositories; "
+            "skipping automatic Git status collection. Configure explicit "
+            "packages entries with path and git: true in .trellis/config.yaml.",
+            file=sys.stderr,
+        )
+        return []
     if len(found) < 2:
         return []
     return [(path.replace("/", "_"), path) for path in sorted(found)]
