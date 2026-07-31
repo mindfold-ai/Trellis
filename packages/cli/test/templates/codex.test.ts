@@ -92,9 +92,13 @@ describe("codex native sub-agent hooks", () => {
 });
 
 describe("codex getAllCodexSkills (platform-specific)", () => {
-  it("returns empty after parallel removal", () => {
+  it("returns the platform skills installed to .codex/skills/", () => {
     const skills = getAllCodexSkills();
-    expect(skills).toEqual([]);
+    expect(skills.length).toBeGreaterThan(0);
+    expect(skills.map((s) => s.name)).toEqual(
+      expect.arrayContaining(["before-dev", "brainstorm", "break-loop", "check", "update-spec"]),
+    );
+    expect(skills[0].content).toContain("---");
   });
 });
 
