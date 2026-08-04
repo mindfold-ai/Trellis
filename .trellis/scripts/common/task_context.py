@@ -183,7 +183,7 @@ def _resolve_context_entry_path(
         return repo_path
 
     try:
-        task_parts = task_dir.absolute().relative_to(repo_root.absolute()).parts
+        task_parts = task_dir.resolve().relative_to(repo_root.resolve()).parts
     except ValueError:
         return repo_path
 

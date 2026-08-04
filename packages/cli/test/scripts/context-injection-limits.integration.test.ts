@@ -144,6 +144,7 @@ function runTaskValidate(
     [path.join(tmp, ".trellis", "scripts", "task.py"), "validate", taskDir],
     { cwd: tmp, encoding: "utf-8" },
   );
+  if (r.error) throw r.error;
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -719,7 +720,7 @@ print("all-valid")
       const taskName = "08-04-archive-validator-repro";
       const historicalEvidence = `.trellis/tasks/${taskName}/research/evidence.md`;
 
-      it("#1 validates an archived task self-file without rewriting its manifest", () => {
+      it("#1 resolves a ..-spelled archived task without rewriting", () => {
         const taskDir = makeArchivedTask(tmp, taskName);
         fs.mkdirSync(path.join(taskDir, "research"), { recursive: true });
         fs.writeFileSync(
@@ -744,7 +745,11 @@ print("all-valid")
           ].join("\n") + "\n";
         fs.writeFileSync(manifestPath, manifest, "utf-8");
 
-        const { status, stdout } = runTaskValidate(tmp, taskDir);
+        const taskDirWithParentSegment = `${taskDir}${path.sep}..${path.sep}${taskName}`;
+        const { status, stdout } = runTaskValidate(
+          tmp,
+          taskDirWithParentSegment,
+        );
 
         expect(status).toBe(0);
         expect(stdout).toContain("implement.jsonl: ✓ (2 entries)");
@@ -895,6 +900,46 @@ print("all-valid")
 
         expect(status).toBe(0);
         expect(stdout).toContain("implement.jsonl: ✓ (2 entries)");
+        expect(stdout).toContain("All validations passed");
+      });
+
+      it("#8 falls back to repository-root resolution for a malformed archive year-month", () => {
+        const archivedTaskDir = makeArchivedTask(tmp, taskName);
+        const malformedArchiveTaskDir = path.join(
+          tmp,
+          ".trellis",
+          "tasks",
+          "archive",
+          "2026-8",
+          taskName,
+        );
+        fs.mkdirSync(path.dirname(malformedArchiveTaskDir), {
+          recursive: true,
+        });
+        fs.renameSync(archivedTaskDir, malformedArchiveTaskDir);
+
+        const activeTaskDir = makeTask(tmp, taskName);
+        const activeEvidence = path.join(
+          activeTaskDir,
+          "research",
+          "evidence.md",
+        );
+        fs.mkdirSync(path.dirname(activeEvidence), { recursive: true });
+        fs.writeFileSync(activeEvidence, "active evidence\n", "utf-8");
+        fs.writeFileSync(
+          path.join(malformedArchiveTaskDir, "implement.jsonl"),
+          JSON.stringify({ file: historicalEvidence, reason: "evidence" }) +
+            "\n",
+          "utf-8",
+        );
+
+        const { status, stdout } = runTaskValidate(
+          tmp,
+          malformedArchiveTaskDir,
+        );
+
+        expect(status).toBe(0);
+        expect(stdout).toContain("implement.jsonl: ✓ (1 entries)");
         expect(stdout).toContain("All validations passed");
       });
     });
