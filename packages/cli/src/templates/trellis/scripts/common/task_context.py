@@ -25,7 +25,7 @@ from .config import get_context_injection_limits
 from .git import branch_exists_locally
 from .io import read_json
 from .log import Colors, colored
-from .paths import FILE_TASK_JSON, get_repo_root
+from .paths import DIR_ARCHIVE, DIR_TASKS, DIR_WORKFLOW, FILE_TASK_JSON, get_repo_root
 from .task_utils import resolve_task_dir
 
 # Extensions that look like code rather than spec/research docs. Entries with
@@ -170,6 +170,59 @@ def _is_exempt_from_code_file_warning(file_path: str, task_rel: str) -> bool:
     return False
 
 
+def _resolve_context_entry_path(
+    file_path: str, repo_root: Path, task_dir: Path | None
+) -> Path | None:
+    """Resolve a JSONL entry, binding archived self-references to the archive copy.
+
+    Exact historical self-references are remapped only for archived tasks.
+    ``None`` means the remapped path traversed or resolved outside that archive.
+    """
+    repo_path = repo_root / file_path
+    if task_dir is None:
+        return repo_path
+
+    try:
+        task_parts = task_dir.absolute().relative_to(repo_root.absolute()).parts
+    except ValueError:
+        return repo_path
+
+    archive_prefix = (DIR_WORKFLOW, DIR_TASKS, DIR_ARCHIVE)
+    if len(task_parts) != 5 or task_parts[:3] != archive_prefix:
+        return repo_path
+
+    year_month = task_parts[3]
+    if (
+        len(year_month) != 7
+        or year_month[4] != "-"
+        or not year_month[:4].isdigit()
+        or not year_month[5:].isdigit()
+    ):
+        return repo_path
+
+    historical_root = f"{DIR_WORKFLOW}/{DIR_TASKS}/{task_dir.name}"
+    posix_path = file_path.replace("\\", "/")
+    if posix_path == historical_root:
+        relative_parts: tuple[str, ...] = ()
+    elif posix_path.startswith(f"{historical_root}/"):
+        relative_path = posix_path[len(historical_root) + 1 :]
+        if relative_path.endswith("/"):
+            relative_path = relative_path[:-1]
+        relative_parts = tuple(relative_path.split("/")) if relative_path else ()
+        if any(part in ("", ".", "..") for part in relative_parts):
+            return None
+    else:
+        return repo_path
+
+    try:
+        archive_root = task_dir.resolve()
+        resolved_path = task_dir.joinpath(*relative_parts).resolve()
+        resolved_path.relative_to(archive_root)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return resolved_path
+
+
 def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = None) -> int:
     """Validate a single JSONL file.
 
@@ -220,14 +273,14 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             continue
 
         real_entries += 1
-        full_path = repo_root / file_path
+        full_path = _resolve_context_entry_path(file_path, repo_root, task_dir)
         if entry_type == "directory":
-            if not full_path.is_dir():
+            if full_path is None or not full_path.is_dir():
                 print(f"  {colored(f'{file_name}:{line_num}: Directory not found: {file_path}', Colors.RED)}")
                 errors += 1
             continue
 
-        if not full_path.is_file():
+        if full_path is None or not full_path.is_file():
             print(f"  {colored(f'{file_name}:{line_num}: File not found: {file_path}', Colors.RED)}")
             errors += 1
             continue

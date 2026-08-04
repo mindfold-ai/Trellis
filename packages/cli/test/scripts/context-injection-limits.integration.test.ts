@@ -7,7 +7,7 @@
  *   - `src/templates/shared-hooks/inject-subagent-context.py` — truncation,
  *     total-budget degradation, UTF-8 safety
  *   - `src/templates/trellis/scripts/common/task_context.py` — `task.py
- *     validate` hygiene warnings
+ *     validate` path resolution and hygiene warnings
  *
  * Scripts are stamped into a fresh temp dir and exercised through the real
  * `python3` interpreter (no mocking of file I/O or config parsing).
@@ -118,6 +118,33 @@ function makeTask(tmp: string, dirName: string): string {
     "utf-8",
   );
   return taskDir;
+}
+
+function makeArchivedTask(tmp: string, dirName: string): string {
+  const activeTaskDir = makeTask(tmp, dirName);
+  const archivedTaskDir = path.join(
+    tmp,
+    ".trellis",
+    "tasks",
+    "archive",
+    "2026-08",
+    dirName,
+  );
+  fs.mkdirSync(path.dirname(archivedTaskDir), { recursive: true });
+  fs.renameSync(activeTaskDir, archivedTaskDir);
+  return archivedTaskDir;
+}
+
+function runTaskValidate(
+  tmp: string,
+  taskDir: string,
+): { status: number | null; stdout: string; stderr: string } {
+  const r = spawnSync(
+    "python3",
+    [path.join(tmp, ".trellis", "scripts", "task.py"), "validate", taskDir],
+    { cwd: tmp, encoding: "utf-8" },
+  );
+  return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
 describe.skipIf(!hasPython())(
@@ -596,21 +623,6 @@ print("all-valid")
     });
 
     describe("task.py validate: JSONL hygiene warnings", () => {
-      function runValidate(
-        taskDir: string,
-      ): { status: number | null; stdout: string; stderr: string } {
-        const r = spawnSync(
-          "python3",
-          [
-            path.join(tmp, ".trellis", "scripts", "task.py"),
-            "validate",
-            taskDir,
-          ],
-          { cwd: tmp, encoding: "utf-8" },
-        );
-        return { status: r.status, stdout: r.stdout, stderr: r.stderr };
-      }
-
       it("warns (does not error) on a jsonl entry that looks like a code file", () => {
         const taskDir = makeTask(tmp, "task-code-warn");
         fs.mkdirSync(path.join(tmp, "src"), { recursive: true });
@@ -624,7 +636,7 @@ print("all-valid")
           JSON.stringify({ file: "src/index.ts", reason: "wrong" }) + "\n",
           "utf-8",
         );
-        const { status, stdout } = runValidate(taskDir);
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
         expect(status).toBe(0);
         expect(stdout).toContain(
           "implement.jsonl:1: Warning: src/index.ts looks like a code file — " +
@@ -650,7 +662,7 @@ print("all-valid")
           }) + "\n",
           "utf-8",
         );
-        const { status, stdout } = runValidate(taskDir);
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
         expect(status).toBe(0);
         expect(stdout).not.toContain("looks like a code file");
       });
@@ -671,7 +683,7 @@ print("all-valid")
           tmp,
           ["context_injection:", "  max_file_bytes: 100"].join("\n"),
         );
-        const { status, stdout } = runValidate(taskDir);
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
         expect(status).toBe(0);
         expect(stdout).toContain(
           "implement.jsonl:1: Warning: oversized.md is 200 bytes, " +
@@ -696,9 +708,193 @@ print("all-valid")
           }) + "\n",
           "utf-8",
         );
-        const { status, stdout } = runValidate(taskDir);
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
         expect(status).toBe(0);
         expect(stdout).not.toContain("Warning:");
+        expect(stdout).toContain("All validations passed");
+      });
+    });
+
+    describe("task.py validate: archived task paths (#518)", () => {
+      const taskName = "08-04-archive-validator-repro";
+      const historicalEvidence = `.trellis/tasks/${taskName}/research/evidence.md`;
+
+      it("#1 validates an archived task self-file without rewriting its manifest", () => {
+        const taskDir = makeArchivedTask(tmp, taskName);
+        fs.mkdirSync(path.join(taskDir, "research"), { recursive: true });
+        fs.writeFileSync(
+          path.join(taskDir, "research", "evidence.md"),
+          "archived evidence\n",
+          "utf-8",
+        );
+        fs.mkdirSync(path.join(tmp, "docs"), { recursive: true });
+        fs.writeFileSync(
+          path.join(tmp, "docs", "reference.md"),
+          "repository documentation\n",
+          "utf-8",
+        );
+        const manifestPath = path.join(taskDir, "implement.jsonl");
+        const manifest =
+          [
+            JSON.stringify({ file: historicalEvidence, reason: "evidence" }),
+            JSON.stringify({
+              file: "docs/reference.md",
+              reason: "repository documentation",
+            }),
+          ].join("\n") + "\n";
+        fs.writeFileSync(manifestPath, manifest, "utf-8");
+
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+        expect(status).toBe(0);
+        expect(stdout).toContain("implement.jsonl: ✓ (2 entries)");
+        expect(stdout).toContain("All validations passed");
+        expect(fs.readFileSync(manifestPath, "utf-8")).toBe(manifest);
+      });
+
+      it("#2 validates an archived task self-directory", () => {
+        const taskDir = makeArchivedTask(tmp, taskName);
+        fs.mkdirSync(path.join(taskDir, "research"), { recursive: true });
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({
+            file: `.trellis/tasks/${taskName}/research/`,
+            type: "directory",
+            reason: "research directory",
+          }) + "\n",
+          "utf-8",
+        );
+
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+        expect(status).toBe(0);
+        expect(stdout).toContain("All validations passed");
+      });
+
+      it("#3 keeps an unrelated missing task reference as an error", () => {
+        const taskDir = makeArchivedTask(tmp, taskName);
+        const missingPath =
+          ".trellis/tasks/another-task/research/missing.md";
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: missingPath, reason: "other task" }) + "\n",
+          "utf-8",
+        );
+
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+        expect(status).toBe(1);
+        expect(stdout).toContain(`File not found: ${missingPath}`);
+      });
+
+      it("#4 does not fall back to a recreated active task when the archive copy is missing", () => {
+        const taskDir = makeArchivedTask(tmp, taskName);
+        const activeTaskDir = makeTask(tmp, taskName);
+        fs.mkdirSync(path.join(activeTaskDir, "research"), { recursive: true });
+        fs.writeFileSync(
+          path.join(activeTaskDir, "research", "evidence.md"),
+          "active evidence only\n",
+          "utf-8",
+        );
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: historicalEvidence, reason: "evidence" }) +
+            "\n",
+          "utf-8",
+        );
+
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+        expect(status).toBe(1);
+        expect(stdout).toContain(`File not found: ${historicalEvidence}`);
+      });
+
+      it("#5 rejects traversal in an archived self-reference without active-task fallback", () => {
+        const taskDir = makeArchivedTask(tmp, taskName);
+        const activeTaskDir = makeTask(tmp, taskName);
+        fs.mkdirSync(path.join(activeTaskDir, "research"), { recursive: true });
+        fs.writeFileSync(
+          path.join(activeTaskDir, "research", "active-only.md"),
+          "active evidence only\n",
+          "utf-8",
+        );
+        const traversalPath =
+          `.trellis/tasks/${taskName}/../${taskName}/research/active-only.md`;
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: traversalPath, reason: "traversal" }) + "\n",
+          "utf-8",
+        );
+
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+        expect(status).toBe(1);
+        expect(stdout).toContain(`File not found: ${traversalPath}`);
+      });
+
+      it.skipIf(process.platform === "win32")(
+        "#6 rejects a symlink that escapes the archived task",
+        () => {
+          const taskDir = makeArchivedTask(tmp, taskName);
+          const activeTaskDir = makeTask(tmp, taskName);
+          const activeEvidence = path.join(
+            activeTaskDir,
+            "research",
+            "evidence.md",
+          );
+          fs.mkdirSync(path.dirname(activeEvidence), { recursive: true });
+          fs.writeFileSync(activeEvidence, "active evidence only\n", "utf-8");
+          const archivedEvidence = path.join(
+            taskDir,
+            "research",
+            "evidence.md",
+          );
+          fs.mkdirSync(path.dirname(archivedEvidence), { recursive: true });
+          fs.symlinkSync(activeEvidence, archivedEvidence);
+          fs.writeFileSync(
+            path.join(taskDir, "implement.jsonl"),
+            JSON.stringify({ file: historicalEvidence, reason: "evidence" }) +
+              "\n",
+            "utf-8",
+          );
+
+          const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+          expect(status).toBe(1);
+          expect(stdout).toContain(`File not found: ${historicalEvidence}`);
+        },
+      );
+
+      it("#7 leaves active-task and unrelated repository path validation unchanged", () => {
+        const taskDir = makeTask(tmp, taskName);
+        fs.mkdirSync(path.join(taskDir, "research"), { recursive: true });
+        fs.writeFileSync(
+          path.join(taskDir, "research", "evidence.md"),
+          "active evidence\n",
+          "utf-8",
+        );
+        fs.mkdirSync(path.join(tmp, "docs"), { recursive: true });
+        fs.writeFileSync(
+          path.join(tmp, "docs", "reference.md"),
+          "repository documentation\n",
+          "utf-8",
+        );
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          [
+            JSON.stringify({ file: historicalEvidence, reason: "evidence" }),
+            JSON.stringify({
+              file: "docs/reference.md",
+              reason: "repository documentation",
+            }),
+          ].join("\n") + "\n",
+          "utf-8",
+        );
+
+        const { status, stdout } = runTaskValidate(tmp, taskDir);
+
+        expect(status).toBe(0);
+        expect(stdout).toContain("implement.jsonl: ✓ (2 entries)");
         expect(stdout).toContain("All validations passed");
       });
     });

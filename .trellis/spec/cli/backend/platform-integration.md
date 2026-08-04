@@ -1236,6 +1236,7 @@ Optional `type: "directory"` is supported for directory entries. Consumers ignor
 | Seed detection            | Every jsonl consumer                            | Row without a `file` key is treated as non-entry and skipped.                      |
 | Empty-file tolerance      | hook / prelude / plugin readers                 | Missing or seed-only jsonl is tolerated; task artifacts still load.                |
 | Context order             | hook / prelude / Pi extension / OpenCode plugin | jsonl entries → `prd.md` → `design.md` if present → `implement.md` if present.     |
+| Archived self-references  | `task_context.py` validation                    | Preserve JSONL bytes. For an archived task, remap only exact `.trellis/tasks/<same-task-name>/...` references into that archive copy. Other paths retain repo-root resolution. |
 
 ### Validation & Error Matrix
 
@@ -1243,6 +1244,9 @@ Optional `type: "directory"` is supported for directory entries. Consumers ignor
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------- |
 | `implement.jsonl` has only seed row                    | `cmd_validate` reports 0 errors; `cmd_list_context` prints "(no curated entries yet — only seed row)" | Exit 0                  |
 | `implement.jsonl` entry points at non-existent file    | `cmd_validate` prints "File not found: …" per row                                                     | Exit 1                  |
+| Archived self-reference exists in the archive copy     | Resolve inside `.trellis/tasks/archive/<year-month>/<same-task-name>/`; do not rewrite the manifest        | Exit 0                  |
+| Archived self-reference is absent from the archive copy | Report it missing even if an active task with the same name has recreated the path                         | Exit 1                  |
+| Archived self-reference traverses or follows a symlink outside the archive | Reject it as missing; never fall back to the historical active-task path                    | Exit 1                  |
 | Lightweight task has only `prd.md`                     | Valid planning state; SessionStart / continue can ask for start review                                | No error                |
 | Complex task is missing `design.md` or `implement.md`  | Stay in planning; ask user to complete missing planning artifacts                                     | Hook / command guidance |
 | Sub-agent platform detected, but jsonl seed is missing | Context readers fall back to task artifacts and warn where applicable                                 | No create failure       |
@@ -1250,8 +1254,10 @@ Optional `type: "directory"` is supported for directory entries. Consumers ignor
 ### Good / Base / Bad Cases
 
 - **Good**: complex task has `prd.md`, `design.md`, `implement.md`, and curated jsonl manifests. Context consumers load jsonl entries first, then all three artifacts.
+- **Good (archived)**: a moved task keeps its JSONL byte-for-byte; validation binds exact historical self-references to files or directories inside its archive copy while unrelated repository paths still resolve from the repository root.
 - **Base**: lightweight task has only `prd.md`. SessionStart / continue treats this as a valid planning state and may ask for start review.
 - **Bad**: complex task has only `prd.md` plus seed-only jsonl. SessionStart / continue must keep the task in planning; it must not treat jsonl file existence as implementation readiness.
+- **Bad (archived)**: validation resolves a historical self-reference through a recreated active task, or accepts `..` / a symlink that escapes the archived task directory.
 
 ### Wrong vs Correct
 
@@ -1282,11 +1288,18 @@ def planning_next_action(task_dir: Path, is_complex: bool, inline_mode: bool) ->
 
 The route depends on task intent, artifact presence, and execution mode. Missing optional artifacts are skipped for lightweight tasks, but complex tasks cannot enter implementation until their planning artifacts are complete.
 
+For archived validation, resolving every JSONL path as `repo_root / file_path`
+is wrong because a preserved self-reference points at the task's former active
+location. Resolve only the exact same-task prefix against the archived task
+directory, require its canonical target to stay within that directory, and
+leave every unrelated path on normal repository-root resolution.
+
 ### Tests Required
 
 - **Create behavior**: `task.py create` creates default `prd.md` and seeds jsonl only on sub-agent-capable platforms.
 - **Consumer tolerance**: `inject-subagent-context.py` skips seed rows and still injects task artifacts.
 - **Validate seed**: `task.py validate` treats seed-only jsonl as 0 errors.
+- **Validate archive binding**: cover archived self files and directories, unrelated paths, a missing archive copy with a recreated active task, traversal, symlink escape, and unchanged active-task behavior.
 - **List-context seed**: `task.py list-context` prints "no curated entries yet" for seed-only jsonl.
 - **Artifact gates**: workflow-state, SessionStart, and continue distinguish PRD-only lightweight tasks from complex tasks that still need `design.md` / `implement.md`.
 
