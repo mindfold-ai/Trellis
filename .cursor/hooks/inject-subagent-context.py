@@ -88,9 +88,12 @@ def find_repo_root(start_path: str) -> str | None:
 
 
 def _detect_platform(input_data: dict) -> str | None:
+    if _hook_event_name(input_data) == "SubagentStart":
+        return "codex"
     if isinstance(input_data.get("cursor_version"), str):
         return "cursor"
     env_map = {
+        "ZCODE_PROJECT_DIR": "zcode",
         "CLAUDE_PROJECT_DIR": "claude",
         "CURSOR_PROJECT_DIR": "cursor",
         "CODEBUDDY_PROJECT_DIR": "codebuddy",
@@ -118,10 +121,20 @@ def _detect_platform(input_data: dict) -> str | None:
         return "droid"
     if ".kiro" in script_parts:
         return "kiro"
+    if ".zcode" in script_parts:
+        return "zcode"
     return None
 
 
-def get_current_task(repo_root: str, input_data: dict) -> str | None:
+def get_current_task(
+    repo_root: str,
+    input_data: dict,
+    *,
+    platform: str | None = None,
+    allow_single_session_fallback: bool = True,
+    allow_environment_context: bool = True,
+    require_existing: bool = False,
+) -> str | None:
     """Resolve current task directory through the unified active task resolver."""
     scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
     if str(scripts_dir) not in sys.path:
@@ -134,8 +147,12 @@ def get_current_task(repo_root: str, input_data: dict) -> str | None:
     active = resolve_active_task(
         Path(repo_root),
         input_data,
-        platform=_detect_platform(input_data),
+        platform=platform or _detect_platform(input_data),
+        allow_single_session_fallback=allow_single_session_fallback,
+        allow_environment_context=allow_environment_context,
     )
+    if require_existing and active.stale:
+        return None
     return active.task_path
 
 
@@ -237,6 +254,24 @@ def _truncate_notice(path: str, cap: int) -> str:
     return f"\n[Trellis: truncated at {cap} bytes — read {path} for the full content]"
 
 
+def _is_binary_content(data: bytes) -> bool:
+    """Return True when raw bytes should not be decoded into model context."""
+    if b"\x00" in data:
+        return True
+    try:
+        data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return True
+    return False
+
+
+def _binary_notice(path: str, size: int, reason: str) -> str:
+    return (
+        f"[Trellis: not inlined (binary file) — "
+        f"{path} ({size} bytes): {reason}]"
+    )
+
+
 def _index_notice(path: str, size: int, reason: str) -> str:
     return (
         f"[Trellis: not inlined (total context limit reached) — "
@@ -277,6 +312,11 @@ def _materialize_file(
         return None
 
     size = len(data)
+    if _is_binary_content(data):
+        notice = _binary_notice(file_path, size, reason)
+        budget.add(len(notice.encode("utf-8")))
+        return notice
+
     cap = limits["max_file_bytes"]
     truncated_bytes = truncate_utf8(data, cap)
     content = truncated_bytes.decode("utf-8", errors="replace")
@@ -787,6 +827,98 @@ def _string_value(value: Any) -> str:
     return ""
 
 
+def _hook_event_name(input_data: dict) -> str:
+    """Return a hook event name from the documented snake/camel-case fields."""
+    return _string_value(
+        input_data.get("hook_event_name") or input_data.get("hookEventName")
+    )
+
+
+def _codex_subagent_type(input_data: dict) -> str:
+    """Return a Trellis Codex agent type only for a native start event."""
+    if _hook_event_name(input_data) != "SubagentStart":
+        return ""
+    agent_type = _string_value(
+        input_data.get("agent_type") or input_data.get("agentType")
+    )
+    return agent_type if agent_type in AGENTS_ALL else ""
+
+
+def build_codex_subagent_context(
+    subagent_type: str,
+    task_dir: str,
+    context: str,
+) -> str:
+    """Build developer context for a native, already-dispatched Codex role."""
+    role = subagent_type.removeprefix("trellis-")
+    return f"""<!-- trellis-hook-injected -->
+# Trellis Native {role.title()} Subagent
+
+You are the dispatched `{subagent_type}` role for this task. Perform that role
+directly; do not follow main-session dispatch or wait instructions, and do not
+spawn another Trellis subagent.
+
+Active task: {task_dir}
+
+## Curated Context
+
+{context}"""
+
+
+def _handle_codex_subagent_start(input_data: dict) -> None:
+    """Emit Codex developer context for a recognised native Trellis subagent.
+
+    The event supplies the parent session id. Disabling the generic
+    single-session fallback is essential here: native starts must never borrow
+    a task from another Codex window when that parent id is absent or stale.
+    """
+    subagent_type = _codex_subagent_type(input_data)
+    parent_session_id = _string_value(input_data.get("session_id"))
+    if not subagent_type or not parent_session_id:
+        return
+
+    cwd = _string_value(input_data.get("cwd")) or os.getcwd()
+    repo_root = find_repo_root(cwd)
+    if not repo_root:
+        return
+
+    task_dir = get_current_task(
+        repo_root,
+        {"session_id": parent_session_id},
+        platform="codex",
+        allow_single_session_fallback=False,
+        allow_environment_context=False,
+        require_existing=True,
+    )
+    if not task_dir:
+        return
+
+    if subagent_type in AGENTS_REQUIRE_TASK:
+        task_dir_full = Path(repo_root) / task_dir
+        if not task_dir_full.is_dir():
+            return
+
+    if subagent_type == AGENT_IMPLEMENT:
+        context = get_implement_context(repo_root, task_dir)
+    elif subagent_type == AGENT_CHECK:
+        context = get_check_context(repo_root, task_dir)
+    else:
+        context = get_research_context(repo_root, task_dir)
+
+    if not context:
+        return
+
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "SubagentStart",
+            "additionalContext": build_codex_subagent_context(
+                subagent_type, task_dir, context
+            ),
+        }
+    }
+    print(json.dumps(output, ensure_ascii=False))
+
+
 def _extract_subagent_name(value: Any) -> str:
     """Extract a sub-agent name from common platform encodings.
 
@@ -865,10 +997,15 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
     - Claude Code / Qoder / CodeBuddy / Droid: tool_name=Task|Agent, tool_input.subagent_type
     - Cursor: tool_name=Task|Subagent, tool_input.subagent_type
     - Copilot CLI: toolName=task (camelCase key, lowercase value)
+    - ZCode: toolName=Agent, toolInput/tool_input.subagent_type
     - Gemini CLI: tool_name IS the agent name (BeforeTool matcher already filtered)
     - Kiro: agentSpawn hook, agent_name field at top level
     """
     tool_input = input_data.get("tool_input", {})
+    if not isinstance(tool_input, dict):
+        tool_input = input_data.get("toolInput", {})
+    if not isinstance(tool_input, dict):
+        tool_input = {}
 
     # Standard format: Task/Agent tool with subagent_type
     tool_name = input_data.get("tool_name", "") or input_data.get("toolName", "")
@@ -904,6 +1041,17 @@ def main():
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:
+        sys.exit(0)
+    if not isinstance(input_data, dict):
+        sys.exit(0)
+
+    if _hook_event_name(input_data) == "SubagentStart":
+        try:
+            _handle_codex_subagent_start(input_data)
+        except Exception:
+            # A native context hook must never prevent Codex from spawning the
+            # requested child when its runtime state is unavailable or stale.
+            pass
         sys.exit(0)
 
     subagent_type, original_prompt, tool_input = _parse_hook_input(input_data)
@@ -958,23 +1106,32 @@ def main():
     if not context:
         sys.exit(0)
 
-    # Return updated input — use a multi-format output that covers all platforms.
-    # Most platforms ignore unrecognized fields, so we include multiple formats.
-    # The platform picks whichever fields it understands.
+    # Return updated input. Most platforms ignore unrecognized fields, so we
+    # include multiple formats. ZCode is stricter; live probing confirmed the
+    # nested Claude-compatible shape below reaches the sub-agent prompt.
     updated = {**tool_input, "prompt": new_prompt}
-    output = {
-        # Claude Code / Qoder / CodeBuddy / Droid format
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
+    if _detect_platform(input_data) == "zcode":
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "updatedInput": updated,
+            }
+        }
+    else:
+        output = {
+            # Claude Code / Qoder / CodeBuddy / Droid format
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "updatedInput": updated,
+            },
+            # Cursor format
+            "permission": "allow",
+            "updated_input": updated,
+            # Gemini format
             "updatedInput": updated,
-        },
-        # Cursor format
-        "permission": "allow",
-        "updated_input": updated,
-        # Gemini format
-        "updatedInput": updated,
-    }
+        }
 
     print(json.dumps(output, ensure_ascii=False))
     sys.exit(0)

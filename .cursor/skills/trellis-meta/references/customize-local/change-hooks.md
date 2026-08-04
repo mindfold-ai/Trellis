@@ -4,7 +4,7 @@ Hooks are the automation layer that connects a platform to Trellis. When the use
 
 ## Read These Files First
 
-1. Target platform settings/config, such as `.claude/settings.json`, `.codex/hooks.json`, `.cursor/hooks.json`
+1. Target platform settings/config, such as `.claude/settings.json`, `.codex/hooks.json`, `.cursor/hooks.json`, `.trae/hooks.json`
 2. Target platform hooks directory
 3. `.trellis/scripts/common/active_task.py`
 4. `.trellis/scripts/common/session_context.py`

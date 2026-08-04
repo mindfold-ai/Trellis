@@ -10,7 +10,7 @@ import { isAbsolute, join } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
 import { createHash } from "crypto"
-import { Buffer } from "buffer"
+import { Buffer, isUtf8 } from "buffer"
 import process from "process"
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
@@ -208,6 +208,14 @@ function truncateNotice(path, cap) {
   return `\n[Trellis: truncated at ${cap} bytes — read ${path} for the full content]`
 }
 
+function isBinaryContent(data) {
+  return data.includes(0) || !isUtf8(data)
+}
+
+function binaryNotice(path, size, reason) {
+  return `[Trellis: not inlined (binary file) — ${path} (${size} bytes): ${reason}]`
+}
+
 function indexNotice(path, size, reason) {
   return `[Trellis: not inlined (total context limit reached) — ${path} (${size} bytes): ${reason}]`
 }
@@ -249,6 +257,11 @@ function materializeFile(basePath, filePath, reason, limits, budget) {
   if (data === null) return null
 
   const size = data.length
+  if (isBinaryContent(data)) {
+    const notice = binaryNotice(filePath, size, reason)
+    budget.add(Buffer.byteLength(notice, "utf-8"))
+    return notice
+  }
   const cap = limits.max_file_bytes
   const truncated = truncateUtf8(data, cap)
   let content = truncated.toString("utf-8")

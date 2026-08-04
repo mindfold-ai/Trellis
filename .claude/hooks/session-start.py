@@ -68,8 +68,14 @@ def _normalize_windows_shell_path(path_str: str) -> str:
 
 
 FIRST_REPLY_NOTICE = """<first-reply-notice>
-First visible reply: say once in Chinese that Trellis SessionStart context is loaded, then answer directly.
-This notice is one-shot: do not repeat it after the first assistant reply in the same session.
+On the first visible assistant reply in this session, briefly acknowledge that Trellis SessionStart context loaded.
+Choose the acknowledgment language in this order:
+1. Use the language of the user's current request (the user message that triggered this reply).
+2. If that request has no clear natural language, use an explicitly established project communication language.
+3. If neither provides a language, output the language-neutral fallback exactly: `Trellis SessionStart ✓`.
+Continue directly with the user's request after the acknowledgment.
+The acknowledgment must not alter the language used for the remainder of the response.
+This notice is one-shot: do not repeat it after the first visible assistant reply in this session.
 </first-reply-notice>"""
 
 # Force UTF-8 on stdin/stdout/stderr on Windows. Default codepage there is
@@ -87,12 +93,12 @@ if sys.platform.startswith("win"):
             try:
                 _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
             except Exception:
-                pass
+                pass  # Optional Windows stream setup; keep hook startup non-fatal.
         elif hasattr(_stream, "detach"):
             try:
                 setattr(sys, _stream_name, _io.TextIOWrapper(_stream.detach(), encoding="utf-8", errors="replace"))
             except Exception:
-                pass
+                pass  # Optional Windows stream setup; keep hook startup non-fatal.
 
 
 
@@ -137,6 +143,8 @@ def should_skip_injection() -> bool:
         "GEMINI_NON_INTERACTIVE",
         "KIRO_NON_INTERACTIVE",
         "COPILOT_NON_INTERACTIVE",
+        "TRAE_NON_INTERACTIVE",
+        "ZCODE_NON_INTERACTIVE",
     ]
     return any(os.environ.get(var) == "1" for var in non_interactive_vars)
 
@@ -187,6 +195,9 @@ def _detect_platform(input_data: dict) -> str | None:
     if isinstance(input_data.get("cursor_version"), str):
         return "cursor"
     env_map = {
+        # ZCode may set both ZCODE_PROJECT_DIR and CLAUDE_PROJECT_DIR; check
+        # ZCODE first so ZCode sessions aren't misdetected as claude.
+        "ZCODE_PROJECT_DIR": "zcode",
         "CLAUDE_PROJECT_DIR": "claude",
         "CURSOR_PROJECT_DIR": "cursor",
         "CODEBUDDY_PROJECT_DIR": "codebuddy",
@@ -195,6 +206,7 @@ def _detect_platform(input_data: dict) -> str | None:
         "QODER_PROJECT_DIR": "qoder",
         "KIRO_PROJECT_DIR": "kiro",
         "COPILOT_PROJECT_DIR": "copilot",
+        "TRAE_PROJECT_DIR": "trae",
     }
     for env_name, platform in env_map.items():
         if os.environ.get(env_name):
@@ -216,6 +228,10 @@ def _detect_platform(input_data: dict) -> str | None:
         return "droid"
     if ".kiro" in script_parts:
         return "kiro"
+    if ".trae" in script_parts:
+        return "trae"
+    if ".zcode" in script_parts:
+        return "zcode"
     return None
 
 
@@ -245,7 +261,7 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
         with open(env_file, "a", encoding="utf-8") as handle:
             handle.write(f"export TRELLIS_CONTEXT_ID={shlex.quote(context_key)}\n")
     except OSError:
-        pass
+        pass  # Optional shell bridge; keep session-start non-fatal.
 
 
 def _resolve_active_task(trellis_dir: Path, input_data: dict):
@@ -347,7 +363,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
         try:
             task_data = json.loads(task_json_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, PermissionError):
-            pass
+            pass  # Optional task metadata; fall back to generic status.
 
     task_title = task_data.get("title", task_ref)
     task_status = task_data.get("status", "unknown")
@@ -449,7 +465,7 @@ def _load_trellis_config(trellis_dir: Path, input_data: dict) -> tuple:
                         if isinstance(tp, str) and tp:
                             task_pkg = tp
                 except (json.JSONDecodeError, OSError):
-                    pass
+                    pass  # Optional package metadata; fall back to default scope.
 
         default_pkg = get_default_package(repo_root)
         return is_mono, packages, scope, task_pkg, default_pkg
@@ -626,7 +642,7 @@ def _build_compact_current_state(
                 if isinstance(data, dict):
                     status = str(data.get("status") or "unknown")
             except (json.JSONDecodeError, OSError):
-                pass
+                pass  # Optional task metadata; fall back to generic status.
         lines.append(f"Current task: {_repo_relative(repo_root, task_dir)}; status={status}.")
     else:
         lines.append("Current task: none.")
@@ -638,7 +654,7 @@ def _build_compact_current_state(
                 f"Active tasks: {task_count} total. Use `python3 ./.trellis/scripts/task.py list --mine` only if needed."
             )
         except Exception:
-            pass
+            pass  # Optional task summary; keep compact state available.
 
     if get_active_journal_file and count_lines:
         journal = get_active_journal_file(repo_root)
@@ -739,6 +755,8 @@ def main():
         "GEMINI_PROJECT_DIR",
         "KIRO_PROJECT_DIR",
         "COPILOT_PROJECT_DIR",
+        "TRAE_PROJECT_DIR",
+        "ZCODE_PROJECT_DIR",
     ]
     project_dir = None
     for var in project_dir_env_vars:
@@ -813,15 +831,30 @@ Context loaded. Follow <task-status>. Load workflow/spec/task details only when 
 </ready>""")
 
     context_text = output.getvalue()
-    result = {
-        # Claude Code / Qoder / CodeBuddy / Droid / Gemini / Copilot format
+
+    # Kiro (CLI trellis agent agentSpawn) adds a hook's stdout directly to the
+    # conversation context — no JSON envelope. Emit the bare overview text.
+    # Conditionally isolated: all other platforms keep the JSON path below.
+    if _detect_platform(hook_input) == "kiro":
+        print(context_text, flush=True)
+        return
+
+    platform = _detect_platform(hook_input)
+    result: dict[str, object] = {
+        # Claude Code / Qoder / CodeBuddy / Droid / Gemini / Copilot / Trae /
+        # ZCode format.
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
             "additionalContext": context_text,
         },
-        # Cursor sessionStart format (top-level snake_case per Cursor docs)
-        "additional_context": context_text,
     }
+    # Cursor sessionStart format (top-level snake_case per Cursor docs).
+    # ZCode reads BOTH `hookSpecificOutput.additionalContext` and top-level
+    # `additional_context` without deduplication, so emitting both keys would
+    # duplicate the context in the conversation. Keep the previous shared output
+    # shape for every other platform.
+    if platform != "zcode":
+        result["additional_context"] = context_text
 
     # Output JSON - stdout is already configured for UTF-8
     print(json.dumps(result, ensure_ascii=False), flush=True)

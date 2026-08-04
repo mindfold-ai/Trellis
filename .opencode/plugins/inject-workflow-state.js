@@ -31,6 +31,82 @@ import { TrellisContext, debugLog, isTrellisSubagent } from "../lib/trellis-cont
 // (so "in-review" / "blocked-by-team" work alongside "in_progress").
 const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g
 
+// Escape hatch for the per-turn breadcrumb (issue #427). Mirrors
+// `common.config.get_prompt_injection_config()` / the shared Python hook's
+// `_resolve_skip_keyword()` + `prompt_has_skip_keyword()`.
+const DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-trellis"
+
+function stripInlineComment(value) {
+  let inQuote = null
+  for (let idx = 0; idx < value.length; idx++) {
+    const ch = value[idx]
+    if (inQuote) {
+      if (ch === inQuote) inQuote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      inQuote = ch
+      continue
+    }
+    if (ch === "#" && (idx === 0 || /\s/.test(value[idx - 1]))) return value.slice(0, idx)
+  }
+  return value
+}
+
+function unquoteYaml(s) {
+  if (s.length >= 2 && s[0] === s[s.length - 1] && (s[0] === '"' || s[0] === "'")) return s.slice(1, -1)
+  return s
+}
+
+/**
+ * Line-based parser for ONLY the `prompt_injection:` block of
+ * `.trellis/config.yaml`. Not a general YAML parser — mirrors
+ * `common.config.get_prompt_injection_config()` semantics for this section
+ * only (missing key keeps the default; non-string value keeps the default).
+ */
+function readSkipKeyword(directory) {
+  const path = join(directory, ".trellis", "config.yaml")
+  if (!existsSync(path)) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+  let text
+  try {
+    text = readFileSync(path, "utf-8")
+  } catch {
+    return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+  }
+
+  let inSection = false
+  let sectionIndent = -1
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = rawLine.trim()
+    if (!inSection) {
+      if (/^prompt_injection\s*:\s*(#.*)?$/.test(trimmed)) {
+        inSection = true
+        sectionIndent = rawLine.length - rawLine.trimStart().length
+      }
+      continue
+    }
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const indent = rawLine.length - rawLine.trimStart().length
+    if (indent <= sectionIndent) break
+    const m = trimmed.match(/^skip_keyword\s*:\s*(.*)$/)
+    if (!m) continue
+    return unquoteYaml(stripInlineComment(m[1]).trim())
+  }
+  return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+}
+
+/**
+ * Case-insensitive, word-boundary match of `keyword` in `text`. Hyphen
+ * counts as a word char so "no-trellisx" / "xno-trellis" don't match, but
+ * punctuation/whitespace boundaries do. Empty keyword never matches.
+ */
+function promptHasSkipKeyword(text, keyword) {
+  if (!keyword || typeof text !== "string") return false
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const pattern = new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, "i")
+  return pattern.test(text)
+}
+
 /**
  * Parse workflow.md for [workflow-state:STATUS] blocks.
  *
@@ -124,18 +200,27 @@ export default async ({ directory }) => {
           if (!ctx.isTrellisProject()) {
             return
           }
+
+          const parts = output?.parts || []
+          const textPartIndex = parts.findIndex(
+            p => p.type === "text" && p.text !== undefined,
+          )
+          const originalText = textPartIndex !== -1 ? (parts[textPartIndex].text || "") : ""
+
+          // Escape hatch (issue #427): user prompt contains the skip keyword
+          // as a standalone word — emit nothing for this turn only.
+          if (promptHasSkipKeyword(originalText, readSkipKeyword(directory))) {
+            debugLog("workflow-state", "Skipping turn: skip keyword present in prompt")
+            return
+          }
+
           const templates = loadBreadcrumbs(directory)
           const task = getActiveTask(ctx, input)
           const breadcrumb = task
             ? buildBreadcrumb(task.id, task.status, templates, task.source)
             : buildBreadcrumb(null, "no_task", templates)
 
-          const parts = output?.parts || []
-          const textPartIndex = parts.findIndex(
-            p => p.type === "text" && p.text !== undefined,
-          )
           if (textPartIndex !== -1) {
-            const originalText = parts[textPartIndex].text || ""
             parts[textPartIndex].text = `${breadcrumb}\n\n${originalText}`
           } else {
             parts.unshift({ type: "text", text: breadcrumb })

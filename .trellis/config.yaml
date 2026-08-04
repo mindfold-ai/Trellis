@@ -136,3 +136,31 @@ channel:
 #
 # codex:
 #   dispatch_mode: auto  # or "inline"; legacy alias: "sub-agent"
+
+#-------------------------------------------------------------------------------
+# Sub-agent context injection limits
+#-------------------------------------------------------------------------------
+# Caps how much task context (implement.jsonl / check.jsonl referenced files,
+# plus prd.md / design.md / implement.md) gets inlined into a sub-agent's
+# first prompt. Oversized files are truncated with a notice; once the total
+# payload cap is reached, remaining files degrade to index lines (path +
+# reason + size) instead of being inlined.
+#
+# All values are byte counts. `0` disables the corresponding limit.
+#
+# context_injection:
+#   max_file_bytes: 32768        # per implement.jsonl / check.jsonl referenced file
+#   max_artifact_bytes: 65536    # per task artifact (prd.md / design.md / implement.md)
+#   max_total_bytes: 131072      # whole injected payload; overflow degrades to index lines
+
+#-------------------------------------------------------------------------------
+# Per-turn prompt injection
+#-------------------------------------------------------------------------------
+# Escape hatch for the per-turn <workflow-state> breadcrumb. When a user
+# prompt contains the skip keyword as a standalone word (case-insensitive,
+# word-boundary match — "no-trellisfoo" does NOT count), the breadcrumb is
+# skipped for that turn only. Does not affect SessionStart or sub-agent
+# context injection.
+#
+# prompt_injection:
+#   skip_keyword: "no-trellis"   # "" disables the escape hatch entirely
