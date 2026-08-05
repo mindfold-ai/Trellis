@@ -614,7 +614,11 @@ describe("opencode persisted synthetic context parts", () => {
         "ordinary user prompt",
       ]);
       expect(parts.map(part => part.id)).toEqual(
-        [...parts].sort((left, right) => left.id.localeCompare(right.id)).map(part => part.id),
+        [...parts]
+          .sort((left, right) =>
+            left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
+          )
+          .map(part => part.id),
       );
       expect(parts[0].id).not.toBe(parts[1].id);
       expect(parts[2]).toEqual(ordinary);
@@ -1016,7 +1020,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
             if (typeof left.id !== "string" || typeof right.id !== "string") {
               throw new TypeError("expected persisted part identities");
             }
-            return left.id.localeCompare(right.id);
+            return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
           })
           .map(part => part.id),
       );

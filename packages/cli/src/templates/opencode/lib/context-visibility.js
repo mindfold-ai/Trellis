@@ -5,6 +5,10 @@ const CONTEXT_PART_KINDS = {
   sessionStart: { offset: 2n, slot: "0" },
   workflowState: { offset: 1n, slot: "1" },
 }
+const MAX_CONTEXT_PART_OFFSET = Object.values(CONTEXT_PART_KINDS).reduce(
+  (maximum, definition) => definition.offset > maximum ? definition.offset : maximum,
+  0n,
+)
 
 /**
  * Return the first ordinary user-authored text part.
@@ -39,7 +43,7 @@ function contextPartId(source, kind) {
   const match = PART_ID_PATTERN.exec(source.id)
   if (!match) throw new TypeError(`unsupported OpenCode part ID: ${source.id}`)
   const sourceOrdinal = BigInt(`0x${match[1]}`)
-  if (sourceOrdinal <= definition.offset) {
+  if (sourceOrdinal <= MAX_CONTEXT_PART_OFFSET) {
     throw new TypeError(`unsupported OpenCode part ID ordinal: ${source.id}`)
   }
   const ordinal = sourceOrdinal - definition.offset
