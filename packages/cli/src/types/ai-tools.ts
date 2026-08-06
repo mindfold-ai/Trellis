@@ -530,9 +530,11 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
    * `.kimi-code/skills/`.
    *
    * Kimi has no project-level hooks/settings file Trellis may write (hooks are
-   * user-level `~/.kimi-code/config.toml` only) and no project-level custom
-   * sub-agent definitions (only the built-in coder/explore/plan sub-agents), so
-   * the Trellis agent prompts ship as skills with the pull-based prelude.
+   * user-level `~/.kimi-code/config.toml` only), so the Trellis agent prompts
+   * keep the pull-based prelude. They ship both as skills and as project-level
+   * custom sub-agent definitions under `.kimi-code/agents/` (Claude
+   * Code-compatible frontmatter), so the main session can dispatch
+   * `trellis-<name>` sub-agents directly.
    */
   kimi: {
     name: "Kimi Code",

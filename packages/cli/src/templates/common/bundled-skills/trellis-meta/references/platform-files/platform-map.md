@@ -24,7 +24,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | `.zcode/hooks/` + `.zcode/config.json` (SessionStart + UserPromptSubmit + PreToolUse Agent/Task); sub-agents use hook-injected context |
 | Grok Build | `--grok` | `.grok/` | `.grok/skills/` | `.grok/agents/` | pull-based prelude (no hooks; flat `.grok/commands/trellis-*.md`) |
-| Kimi Code | `--kimi` | `.kimi-code/` | `.agents/skills/` (shared) + `.kimi-code/skills/` | None — agent prompts are skills under `.kimi-code/skills/` and dispatch to the built-in `coder` | None (pull-based prelude; no project hooks/settings) |
+| Kimi Code | `--kimi` | `.kimi-code/` | `.agents/skills/` (shared) + `.kimi-code/skills/` | `.kimi-code/agents/` (custom sub-agents; same prompts also ship as skills) | None (pull-based prelude; no project hooks/settings) |
 | Snow CLI | `--snow` | `.snow/` | `.snow/skills/` | `.snow/agents/` (auto-discovered; primary path) | class-1: auto inject + project agents + `beforeSubAgentStart` (`.snow/hooks/` `session`/`user`/`subagent` modes -> `additionalContext` JSON); no legacy sub-agent JSON; commands `.snow/commands/trellis-*.json` |
 
 ## Capability Groups
@@ -48,7 +48,7 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 - Reasonix (delivered as skills with `runAs: subagent` under `.reasonix/skills/`, not as a separate `agents/` directory)
 - ZCode
 - Grok Build (`.grok/agents/`; dispatch via `spawn_subagent` with `subagent_type`)
-- Kimi Code (delivered as skills under `.kimi-code/skills/`; dispatched to the built-in `coder`, including research because it must persist files)
+- Kimi Code (`.kimi-code/agents/`; the same prompts are also delivered as skills under `.kimi-code/skills/`)
 - Snow CLI (`.snow/agents/`; auto-discovered project agents + class-1 hooks)
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
