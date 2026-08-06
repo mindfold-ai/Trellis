@@ -1028,6 +1028,7 @@ describe("regression: update only configured platforms (beta.16)", () => {
     expect(result.has(".opencode/plugins/inject-workflow-state.js")).toBe(true);
     // Plus agents, lib, package.json, at least one command, at least one skill
     expect(result.has(".opencode/agents/trellis-implement.md")).toBe(true);
+    expect(result.has(".opencode/lib/context-visibility.js")).toBe(true);
     expect(result.has(".opencode/lib/trellis-context.js")).toBe(true);
     expect(result.has(".opencode/package.json")).toBe(true);
   });

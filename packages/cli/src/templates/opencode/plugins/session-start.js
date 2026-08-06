@@ -7,6 +7,7 @@
  */
 
 import { TrellisContext, contextCollector, debugLog, isTrellisSubagent } from "../lib/trellis-context.js"
+import { insertSyntheticTextPart } from "../lib/context-visibility.js"
 import {
   buildSessionContext,
   hasPersistedInjectedContext,
@@ -36,7 +37,7 @@ export default async ({ directory, client }) => {
     },
 
     // chat.message - triggered when user sends a message.
-    // Modify the message in-place so the context is persisted with updateMessage/updatePart.
+    // Insert a complete synthetic part so the context persists without changing the user prompt.
     "chat.message": async (input, output) => {
       try {
         const sessionID = input.sessionID
@@ -76,21 +77,9 @@ export default async ({ directory, client }) => {
         debugLog("session", "Built context, length:", context.length)
 
         const parts = output?.parts || []
-        const textPartIndex = parts.findIndex(
-          p => p.type === "text" && p.text !== undefined
-        )
-
-        if (textPartIndex !== -1) {
-          const originalText = parts[textPartIndex].text || ""
-          parts[textPartIndex].text = `${context}\n\n---\n\n${originalText}`
-          markContextInjected(parts[textPartIndex])
-          debugLog("session", "Injected context into chat.message text part, length:", context.length)
-        } else {
-          const injectedPart = { type: "text", text: context }
-          markContextInjected(injectedPart)
-          parts.unshift(injectedPart)
-          debugLog("session", "Prepended new text part with context, length:", context.length)
-        }
+        const injectedPart = insertSyntheticTextPart(parts, context, "sessionStart")
+        markContextInjected(injectedPart)
+        debugLog("session", "Inserted synthetic context part, length:", context.length)
 
         contextCollector.markProcessed(sessionID)
       } catch (error) {
