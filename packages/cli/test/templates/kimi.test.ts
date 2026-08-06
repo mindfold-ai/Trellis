@@ -29,6 +29,17 @@ describe("kimi getAllAgents", () => {
     }
   });
 
+  it("documents dispatch via the Agent tool with an Active task: prompt", () => {
+    for (const agent of getAllAgents()) {
+      // Dispatch contract: main session dispatches the custom sub-agent via
+      // the Agent tool, and the prompt starts with the active task path.
+      expect(agent.content).toContain(
+        `dispatches the \`${agent.name}\` sub-agent via the Agent tool`,
+      );
+      expect(agent.content).toContain("Starts with `Active task: <path");
+    }
+  });
+
   it("dispatches research as a custom sub-agent with write scope limited to research/", () => {
     const research = getAllAgents().find(
       (agent) => agent.name === "trellis-research",

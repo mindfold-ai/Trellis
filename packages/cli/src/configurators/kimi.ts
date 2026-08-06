@@ -15,9 +15,9 @@
  *   custom sub-agent definitions (Claude Code-compatible frontmatter), so
  *   the main session can dispatch `trellis-<name>` sub-agents directly.
  *
- * Kimi has no project-level hooks/settings file (hooks live in user-level
- * `~/.kimi-code/config.toml` only), so no hooks, settings, or extension
- * files are written.
+ * Trellis does not generate project-local Kimi settings or hooks.
+ * Project-local Kimi settings go in `.kimi-code/local.toml`; hooks are
+ * configured in `$KIMI_CODE_HOME/config.toml`.
  */
 
 import { AI_TOOLS } from "../types/ai-tools.js";
