@@ -1,8 +1,8 @@
 {
-  "id": "fix-finish-clear-fallback-session",
-  "name": "fix-finish-clear-fallback-session",
-  "title": "Fix task.py finish silently failing to clear a fallback-resolved active task",
-  "description": "clear_active_task only deletes the current session's context file, so a pointer resolved via the single-session fallback survives while cmd_finish still prints success.",
+  "id": "adopt-trellis-finish-clear-fix",
+  "name": "adopt-trellis-finish-clear-fix",
+  "title": "Adopt Trellis >=0.6.10 so task.py finish clears fallback-resolved pointers",
+  "description": "The finish-clear bug is already fixed upstream in v0.6.10; the fork (0.6.9) and consumers (0.6.7) still run affected versions.",
   "status": "planning",
   "dev_type": null,
   "scope": null,
