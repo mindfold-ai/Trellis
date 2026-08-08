@@ -979,6 +979,8 @@ def _extract_subagent_type(tool_input: dict) -> str:
         "subagentType",
         "subagent_type_name",
         "subagentTypeName",
+        "subagent_name",
+        "subagentName",
         "agent_type",
         "agentType",
         "name",
@@ -994,7 +996,8 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
 
     Returns (subagent_type, original_prompt, tool_input).
     Handles:
-    - Claude Code / Qoder / CodeBuddy / Droid: tool_name=Task|Agent, tool_input.subagent_type
+    - Claude Code / Qoder / Droid: tool_name=Task|Agent, tool_input.subagent_type
+    - CodeBuddy: tool_name=task (IDE) or Task (CLI), tool_input.subagent_name
     - Cursor: tool_name=Task|Subagent, tool_input.subagent_type
     - Copilot CLI: toolName=task (camelCase key, lowercase value)
     - ZCode: toolName=Agent, toolInput/tool_input.subagent_type

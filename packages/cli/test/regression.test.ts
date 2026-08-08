@@ -4136,6 +4136,69 @@ print(json.dumps({
     expect(parsed.hookSpecificOutput?.updatedInput?.prompt).toBe(prompt);
   });
 
+  it("[session-current-task] CodeBuddy preToolUse injects context for subagent_name Task subagents", () => {
+    // CodeBuddy's Task tool names its sub-agent parameter `subagent_name`
+    // (not `subagent_type`). The shared hook must accept both spellings.
+    setupTaskRepo();
+    writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
+    const injectSubagentContextScript = getSharedHookScripts().find(
+      (hook) => hook.name === "inject-subagent-context.py",
+    )?.content;
+    writeProjectFile(
+      path.join(".codebuddy", "hooks", "inject-subagent-context.py"),
+      expectTemplateContent(
+        injectSubagentContextScript,
+        "inject-subagent-context hook",
+      ),
+    );
+    writeProjectFile(
+      path.join(".trellis", ".runtime", "sessions", "codebuddy_parent-a.json"),
+      JSON.stringify(
+        {
+          current_task: ".trellis/tasks/issue-106",
+          current_run: null,
+          platform: "codebuddy",
+        },
+        null,
+        2,
+      ),
+    );
+
+    const unicodePrompt =
+      "检查测试质量。\n第二行 TOKEN_CODEBUDDY_HOOK_TEST";
+    const hookOutput = runPython(
+      path.join(".codebuddy", "hooks", "inject-subagent-context.py"),
+      JSON.stringify({
+        hook_event_name: "preToolUse",
+        tool_name: "task",
+        tool_input: {
+          prompt: unicodePrompt,
+          subagent_name: "trellis-implement",
+        },
+        session_id: "parent-a",
+        cwd: tmpDir,
+      }),
+      // Platform detection reads the .codebuddy path from argv[0] when the
+      // script runs directly; the CODEBUDDY_PROJECT_DIR override keeps the
+      // test hermetic and matches what CodeBuddy exports into hook children.
+      { CODEBUDDY_PROJECT_DIR: tmpDir },
+    );
+
+    const parsed = JSON.parse(hookOutput) as {
+      permission?: string;
+      updated_input?: { prompt?: string };
+      hookSpecificOutput?: { updatedInput?: { prompt?: string } };
+    };
+    const prompt = parsed.updated_input?.prompt ?? "";
+
+    expect(parsed.permission).toBe("allow");
+    expect(prompt).toContain(
+      "=== .trellis/tasks/issue-106/prd.md (Requirements) ===",
+    );
+    expect(prompt).toContain(unicodePrompt);
+    expect(parsed.hookSpecificOutput?.updatedInput?.prompt).toBe(prompt);
+  });
+
   it("[session-current-task] Cursor generic subagents do not receive Trellis jsonl injection", () => {
     setupTaskRepo();
     writeProjectFile(path.join(".git", "HEAD"), "ref: refs/heads/main\n");
