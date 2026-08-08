@@ -2,9 +2,10 @@
 name: trellis-check
 description: |
   Code quality check expert for Trellis. Reviews code changes against specs
-  and self-fixes issues. On Kimi Code the main session dispatches the built-in
-  coder sub-agent with these instructions; the first prompt line must be
-  Active task: <path>.
+  and self-fixes issues. On Kimi Code the main session dispatches this custom
+  sub-agent (defined in `.kimi-code/agents/trellis-check.md`); the first
+  prompt line must be Active task: <path>.
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 # Check Agent
 
@@ -20,11 +21,10 @@ You are already the `trellis-check` sub-agent that the main session dispatched. 
 
 ## Dispatch note (main session)
 
-Kimi Code has no project-level custom sub-agent definitions — only the built-in `coder` / `explore` / `plan` sub-agents. The main session dispatches the built-in `coder` sub-agent via the Agent tool with a prompt that:
+Kimi Code supports project-level custom sub-agents under `.kimi-code/agents/`. The main session dispatches the `trellis-check` sub-agent via the Agent tool with a prompt that:
 
 1. Starts with `Active task: <path from task.py current>`
-2. Includes this skill's instructions (`.kimi-code/skills/trellis-check/SKILL.md`)
-3. States that the spawned agent is already `trellis-check` and must review/fix directly without spawning another `trellis-check` / `trellis-implement`
+2. States that the spawned agent is already `trellis-check` and must review/fix directly without spawning another `trellis-check` / `trellis-implement`
 
 Kimi does not auto-inject SessionStart task context. Always pull context as required below.
 

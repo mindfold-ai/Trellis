@@ -3,8 +3,10 @@ name: trellis-implement
 description: |
   Code implementation expert for Trellis. Understands specs and requirements,
   then implements features. No git commit allowed. On Kimi Code the main
-  session dispatches the built-in coder sub-agent with these instructions;
-  the first prompt line must be Active task: <path>.
+  session dispatches this custom sub-agent (defined in
+  `.kimi-code/agents/trellis-implement.md`); the first prompt line must be
+  Active task: <path>.
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 # Implement Agent
 
@@ -20,11 +22,10 @@ You are already the `trellis-implement` sub-agent that the main session dispatch
 
 ## Dispatch note (main session)
 
-Kimi Code has no project-level custom sub-agent definitions — only the built-in `coder` / `explore` / `plan` sub-agents. The main session dispatches the built-in `coder` sub-agent via the Agent tool with a prompt that:
+Kimi Code supports project-level custom sub-agents under `.kimi-code/agents/`. The main session dispatches the `trellis-implement` sub-agent via the Agent tool with a prompt that:
 
 1. Starts with `Active task: <path from task.py current>`
-2. Includes this skill's instructions (`.kimi-code/skills/trellis-implement/SKILL.md`)
-3. States that the spawned agent is already `trellis-implement` and must implement directly without spawning another `trellis-implement` / `trellis-check`
+2. States that the spawned agent is already `trellis-implement` and must implement directly without spawning another `trellis-implement` / `trellis-check`
 
 Kimi does not auto-inject SessionStart task context. Always pull context as required below.
 

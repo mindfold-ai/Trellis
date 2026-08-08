@@ -652,6 +652,17 @@ describe("init() integration", () => {
       ),
     ).toBe(true);
 
+    // Custom sub-agent definitions → .kimi-code/agents/
+    for (const name of [
+      "trellis-implement",
+      "trellis-check",
+      "trellis-research",
+    ]) {
+      expect(
+        fs.existsSync(path.join(tmpDir, ".kimi-code", "agents", `${name}.md`)),
+      ).toBe(true);
+    }
+
     // Kimi has no project-level hooks/settings surface.
     expect(fs.existsSync(path.join(tmpDir, ".kimi-code", "hooks"))).toBe(false);
     expect(
