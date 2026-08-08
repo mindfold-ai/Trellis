@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Verify the fix still fails closed for unsafe paths."}
-{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Verify the failure is presented as an actionable diagnostic."}

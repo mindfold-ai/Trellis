@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/cli/backend/index.md", "reason": "Use to verify any Trellis-owned changes route through the right backend guide."}
-{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Use to verify validation and completion evidence is represented consistently."}

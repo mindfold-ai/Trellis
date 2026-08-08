@@ -95,3 +95,15 @@ never substitute generic or inferred placeholder prose.
   paths.
 - Removing downstream compatibility wrappers before fleet adoption proves the
   upstream behavior.
+
+## Rescope (2026-08-08, sd-ai-command-pack cross-repo review)
+
+Added requirement (relocated from the pack backlog): session NUMBERING must
+be collision-proof, not just file-merge-safe. Upstream a5374864 mitigated the
+file collision (journal-*.md merge=union + worktree warning) but
+`add_session.py` still derives the next session number from the working tree
+alone, so two branches recording before merging claim the same number
+(observed twice on 2026-08-06 in sd-ai-command-pack). R7 as written PRESERVES
+the colliding behavior and is amended by this note: numbering must converge
+under concurrent branches (e.g., derive from union of local + default-branch
+journals, or use a collision-detecting retry).

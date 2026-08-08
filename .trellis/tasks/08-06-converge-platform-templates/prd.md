@@ -87,3 +87,8 @@ than silently normalizing it.
 - `_KNOWN_PLATFORMS`' missing entries.
 - Adding or removing any generated file. This changes where the description
   lives, not what gets written.
+
+## Rescope (2026-08-08, sd-ai-command-pack cross-repo review)
+
+6ddd9412 appears to implement the core of this task. Verify that commit
+against the acceptance criteria, then close/archive if it covers them.

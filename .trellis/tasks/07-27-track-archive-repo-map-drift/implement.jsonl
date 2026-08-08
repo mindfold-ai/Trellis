@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/cli/backend/release-process.md", "reason": "Defines release and lifecycle expectations for generated artifacts around PR readiness."}
-{"file": ".trellis/spec/cli/backend/directory-structure.md", "reason": "Defines active and archived task paths that generated maps must represent correctly."}
-{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Defines task archive move behavior and lifecycle state expectations."}

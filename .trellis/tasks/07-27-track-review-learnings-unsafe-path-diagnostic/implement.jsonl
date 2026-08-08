@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Defines the fail-closed path-safety behavior that must be preserved."}
-{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Defines diagnostic expectations for unsafe-path failures."}

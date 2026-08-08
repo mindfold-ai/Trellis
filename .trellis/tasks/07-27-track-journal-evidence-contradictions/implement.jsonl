@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/cli/backend/index.md", "reason": "Provides the backend guide index for locating Trellis CLI/script requirements if the producer is Trellis-owned."}
-{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Defines workflow state and completion evidence contracts that generated session prose must not contradict."}

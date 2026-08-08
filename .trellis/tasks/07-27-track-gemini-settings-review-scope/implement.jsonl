@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/cli/backend/configurator-shared.md", "reason": "Defines cross-configurator generated-file invariants relevant to platform settings."}
-{"file": ".trellis/spec/cli/backend/commands-platforms.md", "reason": "Defines the platform registry contract used by downstream tooling to identify configured platform directories."}
-{"file": ".trellis/spec/cli/backend/directory-structure.md", "reason": "Defines where generated platform settings live and how they should be treated."}

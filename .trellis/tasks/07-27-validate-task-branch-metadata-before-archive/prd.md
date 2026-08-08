@@ -76,3 +76,16 @@ tracked by `07-23-align-task-validation-preflight`.
   rows and PR-preflight alignment; do not duplicate that scope here.
 - Before editing runtime symbols, run the repository-required GitNexus impact
   analysis for each touched function.
+
+## Rescope (2026-08-08, sd-ai-command-pack cross-repo review)
+
+The `base_branch` half of this task LANDED (113cb5fb, 9846fe66:
+`resolve_default_branch()` + `--base-branch` + warning,
+`common/task_store.py:333-346`). Remaining scope:
+
+1. The `branch: null` half — archive-time validation of branch metadata.
+2. NEW (relocated from the pack's 07-30-upstream-task-start-branch-recording
+   handoff): `task.py start` should record the current branch into the task's
+   `branch` field at start time — `cmd_start` (task.py:73-145) currently only
+   flips `status`. Start-time recording retires the pack's `sd-finish-work`
+   step-4 branch-preparation workaround entirely.

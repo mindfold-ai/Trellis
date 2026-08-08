@@ -1,4 +1,4 @@
-# PRD: Codex — durable sub-agent model config (auto default KEPT)
+# Codex agent-model default: keep auto, land the surviving config item
 
 Fixes #459; covers the model-config item of #442. Target release: 0.6.9.
 
@@ -72,3 +72,10 @@ Instead, discoverability fixes:
   two preserved keys.
 - config.yaml template + platform-integration.md document inheritance + knob.
 - Full suite, lint, typecheck green.
+
+## Rescope (2026-08-08, sd-ai-command-pack cross-repo review)
+
+Title corrected 2026-08-08: the original title said "revert default to
+inline" but the body records the maintainer REVERSED that decision — `auto`
+stays. The surviving code item (ee4bffcc) landed. Remaining scope is closure
+verification of the surviving config item only.

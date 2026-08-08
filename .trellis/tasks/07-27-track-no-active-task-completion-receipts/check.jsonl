@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Verify the final behavior matches the documented task-state contract."}
-{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Verify unsupported or failed flows emit actionable diagnostics."}

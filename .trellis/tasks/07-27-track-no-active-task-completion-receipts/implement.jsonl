@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Defines the lifecycle and task-state contract that no-active-task completion must respect."}
-{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Defines diagnostic expectations if completion remains fail-closed."}
