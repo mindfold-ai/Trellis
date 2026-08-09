@@ -4,7 +4,7 @@
 Task Management Script.
 
 Usage:
-    python3 task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3] [--parent <dir>] [--package <pkg>] [--no-start] [--force]
+    python3 task.py create "<title>" --description "<desc>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3] [--parent <dir>] [--package <pkg>] [--no-start] [--force]
     python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
     python3 task.py validate <dir>              # Validate jsonl files
     python3 task.py list-context <dir>          # List jsonl entries
@@ -425,10 +425,10 @@ def show_usage() -> None:
     print("""Task Management Script
 
 Usage:
-  python3 task.py create <title>                     Create new task directory
-  python3 task.py create <title> --package <pkg>     Create task for a specific package
-  python3 task.py create <title> --parent <dir>      Create task as child of parent
-  python3 task.py create <title> --no-start          Create without making it active in this session
+  python3 task.py create <title> --description <desc>  Create new task directory (both required, non-empty)
+  python3 task.py create <title> --description <desc> --package <pkg>   Create task for a specific package
+  python3 task.py create <title> --description <desc> --parent <dir>    Create task as child of parent
+  python3 task.py create <title> --description <desc> --no-start        Create without making it active in this session
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
@@ -454,10 +454,10 @@ List options:
   --json               Output machine-readable JSON (also available on `current`)
 
 Examples:
-  python3 task.py create "Add login feature" --slug add-login
-  python3 task.py create "Add login feature" --slug add-login --package cli
-  python3 task.py create "Add login feature" --meta linear=ENG-123 --meta epic=auth
-  python3 task.py create "Child task" --slug child --parent .trellis/tasks/01-21-parent
+  python3 task.py create "Add login feature" --description "Email + password sign-in" --slug add-login
+  python3 task.py create "Add login feature" --description "Email + password sign-in" --slug add-login --package cli
+  python3 task.py create "Add login feature" --description "Email + password sign-in" --meta linear=ENG-123 --meta epic=auth
+  python3 task.py create "Child task" --description "Session cookie handling" --slug child --parent .trellis/tasks/01-21-parent
   python3 task.py add-context <dir> implement .trellis/spec/cli/backend/auth.md "Auth guidelines"
   python3 task.py set-branch <dir> task/add-login
   python3 task.py start .trellis/tasks/01-21-add-login
@@ -516,11 +516,15 @@ def main() -> int:
 
     # create
     p_create = subparsers.add_parser("create", help="Create new task")
-    p_create.add_argument("title", help="Task title")
+    p_create.add_argument("title", help="Task title (required, non-empty)")
     p_create.add_argument("--slug", "-s", help="Task slug without the MM-DD date prefix")
     p_create.add_argument("--assignee", "-a", help="Assignee developer")
     p_create.add_argument("--priority", "-p", default="P2", help="Priority (P0-P3)")
-    p_create.add_argument("--description", "-d", help="Task description")
+    p_create.add_argument(
+        "--description",
+        "-d",
+        help="Task description (required, non-empty — an empty one is refused at archive)",
+    )
     p_create.add_argument("--parent", help="Parent task directory (establishes subtask link)")
     p_create.add_argument("--package", help="Package name for monorepo projects")
     p_create.add_argument(

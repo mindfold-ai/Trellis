@@ -101,7 +101,7 @@ Use when:
 
 ```bash
 # title is task description, --slug for task directory name
-TASK_DIR=$(python3 ./.trellis/scripts/task.py create "<title>" --slug <task-name>)
+TASK_DIR=$(python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <task-name>)
 ```
 
 #### Step 2: Configure Task

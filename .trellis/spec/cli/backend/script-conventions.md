@@ -1281,8 +1281,8 @@ Windows; that drift causes misleading bootstrap instructions.
 # In docstrings
 """
 Usage:
-    python task.py create "My Task"      # Windows
-    python3 task.py create "My Task"     # macOS/Linux
+    python task.py create "My Task" -d "What it delivers"      # Windows
+    python3 task.py create "My Task" -d "What it delivers"     # macOS/Linux
 """
 
 # In error messages
@@ -2265,7 +2265,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 task.py create "Add login" --slug add-login
+  python3 task.py create "Add login" --description "Email + password sign-in" --slug add-login
   python3 task.py list --mine --status in_progress
 """
     )

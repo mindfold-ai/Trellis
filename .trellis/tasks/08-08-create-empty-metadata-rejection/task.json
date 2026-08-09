@@ -3,7 +3,7 @@
   "name": "create-empty-metadata-rejection",
   "title": "Reject empty title and description at task.py create",
   "description": "task.py create writes records the downstream pre-archive gates refuse: an empty description is only a stderr warning (task_store.py line ~353) and a whitespace title passes the truthiness test when --slug bypasses slug derivation; make create exit nonzero before ensure_tasks_dir with an explicitly stated whitespace predicate so Python and JS validators agree on U+FEFF and U+0085; observed blocking sd-ai-command-pack PR #376 finalization hours after creation.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "cli",

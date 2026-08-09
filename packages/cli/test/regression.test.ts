@@ -567,9 +567,11 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
   let tmpDir: string;
   const pythonCmd = process.platform === "win32" ? "python" : "python3";
 
-  function runTask(
-    ...args: string[]
-  ): { status: number | null; stdout: string; stderr: string } {
+  function runTask(...args: string[]): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
     const result = spawnSync(
       pythonCmd,
       [path.join(".trellis", "scripts", "task.py"), ...args],
@@ -615,7 +617,11 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
   });
 
   it("[audit] set-meta on a traversal path fails and leaves the outside task.json untouched", () => {
-    const victimDir = path.join(tmpDir, "..", path.basename(tmpDir) + "-victim");
+    const victimDir = path.join(
+      tmpDir,
+      "..",
+      path.basename(tmpDir) + "-victim",
+    );
     fs.mkdirSync(victimDir, { recursive: true });
     const victimJson = path.join(victimDir, "task.json");
     fs.writeFileSync(victimJson, JSON.stringify({ id: "victim", meta: {} }));
@@ -653,13 +659,20 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
   });
 
   it("[audit] create --slug with traversal fails and writes nothing outside the tasks dir", () => {
-    const r = runTask("create", "Evil", "--slug", "../../../escaped");
+    const r = runTask(
+      "create",
+      "Evil",
+      "--description",
+      "regression fixture",
+      "--slug",
+      "../../../escaped",
+    );
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain("--slug must be a plain name");
     expect(fs.existsSync(path.join(tmpDir, ".trellis", "escaped"))).toBe(false);
-    expect(fs.readdirSync(path.join(tmpDir, ".trellis", "tasks")).sort()).toEqual(
-      ["08-09-real", "archive"],
-    );
+    expect(
+      fs.readdirSync(path.join(tmpDir, ".trellis", "tasks")).sort(),
+    ).toEqual(["08-09-real", "archive"]);
   });
 
   it("[audit] add-context rejects a traversal JSONL filename", () => {
@@ -671,7 +684,9 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
     );
     expect(r.status).not.toBe(0);
     expect(r.stdout + r.stderr).toContain("must be a plain name");
-    expect(fs.existsSync(path.join(tmpDir, "..", "evil-ctx.jsonl"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, "..", "evil-ctx.jsonl"))).toBe(
+      false,
+    );
     expect(fs.existsSync(path.join(tmpDir, "evil-ctx.jsonl"))).toBe(false);
   });
 
@@ -700,8 +715,9 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
     expect(r.stderr).toContain("12-31-dupe");
     for (const name of ["01-01-dupe", "12-31-dupe"]) {
       expect(
-        JSON.parse(fs.readFileSync(path.join(taskDir(name), "task.json"), "utf-8"))
-          .meta,
+        JSON.parse(
+          fs.readFileSync(path.join(taskDir(name), "task.json"), "utf-8"),
+        ).meta,
       ).toEqual({});
     }
   });
@@ -729,8 +745,9 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
     ).toBe(0);
 
     expect(
-      JSON.parse(fs.readFileSync(path.join(taskDir("08-09-real"), "task.json"), "utf-8"))
-        .meta,
+      JSON.parse(
+        fs.readFileSync(path.join(taskDir("08-09-real"), "task.json"), "utf-8"),
+      ).meta,
     ).toEqual({ "by-name": "1", "by-path": "2" });
     expect(
       JSON.parse(
@@ -751,9 +768,11 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   const datePrefix = `${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const yearMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
 
-  function runTask(
-    ...args: string[]
-  ): { status: number | null; stdout: string; stderr: string } {
+  function runTask(...args: string[]): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
     const result = spawnSync(
       pythonCmd,
       [path.join(".trellis", "scripts", "task.py"), ...args],
@@ -803,7 +822,17 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   });
 
   it("[audit] same-day slug reuse fails and preserves the existing task.json", () => {
-    expect(runTask("create", "First", "--slug", "reuse", "--no-start").status).toBe(0);
+    expect(
+      runTask(
+        "create",
+        "First",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "reuse",
+        "--no-start",
+      ).status,
+    ).toBe(0);
 
     const dirName = `${datePrefix}-reuse`;
     const live = {
@@ -816,7 +845,15 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
     };
     writeTaskJson(dirName, live);
 
-    const r = runTask("create", "Second", "--slug", "reuse", "--no-start");
+    const r = runTask(
+      "create",
+      "Second",
+      "--description",
+      "regression fixture",
+      "--slug",
+      "reuse",
+      "--no-start",
+    );
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain("Task already exists");
     expect(r.stderr).toContain("--force");
@@ -824,11 +861,30 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   });
 
   it("[audit] create --force overwrites an existing task.json", () => {
-    expect(runTask("create", "First", "--slug", "reuse", "--no-start").status).toBe(0);
+    expect(
+      runTask(
+        "create",
+        "First",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "reuse",
+        "--no-start",
+      ).status,
+    ).toBe(0);
     const dirName = `${datePrefix}-reuse`;
     writeTaskJson(dirName, { ...readTaskJson(dirName), status: "in_progress" });
 
-    const r = runTask("create", "Second", "--slug", "reuse", "--no-start", "--force");
+    const r = runTask(
+      "create",
+      "Second",
+      "--description",
+      "regression fixture",
+      "--slug",
+      "reuse",
+      "--no-start",
+      "--force",
+    );
     expect(r.status, r.stderr).toBe(0);
     expect(r.stderr).toContain("--force");
 
@@ -838,7 +894,17 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   });
 
   it("[audit] archive into an existing destination fails, leaving both directories intact", () => {
-    expect(runTask("create", "Kid", "--slug", "kid", "--no-start").status).toBe(0);
+    expect(
+      runTask(
+        "create",
+        "Kid",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "kid",
+        "--no-start",
+      ).status,
+    ).toBe(0);
     const dirName = `${datePrefix}-kid`;
 
     const destDir = taskDir("archive", yearMonth, dirName);
@@ -867,14 +933,26 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   });
 
   it("[audit] archive still succeeds when the destination is free", () => {
-    expect(runTask("create", "Kid", "--slug", "kid", "--no-start").status).toBe(0);
+    expect(
+      runTask(
+        "create",
+        "Kid",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "kid",
+        "--no-start",
+      ).status,
+    ).toBe(0);
     const dirName = `${datePrefix}-kid`;
 
     const r = runTask("archive", dirName, "--no-commit");
     expect(r.status, r.stderr).toBe(0);
     expect(fs.existsSync(taskDir(dirName))).toBe(false);
     expect(
-      fs.existsSync(path.join(taskDir("archive", yearMonth, dirName), "task.json")),
+      fs.existsSync(
+        path.join(taskDir("archive", yearMonth, dirName), "task.json"),
+      ),
     ).toBe(true);
   });
 
@@ -882,6 +960,8 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
     const r = runTask(
       "create",
       "Orphan",
+      "--description",
+      "regression fixture",
       "--slug",
       "orphan",
       "--no-start",
@@ -902,6 +982,8 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
     const r = runTask(
       "create",
       "Orphan",
+      "--description",
+      "regression fixture",
       "--slug",
       "orphan",
       "--no-start",
@@ -914,13 +996,25 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   });
 
   it("[audit] create --parent still links a valid parent on both sides", () => {
-    expect(runTask("create", "Mum", "--slug", "mum", "--no-start").status).toBe(0);
+    expect(
+      runTask(
+        "create",
+        "Mum",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "mum",
+        "--no-start",
+      ).status,
+    ).toBe(0);
     const parentName = `${datePrefix}-mum`;
     const childName = `${datePrefix}-kid`;
 
     const r = runTask(
       "create",
       "Kid",
+      "--description",
+      "regression fixture",
       "--slug",
       "kid",
       "--no-start",
@@ -940,8 +1034,28 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   it.skipIf(!canProvokeWriteFailure)(
     "[audit] add-subtask reports which side was written when the second write fails",
     () => {
-      expect(runTask("create", "Mum", "--slug", "mum", "--no-start").status).toBe(0);
-      expect(runTask("create", "Kid", "--slug", "kid", "--no-start").status).toBe(0);
+      expect(
+        runTask(
+          "create",
+          "Mum",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "mum",
+          "--no-start",
+        ).status,
+      ).toBe(0);
+      expect(
+        runTask(
+          "create",
+          "Kid",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "kid",
+          "--no-start",
+        ).status,
+      ).toBe(0);
       const parentName = `${datePrefix}-mum`;
       const childName = `${datePrefix}-kid`;
 
@@ -962,12 +1076,31 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   it.skipIf(!canProvokeWriteFailure)(
     "[audit] remove-subtask reports which side was written when the second write fails",
     () => {
-      expect(runTask("create", "Mum", "--slug", "mum", "--no-start").status).toBe(0);
+      expect(
+        runTask(
+          "create",
+          "Mum",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "mum",
+          "--no-start",
+        ).status,
+      ).toBe(0);
       const parentName = `${datePrefix}-mum`;
       const childName = `${datePrefix}-kid`;
       expect(
-        runTask("create", "Kid", "--slug", "kid", "--no-start", "--parent", parentName)
-          .status,
+        runTask(
+          "create",
+          "Kid",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "kid",
+          "--no-start",
+          "--parent",
+          parentName,
+        ).status,
       ).toBe(0);
 
       fs.chmodSync(taskDir(childName), 0o555);
@@ -1050,7 +1183,17 @@ describe("regression: JSON read/write failure reporting", () => {
   });
 
   it("[audit] set-meta on a corrupt task.json names the file and the failure class", () => {
-    expect(runTask(["create", "Broken", "--slug", "broken", "--no-start"]).status).toBe(0);
+    expect(
+      runTask([
+        "create",
+        "Broken",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "broken",
+        "--no-start",
+      ]).status,
+    ).toBe(0);
     const name = `${datePrefix}-broken`;
     fs.writeFileSync(taskJsonPath(name), "{ not json");
 
@@ -1066,7 +1209,17 @@ describe("regression: JSON read/write failure reporting", () => {
   it.skipIf(!canProvokePermissionFailure)(
     "[audit] set-meta on an unreadable task.json reports permissions, not a parse error",
     () => {
-      expect(runTask(["create", "Locked", "--slug", "locked", "--no-start"]).status).toBe(0);
+      expect(
+        runTask([
+          "create",
+          "Locked",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "locked",
+          "--no-start",
+        ]).status,
+      ).toBe(0);
       const name = `${datePrefix}-locked`;
       fs.chmodSync(taskJsonPath(name), 0o000);
 
@@ -1093,7 +1246,17 @@ describe("regression: JSON read/write failure reporting", () => {
   it.skipIf(!canProvokePermissionFailure)(
     "[audit] set-branch reports a failed write instead of printing success",
     () => {
-      expect(runTask(["create", "Ro", "--slug", "ro", "--no-start"]).status).toBe(0);
+      expect(
+        runTask([
+          "create",
+          "Ro",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "ro",
+          "--no-start",
+        ]).status,
+      ).toBe(0);
       const name = `${datePrefix}-ro`;
       // Read-only task dir: write_json's mkstemp fails, the original survives.
       fs.chmodSync(taskDir(name), 0o555);
@@ -1114,12 +1277,31 @@ describe("regression: JSON read/write failure reporting", () => {
   it.skipIf(!canProvokePermissionFailure)(
     "[audit] create reports a failed task.json write instead of 'Created task'",
     () => {
-      expect(runTask(["create", "First", "--slug", "dup", "--no-start"]).status).toBe(0);
+      expect(
+        runTask([
+          "create",
+          "First",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "dup",
+          "--no-start",
+        ]).status,
+      ).toBe(0);
       const name = `${datePrefix}-dup`;
       fs.chmodSync(taskDir(name), 0o555);
 
       try {
-        const r = runTask(["create", "Second", "--slug", "dup", "--no-start", "--force"]);
+        const r = runTask([
+          "create",
+          "Second",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "dup",
+          "--no-start",
+          "--force",
+        ]);
         expect(r.status).not.toBe(0);
         expect(r.stderr).toContain("Failed to write");
         expect(r.stderr).toContain("No task was created");
@@ -1136,13 +1318,25 @@ describe("regression: JSON read/write failure reporting", () => {
   it.skipIf(!canProvokePermissionFailure)(
     "[audit] archive stops before moving when a child cannot be unlinked",
     () => {
-      expect(runTask(["create", "Mum", "--slug", "mum", "--no-start"]).status).toBe(0);
+      expect(
+        runTask([
+          "create",
+          "Mum",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "mum",
+          "--no-start",
+        ]).status,
+      ).toBe(0);
       const parentName = `${datePrefix}-mum`;
       const childName = `${datePrefix}-kid`;
       expect(
         runTask([
           "create",
           "Kid",
+          "--description",
+          "regression fixture",
           "--slug",
           "kid",
           "--no-start",
@@ -1168,8 +1362,28 @@ describe("regression: JSON read/write failure reporting", () => {
   );
 
   it("[audit] list warns about a skipped task instead of silently dropping it", () => {
-    expect(runTask(["create", "Good", "--slug", "good", "--no-start"]).status).toBe(0);
-    expect(runTask(["create", "Bad", "--slug", "bad", "--no-start"]).status).toBe(0);
+    expect(
+      runTask([
+        "create",
+        "Good",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "good",
+        "--no-start",
+      ]).status,
+    ).toBe(0);
+    expect(
+      runTask([
+        "create",
+        "Bad",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "bad",
+        "--no-start",
+      ]).status,
+    ).toBe(0);
     fs.writeFileSync(taskJsonPath(`${datePrefix}-bad`), "{ not json");
 
     const r = runTask(["list"]);
@@ -1184,7 +1398,20 @@ describe("regression: JSON read/write failure reporting", () => {
 
   it("[audit] start still activates a task with a corrupt task.json but says why the status stayed", () => {
     const env = { TRELLIS_CONTEXT_ID: "json-io-start" };
-    expect(runTask(["create", "Rot", "--slug", "rot", "--no-start"], env).status).toBe(0);
+    expect(
+      runTask(
+        [
+          "create",
+          "Rot",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "rot",
+          "--no-start",
+        ],
+        env,
+      ).status,
+    ).toBe(0);
     const name = `${datePrefix}-rot`;
     fs.writeFileSync(taskJsonPath(name), "{ not json");
 
@@ -1199,13 +1426,29 @@ describe("regression: JSON read/write failure reporting", () => {
 
   it("[audit] current --json carries a read-failure signal and stays silent when healthy", () => {
     const env = { TRELLIS_CONTEXT_ID: "json-io-test" };
-    expect(runTask(["create", "Live", "--slug", "live", "--no-start"], env).status).toBe(0);
+    expect(
+      runTask(
+        [
+          "create",
+          "Live",
+          "--description",
+          "regression fixture",
+          "--slug",
+          "live",
+          "--no-start",
+        ],
+        env,
+      ).status,
+    ).toBe(0);
     const name = `${datePrefix}-live`;
     expect(runTask(["start", name], env).status).toBe(0);
 
     const healthy = runTask(["current", "--json"], env);
     expect(healthy.status).toBe(0);
-    const healthyPayload = JSON.parse(healthy.stdout) as Record<string, unknown>;
+    const healthyPayload = JSON.parse(healthy.stdout) as Record<
+      string,
+      unknown
+    >;
     expect(Object.keys(healthyPayload).sort()).toEqual([
       "current_task",
       "source",
@@ -1230,16 +1473,37 @@ describe("regression: JSON read/write failure reporting", () => {
     "[audit] a session pointer that cannot be written atomically is left intact",
     () => {
       const env = { TRELLIS_CONTEXT_ID: "json-io-session" };
-      expect(runTask(["create", "One", "--slug", "one", "--no-start"], env).status).toBe(0);
-      expect(runTask(["create", "Two", "--slug", "two", "--no-start"], env).status).toBe(0);
+      expect(
+        runTask(
+          [
+            "create",
+            "One",
+            "--description",
+            "regression fixture",
+            "--slug",
+            "one",
+            "--no-start",
+          ],
+          env,
+        ).status,
+      ).toBe(0);
+      expect(
+        runTask(
+          [
+            "create",
+            "Two",
+            "--description",
+            "regression fixture",
+            "--slug",
+            "two",
+            "--no-start",
+          ],
+          env,
+        ).status,
+      ).toBe(0);
       expect(runTask(["start", `${datePrefix}-one`], env).status).toBe(0);
 
-      const sessionsDir = path.join(
-        tmpDir,
-        ".trellis",
-        ".runtime",
-        "sessions",
-      );
+      const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
       const sessionFile = path.join(sessionsDir, "json-io-session.json");
       expect(fs.existsSync(sessionFile)).toBe(true);
 
@@ -1345,7 +1609,11 @@ describe("regression: write_json fd ownership and cleanup (issue #429)", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  function runProbe(probeBody: string): { status: number | null; stdout: string; stderr: string } {
+  function runProbe(probeBody: string): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
     const probe = `
 import json
 import os
@@ -1363,7 +1631,11 @@ ${probeBody}
       cwd: tmpDir,
       encoding: "utf-8",
     });
-    return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    };
   }
 
   it("[issue-429] closes the raw fd itself when fdopen fails, and leaves no temp file", () => {
@@ -1476,7 +1748,10 @@ describe("regression: task auto-activation failure diagnostics (issue #430)", ()
       path.join(tmpDir, ".trellis", "spec", "guides", "index.md"),
       "# Guides\n",
     );
-    fs.writeFileSync(path.join(tmpDir, ".trellis", "workflow.md"), "# Workflow\n");
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", "workflow.md"),
+      "# Workflow\n",
+    );
     fs.mkdirSync(path.join(tmpDir, ".trellis", "tasks"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, ".trellis", "workspace", "test-dev"), {
       recursive: true,
@@ -1527,7 +1802,15 @@ describe("regression: task auto-activation failure diagnostics (issue #430)", ()
     }
     return spawnSync(
       pythonCmd,
-      [taskScriptPath, "create", "issue-430 probe", "--slug", "issue-430-probe"],
+      [
+        taskScriptPath,
+        "create",
+        "issue-430 probe",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "issue-430-probe",
+      ],
       { cwd: tmpDir, encoding: "utf-8", env: { ...scrubbed, ...env } },
     );
   }
@@ -2196,20 +2479,14 @@ describe("regression: issue #252 polyrepo Git context", () => {
     }
 
     const output = runSessionContext("text");
-    const rerun = spawnSync(
-      pythonCmd,
-      [path.join(tmpDir, "run-context.py")],
-      {
-        cwd: tmpDir,
-        encoding: "utf-8",
-      },
-    );
+    const rerun = spawnSync(pythonCmd, [path.join(tmpDir, "run-context.py")], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
 
     expect(output).not.toContain("## GIT STATUS (repo-");
     expect(rerun.status).toBe(0);
-    expect(rerun.stderr).toContain(
-      "found more than 8 child Git repositories",
-    );
+    expect(rerun.stderr).toContain("found more than 8 child Git repositories");
     expect(rerun.stderr).toContain(
       "Configure explicit packages entries with path and git: true",
     );
@@ -2640,7 +2917,7 @@ describe("regression: current-task path normalization", () => {
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-auto-active" --slug r7-auto --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-auto-active" --description "regression fixture" --slug r7-auto --assignee test-dev`,
       {
         cwd: tmpDir,
         encoding: "utf-8",
@@ -2668,7 +2945,7 @@ describe("regression: current-task path normalization", () => {
     expect(context.current_task).toBe(`.trellis/tasks/${taskDir}`);
   });
 
-  it("[issue-397] task.py create warns on blank description and reports session activation", () => {
+  it("[issue-397] task.py create stores the trimmed description and reports session activation", () => {
     writeTrellisScripts();
     writeProjectFile(
       path.join(".trellis", ".developer"),
@@ -2682,9 +2959,11 @@ describe("regression: current-task path normalization", () => {
       [
         taskScriptPath,
         "create",
-        "blank description task",
+        "described task",
+        "--description",
+        "  padded description  ",
         "--slug",
-        "blank-description",
+        "described",
         "--assignee",
         "test-dev",
       ],
@@ -2696,13 +2975,12 @@ describe("regression: current-task path normalization", () => {
     );
 
     expect(result.status).toBe(0);
-    expect(result.stderr).toContain("task description is empty");
     expect(result.stderr).toContain("Activated task for this session");
     expect(result.stderr).toContain("Source: session:issue-397-session");
 
     const taskDir = fs
       .readdirSync(path.join(tmpDir, ".trellis", "tasks"))
-      .find((d) => d.includes("blank-description"));
+      .find((d) => d.includes("described"));
     expect(taskDir).toBeDefined();
     const taskJson = JSON.parse(
       fs.readFileSync(
@@ -2710,7 +2988,7 @@ describe("regression: current-task path normalization", () => {
         "utf-8",
       ),
     ) as { description: string };
-    expect(taskJson.description).toBe("");
+    expect(taskJson.description).toBe("padded description");
   });
 
   it("[issue-397] task.py create --no-start does not move the session pointer", () => {
@@ -2734,7 +3012,7 @@ describe("regression: current-task path normalization", () => {
         "--assignee",
         "test-dev",
         "--description",
-        "   ",
+        "regression fixture",
         "--no-start",
       ],
       {
@@ -2770,7 +3048,7 @@ describe("regression: current-task path normalization", () => {
         "utf-8",
       ),
     ) as { description: string };
-    expect(taskJson.description).toBe("");
+    expect(taskJson.description).toBe("regression fixture");
   });
 
   it("[workflow-state-r7] task.py create degrades silently without session identity (no .runtime side effect)", () => {
@@ -2787,7 +3065,7 @@ describe("regression: current-task path normalization", () => {
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     // sessionEnv() with no overrides drops every session-identity env var.
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-cli-only" --slug r7-cli --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-cli-only" --description "regression fixture" --slug r7-cli --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
     );
 
@@ -2816,7 +3094,7 @@ describe("regression: current-task path normalization", () => {
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-idem" --slug r7-idem --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "r7-idem" --description "regression fixture" --slug r7-idem --assignee test-dev`,
       {
         cwd: tmpDir,
         encoding: "utf-8",
@@ -2949,6 +3227,8 @@ describe("regression: current-task path normalization", () => {
       taskScriptPath,
       "create",
       "web auth retry",
+      "--description",
+      "regression fixture",
       "--slug",
       "web-auth-retry",
       "--assignee",
@@ -3053,6 +3333,8 @@ describe("regression: current-task path normalization", () => {
         taskScriptPath,
         "create",
         "Example Task",
+        "--description",
+        "regression fixture",
         "--slug",
         `${todayPrefix}-example-task`,
         "--assignee",
@@ -3092,6 +3374,8 @@ describe("regression: current-task path normalization", () => {
         taskScriptPath,
         "create",
         "Example Task",
+        "--description",
+        "regression fixture",
         "--slug",
         `${otherPrefix}-example-task`,
         "--assignee",
@@ -3125,6 +3409,8 @@ describe("regression: current-task path normalization", () => {
         taskScriptPath,
         "create",
         "Example Task",
+        "--description",
+        "regression fixture",
         "--slug",
         "13-45-example-task",
         "--assignee",
@@ -3648,7 +3934,12 @@ print(json.dumps({
     expect(result).toEqual({
       // Gone from every table — identity arrives via the plugin/extension
       // command prefix (opencode, pi) or not at all (trae).
-      opencode: { session: [], conversation: [], transcript: [], resolved: null },
+      opencode: {
+        session: [],
+        conversation: [],
+        transcript: [],
+        resolved: null,
+      },
       pi: { session: [], conversation: [], transcript: [], resolved: null },
       trae: { session: [], conversation: [], transcript: [], resolved: null },
       // Session entry gone; their never-researched transcript names stay.
@@ -3712,7 +4003,11 @@ print(json.dumps({
         ["copilot-alt", { COPILOT_SESSIONID: "probe" }, "copilot"],
         ["snow", { SNOW_SESSION_ID: "probe" }, "snow"],
         ["cursor-conversation", { CURSOR_CONVERSATION_ID: "probe" }, "cursor"],
-        ["cursor-transcript", { CURSOR_TRANSCRIPT_PATH: "/tmp/t.md" }, "cursor"],
+        [
+          "cursor-transcript",
+          { CURSOR_TRANSCRIPT_PATH: "/tmp/t.md" },
+          "cursor",
+        ],
         // ZCode: the real Claude Code name, the historical fallback, and both
         // at once — the last one pins the ordering.
         ["zcode-real", { CLAUDE_CODE_SESSION_ID: "probe" }, "zcode"],
@@ -4437,13 +4732,7 @@ print(json.dumps({
     );
     const ticket = JSON.parse(
       fs.readFileSync(
-        path.join(
-          tmpDir,
-          ".trellis",
-          ".runtime",
-          "shell-tickets",
-          ticketName,
-        ),
+        path.join(tmpDir, ".trellis", ".runtime", "shell-tickets", ticketName),
         "utf-8",
       ),
     ) as { command: string };
@@ -4680,17 +4969,20 @@ print(json.dumps({
 
       // Two windows, same repo, same subcommand, both tickets fresh.
       for (const sessionId of ["window-a", "window-b"]) {
-        execSync(`${pythonCmd} ${JSON.stringify(path.join(tmpDir, hookPath))}`, {
-          cwd: tmpDir,
-          input: JSON.stringify({
-            session_id: sessionId,
+        execSync(
+          `${pythonCmd} ${JSON.stringify(path.join(tmpDir, hookPath))}`,
+          {
             cwd: tmpDir,
-            tool_name: "Bash",
-            tool_input: { command },
-          }),
-          encoding: "utf-8",
-          env: hookEnv(),
-        });
+            input: JSON.stringify({
+              session_id: sessionId,
+              cwd: tmpDir,
+              tool_name: "Bash",
+              tool_input: { command },
+            }),
+            encoding: "utf-8",
+            env: hookEnv(),
+          },
+        );
       }
       expect(
         fs.readdirSync(
@@ -4724,19 +5016,32 @@ print(json.dumps({
 
       const payloads = [
         JSON.stringify({ session_id: "s", cwd: tmpDir }), // no command at all
-        JSON.stringify({ session_id: "s", cwd: tmpDir, tool_input: "not-a-dict" }),
-        JSON.stringify({ session_id: "s", cwd: tmpDir, tool_input: { file_path: "a.ts" } }),
-        JSON.stringify({ session_id: "s", cwd: tmpDir, tool_input: { command: "git status" } }),
+        JSON.stringify({
+          session_id: "s",
+          cwd: tmpDir,
+          tool_input: "not-a-dict",
+        }),
+        JSON.stringify({
+          session_id: "s",
+          cwd: tmpDir,
+          tool_input: { file_path: "a.ts" },
+        }),
+        JSON.stringify({
+          session_id: "s",
+          cwd: tmpDir,
+          tool_input: { command: "git status" },
+        }),
         JSON.stringify([1, 2, 3]), // valid JSON, wrong root type
         "not json at all",
         "",
       ];
       for (const input of payloads) {
-        const result = spawnSync(
-          pythonCmd,
-          [path.join(tmpDir, hookPath)],
-          { cwd: tmpDir, input, encoding: "utf-8", env: hookEnv() },
-        );
+        const result = spawnSync(pythonCmd, [path.join(tmpDir, hookPath)], {
+          cwd: tmpDir,
+          input,
+          encoding: "utf-8",
+          env: hookEnv(),
+        });
         expect(result.status, `payload ${input} should exit 0`).toBe(0);
         expect(result.stdout.trim(), `payload ${input} should stay quiet`).toBe(
           "",
@@ -4744,7 +5049,9 @@ print(json.dumps({
         expect(result.stderr.trim()).toBe("");
       }
       expect(
-        fs.existsSync(path.join(tmpDir, ".trellis", ".runtime", "shell-tickets")),
+        fs.existsSync(
+          path.join(tmpDir, ".trellis", ".runtime", "shell-tickets"),
+        ),
       ).toBe(false);
     });
 
@@ -4761,7 +5068,9 @@ print(json.dumps({
           context_key: "cursor_legacy-window",
           cwd: tmpDir,
           command: "task.py start .trellis/tasks/issue-106",
-          subcommands: [{ name: "start", task_ref: ".trellis/tasks/issue-106" }],
+          subcommands: [
+            { name: "start", task_ref: ".trellis/tasks/issue-106" },
+          ],
           created_at_epoch: now,
           expires_at_epoch: now + 30,
         }),
@@ -4801,8 +5110,7 @@ print(json.dumps({
       ),
     );
 
-    const unicodePrompt =
-      "检查测试质量。\n第二行 TOKEN_CURSOR_HOOK_TEST";
+    const unicodePrompt = "检查测试质量。\n第二行 TOKEN_CURSOR_HOOK_TEST";
     const hookOutput = runPythonWithLegacyStdinLocale(
       path.join(".cursor", "hooks", "inject-subagent-context.py"),
       JSON.stringify({
@@ -4901,11 +5209,7 @@ print(json.dumps({
     const injectSubagentContextScript = getSharedHookScripts().find(
       (hook) => hook.name === "inject-subagent-context.py",
     )?.content;
-    const hookPath = path.join(
-      ".codex",
-      "hooks",
-      "inject-subagent-context.py",
-    );
+    const hookPath = path.join(".codex", "hooks", "inject-subagent-context.py");
     writeProjectFile(
       hookPath,
       expectTemplateContent(
@@ -4970,11 +5274,7 @@ print(json.dumps({
     const injectSubagentContextScript = getSharedHookScripts().find(
       (hook) => hook.name === "inject-subagent-context.py",
     )?.content;
-    const hookPath = path.join(
-      ".codex",
-      "hooks",
-      "inject-subagent-context.py",
-    );
+    const hookPath = path.join(".codex", "hooks", "inject-subagent-context.py");
     writeProjectFile(
       hookPath,
       expectTemplateContent(
@@ -5031,11 +5331,7 @@ print(json.dumps({
     const injectSubagentContextScript = getSharedHookScripts().find(
       (hook) => hook.name === "inject-subagent-context.py",
     )?.content;
-    const hookPath = path.join(
-      ".codex",
-      "hooks",
-      "inject-subagent-context.py",
-    );
+    const hookPath = path.join(".codex", "hooks", "inject-subagent-context.py");
     writeProjectFile(
       hookPath,
       expectTemplateContent(
@@ -5073,11 +5369,7 @@ print(json.dumps({
     const injectSubagentContextScript = getSharedHookScripts().find(
       (hook) => hook.name === "inject-subagent-context.py",
     )?.content;
-    const hookPath = path.join(
-      ".codex",
-      "hooks",
-      "inject-subagent-context.py",
-    );
+    const hookPath = path.join(".codex", "hooks", "inject-subagent-context.py");
     writeProjectFile(
       hookPath,
       expectTemplateContent(
@@ -5126,11 +5418,7 @@ print(json.dumps({
     const injectSubagentContextScript = getSharedHookScripts().find(
       (hook) => hook.name === "inject-subagent-context.py",
     )?.content;
-    const hookPath = path.join(
-      ".codex",
-      "hooks",
-      "inject-subagent-context.py",
-    );
+    const hookPath = path.join(".codex", "hooks", "inject-subagent-context.py");
     writeProjectFile(
       hookPath,
       expectTemplateContent(
@@ -5178,11 +5466,7 @@ print(json.dumps({
     const injectSubagentContextScript = getSharedHookScripts().find(
       (hook) => hook.name === "inject-subagent-context.py",
     )?.content;
-    const hookPath = path.join(
-      ".codex",
-      "hooks",
-      "inject-subagent-context.py",
-    );
+    const hookPath = path.join(".codex", "hooks", "inject-subagent-context.py");
     writeProjectFile(
       hookPath,
       expectTemplateContent(
@@ -5715,12 +5999,7 @@ print(json.dumps({
     writeSessionContext("codex_exact", ".trellis/tasks/issue-106");
     writeSessionContext("codex_thread_sibling", ".trellis/tasks/issue-106");
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
-    const sessionsDir = path.join(
-      tmpDir,
-      ".trellis",
-      ".runtime",
-      "sessions",
-    );
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
 
     const output = execSync(
       `${pythonCmd} ${JSON.stringify(taskScriptPath)} finish`,
@@ -5742,10 +6021,7 @@ print(json.dumps({
 
   it("[issue #469] finish removes the sole fallback session file", () => {
     setupTaskRepo();
-    writeSessionContext(
-      "codex_previous-thread",
-      ".trellis/tasks/issue-106",
-    );
+    writeSessionContext("codex_previous-thread", ".trellis/tasks/issue-106");
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     const fallbackPath = path.join(
       tmpDir,
@@ -5764,9 +6040,7 @@ print(json.dumps({
       },
     );
 
-    expect(output).toContain(
-      "Source: session-fallback:codex_previous-thread",
-    );
+    expect(output).toContain("Source: session-fallback:codex_previous-thread");
     expect(fs.existsSync(fallbackPath)).toBe(false);
 
     const current = runTaskCurrent({ CODEX_THREAD_ID: "current-thread" });
@@ -5780,12 +6054,7 @@ print(json.dumps({
     writeSessionContext("codex_thread_a", ".trellis/tasks/issue-106");
     writeSessionContext("codex_thread_b", ".trellis/tasks/issue-106");
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
-    const sessionsDir = path.join(
-      tmpDir,
-      ".trellis",
-      ".runtime",
-      "sessions",
-    );
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
 
     const output = execSync(
       `${pythonCmd} ${JSON.stringify(taskScriptPath)} finish`,
@@ -5808,22 +6077,12 @@ print(json.dumps({
   it("[issue #469] finish preserves a malformed exact session when another session exists", () => {
     setupTaskRepo();
     writeProjectFile(
-      path.join(
-        ".trellis",
-        ".runtime",
-        "sessions",
-        "codex_malformed.json",
-      ),
+      path.join(".trellis", ".runtime", "sessions", "codex_malformed.json"),
       "{",
     );
     writeSessionContext("codex_other", ".trellis/tasks/issue-106");
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
-    const sessionsDir = path.join(
-      tmpDir,
-      ".trellis",
-      ".runtime",
-      "sessions",
-    );
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
 
     const output = execSync(
       `${pythonCmd} ${JSON.stringify(taskScriptPath)} finish`,
@@ -6199,7 +6458,7 @@ print(json.dumps({
     setupTaskRepo();
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "dummy task" --slug dummy-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "dummy task" --description "regression fixture" --slug dummy-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
     // Locate the newly created task dir
@@ -6226,7 +6485,7 @@ print(json.dumps({
     // setupTaskRepo does not create any .{platform}/ dir → agent-less mode
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "plain task" --slug plain-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "plain task" --description "regression fixture" --slug plain-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
     const tasksDir = path.join(tmpDir, ".trellis", "tasks");
@@ -6245,7 +6504,7 @@ print(json.dumps({
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seeded task" --slug seeded-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seeded task" --description "regression fixture" --slug seeded-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
     const tasksDir = path.join(tmpDir, ".trellis", "tasks");
@@ -6273,7 +6532,7 @@ print(json.dumps({
     fs.mkdirSync(path.join(tmpDir, ".grok"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "grok task" --slug grok-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "grok task" --description "regression fixture" --slug grok-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
     );
 
@@ -6300,7 +6559,7 @@ print(json.dumps({
     fs.mkdirSync(path.join(tmpDir, ".kimi-code"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "kimi task" --slug kimi-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "kimi task" --description "regression fixture" --slug kimi-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
     );
 
@@ -6328,7 +6587,7 @@ print(json.dumps({
     writeConfigYaml("codex:\n  dispatch_mode: inline\n");
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "codex inline task" --slug codex-inline-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "codex inline task" --description "regression fixture" --slug codex-inline-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
 
@@ -6349,11 +6608,11 @@ print(json.dumps({
     fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
     writeProjectFile(
       path.join(".trellis", "config.yaml"),
-      'codex:\n  dispatch_mode: sub-agent  # opt into trellis-* sub-agents\n',
+      "codex:\n  dispatch_mode: sub-agent  # opt into trellis-* sub-agents\n",
     );
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "codex subagent task" --slug codex-subagent-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "codex subagent task" --description "regression fixture" --slug codex-subagent-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
 
@@ -6440,7 +6699,7 @@ print(len(entries))
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seed-only" --slug seed-only-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seed-only" --description "regression fixture" --slug seed-only-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
     const taskDir = fs
@@ -6462,7 +6721,7 @@ print(len(entries))
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seed-list" --slug seed-list-task --assignee test-dev`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seed-list" --description "regression fixture" --slug seed-list-task --assignee test-dev`,
       { cwd: tmpDir, encoding: "utf-8" },
     );
     const taskDir = fs
@@ -7505,11 +7764,11 @@ print(len(entries))
     setupTaskRepo();
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
 
-    const result = spawnSync(
-      pythonCmd,
-      [taskScriptPath, "current", "--json"],
-      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
-    );
+    const result = spawnSync(pythonCmd, [taskScriptPath, "current", "--json"], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      env: sessionEnv(),
+    });
 
     expect(result.status).toBe(1);
     const parsed = JSON.parse(result.stdout) as { current_task: unknown };
@@ -7522,12 +7781,20 @@ print(len(entries))
 
     execSync(
       `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(".trellis/tasks/issue-106")}`,
-      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv({ TRELLIS_CONTEXT_ID: "json-current-session" }) },
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "json-current-session" }),
+      },
     );
 
     const output = execSync(
       `${pythonCmd} ${JSON.stringify(taskScriptPath)} current --json`,
-      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv({ TRELLIS_CONTEXT_ID: "json-current-session" }) },
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "json-current-session" }),
+      },
     );
 
     const parsed = JSON.parse(output) as {
@@ -7546,21 +7813,28 @@ print(len(entries))
     execSync("git config user.email test@example.com", { cwd: tmpDir });
     execSync("git config user.name Test", { cwd: tmpDir });
     execSync("git add -A", { cwd: tmpDir });
-    execSync('git commit -q -m init', { cwd: tmpDir });
+    execSync("git commit -q -m init", { cwd: tmpDir });
 
     // Simulate a bare "origin" remote whose default branch is main, while
     // the local checkout stays on a feature branch (#399 item 1 repro).
     const remotePath = path.join(tmpDir, "..", "origin-bare.git");
-    execSync(`git init -q --bare ${JSON.stringify(remotePath)}`, { cwd: tmpDir });
+    execSync(`git init -q --bare ${JSON.stringify(remotePath)}`, {
+      cwd: tmpDir,
+    });
     execSync("git branch -m feature/some-work main", { cwd: tmpDir });
-    execSync(`git remote add origin ${JSON.stringify(remotePath)}`, { cwd: tmpDir });
+    execSync(`git remote add origin ${JSON.stringify(remotePath)}`, {
+      cwd: tmpDir,
+    });
     execSync("git push -q origin main", { cwd: tmpDir });
-    execSync(`git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main`, { cwd: tmpDir });
+    execSync(
+      `git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main`,
+      { cwd: tmpDir },
+    );
     execSync("git checkout -q -b feature/some-work", { cwd: tmpDir });
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
     execSync(
-      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "base branch test" --slug base-branch-test --assignee test-dev --no-start`,
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "base branch test" --description "regression fixture" --slug base-branch-test --assignee test-dev --no-start`,
       { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
     );
 
@@ -7585,7 +7859,7 @@ print(len(entries))
     execSync("git config user.email test@example.com", { cwd: tmpDir });
     execSync("git config user.name Test", { cwd: tmpDir });
     execSync("git add -A", { cwd: tmpDir });
-    execSync('git commit -q -m init', { cwd: tmpDir });
+    execSync("git commit -q -m init", { cwd: tmpDir });
     // No origin remote configured at all.
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -7595,6 +7869,8 @@ print(len(entries))
         taskScriptPath,
         "create",
         "no remote test",
+        "--description",
+        "regression fixture",
         "--slug",
         "no-remote-test",
         "--assignee",
@@ -7629,7 +7905,7 @@ print(len(entries))
     execSync("git config user.email test@example.com", { cwd: tmpDir });
     execSync("git config user.name Test", { cwd: tmpDir });
     execSync("git add -A", { cwd: tmpDir });
-    execSync('git commit -q -m init', { cwd: tmpDir });
+    execSync("git commit -q -m init", { cwd: tmpDir });
     // No origin remote configured at all — would otherwise fall back with a warning.
 
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -7639,6 +7915,8 @@ print(len(entries))
         taskScriptPath,
         "create",
         "explicit base branch test",
+        "--description",
+        "regression fixture",
         "--slug",
         "explicit-base-branch-test",
         "--assignee",
@@ -7673,7 +7951,7 @@ print(len(entries))
     execSync("git config user.email test@example.com", { cwd: tmpDir });
     execSync("git config user.name Test", { cwd: tmpDir });
     execSync("git add -A", { cwd: tmpDir });
-    execSync('git commit -q -m init', { cwd: tmpDir });
+    execSync("git commit -q -m init", { cwd: tmpDir });
 
     const taskJsonPath = path.join(
       tmpDir,
@@ -7704,7 +7982,7 @@ print(len(entries))
     execSync("git config user.email test@example.com", { cwd: tmpDir });
     execSync("git config user.name Test", { cwd: tmpDir });
     execSync("git add -A", { cwd: tmpDir });
-    execSync('git commit -q -m init', { cwd: tmpDir });
+    execSync("git commit -q -m init", { cwd: tmpDir });
 
     const taskJsonPath = path.join(
       tmpDir,
@@ -7728,7 +8006,6 @@ print(len(entries))
       "recorded branch 'task/deleted-branch-does-not-exist' no longer exists locally",
     );
   });
-
 });
 
 describe("regression: backslash in markdown templates (beta.12)", () => {
@@ -8676,10 +8953,7 @@ describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
   beforeEach(() => {
     expect(commonTrellisConfig).toContain("def parse_simple_yaml(");
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-yaml-py-"));
-    fs.writeFileSync(
-      path.join(tmpDir, "yaml_parser.py"),
-      commonTrellisConfig,
-    );
+    fs.writeFileSync(path.join(tmpDir, "yaml_parser.py"), commonTrellisConfig);
   });
 
   afterEach(() => {
@@ -8944,11 +9218,11 @@ describe("regression: class-2 platforms use pull-based sub-agent context", () =>
       });
 
       it("hook config does not reference inject-subagent-context.py", () => {
-          const configPaths = [
-            ".qoder/settings.json",
-            ".gemini/settings.json",
-            ".github/copilot/hooks.json",
-            ".github/hooks/trellis.json",
+        const configPaths = [
+          ".qoder/settings.json",
+          ".gemini/settings.json",
+          ".github/copilot/hooks.json",
+          ".github/hooks/trellis.json",
         ];
         for (const p of configPaths) {
           const full = path.join(tmpDir, p);
@@ -9579,19 +9853,71 @@ describe("regression: sub-agent context injection fallback (0.5.3)", () => {
 
   // 6 markdown class-1 platforms × 2 agents = 12 markdown files.
   // Kiro is a JSON file (separate test below).
-  const CLASS1_MD_AGENT_FILES: { platform: string; rel: string; agent: "implement" | "check" }[] = [
-    { platform: "claude", rel: "packages/cli/src/templates/claude/agents/trellis-implement.md", agent: "implement" },
-    { platform: "claude", rel: "packages/cli/src/templates/claude/agents/trellis-check.md", agent: "check" },
-    { platform: "cursor", rel: "packages/cli/src/templates/cursor/agents/trellis-implement.md", agent: "implement" },
-    { platform: "cursor", rel: "packages/cli/src/templates/cursor/agents/trellis-check.md", agent: "check" },
-    { platform: "codebuddy", rel: "packages/cli/src/templates/codebuddy/agents/trellis-implement.md", agent: "implement" },
-    { platform: "codebuddy", rel: "packages/cli/src/templates/codebuddy/agents/trellis-check.md", agent: "check" },
-    { platform: "opencode", rel: "packages/cli/src/templates/opencode/agents/trellis-implement.md", agent: "implement" },
-    { platform: "opencode", rel: "packages/cli/src/templates/opencode/agents/trellis-check.md", agent: "check" },
-    { platform: "droid", rel: "packages/cli/src/templates/droid/droids/trellis-implement.md", agent: "implement" },
-    { platform: "droid", rel: "packages/cli/src/templates/droid/droids/trellis-check.md", agent: "check" },
-    { platform: "zcode", rel: "packages/cli/src/templates/zcode/agents/trellis-implement.md", agent: "implement" },
-    { platform: "zcode", rel: "packages/cli/src/templates/zcode/agents/trellis-check.md", agent: "check" },
+  const CLASS1_MD_AGENT_FILES: {
+    platform: string;
+    rel: string;
+    agent: "implement" | "check";
+  }[] = [
+    {
+      platform: "claude",
+      rel: "packages/cli/src/templates/claude/agents/trellis-implement.md",
+      agent: "implement",
+    },
+    {
+      platform: "claude",
+      rel: "packages/cli/src/templates/claude/agents/trellis-check.md",
+      agent: "check",
+    },
+    {
+      platform: "cursor",
+      rel: "packages/cli/src/templates/cursor/agents/trellis-implement.md",
+      agent: "implement",
+    },
+    {
+      platform: "cursor",
+      rel: "packages/cli/src/templates/cursor/agents/trellis-check.md",
+      agent: "check",
+    },
+    {
+      platform: "codebuddy",
+      rel: "packages/cli/src/templates/codebuddy/agents/trellis-implement.md",
+      agent: "implement",
+    },
+    {
+      platform: "codebuddy",
+      rel: "packages/cli/src/templates/codebuddy/agents/trellis-check.md",
+      agent: "check",
+    },
+    {
+      platform: "opencode",
+      rel: "packages/cli/src/templates/opencode/agents/trellis-implement.md",
+      agent: "implement",
+    },
+    {
+      platform: "opencode",
+      rel: "packages/cli/src/templates/opencode/agents/trellis-check.md",
+      agent: "check",
+    },
+    {
+      platform: "droid",
+      rel: "packages/cli/src/templates/droid/droids/trellis-implement.md",
+      agent: "implement",
+    },
+    {
+      platform: "droid",
+      rel: "packages/cli/src/templates/droid/droids/trellis-check.md",
+      agent: "check",
+    },
+    {
+      platform: "zcode",
+      rel: "packages/cli/src/templates/zcode/agents/trellis-implement.md",
+      agent: "implement",
+    },
+    {
+      platform: "zcode",
+      rel: "packages/cli/src/templates/zcode/agents/trellis-check.md",
+      agent: "check",
+    },
   ];
 
   const __dirnameFb = path.dirname(fileURLToPath(import.meta.url));
@@ -10395,10 +10721,7 @@ describe("regression: compat alias must not win platform detection", () => {
   // Observed on CodeBuddy IDE 4.10.4: `codebuddy_ae54840e….json` in
   // .trellis/.runtime/sessions/ next to `update-check-claude_ae54840e….marker`
   // — same session id, two different platform prefixes.
-  const HOOKS_WITH_DETECTION = [
-    "inject-workflow-state.py",
-    "session-start.py",
-  ];
+  const HOOKS_WITH_DETECTION = ["inject-workflow-state.py", "session-start.py"];
 
   for (const hook of HOOKS_WITH_DETECTION) {
     it(`${hook} checks CLAUDE_PROJECT_DIR after every vendor key`, () => {
@@ -10413,8 +10736,9 @@ describe("regression: compat alias must not win platform detection", () => {
       const block = /env_map\s*=\s*\{([\s\S]*?)\}/.exec(source);
       expect(block, `${hook}: no env_map found`).not.toBeNull();
 
-      const keys = [...(block?.[1] ?? "").matchAll(/"([A-Z_]+_PROJECT_DIR)"/g)]
-        .map((m) => m[1]);
+      const keys = [
+        ...(block?.[1] ?? "").matchAll(/"([A-Z_]+_PROJECT_DIR)"/g),
+      ].map((m) => m[1]);
       expect(keys.length).toBeGreaterThan(3);
       expect(
         keys.indexOf("CLAUDE_PROJECT_DIR"),
@@ -10508,7 +10832,10 @@ describe("regression: break-loop skill carries the artifact existence guard", ()
   });
 
   const RENDERED_SURFACES: { platform: string; file: string }[] = [
-    { platform: "claude-code", file: ".claude/skills/trellis-break-loop/SKILL.md" },
+    {
+      platform: "claude-code",
+      file: ".claude/skills/trellis-break-loop/SKILL.md",
+    },
     { platform: "codex", file: ".agents/skills/trellis-break-loop/SKILL.md" },
     { platform: "copilot", file: ".github/skills/trellis-break-loop/SKILL.md" },
   ];
@@ -10524,7 +10851,10 @@ describe("regression: break-loop skill carries the artifact existence guard", ()
   }
 
   const DOGFOOD_MIRRORS: { platform: string; file: string }[] = [
-    { platform: "claude-code", file: ".claude/skills/trellis-break-loop/SKILL.md" },
+    {
+      platform: "claude-code",
+      file: ".claude/skills/trellis-break-loop/SKILL.md",
+    },
     { platform: "codex", file: ".agents/skills/trellis-break-loop/SKILL.md" },
   ];
 
@@ -10680,7 +11010,13 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
       `hooks:\n  after_create:\n    - ${pyCmd} hook_fail.py\n`,
     );
 
-    const { status, stderr } = runTask(["create", "Hook probe", "--no-start"]);
+    const { status, stderr } = runTask([
+      "create",
+      "Hook probe",
+      "--description",
+      "regression fixture",
+      "--no-start",
+    ]);
 
     // Fail-open: the task command itself still succeeds.
     expect(status).toBe(0);
@@ -10694,7 +11030,13 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
     // never runs. Silence here is indistinguishable from a working hook.
     writeFile(".trellis/config.yaml", "hooks:\n  after_create: echo hi\n");
 
-    const { status, stderr } = runTask(["create", "Scalar hook", "--no-start"]);
+    const { status, stderr } = runTask([
+      "create",
+      "Scalar hook",
+      "--description",
+      "regression fixture",
+      "--no-start",
+    ]);
 
     expect(status).toBe(0);
     expect(stderr).toContain("ignoring hook `after_create`");
@@ -10707,7 +11049,13 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
       `hooks:\n  after_create:\n    - ${pyCmd} -c "open('hook-ran.txt','w').write('yes')"\n`,
     );
 
-    const { status, stderr } = runTask(["create", "Good hook", "--no-start"]);
+    const { status, stderr } = runTask([
+      "create",
+      "Good hook",
+      "--description",
+      "regression fixture",
+      "--no-start",
+    ]);
 
     expect(status).toBe(0);
     expect(fs.existsSync(path.join(tmpDir, "hook-ran.txt"))).toBe(true);
@@ -10766,12 +11114,9 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
   it("[config] a list of mappings does not hoist keys into the top-level config", () => {
     writeFile(
       ".trellis/config.yaml",
-      [
-        "packages:",
-        "  - name: cli",
-        "    default_package: hijacked",
-        "",
-      ].join("\n"),
+      ["packages:", "  - name: cli", "    default_package: hijacked", ""].join(
+        "\n",
+      ),
     );
     const { stdout, stderr } = runProbe([
       "import json",
@@ -10795,7 +11140,13 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
     ).join("\n");
     writeFile(".trellis/config.yaml", `${deep}\n`);
 
-    const { status, stdout } = runTask(["create", "Deep config", "--no-start"]);
+    const { status, stdout } = runTask([
+      "create",
+      "Deep config",
+      "--description",
+      "regression fixture",
+      "--no-start",
+    ]);
     expect(status).toBe(0);
     expect(stdout).toContain(".trellis/tasks/");
 
@@ -10820,5 +11171,192 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
     // trellis_config.py must stay loadable as a single file (hooks copy it
     // alone), so it may not import from the package.
     expect(commonTrellisConfig).not.toContain("from .");
+  });
+});
+
+// =============================================================================
+// task.py create refuses empty title / description
+// =============================================================================
+// A task created with an empty title or description passed `create` and was
+// only refused hours later, at pre-archive validation. Both are now rejected
+// before anything is written, and the emptiness predicate is the union of
+// Python's str.strip() set and JS's String.trim() set so the two validators
+// cannot disagree about U+0085 (Python-only) or U+FEFF (JS-only).
+// =============================================================================
+
+describe("regression: task.py create rejects empty title and description", () => {
+  const pyCmd = process.platform === "win32" ? "python" : "python3";
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-create-empty-"));
+    for (const [rel, content] of getAllScripts()) {
+      const abs = path.join(tmpDir, ".trellis", "scripts", rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content, "utf-8");
+    }
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-08-09T00:00:00\n",
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function runTask(args: string[]): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
+    const proc = spawnSync(
+      pyCmd,
+      [path.join(tmpDir, ".trellis", "scripts", "task.py"), ...args],
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    return {
+      status: proc.status,
+      stdout: proc.stdout ?? "",
+      stderr: proc.stderr ?? "",
+    };
+  }
+
+  /**
+   * Task directories that exist right now. `.trellis/tasks` itself is created
+   * lazily (with an `archive/` sibling) by the first create that gets past
+   * validation, so both are filtered out here.
+   */
+  function taskDirs(): string[] {
+    const dir = path.join(tmpDir, ".trellis", "tasks");
+    if (!fs.existsSync(dir)) return [];
+    return fs
+      .readdirSync(dir)
+      .filter((d) => d !== "archive")
+      .sort();
+  }
+
+  it("[empty-metadata] a missing --description fails and creates nothing", () => {
+    const r = runTask([
+      "create",
+      "No description",
+      "--slug",
+      "no-desc",
+      "--no-start",
+    ]);
+
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("--description is required");
+    expect(r.stderr).toContain("refused at archive");
+    // Validation runs before ensure_tasks_dir: not even .trellis/tasks appears.
+    expect(fs.existsSync(path.join(tmpDir, ".trellis", "tasks"))).toBe(false);
+  });
+
+  it("[empty-metadata] whitespace-only --description and title fail the same way", () => {
+    const blankDescription = runTask([
+      "create",
+      "Real title",
+      "--description",
+      "   ",
+      "--slug",
+      "blank-desc",
+      "--no-start",
+    ]);
+    expect(blankDescription.status).not.toBe(0);
+    expect(blankDescription.stderr).toContain("--description is required");
+    expect(blankDescription.stderr).toContain("refused at archive");
+
+    // `--slug` bypasses slug derivation, which is what used to let a
+    // whitespace-only title through.
+    const blankTitle = runTask([
+      "create",
+      "   ",
+      "--description",
+      "real description",
+      "--slug",
+      "blank-title",
+      "--no-start",
+    ]);
+    expect(blankTitle.status).not.toBe(0);
+    expect(blankTitle.stderr).toContain("title is required");
+    expect(blankTitle.stderr).toContain("refused at archive");
+
+    expect(taskDirs()).toEqual([]);
+  });
+
+  it("[empty-metadata] U+FEFF and U+0085 are empty on both sides of the predicate", () => {
+    // U+0085 is whitespace to Python's strip() but not to JS's trim(); U+FEFF
+    // is whitespace to JS's trim() but not to Python's strip(). The shipped
+    // predicate strips both, so neither can produce a record that one
+    // validator calls non-empty and the other calls empty.
+    for (const [name, blank] of [
+      ["nel", "\u0085"],
+      ["bom", "\ufeff"],
+      ["mixed", " \u0085\ufeff "],
+    ] as const) {
+      const r = runTask([
+        "create",
+        "Real title",
+        "--description",
+        blank,
+        "--slug",
+        `desc-${name}`,
+        "--no-start",
+      ]);
+      expect(r.status, `${name} description`).not.toBe(0);
+      expect(r.stderr).toContain("--description is required");
+
+      const t = runTask([
+        "create",
+        blank,
+        "--description",
+        "real description",
+        "--slug",
+        `title-${name}`,
+        "--no-start",
+      ]);
+      expect(t.status, `${name} title`).not.toBe(0);
+      expect(t.stderr).toContain("title is required");
+    }
+
+    expect(taskDirs()).toEqual([]);
+  });
+
+  it("[empty-metadata] an accepted description stays non-empty for a JS validator", () => {
+    const r = runTask([
+      "create",
+      "\ufeff Real title ",
+      "--description",
+      " Real description \ufeff",
+      "--slug",
+      "surrounded",
+      "--no-start",
+    ]);
+
+    expect(r.status, r.stderr).toBe(0);
+    const created = taskDirs();
+    expect(created).toHaveLength(1);
+    const taskJson = JSON.parse(
+      fs.readFileSync(
+        path.join(tmpDir, ".trellis", "tasks", created[0], "task.json"),
+        "utf-8",
+      ),
+    ) as { title: string; description: string };
+    expect(taskJson.description).toBe("Real description");
+    // The property pre-archive validation depends on: still non-empty after
+    // String.trim(), which strips the U+FEFF that Python's strip() keeps.
+    expect(taskJson.description.trim()).not.toBe("");
+    expect(taskJson.title.trim()).not.toBe("");
+  });
+
+  it("[empty-metadata] --help documents title and description as required", () => {
+    const help = spawnSync(
+      pyCmd,
+      [path.join(tmpDir, ".trellis", "scripts", "task.py"), "create", "--help"],
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    expect(help.status).toBe(0);
+    expect(help.stdout).toContain("Task title (required, non-empty)");
+    expect(help.stdout).toContain("Task description (required, non-empty");
   });
 });

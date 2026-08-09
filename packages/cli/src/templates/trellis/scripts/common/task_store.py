@@ -63,6 +63,33 @@ from .task_utils import (
 # Helper Functions
 # =============================================================================
 
+# Characters stripped before deciding whether a title / description is empty.
+# This is deliberately the *union* of Python's str.strip() default set and
+# ECMAScript's String.trim() set, because the two disagree: Python strips
+# U+0085 (NEL) and U+001C-U+001F, which JS keeps; JS strips U+FEFF (BOM),
+# which Python keeps. Stripping the union means anything create accepts is
+# still non-empty after either side trims it, so a record cannot pass here and
+# then be refused as empty by a JS pre-archive validator.
+BLANK_CHARS = (
+    "\t\n\v\f\r"                              # U+0009-U+000D
+    "\x1c\x1d\x1e\x1f"                        # U+001C-U+001F separators (Python only)
+    " "                                       # U+0020 space
+    "\x85"                                    # U+0085 next line (Python only)
+    "\xa0"                                    # U+00A0 no-break space
+    "\u1680"                                  # ogham space mark
+    "\u2000\u2001\u2002\u2003\u2004\u2005"    # en/em quad, en/em/three/four-per-em
+    "\u2006\u2007\u2008\u2009\u200a"          # six-per-em .. hair space
+    "\u2028\u2029"                            # line / paragraph separator
+    "\u202f\u205f\u3000"                      # narrow nbsp, math space, ideographic space
+    "\ufeff"                                  # zero-width no-break space / BOM (JS only)
+)
+
+
+def strip_blank(value: str | None) -> str:
+    """Return ``value`` with :data:`BLANK_CHARS` trimmed from both ends."""
+    return (value or "").strip(BLANK_CHARS)
+
+
 def _slugify(title: str) -> str:
     """Convert title to slug (only works with ASCII)."""
     result = title.lower()
@@ -252,8 +279,27 @@ def cmd_create(args: argparse.Namespace) -> int:
     """Create a new task."""
     repo_root = get_repo_root()
 
-    if not args.title:
+    # Title and description are checked first, before ensure_tasks_dir and any
+    # other write, so a rejected create leaves the tree untouched. Both are
+    # required non-empty by pre-archive validation; catching that here costs
+    # one retyped command instead of blocking a PR hours later.
+    if not strip_blank(args.title):
         print(colored("Error: title is required", Colors.RED), file=sys.stderr)
+        print(
+            'Pass a non-empty <title> (whitespace only does not count): a task '
+            "with an empty title is refused at archive.",
+            file=sys.stderr,
+        )
+        return 1
+
+    description = strip_blank(getattr(args, "description", None))
+    if not description:
+        print(colored("Error: --description is required", Colors.RED), file=sys.stderr)
+        print(
+            'Pass --description "<what this task delivers>" (whitespace only does '
+            "not count): a task with an empty description is refused at archive.",
+            file=sys.stderr,
+        )
         return 1
 
     # Validate --meta (CLI source: fail-fast, before any directory is created)
@@ -426,16 +472,6 @@ def cmd_create(args: argparse.Namespace) -> int:
                 ),
                 file=sys.stderr,
             )
-
-    description = (args.description or "").strip()
-    if not description.strip():
-        print(
-            colored(
-                "warning: task description is empty; pass --description to improve search and later audits.",
-                Colors.YELLOW,
-            ),
-            file=sys.stderr,
-        )
 
     task_data = {
         "id": slug,
