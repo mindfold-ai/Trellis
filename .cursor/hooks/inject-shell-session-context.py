@@ -65,6 +65,37 @@ def _string_value(value: Any) -> str | None:
     return None
 
 
+def _resolve_trellis_root(hook_input: dict[str, Any]) -> Path | None:
+    """Locate the project root, trying the payload cwd and then our own.
+
+    Hosts disagree about what `cwd` means. CodeBuddy IDE 4.10.4 sends `"/"` for
+    every PreToolUse event, so trusting the payload alone finds no `.trellis`
+    and the bridge silently does nothing — the hook is invoked, writes no
+    ticket, and `task.py start` degrades. Observed with a wildcard probe:
+
+        {"cwd": "/", "tool_name": "Bash", "tool_input": {"command": "ls …"}}
+
+    The hook's own cwd is reliable where the payload is not: hosts launch it
+    from the project root, which is why a relative `command` in settings.json
+    resolves at all. Try the payload first (it is right on hosts that set it,
+    and survives a host that runs hooks from elsewhere), then fall back.
+    """
+    candidates: list[Path] = []
+    payload_cwd = _string_value(hook_input.get("cwd"))
+    if payload_cwd:
+        candidates.append(Path(payload_cwd))
+    try:
+        candidates.append(Path(os.getcwd()))
+    except OSError:
+        pass
+
+    for candidate in candidates:
+        root = _find_trellis_root(candidate)
+        if root is not None:
+            return root
+    return None
+
+
 def _find_trellis_root(start: Path) -> Path | None:
     current = start.resolve()
     while True:
@@ -198,7 +229,15 @@ def _write_ticket(
         "conversation_id": _string_value(hook_input.get("conversation_id")),
         "session_id": _string_value(hook_input.get("session_id")),
         "generation_id": _string_value(hook_input.get("generation_id")),
-        "cwd": _string_value(hook_input.get("cwd")),
+        # The resolved project root, not the payload's cwd. The consumer
+        # rejects a ticket whose cwd is outside the repo, and CodeBuddy IDE
+        # 4.10.4 reports "/" for every PreToolUse event — a ticket carrying
+        # that is written correctly and then discarded on arrival. Recording
+        # the root we actually resolved keeps the containment check meaningful
+        # without trusting a field the host may not populate.
+        "cwd": str(root),
+        # Kept separately so a wrong host cwd stays visible when debugging.
+        "host_cwd": _string_value(hook_input.get("cwd")),
         "command": command,
         "subcommands": subcommands,
         "created_at_epoch": now,
@@ -226,8 +265,7 @@ def main() -> int:
     if not subcommands:
         return 0
 
-    cwd = Path(_string_value(hook_input.get("cwd")) or os.getcwd())
-    root = _find_trellis_root(cwd)
+    root = _resolve_trellis_root(hook_input)
     if root is None:
         return 0
 
