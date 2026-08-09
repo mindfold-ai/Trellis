@@ -15,6 +15,7 @@ Usage:
     python3 task.py set-base-branch <dir> <branch>  # Set PR target branch
     python3 task.py set-scope <dir> <scope>     # Set scope for PR title
     python3 task.py set-meta <dir> <key> <value>  # Set a task metadata key
+    python3 task.py rename <dir> <new-slug> [--dry-run]  # Rename task + references
     python3 task.py archive <task-dir>          # Archive completed task
     python3 task.py list                        # List active tasks
     python3 task.py list-archive [month]        # List archived tasks
@@ -56,6 +57,7 @@ from common.tasks import iter_active_tasks, children_progress
 # Import command handlers from split modules (also re-exports for plan.py compatibility)
 from common.task_store import (
     cmd_create,
+    cmd_rename,
     cmd_archive,
     cmd_set_branch,
     cmd_set_base_branch,
@@ -439,6 +441,7 @@ Usage:
   python3 task.py set-base-branch <dir> <branch>     Set PR target branch
   python3 task.py set-scope <dir> <scope>            Set scope for PR title
   python3 task.py set-meta <dir> <key> <value>       Set/overwrite a task metadata key
+  python3 task.py rename <dir> <new-slug>            Rename task, identity fields and references
   python3 task.py archive <task-dir>                 Archive completed task
   python3 task.py add-subtask <parent> <child>       Link child task to parent
   python3 task.py remove-subtask <parent> <child>    Unlink child from parent
@@ -447,6 +450,9 @@ Usage:
 
 Monorepo options:
   --package <pkg>      Package name (validated against config.yaml packages)
+
+Rename options:
+  --dry-run            Print the change set without writing anything
 
 List options:
   --mine, -m           Show only tasks assigned to current developer
@@ -463,6 +469,8 @@ Examples:
   python3 task.py start .trellis/tasks/01-21-add-login
   python3 task.py current --source
   python3 task.py finish
+  python3 task.py rename add-login add-sso --dry-run  # Preview the change set
+  python3 task.py rename add-login add-sso
   python3 task.py archive add-login
   python3 task.py add-subtask parent-task child-task  # Link existing tasks
   python3 task.py remove-subtask parent-task child-task
@@ -597,6 +605,16 @@ def main() -> int:
     p_setmeta.add_argument("key", help="Metadata key")
     p_setmeta.add_argument("value", help="Metadata value")
 
+    # rename
+    p_rename = subparsers.add_parser("rename", help="Rename task and its references")
+    p_rename.add_argument("name", help="Task directory or name")
+    p_rename.add_argument("new_slug", help="New slug without the MM-DD date prefix")
+    p_rename.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the change set without writing anything",
+    )
+
     # archive
     p_archive = subparsers.add_parser("archive", help="Archive task")
     p_archive.add_argument("name", help="Task directory or name")
@@ -640,6 +658,7 @@ def main() -> int:
         "set-base-branch": cmd_set_base_branch,
         "set-scope": cmd_set_scope,
         "set-meta": cmd_set_meta,
+        "rename": cmd_rename,
         "archive": cmd_archive,
         "add-subtask": cmd_add_subtask,
         "remove-subtask": cmd_remove_subtask,

@@ -665,6 +665,10 @@ a `.current-task` fallback or a Python hook directory.
 | Any task-dir argument that traverses out, is an outside absolute path, or is a symlink to outside the tasks dir | `resolve_task_dir` prints "refusing to use ..." naming the resolved path and returns `None`; the command exits 1 without reading or writing anything |
 | A bare task name matching two or more `-<name>` suffixes | Every match is listed, the command exits 1; no task is picked |
 | `create --slug` or `add-context <file>` containing `/`, `\`, or `..` | Rejected with exit 1 before any file is created |
+| `rename` onto an existing active name, an archived name, or the task's current name | Names the conflicting location and exits 1; nothing under `.trellis/tasks/` is touched |
+| `rename` of an archived task (a path under `archive/<YYYY-MM>/`) | Refuses with "is not an active task under ..." and exit 1; archived tasks keep no maintained back-references |
+| `rename <new-slug>` carrying a date prefix | The task's own prefix is normalized away with a warning; a *different* prefix is an error (rename keeps the original creation date, never today's) |
+| `rename` when any write fails | The task directory is still at its old name and is named on stderr; every completed step is idempotent, so re-running the identical command finishes the rename |
 
 ##### 5. Good/Base/Bad Cases
 
