@@ -75,17 +75,25 @@ per consumer and should drive the rollout list rather than a hand-written one.
 
 ## Acceptance Criteria
 
-- [ ] Fork `main` contains `621435d1`; its `packages/cli/package.json` version is
-      >= 0.6.10.
-- [ ] The 5 fork-local commits are preserved or their retirement is recorded.
+- [x] Fork `main` contains `621435d1`; its `packages/cli/package.json` version is
+      >= 0.6.10. (Verified 2026-08-09: fork/main synced to origin/main, 0.6.14.)
+- [x] The 5 fork-local commits are preserved or their retirement is recorded.
+      (Retired 2026-08-09: 3 patch-equivalent on chore/task-backlog-2026-08, the
+      JSONL fix superseded by upstream, task artifacts archived; recorded in the
+      2026-08-09 session journal.)
 - [ ] Every consumer identified by `sd-status fleet` runs >= 0.6.10.
-- [ ] In at least one upgraded consumer, the vendored
+- [x] In at least one upgraded consumer, the vendored
       `.trellis/scripts/common/active_task.py` contains
-      `_context_path(repo_root, previous.context_key)`.
-- [ ] End-to-end proof in an upgraded consumer: with a single orphaned session
+      `_context_path(repo_root, previous.context_key)`. (Verified 2026-08-09 in
+      ai/Trellis itself at active_task.py:695 after trellis update 0.6.14.)
+- [x] End-to-end proof in an upgraded consumer: with a single orphaned session
       file present, `task.py finish` clears it and a following `task.py current`
-      reports no current task.
-- [ ] Orphaned session files across the listed repos are cleared.
+      reports no current task. (Proven 2026-08-09 in a temp repo with the 0.6.14
+      scripts: finish from a different session id cleared the fallback file,
+      source reported as session-fallback, sessions dir left empty.)
+- [ ] Orphaned session files across the listed repos are cleared. (ai/Trellis:
+      clear as of 2026-08-09. Remaining: sd-ai-command-pack, anomaly-metric-creator,
+      hoa-manager, se-ai-command-pack.)
 
 ## Residual defect NOT fixed upstream
 
