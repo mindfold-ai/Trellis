@@ -742,6 +742,250 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
   });
 });
 
+describe("regression: task lifecycle overwrite and collision safety", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  const now = new Date();
+  const datePrefix = `${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const yearMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+
+  function runTask(
+    ...args: string[]
+  ): { status: number | null; stdout: string; stderr: string } {
+    const result = spawnSync(
+      pythonCmd,
+      [path.join(".trellis", "scripts", "task.py"), ...args],
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    };
+  }
+
+  function taskDir(...segments: string[]): string {
+    return path.join(tmpDir, ".trellis", "tasks", ...segments);
+  }
+
+  function readTaskJson(...segments: string[]): Record<string, unknown> {
+    return JSON.parse(
+      fs.readFileSync(path.join(taskDir(...segments), "task.json"), "utf-8"),
+    ) as Record<string, unknown>;
+  }
+
+  function writeTaskJson(name: string, data: Record<string, unknown>): void {
+    fs.writeFileSync(
+      path.join(taskDir(name), "task.json"),
+      JSON.stringify(data, null, 2) + "\n",
+    );
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-task-collision-"));
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", ".developer"),
+      "name=tester\n",
+    );
+    fs.mkdirSync(taskDir("archive"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("[audit] same-day slug reuse fails and preserves the existing task.json", () => {
+    expect(runTask("create", "First", "--slug", "reuse", "--no-start").status).toBe(0);
+
+    const dirName = `${datePrefix}-reuse`;
+    const live = {
+      ...readTaskJson(dirName),
+      status: "in_progress",
+      branch: "feat/live",
+      parent: "some-parent",
+      children: ["some-child"],
+      meta: { linear: "TRE-1" },
+    };
+    writeTaskJson(dirName, live);
+
+    const r = runTask("create", "Second", "--slug", "reuse", "--no-start");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("Task already exists");
+    expect(r.stderr).toContain("--force");
+    expect(readTaskJson(dirName)).toEqual(live);
+  });
+
+  it("[audit] create --force overwrites an existing task.json", () => {
+    expect(runTask("create", "First", "--slug", "reuse", "--no-start").status).toBe(0);
+    const dirName = `${datePrefix}-reuse`;
+    writeTaskJson(dirName, { ...readTaskJson(dirName), status: "in_progress" });
+
+    const r = runTask("create", "Second", "--slug", "reuse", "--no-start", "--force");
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stderr).toContain("--force");
+
+    const after = readTaskJson(dirName);
+    expect(after.title).toBe("Second");
+    expect(after.status).toBe("planning");
+  });
+
+  it("[audit] archive into an existing destination fails, leaving both directories intact", () => {
+    expect(runTask("create", "Kid", "--slug", "kid", "--no-start").status).toBe(0);
+    const dirName = `${datePrefix}-kid`;
+
+    const destDir = taskDir("archive", yearMonth, dirName);
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(destDir, "task.json"),
+      JSON.stringify({ id: "previously-archived" }),
+    );
+
+    const r = runTask("archive", dirName, "--no-commit");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("archive destination already exists");
+    // Both sides of the collision must be named, or the user cannot tell
+    // which archived task to move out of the way.
+    expect(r.stderr).toContain(`archive/${yearMonth}/${dirName}`);
+    expect(r.stderr).toContain(`Task remains at: .trellis/tasks/${dirName}`);
+
+    // No nesting, no partial state: the live task is untouched (not even
+    // flipped to completed) and the archived copy still holds its own file.
+    expect(fs.existsSync(path.join(destDir, dirName))).toBe(false);
+    expect(readTaskJson(dirName).status).toBe("planning");
+    expect(readTaskJson(dirName).completedAt).toBeNull();
+    expect(
+      JSON.parse(fs.readFileSync(path.join(destDir, "task.json"), "utf-8")).id,
+    ).toBe("previously-archived");
+  });
+
+  it("[audit] archive still succeeds when the destination is free", () => {
+    expect(runTask("create", "Kid", "--slug", "kid", "--no-start").status).toBe(0);
+    const dirName = `${datePrefix}-kid`;
+
+    const r = runTask("archive", dirName, "--no-commit");
+    expect(r.status, r.stderr).toBe(0);
+    expect(fs.existsSync(taskDir(dirName))).toBe(false);
+    expect(
+      fs.existsSync(path.join(taskDir("archive", yearMonth, dirName), "task.json")),
+    ).toBe(true);
+  });
+
+  it("[audit] create --parent on a missing task fails and creates nothing", () => {
+    const r = runTask(
+      "create",
+      "Orphan",
+      "--slug",
+      "orphan",
+      "--no-start",
+      "--parent",
+      "no-such-task",
+    );
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("Parent task not resolved");
+    expect(r.stderr).toContain("No task was created");
+    expect(fs.readdirSync(path.join(tmpDir, ".trellis", "tasks"))).toEqual([
+      "archive",
+    ]);
+  });
+
+  it("[audit] create --parent pointing at a dir without task.json fails and creates nothing", () => {
+    fs.mkdirSync(taskDir(`${datePrefix}-bare`), { recursive: true });
+
+    const r = runTask(
+      "create",
+      "Orphan",
+      "--slug",
+      "orphan",
+      "--no-start",
+      "--parent",
+      `${datePrefix}-bare`,
+    );
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("Parent task.json not found");
+    expect(fs.existsSync(taskDir(`${datePrefix}-orphan`))).toBe(false);
+  });
+
+  it("[audit] create --parent still links a valid parent on both sides", () => {
+    expect(runTask("create", "Mum", "--slug", "mum", "--no-start").status).toBe(0);
+    const parentName = `${datePrefix}-mum`;
+    const childName = `${datePrefix}-kid`;
+
+    const r = runTask(
+      "create",
+      "Kid",
+      "--slug",
+      "kid",
+      "--no-start",
+      "--parent",
+      parentName,
+    );
+    expect(r.status, r.stderr).toBe(0);
+    expect(readTaskJson(childName).parent).toBe(parentName);
+    expect(readTaskJson(parentName).children).toEqual([childName]);
+  });
+
+  // A read-only child directory makes write_json's mkstemp fail. root ignores
+  // the mode bits, so the failure can only be provoked as a normal user.
+  const canProvokeWriteFailure =
+    process.platform !== "win32" && process.getuid?.() !== 0;
+
+  it.skipIf(!canProvokeWriteFailure)(
+    "[audit] add-subtask reports which side was written when the second write fails",
+    () => {
+      expect(runTask("create", "Mum", "--slug", "mum", "--no-start").status).toBe(0);
+      expect(runTask("create", "Kid", "--slug", "kid", "--no-start").status).toBe(0);
+      const parentName = `${datePrefix}-mum`;
+      const childName = `${datePrefix}-kid`;
+
+      fs.chmodSync(taskDir(childName), 0o555);
+      try {
+        const r = runTask("add-subtask", parentName, childName);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain("Failed to write child task.json");
+        expect(r.stderr).toContain("half-written");
+        // The message must match reality: the parent side did land.
+        expect(readTaskJson(parentName).children).toEqual([childName]);
+      } finally {
+        fs.chmodSync(taskDir(childName), 0o755);
+      }
+    },
+  );
+
+  it.skipIf(!canProvokeWriteFailure)(
+    "[audit] remove-subtask reports which side was written when the second write fails",
+    () => {
+      expect(runTask("create", "Mum", "--slug", "mum", "--no-start").status).toBe(0);
+      const parentName = `${datePrefix}-mum`;
+      const childName = `${datePrefix}-kid`;
+      expect(
+        runTask("create", "Kid", "--slug", "kid", "--no-start", "--parent", parentName)
+          .status,
+      ).toBe(0);
+
+      fs.chmodSync(taskDir(childName), 0o555);
+      try {
+        const r = runTask("remove-subtask", parentName, childName);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain("Failed to write child task.json");
+        expect(r.stderr).toContain("half-written");
+        // The message must match reality: the parent side did land, so the
+        // child is the one still holding a stale parent reference.
+        expect(readTaskJson(parentName).children).toEqual([]);
+        expect(readTaskJson(childName).parent).toBe(parentName);
+      } finally {
+        fs.chmodSync(taskDir(childName), 0o755);
+      }
+    },
+  );
+});
+
 describe("regression: is_within_tasks_dir archive boundary (issue #428)", () => {
   let tmpDir: string;
   const pythonCmd = process.platform === "win32" ? "python" : "python3";

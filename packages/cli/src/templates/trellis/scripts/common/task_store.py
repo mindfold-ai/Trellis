@@ -50,6 +50,7 @@ from .safe_commit import (
     safe_git_add,
 )
 from .task_utils import (
+    archive_destination_for,
     archive_task_complete,
     find_task_by_name,
     is_within_tasks_dir,
@@ -316,6 +317,28 @@ def cmd_create(args: argparse.Namespace) -> int:
                 print(f"Pass only the slug body, e.g. --slug {m.group(3)}", file=sys.stderr)
                 return 1
 
+    # Resolve --parent before anything is created. An explicit --parent that
+    # cannot be linked is a failed request, not a warning: creating the task
+    # anyway leaves a half-specified relationship that reads as success.
+    parent_dir: Path | None = None
+    parent_data: dict | None = None
+    if args.parent:
+        parent_dir = resolve_task_dir(args.parent, repo_root)
+        if parent_dir is None:
+            print(colored(f"Error: Parent task not resolved: {args.parent}", Colors.RED), file=sys.stderr)
+            print("No task was created. Pass an existing task directory to --parent.", file=sys.stderr)
+            return 1
+        parent_json_path = parent_dir / FILE_TASK_JSON
+        if not parent_json_path.is_file():
+            print(colored(f"Error: Parent task.json not found: {args.parent}", Colors.RED), file=sys.stderr)
+            print("No task was created. Pass an existing task directory to --parent.", file=sys.stderr)
+            return 1
+        parent_data = read_json(parent_json_path)
+        if not parent_data:
+            print(colored(f"Error: Could not read parent task.json: {parent_json_path}", Colors.RED), file=sys.stderr)
+            print("No task was created. Fix the parent task.json, then retry.", file=sys.stderr)
+            return 1
+
     dir_name = f"{date_prefix}-{slug}"
     task_dir = tasks_dir / dir_name
     task_json_path = task_dir / FILE_TASK_JSON
@@ -327,8 +350,26 @@ def cmd_create(args: argparse.Namespace) -> int:
         print("Use a new slug if you intend to create a new task.", file=sys.stderr)
         return 1
 
+    # Reusing a slug on the same day is an ordinary accident, and continuing
+    # would rewrite the existing task.json below — resetting status, children,
+    # parent, branch and meta, which nothing else can reconstruct. Fail like
+    # the archived-name collision above unless the caller asks for it.
     if task_dir.exists():
-        print(colored(f"Warning: Task directory already exists: {dir_name}", Colors.YELLOW), file=sys.stderr)
+        if not getattr(args, "force", False):
+            print(colored(f"Error: Task already exists: {dir_name}", Colors.RED), file=sys.stderr)
+            print(f"Existing task at: {_repo_relative_path(task_dir, repo_root)}", file=sys.stderr)
+            print(
+                "Use a different --slug, or pass --force to overwrite its task.json.",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            colored(
+                f"Warning: --force: overwriting task.json in existing task: {dir_name}",
+                Colors.YELLOW,
+            ),
+            file=sys.stderr,
+        )
     else:
         task_dir.mkdir(parents=True)
 
@@ -419,29 +460,23 @@ def cmd_create(args: argparse.Namespace) -> int:
                 _write_seed_jsonl(jsonl_path)
         seeded_jsonl = True
 
-    # Handle --parent: establish bidirectional link
-    if args.parent:
-        parent_dir = resolve_task_dir(args.parent, repo_root)
-        if parent_dir is None:
-            print(colored(f"Warning: Parent task not resolved: {args.parent}", Colors.YELLOW), file=sys.stderr)
-        elif not (parent_dir / FILE_TASK_JSON).is_file():
-            print(colored(f"Warning: Parent task.json not found: {args.parent}", Colors.YELLOW), file=sys.stderr)
-        else:
-            parent_json_path = parent_dir / FILE_TASK_JSON
-            parent_data = read_json(parent_json_path)
-            if parent_data:
-                # Add child to parent's children list
-                parent_children = parent_data.get("children", [])
-                if dir_name not in parent_children:
-                    parent_children.append(dir_name)
-                    parent_data["children"] = parent_children
-                    write_json(parent_json_path, parent_data)
+    # Establish the bidirectional link. Both sides were validated above, so a
+    # failure here is a write failure, not a bad argument.
+    if parent_dir is not None and parent_data is not None:
+        parent_json_path = parent_dir / FILE_TASK_JSON
 
-                # Set parent in child's task.json
-                task_data["parent"] = parent_dir.name
-                write_json(task_json_path, task_data)
+        # Add child to parent's children list
+        parent_children = parent_data.get("children", [])
+        if dir_name not in parent_children:
+            parent_children.append(dir_name)
+            parent_data["children"] = parent_children
+            write_json(parent_json_path, parent_data)
 
-                print(colored(f"Linked as child of: {parent_dir.name}", Colors.GREEN), file=sys.stderr)
+        # Set parent in child's task.json
+        task_data["parent"] = parent_dir.name
+        write_json(task_json_path, task_data)
+
+        print(colored(f"Linked as child of: {parent_dir.name}", Colors.GREEN), file=sys.stderr)
 
     # Auto-activate the new task so the per-turn breadcrumb fires planning
     # state. Best-effort: gracefully degrade if no session identity (CLI run
@@ -565,6 +600,21 @@ def cmd_archive(args: argparse.Namespace) -> int:
             f"Error: refusing to archive '{task_name}': "
             f"{task_dir} is not a task under {tasks_dir}",
             Colors.RED), file=sys.stderr)
+        return 1
+
+    # Check the destination before anything below mutates task state. The
+    # mover refuses a collision too, but by then this command has already
+    # marked the task completed, re-parented its children and cleared the
+    # sessions pointing at it — all of which would have to be undone by hand.
+    archive_dest_check = archive_destination_for(task_dir)
+    if archive_dest_check.exists():
+        print(colored(
+            f"Error: refusing to archive '{task_name}': "
+            f"archive destination already exists: "
+            f"{_repo_relative_path(archive_dest_check, repo_root)}",
+            Colors.RED), file=sys.stderr)
+        print(f"Task remains at: {_repo_relative_path(task_dir, repo_root)}", file=sys.stderr)
+        print("Move or rename the existing archived task, then retry.", file=sys.stderr)
         return 1
 
     dir_name = task_dir.name
@@ -781,9 +831,21 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
     # Set parent in child's task.json
     child_data["parent"] = parent_dir.name
 
-    # Write both
-    write_json(parent_json_path, parent_data)
-    write_json(child_json_path, child_data)
+    # Write both. A link is two files; if the second write fails silently the
+    # two sides disagree with no error, so check each and name the side that
+    # did land so the user knows what to undo.
+    if not write_json(parent_json_path, parent_data):
+        print(colored(f"Error: Failed to write parent task.json: {parent_json_path}", Colors.RED), file=sys.stderr)
+        print("No link was written.", file=sys.stderr)
+        return 1
+    if not write_json(child_json_path, child_data):
+        print(colored(f"Error: Failed to write child task.json: {child_json_path}", Colors.RED), file=sys.stderr)
+        print(
+            f"Link is half-written: {parent_json_path} now lists "
+            f"'{child_dir.name}' as a child, but the child does not record the parent.",
+            file=sys.stderr,
+        )
+        return 1
 
     print(colored(f"Linked: {child_dir.name} -> {parent_dir.name}", Colors.GREEN), file=sys.stderr)
     return 0
@@ -830,9 +892,20 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
     # Clear parent in child's task.json
     child_data["parent"] = None
 
-    # Write both
-    write_json(parent_json_path, parent_data)
-    write_json(child_json_path, child_data)
+    # Write both — see cmd_add_subtask: an unchecked second write leaves the
+    # two sides disagreeing with no error.
+    if not write_json(parent_json_path, parent_data):
+        print(colored(f"Error: Failed to write parent task.json: {parent_json_path}", Colors.RED), file=sys.stderr)
+        print("Nothing was unlinked.", file=sys.stderr)
+        return 1
+    if not write_json(child_json_path, child_data):
+        print(colored(f"Error: Failed to write child task.json: {child_json_path}", Colors.RED), file=sys.stderr)
+        print(
+            f"Unlink is half-written: {parent_json_path} no longer lists "
+            f"'{child_dir.name}', but the child still records the parent.",
+            file=sys.stderr,
+        )
+        return 1
 
     print(colored(f"Unlinked: {child_dir.name} from {parent_dir.name}", Colors.GREEN), file=sys.stderr)
     return 0

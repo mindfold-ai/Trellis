@@ -4,7 +4,7 @@
 Task Management Script.
 
 Usage:
-    python3 task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3] [--parent <dir>] [--package <pkg>] [--no-start]
+    python3 task.py create "<title>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3] [--parent <dir>] [--package <pkg>] [--no-start] [--force]
     python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
     python3 task.py validate <dir>              # Validate jsonl files
     python3 task.py list-context <dir>          # List jsonl entries
@@ -489,6 +489,11 @@ def main() -> int:
         "--no-start",
         action="store_true",
         help="Create the task without making it active in this session",
+    )
+    p_create.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite task.json when the task directory already exists",
     )
 
     # add-context

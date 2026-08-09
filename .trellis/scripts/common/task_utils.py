@@ -6,6 +6,7 @@ Provides:
     is_within_tasks_dir - Check a resolved path is a task directly under tasks/
     find_task_by_name   - Find task directory by name
     resolve_task_dir    - Resolve task directory from name, relative, or absolute path
+    archive_destination_for - Path a task would be archived to
     archive_task_dir    - Archive task to monthly directory
     run_task_hooks      - Run lifecycle hooks for task events
 """
@@ -102,6 +103,13 @@ def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
 # Archive Operations
 # =============================================================================
 
+def archive_destination_for(task_dir_abs: Path) -> Path:
+    """Path a task would be archived to: <tasks>/archive/<YYYY-MM>/<name>."""
+    tasks_dir = task_dir_abs.parent
+    year_month = datetime.now().strftime("%Y-%m")
+    return tasks_dir / "archive" / year_month / task_dir_abs.name
+
+
 def archive_task_dir(task_dir_abs: Path, repo_root: Path | None = None) -> Path | None:
     """Archive a task directory to archive/{YYYY-MM}/.
 
@@ -116,11 +124,8 @@ def archive_task_dir(task_dir_abs: Path, repo_root: Path | None = None) -> Path 
         print(f"Error: task directory not found: {task_dir_abs}", file=sys.stderr)
         return None
 
-    # Get tasks directory (parent of the task)
-    tasks_dir = task_dir_abs.parent
-    archive_dir = tasks_dir / "archive"
-    year_month = datetime.now().strftime("%Y-%m")
-    month_dir = archive_dir / year_month
+    dest = archive_destination_for(task_dir_abs)
+    month_dir = dest.parent
 
     # Create archive directory
     try:
@@ -129,9 +134,22 @@ def archive_task_dir(task_dir_abs: Path, repo_root: Path | None = None) -> Path 
         print(f"Error: Failed to create archive directory: {e}", file=sys.stderr)
         return None
 
-    # Move task to archive
-    task_name = task_dir_abs.name
-    dest = month_dir / task_name
+    # shutil.move into an existing directory moves the source *inside* it,
+    # producing archive/<month>/<task>/<task>/ and returning a path that is not
+    # where the task actually landed. That wrong path then flows into the
+    # printed result, the after_archive hook's TASK_JSON_PATH, and auto-commit
+    # staging, so refuse before the move instead.
+    if dest.exists():
+        print(
+            f"Error: refusing to archive {task_dir_abs}: "
+            f"archive destination already exists: {dest}",
+            file=sys.stderr,
+        )
+        print(
+            "Move or rename the existing archived task, then retry.",
+            file=sys.stderr,
+        )
+        return None
 
     try:
         shutil.move(str(task_dir_abs), str(dest))
