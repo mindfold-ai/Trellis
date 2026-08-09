@@ -12092,3 +12092,296 @@ describe("regression: task.py rename rewrites every reference in one pass", () =
     ).toBe(true);
   });
 });
+
+describe("regression: a linked worktree inherits developer identity", () => {
+  // `.trellis/.developer` is gitignored (it carries a personal identity), so a
+  // fresh `git worktree add` used to start with no identity at all and every
+  // task.py command failed with "No developer set" until init_developer.py was
+  // re-run per worktree — which blocks worktree-per-worker parallel runs.
+  const pyCmd = process.platform === "win32" ? "python" : "python3";
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  const now = new Date();
+  const datePrefix = `${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  let tmpDir: string;
+  let mainDir: string;
+  let worktreeDir: string;
+
+  function git(cwd: string, ...args: string[]): void {
+    const proc = spawnSync("git", args, { cwd, encoding: "utf-8" });
+    if (proc.status !== 0) {
+      throw new Error(`git ${args.join(" ")} failed: ${proc.stderr}`);
+    }
+  }
+
+  function writeScripts(root: string): void {
+    for (const [rel, content] of getAllScripts()) {
+      const abs = path.join(root, ".trellis", "scripts", rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content, "utf-8");
+    }
+  }
+
+  /** A committed repo at `mainDir` plus a linked worktree at `worktreeDir`. */
+  function buildRepo(developerName: string | null): void {
+    writeScripts(mainDir);
+    fs.writeFileSync(
+      path.join(mainDir, ".gitignore"),
+      ".trellis/.developer\n",
+      "utf-8",
+    );
+    if (developerName !== null) {
+      fs.writeFileSync(
+        path.join(mainDir, ".trellis", ".developer"),
+        `name=${developerName}\ninitialized_at=2026-08-09T00:00:00\n`,
+        "utf-8",
+      );
+    }
+    git(mainDir, "init", "-q", "-b", "main", ".");
+    git(mainDir, "config", "user.email", "test@example.com");
+    git(mainDir, "config", "user.name", "test");
+    git(mainDir, "add", "-A");
+    git(mainDir, "commit", "-qm", "init");
+    git(mainDir, "worktree", "add", "-q", worktreeDir, "-b", "wt");
+  }
+
+  function runTask(
+    cwd: string,
+    args: string[],
+    envOverrides: NodeJS.ProcessEnv = {},
+  ): { status: number | null; stdout: string; stderr: string } {
+    const env = { ...process.env, ...envOverrides };
+    // Inherited identity must come from the repo, never from the environment
+    // of the machine running the suite.
+    if (envOverrides.TRELLIS_DEVELOPER === undefined) {
+      delete env.TRELLIS_DEVELOPER;
+    }
+    const proc = spawnSync(
+      pyCmd,
+      [path.join(cwd, ".trellis", "scripts", "task.py"), ...args],
+      { cwd, encoding: "utf-8", env },
+    );
+    return {
+      status: proc.status,
+      stdout: proc.stdout ?? "",
+      stderr: proc.stderr ?? "",
+    };
+  }
+
+  function createTask(
+    cwd: string,
+    slug: string,
+    extraArgs: string[] = [],
+    envOverrides: NodeJS.ProcessEnv = {},
+  ): { status: number | null; stdout: string; stderr: string } {
+    return runTask(
+      cwd,
+      [
+        "create",
+        slug,
+        "--description",
+        "worktree identity fixture",
+        "--slug",
+        slug,
+        "--no-start",
+        ...extraArgs,
+      ],
+      envOverrides,
+    );
+  }
+
+  function assigneeOf(cwd: string, slug: string): unknown {
+    const taskJson = path.join(
+      cwd,
+      ".trellis",
+      "tasks",
+      `${datePrefix}-${slug}`,
+      "task.json",
+    );
+    return (
+      JSON.parse(fs.readFileSync(taskJson, "utf-8")) as Record<string, unknown>
+    ).assignee;
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-wt-identity-"));
+    mainDir = path.join(tmpDir, "main");
+    worktreeDir = path.join(tmpDir, "linked");
+    fs.mkdirSync(mainDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("[worktree-identity] create/list/start work in a fresh worktree with no manual setup", () => {
+    buildRepo("main-dev");
+
+    // The premise: git did not carry the gitignored identity file across.
+    expect(
+      fs.existsSync(path.join(worktreeDir, ".trellis", ".developer")),
+    ).toBe(false);
+
+    const created = createTask(worktreeDir, "inherited");
+    expect(created.status, created.stderr).toBe(0);
+    expect(assigneeOf(worktreeDir, "inherited")).toBe("main-dev");
+
+    const listed = runTask(worktreeDir, ["list", "--json", "--mine"]);
+    expect(listed.status, listed.stderr).toBe(0);
+    const tasks = (
+      JSON.parse(listed.stdout) as { tasks: { id: string; assignee: string }[] }
+    ).tasks;
+    expect(tasks.map((t) => [t.id, t.assignee])).toEqual([
+      ["inherited", "main-dev"],
+    ]);
+
+    const started = runTask(worktreeDir, ["start", `${datePrefix}-inherited`]);
+    expect(started.status, started.stderr).toBe(0);
+
+    // Inheritance is read-only: copying the file in would go stale and shadow
+    // later changes made in the main checkout.
+    expect(
+      fs.existsSync(path.join(worktreeDir, ".trellis", ".developer")),
+    ).toBe(false);
+  });
+
+  it("[worktree-identity] a later main-checkout change is picked up, because nothing was copied", () => {
+    buildRepo("main-dev");
+    expect(createTask(worktreeDir, "first").status).toBe(0);
+    expect(assigneeOf(worktreeDir, "first")).toBe("main-dev");
+
+    fs.writeFileSync(
+      path.join(mainDir, ".trellis", ".developer"),
+      "name=renamed-dev\ninitialized_at=2026-08-09T00:00:00\n",
+      "utf-8",
+    );
+
+    expect(createTask(worktreeDir, "second").status).toBe(0);
+    expect(assigneeOf(worktreeDir, "second")).toBe("renamed-dev");
+  });
+
+  it("[worktree-identity] precedence: --assignee > TRELLIS_DEVELOPER > local file > main checkout", () => {
+    buildRepo("main-dev");
+
+    // 4. main checkout, in the worktree that has no file of its own
+    expect(createTask(worktreeDir, "inherit").status).toBe(0);
+    expect(assigneeOf(worktreeDir, "inherit")).toBe("main-dev");
+
+    // 3. a local file in the worktree wins over the main checkout
+    fs.writeFileSync(
+      path.join(worktreeDir, ".trellis", ".developer"),
+      "name=local-dev\ninitialized_at=2026-08-09T00:00:00\n",
+      "utf-8",
+    );
+    expect(createTask(worktreeDir, "local").status).toBe(0);
+    expect(assigneeOf(worktreeDir, "local")).toBe("local-dev");
+
+    // 2. the env var wins over both files
+    expect(
+      createTask(worktreeDir, "env", [], { TRELLIS_DEVELOPER: "env-dev" })
+        .status,
+    ).toBe(0);
+    expect(assigneeOf(worktreeDir, "env")).toBe("env-dev");
+
+    // 1. --assignee wins over everything
+    expect(
+      createTask(worktreeDir, "flag", ["--assignee", "flag-dev"], {
+        TRELLIS_DEVELOPER: "env-dev",
+      }).status,
+    ).toBe(0);
+    expect(assigneeOf(worktreeDir, "flag")).toBe("flag-dev");
+  });
+
+  it("[worktree-identity] the env var alone is enough in the main checkout too", () => {
+    buildRepo(null);
+    expect(
+      createTask(mainDir, "envonly", [], { TRELLIS_DEVELOPER: "env-dev" })
+        .status,
+    ).toBe(0);
+    expect(assigneeOf(mainDir, "envonly")).toBe("env-dev");
+  });
+
+  it("[worktree-identity] a whitespace-only env var does not count as an identity", () => {
+    buildRepo("main-dev");
+    expect(
+      createTask(worktreeDir, "blank", [], { TRELLIS_DEVELOPER: "   " }).status,
+    ).toBe(0);
+    expect(assigneeOf(worktreeDir, "blank")).toBe("main-dev");
+  });
+
+  it("[worktree-identity] with no identity anywhere, the error names all three sources", () => {
+    buildRepo(null);
+
+    for (const cwd of [mainDir, worktreeDir]) {
+      const created = createTask(cwd, "nobody");
+      expect(created.status).not.toBe(0);
+      expect(created.stderr).toContain("No developer set");
+      expect(created.stderr).toContain("init_developer.py");
+      expect(created.stderr).toContain("TRELLIS_DEVELOPER");
+      expect(created.stderr).toContain("linked git worktree");
+
+      const listed = runTask(cwd, ["list", "--json", "--mine"]);
+      expect(listed.status).not.toBe(0);
+      const payload = JSON.parse(listed.stderr) as {
+        error: string;
+        hint: string;
+      };
+      expect(payload.error).toBe("No developer set");
+      expect(payload.hint).toContain("TRELLIS_DEVELOPER");
+      expect(payload.hint).toContain("linked git worktree");
+    }
+  });
+
+  it("[worktree-identity] a linked worktree of a bare repo inherits nothing", () => {
+    buildRepo("main-dev");
+    const bareDir = path.join(tmpDir, "bare.git");
+    const bareWt = path.join(tmpDir, "bare-wt");
+    git(tmpDir, "clone", "-q", "--bare", mainDir, bareDir);
+    git(bareDir, "worktree", "add", "-q", bareWt, "wt");
+    writeScripts(bareWt);
+
+    const created = createTask(bareWt, "nobody");
+    expect(created.status).toBe(1);
+    expect(created.stderr).toContain("No developer set");
+    expect(created.stderr).not.toContain("Traceback");
+  });
+
+  it("[worktree-identity] a bare repo nested inside an unrelated checkout does not leak that checkout's identity", () => {
+    // Deriving the main root as the parent of `--git-common-dir` picks up
+    // `outer/` here — a real checkout with a real `.developer` — so the wrong
+    // answer looks exactly like a right one. git must name the main worktree.
+    buildRepo("main-dev");
+    const outerDir = path.join(tmpDir, "outer");
+    fs.mkdirSync(path.join(outerDir, ".trellis"), { recursive: true });
+    fs.writeFileSync(
+      path.join(outerDir, ".trellis", ".developer"),
+      "name=unrelated-stranger\ninitialized_at=2026-08-09T00:00:00\n",
+      "utf-8",
+    );
+    fs.writeFileSync(path.join(outerDir, "README.md"), "outer\n", "utf-8");
+    git(outerDir, "init", "-q", "-b", "main", ".");
+    git(outerDir, "config", "user.email", "test@example.com");
+    git(outerDir, "config", "user.name", "test");
+    git(outerDir, "add", "README.md");
+    git(outerDir, "commit", "-qm", "outer");
+
+    const nestedBare = path.join(outerDir, "nested.git");
+    const nestedWt = path.join(tmpDir, "nested-wt");
+    git(tmpDir, "clone", "-q", "--bare", mainDir, nestedBare);
+    git(nestedBare, "worktree", "add", "-q", nestedWt, "wt");
+    writeScripts(nestedWt);
+
+    const created = createTask(nestedWt, "leak");
+    expect(created.status).toBe(1);
+    expect(created.stderr).not.toContain("unrelated-stranger");
+    expect(created.stderr).toContain("No developer set");
+  });
+
+  it("[worktree-identity] a directory that is not a git repo fails normally, never crashes", () => {
+    writeScripts(mainDir);
+
+    const created = createTask(mainDir, "nogit");
+    expect(created.status).toBe(1);
+    expect(created.stderr).toContain("No developer set");
+    expect(created.stderr).not.toContain("Traceback");
+  });
+});
