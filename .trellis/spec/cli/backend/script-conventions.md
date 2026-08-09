@@ -423,6 +423,8 @@ def run_git(args: list[str], cwd: Path | None = None) -> tuple[int, str, str]
 ```python
 def resolve_default_branch(repo_root: Path) -> str | None
 def branch_exists_locally(branch: str, repo_root: Path) -> bool
+def current_branch_name(repo_root: Path) -> str | None
+def has_git_remote(repo_root: Path) -> bool
 ```
 
 - `resolve_default_branch()` tries the local `refs/remotes/origin/HEAD`
@@ -441,6 +443,44 @@ def branch_exists_locally(branch: str, repo_root: Path) -> bool
   yellow warning (not a failure/block) when the recorded branch no longer
   exists locally — the common case is the branch was already merged and
   deleted upstream.
+- `current_branch_name()` returns `git branch --show-current` or `None`;
+  detached HEAD and "not a git repository" both come back as `None`, and
+  callers must treat them the same — there is no branch worth recording.
+- `has_git_remote()` (`git remote`, non-empty) is only used as half of the
+  PR-backed predicate below.
+
+#### `task.json.branch` lifecycle
+
+`branch` names the feature branch the work was done on; `base_branch` names
+the branch a PR targets. They must differ for PR-backed work.
+
+- `task.py start` (`task.py:_record_start_state`) records
+  `current_branch_name()` into `branch` **only when the field is empty**, in
+  the same read/write that flips `planning → in_progress`. An explicit
+  `set-branch` therefore survives re-starting a task. On detached HEAD or
+  outside git it prints a note and records nothing; the start still succeeds.
+  When the recorded branch equals `base_branch` it is written anyway (the
+  value is true) and a warning says archive will refuse that shape.
+- `task.py archive` (`task_store.py:_validate_branch_metadata`) runs before
+  any mutation and refuses, exit 1, when either
+  (a) `branch` is empty while `base_branch` is set **and** the repo has a
+  remote — the pragmatic definition of "PR-backed": a task created expecting a
+  PR whose branch was simply never written down; or
+  (b) `branch == base_branch`.
+  Both errors name the repair command (`task.py set-branch` /
+  `set-base-branch`) — hand-editing `task.json` is never the documented path.
+  `--skip-branch-validation` bypasses both for tasks that were never
+  PR-backed; it does not suppress the stale-branch warning.
+- Local-only repos (no remote) and tasks without a `base_branch` skip the
+  missing-branch check entirely.
+- Note how wide (a) actually is: `cmd_create` stamps `base_branch` on every
+  task, so in a repo with a remote the predicate reduces to "every task must
+  have a `branch`". Tasks created before start-time recording landed carry
+  `branch: null` and are refused until repaired — repair with `set-branch`,
+  or pass `--skip-branch-validation` per archive.
+- Repairing an **already-archived** task works the same way, but the bare task
+  name no longer resolves; pass the archive path explicitly:
+  `task.py set-branch .trellis/tasks/archive/<YYYY-MM>/<task> <branch>`.
 
 ### `common/active_task.py` — Active Task Resolver
 

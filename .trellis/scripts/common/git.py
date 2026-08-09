@@ -116,6 +116,24 @@ def resolve_default_branch(repo_root: Path) -> str | None:
     return None
 
 
+def current_branch_name(repo_root: Path) -> str | None:
+    """Return the checked-out branch name, or None when there isn't one.
+
+    Empty output covers detached HEAD and "not a git repository" alike, and
+    callers treat both the same way: there is no branch worth recording.
+    """
+    rc, out, _ = run_git(["branch", "--show-current"], cwd=repo_root)
+    if rc != 0:
+        return None
+    return out.strip() or None
+
+
+def has_git_remote(repo_root: Path) -> bool:
+    """Whether the repository has at least one configured remote."""
+    rc, out, _ = run_git(["remote"], cwd=repo_root)
+    return rc == 0 and bool(out.strip())
+
+
 def branch_exists_locally(branch: str, repo_root: Path) -> bool:
     """Check whether a local branch ref exists in the repository."""
     if not branch:
