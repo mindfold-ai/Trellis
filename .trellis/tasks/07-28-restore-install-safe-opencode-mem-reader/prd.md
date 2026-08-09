@@ -45,8 +45,9 @@ install-time toolchain/network fragility.
 - R7: Replace the unconditional CLI unavailable notice with structured
   missing/unreadable/schema/snapshot warnings. Emit at most one warning per
   condition per command and keep core free of direct terminal output.
-- R8: Preserve Claude, Codex, Pi, and ZCode behavior and the public
-  `@mindfoldhq/trellis-core/mem` package boundary.
+- R8: Preserve Claude, Codex, Pi, ZCode, and Grok behavior and the public
+  `@mindfoldhq/trellis-core/mem` package boundary. (Grok reader added upstream
+  in 0.6.14: `trellis mem --platform grok` reads `~/.grok/sessions/`.)
 - R9: Update `commands-mem.md`, help text, fixtures, and release notes so they no
   longer claim OpenCode recall is unavailable once the reader ships.
 
@@ -77,7 +78,7 @@ install-time toolchain/network fragility.
       leave other platforms usable.
 - [ ] Installation and execution require no compiler, native addon download,
       system SQLite executable, or network access.
-- [ ] Existing mem API, Claude, Codex, Pi, and ZCode tests remain green.
+- [ ] Existing mem API, Claude, Codex, Pi, ZCode, and Grok tests remain green.
 - [ ] Core/CLI warnings, docs, help, package exports, lint, typecheck, and the
       relevant test suites pass.
 

@@ -53,9 +53,9 @@ Planning or review work without a commit can also be recorded by using `--no-com
 | `.trellis/workspace/` | Work records across tasks and sessions. |
 | `.trellis/spec/` | Engineering knowledge preserved as long-term conventions. |
 
-If information is only useful for the current task, put it in the task directory.  
-If information describes what happened in the current session, put it in the workspace journal.  
-If information should be followed every time code is written in the future, put it in spec.
+- If information is only useful for the current task, put it in the task directory.
+- If information describes what happened in the current session, put it in the workspace journal.
+- If information should be followed every time code is written in the future, put it in spec.
 
 ## Local Customization Points
 

@@ -60,7 +60,7 @@ Based on your change type, execute relevant checks below:
 
 ## Dimension B: Code Reuse (Required when modifying constants/config)
 
-**Trigger**: 
+**Trigger**:
 - Modifying UI constants (label, icon, color)
 - Modifying any hardcoded value
 - Seeing similar code in multiple places
@@ -122,7 +122,7 @@ Based on your change type, execute relevant checks below:
 
 ## Dimension D: Same-Layer Consistency
 
-**Trigger**: 
+**Trigger**:
 - Modifying display logic or formatting
 - Same domain concept used in multiple places
 

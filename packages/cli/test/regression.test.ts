@@ -9631,3 +9631,120 @@ describe("regression: compat alias must not win platform detection", () => {
     });
   }
 });
+
+describe("regression: shipped markdown carries no trailing whitespace", () => {
+  // 07-27-enforce-bundled-skill-whitespace-parity: `workspace-memory.md`
+  // shipped with trailing double-space hard breaks that consumer repos then
+  // had to strip to satisfy their own diff hygiene (people-profiles PR #3).
+  // `git diff --check` only inspects lines a diff touches, so a defect already
+  // in the template survives untouched forever. This scan enumerates every
+  // shipped/dogfood markdown file from the filesystem and fails on any
+  // trailing space or tab. Intentional line breaks must use explicit Markdown
+  // (lists, block elements) instead of invisible trailing spaces.
+  const __dirnameWs = path.dirname(fileURLToPath(import.meta.url));
+  const wsRepoRoot = path.resolve(__dirnameWs, "../../..");
+  const scanRoots = [
+    "packages/cli/src/templates",
+    ".agents/skills",
+    ".claude/skills",
+  ];
+
+  function listMarkdownFiles(root: string): string[] {
+    const found: string[] = [];
+    function walk(dir: string, prefix: string): void {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          walk(path.join(dir, entry.name), `${prefix}${entry.name}/`);
+        } else if (entry.name.endsWith(".md")) {
+          found.push(`${prefix}${entry.name}`);
+        }
+      }
+    }
+    walk(root, "");
+    return found.sort();
+  }
+
+  for (const scanRoot of scanRoots) {
+    it(`${scanRoot} markdown is free of trailing whitespace`, () => {
+      const absoluteRoot = path.join(wsRepoRoot, scanRoot);
+      const files = listMarkdownFiles(absoluteRoot);
+      expect(files.length).toBeGreaterThan(0);
+      const offenders: string[] = [];
+      for (const relativePath of files) {
+        const lines = fs
+          .readFileSync(path.join(absoluteRoot, relativePath), "utf-8")
+          .split("\n");
+        lines.forEach((line, index) => {
+          if (/[ \t]+$/.test(line)) {
+            offenders.push(`${scanRoot}/${relativePath}:${index + 1}`);
+          }
+        });
+      }
+      expect(
+        offenders,
+        "trailing whitespace in shipped markdown — strip it (use explicit " +
+          "Markdown structure, not trailing double-spaces, for line breaks)",
+      ).toEqual([]);
+    });
+  }
+});
+
+describe("regression: break-loop skill carries the artifact existence guard", () => {
+  // 07-27-guard-break-loop-artifact-paths: the installed break-loop skill
+  // directed agents through follow-up artifact work (spec guides, task files)
+  // without first proving the referenced paths existed — Copilot review on
+  // people-profiles PR #3 flagged an agent acting on absent evidence. The
+  // guard section tells agents to verify existence first and report missing
+  // paths instead of fabricating. These tests fail if the wording is removed
+  // from the source template, any rendered platform surface, or a dogfood
+  // mirror drifts from the rendered output.
+  const GUARD_HEADING = "Verify Referenced Artifacts Exist";
+  const __dirnameGuard = path.dirname(fileURLToPath(import.meta.url));
+  const guardRepoRoot = path.resolve(__dirnameGuard, "../../..");
+
+  it("common template contains the guard section", () => {
+    const template = fs.readFileSync(
+      path.join(
+        guardRepoRoot,
+        "packages/cli/src/templates/common/skills/break-loop.md",
+      ),
+      "utf-8",
+    );
+    expect(template).toContain(GUARD_HEADING);
+    expect(template).toContain("report the absent path explicitly");
+  });
+
+  const RENDERED_SURFACES: { platform: string; file: string }[] = [
+    { platform: "claude-code", file: ".claude/skills/trellis-break-loop/SKILL.md" },
+    { platform: "codex", file: ".agents/skills/trellis-break-loop/SKILL.md" },
+    { platform: "copilot", file: ".github/skills/trellis-break-loop/SKILL.md" },
+  ];
+
+  for (const { platform, file } of RENDERED_SURFACES) {
+    it(`${platform} renders ${file} with the guard`, () => {
+      const files = collectPlatformTemplates(platform);
+      expect(files).toBeInstanceOf(Map);
+      const content = files?.get(file);
+      expect(content, `${platform} no longer ships ${file}`).toBeTruthy();
+      expect(content).toContain(GUARD_HEADING);
+    });
+  }
+
+  const DOGFOOD_MIRRORS: { platform: string; file: string }[] = [
+    { platform: "claude-code", file: ".claude/skills/trellis-break-loop/SKILL.md" },
+    { platform: "codex", file: ".agents/skills/trellis-break-loop/SKILL.md" },
+  ];
+
+  for (const { platform, file } of DOGFOOD_MIRRORS) {
+    it(`dogfood ${file} matches the rendered ${platform} output`, () => {
+      const rendered = collectPlatformTemplates(platform)?.get(file);
+      expect(rendered).toBeTruthy();
+      const dogfood = fs.readFileSync(path.join(guardRepoRoot, file), "utf-8");
+      expect(
+        dogfood,
+        `${file} has drifted from the rendered template — regenerate the ` +
+          `dogfood copy when editing common/skills/break-loop.md`,
+      ).toBe(rendered);
+    });
+  }
+});
