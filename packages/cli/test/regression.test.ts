@@ -10641,6 +10641,261 @@ describe("regression: safe auto-commit when .trellis/ is gitignored (0.5.10 → 
 });
 
 // =============================================================================
+// regression: transient .git/index.lock during archive auto-commit
+// =============================================================================
+//
+// `task.py archive` moves the task directory on disk BEFORE it stages and
+// commits. Another process holding `.git/index.lock` for a fraction of a
+// second (IDE git integration, status daemon, a parallel session) made that
+// auto-commit fail outright, leaving the user with a completed move and a git
+// error to untangle.
+//
+// Fix: `run_git_retry_index_lock` retries ONLY index.lock failures — three
+// attempts over ~1.5s — and the archive path uses it for `add`,
+// `rm --cached` and `commit`. When the retries run out the move stays
+// complete and the commit is reported as pending: rolling the move back would
+// also have to undo the completed status, the re-parented children and the
+// cleared sessions, and a partial rollback is worse than a named pending
+// commit. The warning names the lock file and the command to run by hand.
+// =============================================================================
+
+describe("regression: bounded index.lock retry on archive auto-commit", () => {
+  let tmpDir: string;
+  const pyCmd = process.platform === "win32" ? "python" : "python3";
+  const taskName = "issue-lock";
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-index-lock-"));
+    execSync("git init -q -b main", { cwd: tmpDir });
+    execSync('git config user.email "test@trellis.local"', { cwd: tmpDir });
+    execSync('git config user.name "Trellis Test"', { cwd: tmpDir });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeFile(rel: string, content: string): void {
+    const abs = path.join(tmpDir, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content, "utf-8");
+  }
+
+  function lockFile(): string {
+    return path.join(tmpDir, ".git", "index.lock");
+  }
+
+  function setupRepo(): void {
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [rel, content] of getAllScripts()) {
+      const abs = path.join(scriptsDir, rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content, "utf-8");
+    }
+    writeFile(
+      ".trellis/.developer",
+      "name=test-dev\ninitialized_at=2026-08-09T00:00:00\n",
+    );
+    writeFile(
+      `.trellis/tasks/${taskName}/task.json`,
+      JSON.stringify(
+        { title: "Locked archive", status: "in_progress", package: null },
+        null,
+        2,
+      ),
+    );
+    writeFile(`.trellis/tasks/${taskName}/prd.md`, "# PRD\n");
+    writeFile("README.md", "test\n");
+    // The task must be tracked: an untracked task dir makes a failed
+    // auto-commit inconsequential, which is not the case under test.
+    execSync("git add -A", { cwd: tmpDir });
+    execSync('git commit -q -m "init"', { cwd: tmpDir });
+  }
+
+  function runArchive(): { status: number | null; stderr: string } {
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(pyCmd, [taskScriptPath, "archive", taskName], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      env: { ...process.env, TRELLIS_CONTEXT_ID: "session-lock" },
+    });
+    return { status: result.status, stderr: result.stderr ?? "" };
+  }
+
+  function archivedTaskExists(): boolean {
+    const archiveRoot = path.join(tmpDir, ".trellis/tasks/archive");
+    if (!fs.existsSync(archiveRoot)) return false;
+    return fs.readdirSync(archiveRoot).some((monthDir) => {
+      const monthPath = path.join(archiveRoot, monthDir);
+      return (
+        fs.statSync(monthPath).isDirectory() &&
+        fs.existsSync(path.join(monthPath, taskName))
+      );
+    });
+  }
+
+  function gitLogLines(): string[] {
+    return execSync("git log --oneline", { cwd: tmpDir, encoding: "utf-8" })
+      .trim()
+      .split("\n")
+      .filter((l) => l.length > 0);
+  }
+
+  it("[index-lock] retries only index.lock failures, bounded by the attempt count", () => {
+    // Deterministic cover for the retry semantics themselves: the end-to-end
+    // tests below depend on wall-clock timing, this one does not.
+    setupRepo();
+    const probe = `
+import json
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+sys.path.insert(0, str(root / ".trellis" / "scripts"))
+import common.git as g
+
+# Real backoff would make this probe sleep for its whole runtime.
+g.INDEX_LOCK_RETRY_BACKOFF = (0, 0)
+lock_err = "fatal: Unable to create '/repo/.git/index.lock': File exists."
+calls = []
+
+def transient(args, cwd=None, timeout=None):
+    calls.append(args)
+    if len(calls) < g.INDEX_LOCK_RETRY_ATTEMPTS:
+        return 1, "", lock_err
+    return 0, "done", ""
+
+def stuck(args, cwd=None, timeout=None):
+    calls.append(args)
+    return 1, "", lock_err
+
+def unrelated(args, cwd=None, timeout=None):
+    calls.append(args)
+    return 1, "", "fatal: pathspec 'nope' did not match any files"
+
+g.run_git = transient
+transient_rc, transient_out, _ = g.run_git_retry_index_lock(["commit", "-m", "x"])
+transient_calls = len(calls)
+
+calls.clear()
+g.run_git = stuck
+stuck_rc, _, stuck_err = g.run_git_retry_index_lock(["commit", "-m", "x"])
+stuck_calls = len(calls)
+
+calls.clear()
+g.run_git = unrelated
+unrelated_rc, _, _ = g.run_git_retry_index_lock(["add", "nope"])
+unrelated_calls = len(calls)
+
+print(json.dumps({
+    "attempts": g.INDEX_LOCK_RETRY_ATTEMPTS,
+    "transient_rc": transient_rc,
+    "transient_out": transient_out,
+    "transient_calls": transient_calls,
+    "stuck_rc": stuck_rc,
+    "stuck_calls": stuck_calls,
+    "stuck_named_lock": g.stderr_indicates_index_lock(stuck_err),
+    "unrelated_rc": unrelated_rc,
+    "unrelated_calls": unrelated_calls,
+}))
+`;
+    const result = spawnSync(pyCmd, ["-c", probe], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      attempts: 3,
+      // A lock released before the last attempt ends in success.
+      transient_rc: 0,
+      transient_out: "done",
+      transient_calls: 3,
+      // A lock that never clears stops at the bound instead of hanging.
+      stuck_rc: 1,
+      stuck_calls: 3,
+      stuck_named_lock: true,
+      // Anything that is not a lock failure must not be retried — looping
+      // over a real error only delays it.
+      unrelated_rc: 1,
+      unrelated_calls: 1,
+    });
+  });
+
+  it("[index-lock] archive survives a lock that is released mid-retry", () => {
+    setupRepo();
+    fs.writeFileSync(lockFile(), "", "utf-8");
+
+    // Released after the first attempt is certain to have hit the lock, but
+    // before the retry window (~1.5s from that first attempt) closes.
+    const releaser = spawn(
+      pyCmd,
+      [
+        "-c",
+        `import os, time; time.sleep(1.2); os.path.exists(${JSON.stringify(
+          lockFile(),
+        )}) and os.remove(${JSON.stringify(lockFile())})`,
+      ],
+      { stdio: "ignore" },
+    );
+    releaser.unref();
+
+    const { status, stderr } = runArchive();
+
+    expect(status, stderr).toBe(0);
+    expect(stderr).toContain("Auto-committed");
+    expect(archivedTaskExists()).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".trellis/tasks", taskName))).toBe(
+      false,
+    );
+
+    const log = gitLogLines();
+    expect(log.length).toBe(2);
+    expect(log[0]).toContain(`chore(task): archive ${taskName}`);
+
+    // The move is fully recorded — no phantom deletes left behind for the
+    // source path.
+    const dirty = execSync("git status --porcelain", {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    expect(dirty).not.toContain(`.trellis/tasks/${taskName}/`);
+  });
+
+  it("[index-lock] a lock that never clears aborts with a diagnostic naming it", () => {
+    setupRepo();
+    fs.writeFileSync(lockFile(), "", "utf-8");
+
+    const { status, stderr } = runArchive();
+
+    // Failure, not a misleading success.
+    expect(status, stderr).toBe(1);
+    expect(stderr).toContain("index.lock");
+    expect(stderr).toContain("another process is holding");
+    expect(stderr).toContain("gave up after 3 attempts");
+    // Says what is left to do, so neither a user nor an agent reading the
+    // log has to guess.
+    expect(stderr).toContain("only the commit is pending");
+    expect(stderr).toContain(`git commit -m "chore(task): archive ${taskName}"`);
+    expect(stderr).toContain("Archive moved on disk");
+
+    // Consistent state: the move completed, nothing is half-moved.
+    expect(archivedTaskExists()).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".trellis/tasks", taskName))).toBe(
+      false,
+    );
+
+    // Nothing was committed — the pending commit is genuinely pending.
+    fs.rmSync(lockFile(), { force: true });
+    expect(gitLogLines().length).toBe(1);
+    const dirty = execSync("git status --porcelain", {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    expect(dirty).toContain(`.trellis/tasks/${taskName}/`);
+  });
+});
+
+// =============================================================================
 // regression: dogfood ↔ shipped Python script parity
 // =============================================================================
 

@@ -31,7 +31,15 @@ from .config import (
     resolve_package,
     validate_package,
 )
-from .git import branch_exists_locally, resolve_default_branch, run_git
+from .git import (
+    INDEX_LOCK_RETRY_ATTEMPTS,
+    branch_exists_locally,
+    index_lock_path,
+    resolve_default_branch,
+    run_git,
+    run_git_retry_index_lock,
+    stderr_indicates_index_lock,
+)
 from .io import describe_json_read_failure, read_json_checked, write_json
 from .log import Colors, colored
 from .paths import (
@@ -875,10 +883,14 @@ def _auto_commit_archive(
         print("[OK] No task changes to commit.", file=sys.stderr)
         return True
 
-    success, _, err = safe_git_add(paths, repo_root)
+    success, _, err = safe_git_add(paths, repo_root, retry_on_index_lock=True)
     if not success:
         if err and "ignored by" in err.lower():
             print_gitignore_warning(paths)
+        elif stderr_indicates_index_lock(err):
+            _print_index_lock_warning(
+                "git add", task_name, repo_root, [*paths, source_rel]
+            )
         else:
             print(
                 f"[WARN] git add failed: {err.strip() if err else 'unknown error'}",
@@ -895,10 +907,17 @@ def _auto_commit_archive(
     #
     # `--ignore-unmatch` makes this a no-op when the task was never tracked
     # (e.g. archiving a task that lived only in working tree).
-    run_git(
+    rc, _, err = run_git_retry_index_lock(
         ["rm", "-r", "--cached", "--ignore-unmatch", "--", source_rel],
         cwd=repo_root,
     )
+    if rc != 0 and stderr_indicates_index_lock(err):
+        # Committing now would record the archived copy without the
+        # source-side deletes — a half-archived tree in history.
+        _print_index_lock_warning(
+            "git rm --cached", task_name, repo_root, [*paths, source_rel]
+        )
+        return not source_was_tracked
 
     rc, _, _ = run_git(
         ["diff", "--cached", "--quiet", "--", *paths, source_rel],
@@ -909,13 +928,57 @@ def _auto_commit_archive(
         return True
 
     commit_msg = f"chore(task): archive {task_name}"
-    rc, _, err = run_git(["commit", "-m", commit_msg], cwd=repo_root)
+    rc, _, err = run_git_retry_index_lock(["commit", "-m", commit_msg], cwd=repo_root)
     if rc == 0:
         print(f"[OK] Auto-committed: {commit_msg}", file=sys.stderr)
         return True
+    elif stderr_indicates_index_lock(err):
+        _print_index_lock_warning(
+            "git commit", task_name, repo_root, [*paths, source_rel]
+        )
+        return not source_was_tracked
     else:
         print(f"[WARN] Auto-commit failed: {err.strip()}", file=sys.stderr)
         return not source_was_tracked
+
+
+def _print_index_lock_warning(
+    action: str, task_name: str, repo_root: Path, paths: list[str]
+) -> None:
+    """Report an archive auto-commit that gave up on a held index.lock.
+
+    The move itself already succeeded, so the state is consistent — the task
+    lives in archive/ and its changes are staged-or-not but never half of
+    both in a commit. Only the commit is outstanding, which the user (or an
+    agent reading the log) has to finish by hand.
+
+    ``paths`` are the paths the auto-commit would have staged, so the manual
+    command keeps the same narrow scope — a blanket ``git add -A -- .trellis/``
+    would sweep dirty changes from other active tasks into the archive commit.
+    """
+    lock = index_lock_path(repo_root)
+    print(
+        f"[WARN] {action} gave up after {INDEX_LOCK_RETRY_ATTEMPTS} attempts: "
+        f"another process is holding {lock}",
+        file=sys.stderr,
+    )
+    print(
+        "[WARN] The task was moved into archive/ on disk; only the commit is pending.",
+        file=sys.stderr,
+    )
+    print(
+        "[WARN] Close whatever holds the lock (an IDE git integration, a status",
+        file=sys.stderr,
+    )
+    print(
+        f"[WARN] daemon, another session), or delete {lock} if it is stale, then",
+        file=sys.stderr,
+    )
+    print(
+        f'[WARN] commit manually: git add -A -- {" ".join(paths)} && '
+        f'git commit -m "chore(task): archive {task_name}"',
+        file=sys.stderr,
+    )
 
 
 # =============================================================================
