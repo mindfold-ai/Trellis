@@ -2,8 +2,8 @@
  * mem.ts — CLI wrapper over `@mindfoldhq/trellis-core/mem`.
  *
  * The reusable retrieval / context-extraction logic lives in core; this file
- * owns only CLI concerns: argument parsing, terminal rendering, the OpenCode
- * "reader unavailable" notice, and process exit behavior.
+ * owns only CLI concerns: argument parsing, terminal rendering, warning
+ * presentation, and process exit behavior.
  *
  * Commands:
  *   list                          list sessions (default if no command)
@@ -121,29 +121,6 @@ function die(msg: string): never {
   process.exit(2);
 }
 
-// ---------- OpenCode reader notice ----------
-//
-// OpenCode 1.2+ moved to a SQLite store; the native dependency was reverted in
-// 0.6.0-beta.4 due to install failures. Core's OpenCode adapter is a silent
-// no-op — surfacing the degraded state is a CLI presentation concern, emitted
-// once per process whenever the OpenCode source is in scope.
-
-let opencodeWarned = false;
-function warnOpencodeUnavailable(): void {
-  if (opencodeWarned) return;
-  opencodeWarned = true;
-  process.stderr.write(
-    "⚠️  tl mem: OpenCode platform reader is temporarily unavailable in this build.\n" +
-      "    OpenCode 1.2+ moved to SQLite; the native dependency was reverted in\n" +
-      "    0.6.0-beta.4 due to install failures. Re-enabled in a future release.\n",
-  );
-}
-
-function maybeWarnOpencode(f: MemFilter): void {
-  if (f.platform === "all" || f.platform === "opencode")
-    warnOpencodeUnavailable();
-}
-
 // ---------- formatting ----------
 
 const HOME = os.homedir();
@@ -188,7 +165,6 @@ function printWarnings(
 
 function cmdList(argv: Argv): void {
   const f = buildFilter(argv.flags);
-  maybeWarnOpencode(f);
   const warnings: { message: string }[] = [];
   const rows = listMemSessions({
     filter: f,
@@ -212,7 +188,6 @@ function cmdSearch(argv: Argv): void {
   const kw = argv.positional[0];
   if (!kw) die("usage: search <keyword>");
   const f = buildFilter(argv.flags);
-  maybeWarnOpencode(f);
   const includeChildren = argv.flags["include-children"] === true;
   const result = searchMemSessions({
     keyword: kw,
@@ -276,7 +251,6 @@ function cmdProjects(argv: Argv): void {
   // session counts. AI calls this first to learn which project paths have
   // recent activity, then picks one for `--cwd` in a follow-up `search`.
   const f = buildFilter({ ...argv.flags, global: true });
-  maybeWarnOpencode(f);
   const warnings: { message: string }[] = [];
   const rows = listMemProjects({
     filter: f,
@@ -321,7 +295,6 @@ function cmdContext(argv: Argv): void {
   if (!id)
     die("usage: context <session-id> [--grep KW] [--turns N] [--around M]");
   const f = buildFilter(argv.flags);
-  maybeWarnOpencode(f);
 
   const grepRaw = argv.flags.grep;
   const grep = typeof grepRaw === "string" ? grepRaw : undefined;
@@ -422,7 +395,6 @@ function cmdExtract(argv: Argv): void {
   const id = argv.positional[0];
   if (!id) die("usage: extract <session-id>");
   const f = buildFilter(argv.flags);
-  maybeWarnOpencode(f);
 
   const phase = parsePhaseFlag(argv.flags.phase);
   const grepRaw = argv.flags.grep;
