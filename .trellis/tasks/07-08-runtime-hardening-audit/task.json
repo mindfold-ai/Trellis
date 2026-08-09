@@ -3,7 +3,7 @@
   "name": "runtime-hardening-audit",
   "title": "Audit and harden Trellis runtime scripts",
   "description": "Audit and harden Trellis' copied Python runtime scripts around task overwrite safety, path traversal, config parsing, JSON I/O, and silent hook/script failures.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "cli",
