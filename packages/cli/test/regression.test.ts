@@ -12545,6 +12545,18 @@ describe("regression: a linked worktree inherits developer identity", () => {
     expect(assigneeOf(worktreeDir, "filetraverse")).toBe("main-dev");
   });
 
+  it("[worktree-identity] a drive-letter identity is rejected, not joined under workspace/", () => {
+    // "C:" contains no separator, but on Windows joining it under
+    // workspace/ produces a drive-relative path outside the tree.
+    buildRepo("main-dev");
+    expect(
+      createTask(worktreeDir, "driveletter", [], {
+        TRELLIS_DEVELOPER: "C:",
+      }).status,
+    ).toBe(0);
+    expect(assigneeOf(worktreeDir, "driveletter")).toBe("main-dev");
+  });
+
   it("[worktree-identity] the env var alone is enough in the main checkout too", () => {
     buildRepo(null);
     expect(

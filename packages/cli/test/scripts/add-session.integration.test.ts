@@ -795,9 +795,11 @@ describe.skipIf(!hasPython())("add_session.py session numbering", () => {
     // SESSION_HEADING_RE without re.MULTILINE never matched a heading past
     // the journal's first line, which made this path silently return 0.
     runAddSession(tmp, "first", ["--no-commit"]);
+    const index = readIndex(tmp);
+    expect(index).toContain("**Total Sessions**: 1");
     fs.writeFileSync(
       indexPath(tmp),
-      readIndex(tmp).replace("**Total Sessions**: 1", "**Total Sessions**: 0"),
+      index.replace("**Total Sessions**: 1", "**Total Sessions**: 0"),
     );
 
     runAddSession(tmp, "second", ["--no-commit"]);

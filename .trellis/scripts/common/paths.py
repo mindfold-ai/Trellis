@@ -94,6 +94,10 @@ def _safe_developer_name(name: str | None) -> str | None:
         return None
     if "/" in name or "\\" in name or os.sep in name:
         return None
+    # A colon makes the name drive-relative on Windows ("C:" joins outside
+    # the workspace), and it is invalid in Windows filenames anyway.
+    if ":" in name:
+        return None
     return name
 
 
