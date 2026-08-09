@@ -18,7 +18,6 @@ Provides:
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -198,7 +197,7 @@ def _report_write_failure(path: Path) -> None:
 
 
 # =============================================================================
-# Sub-agent platform detection + JSONL seeding
+# Sub-agent platform detection + JSONL context files
 # =============================================================================
 
 # Config directories of platforms that consume implement.jsonl / check.jsonl.
@@ -226,13 +225,6 @@ _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
 )
 _CODEX_CONFIG_DIR = ".codex"
 
-_SEED_EXAMPLE = (
-    "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. "
-    "Put spec/research files only — no code paths. "
-    "Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. "
-    "Delete this line once real entries are added."
-)
-
 
 def _has_subagent_platform(repo_root: Path) -> bool:
     """Return True if any sub-agent-capable platform is configured.
@@ -248,17 +240,6 @@ def _has_subagent_platform(repo_root: Path) -> bool:
     if (repo_root / _CODEX_CONFIG_DIR).is_dir():
         return get_codex_dispatch_mode(repo_root) == "auto"
     return False
-
-
-def _write_seed_jsonl(path: Path) -> None:
-    """Write a one-line seed JSONL file with a self-describing ``_example``.
-
-    The seed row has no ``file`` field, so downstream consumers (hooks +
-    preludes) that iterate entries via ``item.get("file")`` naturally skip
-    it. The row exists purely as an in-file prompt for the AI curator.
-    """
-    seed = {"_example": _SEED_EXAMPLE}
-    path.write_text(json.dumps(seed, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _parse_meta_pairs(pairs: list[str] | None) -> dict[str, str] | None:
@@ -560,17 +541,20 @@ def cmd_create(args: argparse.Namespace) -> int:
             encoding="utf-8",
         )
 
-    # Seed implement.jsonl / check.jsonl for sub-agent-capable platforms.
-    # Agent curates real entries during planning when the task needs them.
-    # Agent-less platforms (Kilo / Antigravity / Devin) skip this — they
-    # load specs via the trellis-before-dev skill instead of JSONL.
-    seeded_jsonl = False
+    # Create empty implement.jsonl / check.jsonl for sub-agent-capable
+    # platforms. They stay empty until the agent curates real entries during
+    # planning — a placeholder row would read as unresolved scaffolding to
+    # `task.py validate` and to PR preflight, so the curation instructions go
+    # to the console below instead of into the files. Agent-less platforms
+    # (Kilo / Antigravity / Devin) skip this — they load specs via the
+    # trellis-before-dev skill instead of JSONL.
+    created_jsonl = False
     if _has_subagent_platform(repo_root):
         for jsonl_name in ("implement.jsonl", "check.jsonl"):
             jsonl_path = task_dir / jsonl_name
             if not jsonl_path.exists():
-                _write_seed_jsonl(jsonl_path)
-        seeded_jsonl = True
+                jsonl_path.write_text("", encoding="utf-8")
+        created_jsonl = True
 
     # Establish the bidirectional link. Both sides were validated above, so a
     # failure here is a write failure, not a bad argument.
@@ -668,9 +652,19 @@ def cmd_create(args: argparse.Namespace) -> int:
     print("  - Fill prd.md with requirements and acceptance criteria", file=sys.stderr)
     print("  - Lightweight task: PRD-only is valid", file=sys.stderr)
     print("  - Complex task: add design.md and implement.md before task.py start", file=sys.stderr)
-    if seeded_jsonl:
+    if created_jsonl:
         print(
-            "  - Curate implement.jsonl / check.jsonl as spec/research manifests when sub-agents need context",
+            "  - Curate implement.jsonl / check.jsonl (created empty) as spec/research "
+            "manifests before task.py start when sub-agents need context:",
+            file=sys.stderr,
+        )
+        print(
+            '      one JSON object per line — {"file": "<path>", "reason": "<why>"}; '
+            "spec/research docs only, no code paths",
+            file=sys.stderr,
+        )
+        print(
+            "      list available specs: python3 .trellis/scripts/get_context.py --mode packages",
             file=sys.stderr,
         )
     print("  - Use /trellis:continue or phase context to decide the next step", file=sys.stderr)

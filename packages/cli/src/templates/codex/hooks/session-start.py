@@ -128,9 +128,10 @@ def configure_project_encoding(project_dir: Path) -> None:
 def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
     """Return True iff jsonl has at least one row with a ``file`` field.
 
-    A freshly seeded jsonl only contains a ``{"_example": ...}`` row (no
-    ``file`` key) — that is NOT "ready". Readiness requires at least one
-    curated entry. Matches the contract used by ``inject-subagent-context.py``.
+    A newly created jsonl is empty, and older tasks may still carry a
+    ``{"_example": ...}`` placeholder row (no ``file`` key) — neither is
+    "ready". Readiness requires at least one curated entry. Matches the
+    contract used by ``inject-subagent-context.py``.
     """
     try:
         for line in jsonl_path.read_text(encoding="utf-8").splitlines():

@@ -9,10 +9,14 @@ Provides:
 
 Note:
     ``cmd_init_context`` was removed in v0.5.0-beta.12. JSONL context files
-    are now seeded at ``task.py create`` time with a self-describing
-    ``_example`` line; the AI agent curates real entries during planning when
-    the task needs sub-agent/spec context. See ``.trellis/workflow.md`` for the
-    current planning artifact contract.
+    are created empty at ``task.py create`` time; the AI agent curates real
+    entries during planning when the task needs sub-agent/spec context. See
+    ``.trellis/workflow.md`` for the current planning artifact contract.
+
+    Older Trellis versions seeded those files with a ``{"_example": ...}``
+    placeholder row. ``cmd_validate`` now rejects that row so a task cannot
+    validate locally and then fail PR preflight, which treats it as
+    unresolved scaffolding.
 """
 
 from __future__ import annotations
@@ -237,8 +241,10 @@ def _resolve_context_entry_path(
 def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = None) -> int:
     """Validate a single JSONL file.
 
-    Seed rows (no ``file`` field — typically ``{"_example": "..."}``) are
-    skipped silently; they are self-describing comments, not real entries.
+    ``{"_example": ...}`` placeholder rows written by older Trellis versions
+    are hard errors: PR preflight rejects them as unresolved scaffolding, so
+    accepting them here would pass locally and fail later. Other rows without
+    a ``file`` field are skipped silently, matching what consumers do.
 
     Beyond hard errors (missing file/dir, invalid JSON), this also prints
     non-blocking hygiene warnings (never counted in ``errors``, never change
@@ -276,11 +282,28 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             errors += 1
             continue
 
+        if not isinstance(data, dict):
+            print(
+                f"  {colored(f'{file_name}:{line_num}: Expected a JSON object', Colors.RED)}"
+            )
+            errors += 1
+            continue
+
+        if "_example" in data:
+            error_message = (
+                f"{file_name}:{line_num}: Placeholder `_example` row left by an older "
+                "task.py create — delete this line, or replace it with "
+                '{"file": "<path>", "reason": "<why>"}'
+            )
+            print(f"  {colored(error_message, Colors.RED)}")
+            errors += 1
+            continue
+
         file_path = data.get("file")
         entry_type = data.get("type", "file")
 
         if not file_path:
-            # Seed / comment row — skip silently
+            # Comment / unknown row without a path — skip silently
             continue
 
         real_entries += 1
@@ -355,7 +378,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
         print(colored(f"[{jsonl_name}]", Colors.CYAN))
 
         count = 0
-        seed_only = True
+        curated = False
         for line in jsonl_file.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -365,11 +388,14 @@ def cmd_list_context(args: argparse.Namespace) -> int:
             except json.JSONDecodeError:
                 continue
 
+            if not isinstance(data, dict):
+                continue
+
             file_path = data.get("file")
             if not file_path:
-                # Seed / comment row — don't count as a real entry
+                # Placeholder / comment row — don't count as a real entry
                 continue
-            seed_only = False
+            curated = True
 
             count += 1
             entry_type = data.get("type", "file")
@@ -381,8 +407,8 @@ def cmd_list_context(args: argparse.Namespace) -> int:
                 print(f"  {colored(f'{count}.', Colors.GREEN)} {file_path}")
             print(f"     {colored('→', Colors.YELLOW)} {reason}")
 
-        if seed_only:
-            print(f"  {colored('(no curated entries yet — only seed row)', Colors.YELLOW)}")
+        if not curated:
+            print(f"  {colored('(no curated entries yet)', Colors.YELLOW)}")
 
         print()
 

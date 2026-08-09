@@ -375,12 +375,12 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict]:
     Schema:
         {"file": "path/to/file.md", "reason": "..."}
         {"file": "path/to/dir/", "type": "directory", "reason": "..."}
-        {"_example": "..."}          # seed row — skipped (no `file` field)
+        {"_example": "..."}          # legacy placeholder — skipped (no `file` field)
 
-    Rows without a ``file`` field (e.g. the self-describing seed line written
-    by ``task.py create`` before the agent has curated entries) are skipped
-    silently. If the resulting entry list is empty, a stderr warning is
-    emitted so the operator can debug missing context.
+    Rows without a ``file`` field (e.g. the placeholder line older Trellis
+    versions wrote at ``task.py create`` time) are skipped silently. If the
+    resulting entry list is empty, a stderr warning is emitted so the operator
+    can debug missing context.
 
     Returns:
         [{"file": path, "type": "file" | "directory", "reason": reason}, ...]

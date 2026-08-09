@@ -6668,15 +6668,16 @@ print(json.dumps({
     expect(fs.existsSync(path.join(taskDir, "check.jsonl"))).toBe(false);
   });
 
-  it("[init-context-removal] task.py create seeds jsonl when a sub-agent platform dir exists", () => {
+  it("[validation-preflight] task.py create writes EMPTY jsonl when a sub-agent platform dir exists", () => {
     setupTaskRepo();
     // Simulate a Claude Code install
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
-    execSync(
+    const output = execSync(
       `${pythonCmd} ${JSON.stringify(taskScriptPath)} create "seeded task" --description "regression fixture" --slug seeded-task --assignee test-dev`,
-      { cwd: tmpDir, encoding: "utf-8" },
+      { cwd: tmpDir, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
     );
+    expect(output).toBeDefined();
     const tasksDir = path.join(tmpDir, ".trellis", "tasks");
     const newDirs = fs
       .readdirSync(tasksDir)
@@ -6687,17 +6688,38 @@ print(json.dumps({
     for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
       const jsonlPath = path.join(taskDir, jsonlName);
       expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
-      const content = fs.readFileSync(jsonlPath, "utf-8").trim();
-      // One line of self-describing seed with `_example` and no `file` field.
-      const lines = content.split("\n");
-      expect(lines.length).toBe(1);
-      const row = JSON.parse(lines[0]) as Record<string, unknown>;
-      expect(row._example).toBeDefined();
-      expect(row.file).toBeUndefined();
+      // Empty on create — a placeholder row would pass validate locally and
+      // then fail PR preflight as unresolved scaffolding.
+      expect(fs.readFileSync(jsonlPath, "utf-8"), jsonlName).toBe("");
     }
   });
 
-  it("[grok] task.py create seeds jsonl when Grok is the only sub-agent platform", () => {
+  it("[validation-preflight] task.py create prints jsonl curation instructions instead of writing them into the files", () => {
+    setupTaskRepo();
+    fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [
+        taskScriptPath,
+        "create",
+        "curation hint task",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "curation-hint-task",
+        "--assignee",
+        "test-dev",
+      ],
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("Curate implement.jsonl / check.jsonl");
+    expect(result.stderr).toContain('{"file": "<path>", "reason": "<why>"}');
+    expect(result.stderr).toContain("get_context.py --mode packages");
+  });
+
+  it("[grok] task.py create creates empty jsonl when Grok is the only sub-agent platform", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".grok"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -6716,15 +6738,11 @@ print(json.dumps({
     for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
       const jsonlPath = path.join(taskDir, jsonlName);
       expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
-      const seed = JSON.parse(
-        fs.readFileSync(jsonlPath, "utf-8").trim(),
-      ) as Record<string, unknown>;
-      expect(seed).toHaveProperty("_example");
-      expect(seed).not.toHaveProperty("file");
+      expect(fs.readFileSync(jsonlPath, "utf-8"), jsonlName).toBe("");
     }
   });
 
-  it("[kimi] task.py create seeds jsonl when Kimi is the only sub-agent platform", () => {
+  it("[kimi] task.py create creates empty jsonl when Kimi is the only sub-agent platform", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".kimi-code"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -6743,11 +6761,7 @@ print(json.dumps({
     for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
       const jsonlPath = path.join(taskDir, jsonlName);
       expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
-      const seed = JSON.parse(
-        fs.readFileSync(jsonlPath, "utf-8").trim(),
-      ) as Record<string, unknown>;
-      expect(seed).toHaveProperty("_example");
-      expect(seed).not.toHaveProperty("file");
+      expect(fs.readFileSync(jsonlPath, "utf-8"), jsonlName).toBe("");
     }
   });
 
@@ -6773,7 +6787,7 @@ print(json.dumps({
     expect(fs.existsSync(path.join(taskDir, "check.jsonl"))).toBe(false);
   });
 
-  it("[issue-373] task.py create seeds jsonl when Codex explicitly uses sub-agent dispatch", () => {
+  it("[issue-373] task.py create creates empty jsonl when Codex explicitly uses sub-agent dispatch", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
     writeProjectFile(
@@ -6795,11 +6809,9 @@ print(json.dumps({
         .find((d) => d.includes("codex-subagent-task")) as string,
     );
     for (const jsonlName of ["implement.jsonl", "check.jsonl"]) {
-      const row = JSON.parse(
-        fs.readFileSync(path.join(taskDir, jsonlName), "utf-8").trim(),
-      ) as Record<string, unknown>;
-      expect(row._example).toBeDefined();
-      expect(row.file).toBeUndefined();
+      const jsonlPath = path.join(taskDir, jsonlName);
+      expect(fs.existsSync(jsonlPath), `${jsonlName} should exist`).toBe(true);
+      expect(fs.readFileSync(jsonlPath, "utf-8"), jsonlName).toBe("");
     }
   });
 
@@ -6864,7 +6876,7 @@ print(len(entries))
     expect(result.trim()).toBe("0");
   });
 
-  it("[init-context-removal] task.py validate treats seed-only jsonl as 0 errors", () => {
+  it("[validation-preflight] task.py validate passes for a freshly created task (empty manifests)", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -6886,7 +6898,165 @@ print(len(entries))
     expect(result).toContain("All validations passed");
   });
 
-  it("[init-context-removal] task.py list-context prints 'no curated entries yet' for seed-only jsonl", () => {
+  describe("[validation-preflight] task.py validate vs PR preflight contract", () => {
+    // Each case writes the manifests directly, then runs the real validator.
+    // Create → validate must never produce a task that validates locally and
+    // then trips PR preflight's `_example` scaffolding rule.
+    const placeholderRow =
+      '{"_example": "Fill with {\\"file\\": \\"<path>\\", \\"reason\\": \\"<why>\\"}."}\n';
+
+    function validateWith(
+      implementContent: string,
+      checkContent: string,
+    ): ReturnType<typeof spawnSync> {
+      setupTaskRepo();
+      const taskDir = path.join(tmpDir, ".trellis", "tasks", "issue-106");
+      fs.writeFileSync(
+        path.join(taskDir, "implement.jsonl"),
+        implementContent,
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(taskDir, "check.jsonl"),
+        checkContent,
+        "utf-8",
+      );
+      const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+      return spawnSync(
+        pythonCmd,
+        [taskScriptPath, "validate", ".trellis/tasks/issue-106"],
+        { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+      );
+    }
+
+    it("rejects a placeholder-only implement.jsonl with file, line, and remediation", () => {
+      const result = validateWith(placeholderRow, "");
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain("implement.jsonl:1: Placeholder `_example` row");
+      expect(result.stdout).toContain(
+        '{"file": "<path>", "reason": "<why>"}',
+      );
+      expect(result.stdout).toContain("Validation failed (1 errors)");
+    });
+
+    it("rejects a placeholder row in check.jsonl too", () => {
+      const result = validateWith("", placeholderRow);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain("check.jsonl:1: Placeholder `_example` row");
+    });
+
+    it("rejects a placeholder row that sits alongside curated entries", () => {
+      const result = validateWith(
+        `${placeholderRow}{"file":".trellis/spec/guides/index.md","reason":"guideline"}\n`,
+        "",
+      );
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain("implement.jsonl:1: Placeholder `_example` row");
+      expect(result.stdout).toContain("Validation failed (1 errors)");
+    });
+
+    it("passes for empty manifests", () => {
+      const result = validateWith("", "");
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("All validations passed");
+    });
+
+    it("passes for curated entries pointing at real files", () => {
+      setupTaskRepo();
+      const taskDir = path.join(tmpDir, ".trellis", "tasks", "issue-106");
+      const curated =
+        '{"file":".trellis/spec/guides/index.md","reason":"guideline"}\n';
+      fs.writeFileSync(path.join(taskDir, "implement.jsonl"), curated, "utf-8");
+      fs.writeFileSync(path.join(taskDir, "check.jsonl"), curated, "utf-8");
+      const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+      const result = spawnSync(
+        pythonCmd,
+        [taskScriptPath, "validate", ".trellis/tasks/issue-106"],
+        { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+      );
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("All validations passed");
+    });
+
+    it("still rejects malformed JSON lines", () => {
+      const result = validateWith("{not json\n", "");
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain("implement.jsonl:1: Invalid JSON");
+    });
+
+    it("reports a non-object row instead of crashing on it", () => {
+      // Valid JSON, wrong shape — the row must be an error with a line
+      // number, not an AttributeError traceback out of `data.get`.
+      const result = validateWith('"just a string"\n[1, 2]\nnull\n', "");
+      expect(result.status).toBe(1);
+      expect(result.stderr).not.toContain("Traceback");
+      for (const line of [1, 2, 3]) {
+        expect(result.stdout).toContain(
+          `implement.jsonl:${line}: Expected a JSON object`,
+        );
+      }
+      expect(result.stdout).toContain("Validation failed (3 errors)");
+    });
+
+    it("list-context skips non-object rows instead of crashing on them", () => {
+      // Same wrong-shape rows as the validate case above — list-context is a
+      // read-only listing, so it skips them and still lists curated entries.
+      setupTaskRepo();
+      const taskDir = path.join(tmpDir, ".trellis", "tasks", "issue-106");
+      fs.writeFileSync(
+        path.join(taskDir, "implement.jsonl"),
+        '"just a string"\n[1, 2]\nnull\n{"file":".trellis/spec/guides/index.md","reason":"guideline"}\n',
+        "utf-8",
+      );
+      fs.writeFileSync(path.join(taskDir, "check.jsonl"), "", "utf-8");
+      const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+      const result = spawnSync(
+        pythonCmd,
+        [taskScriptPath, "list-context", ".trellis/tasks/issue-106"],
+        { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+      );
+      expect(result.status).toBe(0);
+      expect(result.stderr).not.toContain("Traceback");
+      expect(result.stdout).toContain(".trellis/spec/guides/index.md");
+    });
+
+    it("rejects a placeholder row inside an archived task", () => {
+      setupTaskRepo();
+      const archivedDir = path.join(
+        tmpDir,
+        ".trellis",
+        "tasks",
+        "archive",
+        "2026-07",
+        "07-01-archived-task",
+      );
+      fs.mkdirSync(archivedDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(archivedDir, "task.json"),
+        JSON.stringify({ title: "Archived", status: "completed" }, null, 2),
+      );
+      fs.writeFileSync(
+        path.join(archivedDir, "implement.jsonl"),
+        placeholderRow,
+        "utf-8",
+      );
+      fs.writeFileSync(path.join(archivedDir, "check.jsonl"), "", "utf-8");
+      const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+      const result = spawnSync(
+        pythonCmd,
+        [
+          taskScriptPath,
+          "validate",
+          ".trellis/tasks/archive/2026-07/07-01-archived-task",
+        ],
+        { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+      );
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain("implement.jsonl:1: Placeholder `_example` row");
+    });
+  });
+
+  it("[init-context-removal] task.py list-context prints 'no curated entries yet' for uncurated jsonl", () => {
     setupTaskRepo();
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
@@ -8790,7 +8960,7 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
     expect(taskContext as string).toMatch(/def cmd_list_context\b/);
   });
 
-  it("[init-context-removal] task_store.cmd_create seeds jsonl for sub-agent platforms", () => {
+  it("[init-context-removal] task_store.cmd_create creates jsonl for sub-agent platforms", () => {
     const taskStore = getAllScripts().get("common/task_store.py");
     expect(taskStore).toBeDefined();
     // Sub-agent platform probe.
@@ -8806,12 +8976,21 @@ describe("regression: cli_adapter platform support (beta.9, beta.13, beta.16)", 
       'get_codex_dispatch_mode(repo_root) == "auto"',
     );
     expect(commonConfig).toContain("def get_codex_dispatch_mode");
-    // Seed row is self-describing and has no `file` field (so consumers skip
-    // it naturally).
-    expect(taskStore as string).toMatch(/_write_seed_jsonl/);
-    expect(taskStore as string).toContain('"_example"');
-    // cmd_create calls into the seed path.
+    // Manifests are created empty — no placeholder row that PR preflight
+    // would later reject as unresolved scaffolding.
+    expect(taskStore as string).not.toMatch(/_write_seed_jsonl/);
+    expect(taskStore as string).not.toContain("_example");
+    expect(taskStore as string).toContain(
+      'jsonl_path.write_text("", encoding="utf-8")',
+    );
+    // cmd_create calls into the jsonl-creation path.
     expect(taskStore as string).toMatch(/_has_subagent_platform\(repo_root\)/);
+
+    // The validator is the second half of the contract: placeholder rows left
+    // by older versions are a hard error, not a silently skipped comment.
+    const taskContext = getAllScripts().get("common/task_context.py");
+    expect(taskContext as string).toContain('"_example" in data');
+    expect(taskContext as string).toContain("Placeholder `_example` row");
   });
 
   // Regression for 04-22-migrate-flow-bugs Bug C: breaking releases must
