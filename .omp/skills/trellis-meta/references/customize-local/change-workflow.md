@@ -50,7 +50,7 @@ If the user wants only one platform to avoid sub-agents, first confirm whether t
 | `status` | Artifact state | Resume at |
 | --- | --- | --- |
 | `planning` | `prd.md` missing | Phase 1.1 (load `trellis-brainstorm`) |
-| `planning` | `prd.md` exists, `implement.jsonl` only has the seed `_example` row | Phase 1.3 (curate JSONL context) |
+| `planning` | `prd.md` exists, `implement.jsonl` has no curated entries | Phase 1.3 (curate JSONL context) |
 | `planning` | `prd.md` exists, `implement.jsonl` curated | Phase 1.4 (run `task.py start`) |
 | `in_progress` | no implementation in conversation history | Phase 2.1 (`trellis-implement`) |
 | `in_progress` | implementation done, no `trellis-check` run | Phase 2.2 (`trellis-check`) |
