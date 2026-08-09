@@ -268,8 +268,47 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
 # Lifecycle Hooks
 # =============================================================================
 
+HOOK_TIMEOUT_SECONDS = 60
+HOOK_OUTPUT_LIMIT = 2000
+
+
+def _decode_hook_output(raw: object) -> str:
+    """TimeoutExpired carries bytes or str depending on the platform."""
+    if raw is None:
+        return ""
+    if isinstance(raw, bytes):
+        return raw.decode("utf-8", errors="replace")
+    return str(raw)
+
+
+def _print_hook_stream(name: str, text: str) -> None:
+    """Print a captured hook stream to stderr, truncated."""
+    text = text.strip()
+    if not text:
+        return
+    if len(text) > HOOK_OUTPUT_LIMIT:
+        text = (
+            text[:HOOK_OUTPUT_LIMIT]
+            + f"\n… ({len(text) - HOOK_OUTPUT_LIMIT} more characters truncated)"
+        )
+    print(f"  {name}:", file=sys.stderr)
+    for line in text.splitlines():
+        print(f"    {line}", file=sys.stderr)
+
+
 def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
     """Run lifecycle hooks for a task event.
+
+    Hooks are shell commands read from ``.trellis/config.yaml`` and executed
+    with ``shell=True`` from the repo root — see the trust boundary note in
+    ``.trellis/spec/cli/backend/script-conventions.md``.
+
+    Fail-open by design: a broken hook warns and the lifecycle command
+    continues. The warning names the event, command, exit status, and both
+    captured streams, because a hook whose only symptom is "nothing happened"
+    is undebuggable. A hook that hangs is bounded by
+    ``HOOK_TIMEOUT_SECONDS``; output is captured, so without the timeout the
+    user sees a task command that never returns and prints nothing.
 
     Args:
         event: Event name (e.g. "after_create").
@@ -299,17 +338,37 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                timeout=HOOK_TIMEOUT_SECONDS,
             )
             if result.returncode != 0:
                 print(
-                    colored(f"[WARN] Hook failed ({event}): {cmd}", Colors.YELLOW),
+                    colored(
+                        f"[WARN] Hook failed ({event}): exit {result.returncode}: {cmd}",
+                        Colors.YELLOW,
+                    ),
                     file=sys.stderr,
                 )
-                if result.stderr.strip():
-                    print(f"  {result.stderr.strip()}", file=sys.stderr)
+                print(f"  cwd: {repo_root}", file=sys.stderr)
+                _print_hook_stream("stdout", result.stdout or "")
+                _print_hook_stream("stderr", result.stderr or "")
+        except subprocess.TimeoutExpired as e:
+            print(
+                colored(
+                    f"[WARN] Hook timed out ({event}) after "
+                    f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
+                    Colors.YELLOW,
+                ),
+                file=sys.stderr,
+            )
+            print(f"  cwd: {repo_root}", file=sys.stderr)
+            _print_hook_stream("stdout", _decode_hook_output(e.stdout))
+            _print_hook_stream("stderr", _decode_hook_output(e.stderr))
         except Exception as e:
             print(
-                colored(f"[WARN] Hook error ({event}): {cmd} — {e}", Colors.YELLOW),
+                colored(
+                    f"[WARN] Hook error ({event}): {cmd} — {type(e).__name__}: {e}",
+                    Colors.YELLOW,
+                ),
                 file=sys.stderr,
             )
 

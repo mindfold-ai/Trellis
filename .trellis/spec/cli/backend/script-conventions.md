@@ -1320,9 +1320,33 @@ Task lifecycle events (`after_create`, `after_start`, `after_finish`, `after_arc
 # config.py — read hook commands from config
 def get_hooks(event: str, repo_root: Path | None = None) -> list[str]
 
-# task.py — execute hooks (never blocks main operation)
-def _run_hooks(event: str, task_json_path: Path, repo_root: Path) -> None
+# task_utils.py — execute hooks (never blocks main operation)
+HOOK_TIMEOUT_SECONDS = 60
+def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None
 ```
+
+### Trust boundary
+
+**`.trellis/config.yaml` is a repo-committed file whose `hooks:` entries are
+shell commands, executed with `shell=True` from the repo root with the caller's
+full environment.** Cloning a repository and running `task.py create` in it runs
+whatever that repository's `config.yaml` declares for `after_create` — no
+prompt, no allow-list. This is inherent to the feature (a hook is a shell
+command by definition), and it is stated here because it was not stated
+anywhere before: reviewers of a pull request that touches `config.yaml` are
+reviewing executable code, and `config.yaml` deserves the same scrutiny as a
+CI workflow file.
+
+Consequences for implementers:
+
+- Never widen the hook surface to a file that is *not* already reviewed like
+  code (a fetched template, a cache, a `.local` override sourced from a remote).
+- Never add a hook event that fires from a *read-only* command. Today every
+  event follows an explicit mutation the user asked for (`create`, `start`,
+  `finish`, `archive`); a hook on `list` or `current` would turn inspecting a
+  cloned repo into executing it.
+- The bounded timeout below is a liveness guarantee, not a security boundary.
+  It does not contain what a hook can do.
 
 ### Contracts
 
@@ -1361,20 +1385,48 @@ result = subprocess.run(
     env=env,
     capture_output=True,
     text=True,
-    encoding="utf-8",    # REQUIRED: cross-platform
-    errors="replace",    # REQUIRED: cross-platform
+    encoding="utf-8",              # REQUIRED: cross-platform
+    errors="replace",              # REQUIRED: cross-platform
+    timeout=HOOK_TIMEOUT_SECONDS,  # REQUIRED: output is captured, so an
+                                   # unbounded hook wedges the lifecycle
+                                   # command silently
 )
 ```
+
+`capture_output=True` is what makes a missing `timeout=` unacceptable rather
+than merely untidy: a hook waiting on stdin, a network call, or an auth prompt
+produces *no output at all* while it blocks, so the user sees `task.py create`
+hang with an empty terminal and no way to tell what it is waiting for. The
+timeout is a module constant, not a config key — a hook slow enough to need
+more than a minute belongs in a background job, not on a lifecycle event.
+
+### Diagnostics
+
+A hook whose only symptom is "nothing happened" is undebuggable. Every failure
+path names, at minimum, the **event**, the **command**, and **why it failed**:
+
+| Failure | Must report |
+|---------|-------------|
+| Non-zero exit | event, command, exit status, cwd, captured stdout **and** stderr |
+| Timeout | event, command, the timeout value, cwd, whatever was captured before the kill |
+| Exception | event, command, exception **type** and message |
+
+Captured streams are truncated (`HOOK_OUTPUT_LIMIT`) so a chatty hook cannot
+bury the lifecycle command's own output. Discarding stdout is not acceptable:
+a script that reports its errors on stdout is common, and a hook that prints
+its diagnosis and exits 1 would otherwise show the exit code with no reason.
 
 ### Validation & Error Matrix
 
 | Condition | Behavior |
 |-----------|----------|
 | No `hooks` key in config | No-op (empty list) |
-| `hooks` is not a dict | No-op (empty list) |
+| `hooks` is present but not a mapping | `[WARN]` naming the value, no-op |
 | Event key missing | No-op (empty list) |
-| Hook command exits non-zero | `[WARN]` to stderr, continues to next hook |
-| Hook command throws exception | `[WARN]` to stderr, continues to next hook |
+| Event value is a scalar, not a list (`after_create: echo hi`) | `[WARN]` naming the event and showing the list form — it parses fine and would otherwise register nothing |
+| Hook command exits non-zero | `[WARN]` with exit status + both streams, continues to next hook |
+| Hook command exceeds `HOOK_TIMEOUT_SECONDS` | Killed; `[WARN]` naming the timeout, continues to next hook |
+| Hook command throws exception | `[WARN]` with exception type, continues to next hook |
 | `linearis` not installed | Hook fails with warning, task operation succeeds |
 
 ### Wrong vs Correct
@@ -1384,14 +1436,38 @@ result = subprocess.run(
 result = subprocess.run(cmd, shell=True, check=True)  # Raises on failure!
 ```
 
-#### Correct — warn and continue
+#### Wrong — unbounded, and silent about why it failed
+```python
+result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+if result.returncode != 0:
+    print(f"[WARN] Hook failed: {cmd}", file=sys.stderr)  # which exit code?
+    if result.stderr.strip():                             # stdout dropped
+        print(f"  {result.stderr.strip()}", file=sys.stderr)
+```
+
+#### Correct — warn and continue, bounded, diagnosable
 ```python
 try:
-    result = subprocess.run(cmd, shell=True, ...)
+    result = subprocess.run(cmd, shell=True, ..., timeout=HOOK_TIMEOUT_SECONDS)
     if result.returncode != 0:
-        print(f"[WARN] Hook failed: {cmd}", file=sys.stderr)
+        print(
+            f"[WARN] Hook failed ({event}): exit {result.returncode}: {cmd}",
+            file=sys.stderr,
+        )
+        print(f"  cwd: {repo_root}", file=sys.stderr)
+        _print_hook_stream("stdout", result.stdout or "")
+        _print_hook_stream("stderr", result.stderr or "")
+except subprocess.TimeoutExpired as e:
+    print(
+        f"[WARN] Hook timed out ({event}) after {HOOK_TIMEOUT_SECONDS}s: {cmd}",
+        file=sys.stderr,
+    )
+    # TimeoutExpired carries bytes on POSIX and str on Windows — decode both.
 except Exception as e:
-    print(f"[WARN] Hook error: {cmd} — {e}", file=sys.stderr)
+    print(
+        f"[WARN] Hook error ({event}): {cmd} — {type(e).__name__}: {e}",
+        file=sys.stderr,
+    )
 ```
 
 ### Hook Script Pattern
@@ -1840,18 +1916,52 @@ commit_hash = rest.split()[0]
 ## Config helpers
 
 All keys in `.trellis/config.yaml` MUST be read through `common/config.py`
-(or its hook-side mirror `common/trellis_config.py` for hooks that cannot
-import the full task helpers). Both modules share the same parser chain:
+(or `common/trellis_config.py` for hooks that cannot import the full task
+helpers). Both go through one parser chain:
 
 ```
-_load_config(repo_root)
-  -> parse_simple_yaml(content)
+_load_config(repo_root)                      # config.py
+read_trellis_config(repo_root)               # trellis_config.py
+  -> parse_simple_yaml(content, source)      # trellis_config.py — the only copy
     -> _strip_inline_comment(value)
     -> _unquote(value)
 ```
 
 This is a load-bearing chain. Any new key added to `.trellis/config.yaml`
 must flow through it — do not write a custom reader, even a "small" one.
+
+**`parse_simple_yaml` lives in `trellis_config.py` and nowhere else.**
+`config.py` imports it. The direction is forced: `trellis_config.py` imports
+nothing from the package, because hooks copy it out as a single standalone
+file, while `config.py` depends on `paths.py`. The two modules previously
+carried byte-equivalent copies of all five parser functions with only
+`config.py`'s under test — a drift hazard with no upside. A second copy is a
+regression, and `regression.test.ts` asserts `config.py` has none.
+
+### Supported YAML subset, and what happens outside it
+
+Every parsed value is a **string** — the parser does no type coercion, so
+`false` arrives as `"false"` and `2000` as `"2000"`. Accessors coerce (see
+below). Supported: `key: value`, nested mappings by indentation, `- ` lists of
+scalars, whole-line and inline `#` comments, one layer of matching quotes.
+
+Anything outside that subset is **named on stderr against the file and line,
+and skipped** — it is never parsed into a plausible-looking wrong value:
+
+| Construct | Was | Is |
+|-----------|-----|-----|
+| Mapping inside a list (`- name: cli` / `  path: x`) | `path` hoisted to a **top-level** key — a nested key silently becoming a root key | Warned, skipped; the parent dict is untouched |
+| Block scalar (`notes: \|`) | `{"notes": "\|"}` — marker stored as the value, body dropped | Warned, key and body skipped |
+| Anchor / alias / merge key / flow collection | stored as the literal string `&b`, `*b`, `[a, b]` … | Warned, skipped |
+
+Only **unquoted** scalars are inspected, so `cmd: "a | b"` is still the string
+the user wrote. A well-formed config produces no output at all.
+
+`_load_config` is fail-open in both modules: an unreadable file returns `{}`
+silently, and a parse *exception* (e.g. `RecursionError` from a pathologically
+nested file) warns once and returns `{}`. A malformed config must never take
+down `task.py create` — that asymmetry existed until 0.6.x, where `config.py`
+caught only `(OSError, IOError)` around a call that could raise anything.
 
 ### Anti-pattern: custom YAML reader that bypasses `_strip_inline_comment`
 
@@ -1886,18 +1996,9 @@ DEFAULT_SESSION_AUTO_COMMIT = True
 def get_session_auto_commit(repo_root: Path | None = None) -> bool:
     config = _load_config(repo_root)
     raw = config.get("session_auto_commit", DEFAULT_SESSION_AUTO_COMMIT)
-    if isinstance(raw, bool):
-        return raw
-    s = str(raw).strip().lower()
-    if s in ("true", "yes", "1", "on"):
-        return True
-    if s in ("false", "no", "0", "off"):
-        return False
-    print(
-        f"[WARN] invalid session_auto_commit value: {raw!r}; using true (default)",
-        file=sys.stderr,
+    return coerce_config_bool(
+        raw, DEFAULT_SESSION_AUTO_COMMIT, "session_auto_commit"
     )
-    return DEFAULT_SESSION_AUTO_COMMIT
 ```
 
 Each new key gets its own `get_<key>` accessor. The accessor owns:
@@ -1910,14 +2011,23 @@ Each new key gets its own `get_<key>` accessor. The accessor owns:
 
 ### Pattern: boolean tolerance
 
-Boolean accessors must accept native YAML `true` / `false` plus the
-case-insensitive string aliases `true / false / yes / no / 1 / 0 / on / off`.
-Anything else falls back to the default with a stderr warning.
+**Every boolean config value goes through `coerce_config_bool(value, default,
+label)`.** It accepts native YAML `true` / `false` plus the case-insensitive
+string aliases `true / false / yes / no / 1 / 0 / on / off`; anything else
+falls back to `default` with a stderr warning naming `label`.
 
 This breadth matters because the simple YAML parser does not coerce
 `true`/`false` to native bool — values arrive as strings. A reader that only
 checks `raw is True` misses every quoted-or-unquoted string variant the user
 naturally writes.
+
+One helper, not one per key. The failure mode is not a missing alias, it is
+two accessors disagreeing about the same word: `_is_true_config_value`
+(reading `packages.*.git`) accepted only the literal `"true"` while
+`get_session_auto_commit` accepted the full set, so `git: yes` silently meant
+**false** — the opposite branch, no warning, in the accessor that decides
+whether a package is its own git repository. An accepted-here/rejected-there
+split is worse than a narrow set applied consistently.
 
 ### Pattern: document every key in `templates/trellis/config.yaml`
 

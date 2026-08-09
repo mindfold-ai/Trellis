@@ -51,6 +51,7 @@ import {
   commonTaskUtils,
   commonDeveloper,
   commonConfig,
+  commonTrellisConfig,
   commonGitContext,
   commonSessionContext,
   getAllScripts,
@@ -8633,51 +8634,63 @@ describe("regression: collectTemplates paths match init directory structure (0.3
 // =============================================================================
 
 describe("regression: parse_simple_yaml uses _unquote not greedy strip (0.3.8)", () => {
-  it("config.py defines _unquote helper", () => {
-    expect(commonConfig).toContain("def _unquote(s: str) -> str:");
+  // 0.6.x: the parser was consolidated into trellis_config.py (config.py now
+  // imports it), so these source assertions follow it there. config.py must
+  // not grow a second copy back.
+  it("trellis_config.py defines _unquote helper", () => {
+    expect(commonTrellisConfig).toContain("def _unquote(value: str) -> str:");
   });
 
-  it("config.py uses _unquote for list items, not .strip('\"')", () => {
+  it("trellis_config.py uses _unquote for list items, not .strip('\"')", () => {
     // The bug: .strip('"').strip("'") greedily eats nested quotes
     // e.g. "echo 'hello'" -> strip("'") -> echo 'hello (broken!)
-    expect(commonConfig).not.toContain(".strip('\"').strip(\"'\")");
-    expect(commonConfig).toContain("_unquote(stripped[2:].strip())");
+    expect(commonTrellisConfig).not.toContain(".strip('\"').strip(\"'\")");
+    expect(commonTrellisConfig).toContain("_unquote(stripped[2:].strip())");
   });
 
-  it("config.py uses _unquote for key-value, not .strip('\"')", () => {
-    // 0.5.11: parse path now strips inline comments first, then unquotes —
-    // mirrors trellis_config.py so YAML `key: false  # comment` parses
-    // correctly. The forbidden `.strip('"').strip("'")` greedy chain still
-    // must not appear.
-    expect(commonConfig).not.toContain(".strip('\"').strip(\"'\")");
-    expect(commonConfig).toContain("_unquote(value)");
-    expect(commonConfig).toContain("_strip_inline_comment(value)");
+  it("trellis_config.py uses _unquote for key-value, not .strip('\"')", () => {
+    // 0.5.11: parse path strips inline comments first, then unquotes, so YAML
+    // `key: false  # comment` parses correctly. The forbidden
+    // `.strip('"').strip("'")` greedy chain still must not appear.
+    expect(commonTrellisConfig).not.toContain(".strip('\"').strip(\"'\")");
+    expect(commonTrellisConfig).toContain("_unquote(value)");
+    expect(commonTrellisConfig).toContain("_strip_inline_comment(value)");
+  });
+
+  it("config.py imports the parser instead of redefining it", () => {
+    expect(commonConfig).toContain(
+      "from .trellis_config import parse_simple_yaml",
+    );
+    expect(commonConfig).not.toContain("def parse_simple_yaml(");
+    expect(commonConfig).not.toContain("def _parse_yaml_block(");
+    expect(commonConfig).not.toContain("def _unquote(");
   });
 });
 
 describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
-  // Extract _unquote + _parse_yaml_block + _next_content_line + parse_simple_yaml
-  // from commonConfig and run them in an isolated Python process.
-  // We can't import config.py directly because it has `from .paths import ...`
+  // trellis_config.py imports nothing from the package (hooks load it as a
+  // single file), so it runs standalone as-is — no source extraction needed.
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
   let tmpDir: string;
-  let extractedPy: string;
 
   beforeEach(() => {
+    expect(commonTrellisConfig).toContain("def parse_simple_yaml(");
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-yaml-py-"));
-    // Extract _unquote + parse_simple_yaml + _parse_yaml_block + _next_content_line
-    // These 4 functions have no external imports — safe to run standalone.
-    const fnStart = commonConfig.indexOf("def _unquote(");
-    const fnEnd = commonConfig.indexOf("\n# Defaults");
-    extractedPy = commonConfig.substring(fnStart, fnEnd);
-    fs.writeFileSync(path.join(tmpDir, "yaml_parser.py"), extractedPy);
+    fs.writeFileSync(
+      path.join(tmpDir, "yaml_parser.py"),
+      commonTrellisConfig,
+    );
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  /** Run parse_simple_yaml via Python subprocess and return parsed result */
-  function runPythonYaml(yamlContent: string): unknown {
+  /** Run parse_simple_yaml via Python subprocess, returning result + stderr */
+  function runPythonYamlFull(yamlContent: string): {
+    result: unknown;
+    stderr: string;
+  } {
     const scriptFile = path.join(tmpDir, "_test.py");
     const script = [
       "import sys, json",
@@ -8687,10 +8700,16 @@ describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
       "print(json.dumps(result))",
     ].join("\n");
     fs.writeFileSync(scriptFile, script);
-    const out = execSync(`python3 ${JSON.stringify(scriptFile)}`, {
-      encoding: "utf-8",
-    });
-    return JSON.parse(out.trim());
+    const proc = spawnSync(pythonCmd, [scriptFile], { encoding: "utf-8" });
+    expect(proc.status, proc.stderr).toBe(0);
+    return {
+      result: JSON.parse((proc.stdout ?? "").trim()),
+      stderr: proc.stderr ?? "",
+    };
+  }
+
+  function runPythonYaml(yamlContent: string): unknown {
+    return runPythonYamlFull(yamlContent).result;
   }
 
   it("nested single quotes inside double quotes are preserved", () => {
@@ -8725,6 +8744,80 @@ describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
   it("mismatched quotes are left as-is", () => {
     const result = runPythonYaml("key: \"hello'");
     expect(result).toEqual({ key: "\"hello'" });
+  });
+
+  // ---------------------------------------------------------------------
+  // Unsupported constructs are reported, not silently mis-parsed (audit §4)
+  // ---------------------------------------------------------------------
+
+  it("a mapping inside a list is not hoisted into the parent dict", () => {
+    // Was: {"packages": ["name: cli"], "path": "packages/cli"} — the nested
+    // `path` key silently became a top-level config key.
+    const { result, stderr } = runPythonYamlFull(
+      "packages:\n  - name: cli\n    path: packages/cli\n",
+    );
+    expect(result).not.toHaveProperty("path");
+    expect(result).toEqual({ packages: ["name: cli"] });
+    expect(stderr).toContain("mappings inside a list are not supported");
+    expect(stderr).toContain("path: packages/cli");
+  });
+
+  it("block scalars are reported and their body is not leaked", () => {
+    // Was: {"notes": "|"} — the marker became the value, body dropped.
+    const { result, stderr } = runPythonYamlFull(
+      "notes: |\n  line one\n  key: not-a-real-key\nkeep: ok\n",
+    );
+    expect(result).toEqual({ keep: "ok" });
+    expect(stderr).toContain("block scalars are not supported");
+    expect(stderr).toContain(":1:");
+  });
+
+  it("anchors, aliases, merge keys and flow collections are reported", () => {
+    const { result, stderr } = runPythonYamlFull(
+      "base: &b\nuse: *b\nlist: [a, b]\nmap: {a: 1}\nkeep: ok\n",
+    );
+    expect(result).toEqual({ keep: "ok" });
+    expect(stderr).toContain("YAML anchors are not supported");
+    expect(stderr).toContain("YAML aliases are not supported");
+    expect(stderr).toContain("flow sequences are not supported");
+    expect(stderr).toContain("flow mappings are not supported");
+  });
+
+  it("quoted values that look like YAML constructs stay untouched", () => {
+    // A hook command is a plain string; only unquoted scalars are inspected.
+    const { result, stderr } = runPythonYamlFull(
+      'cmd: "a | b"\nglob: "*.py"\nflowish: "[a, b]"\n',
+    );
+    expect(result).toEqual({
+      cmd: "a | b",
+      glob: "*.py",
+      flowish: "[a, b]",
+    });
+    expect(stderr).toBe("");
+  });
+
+  it("a well-formed config parses with no warnings", () => {
+    const { result, stderr } = runPythonYamlFull(
+      [
+        "session_auto_commit: false  # off for this project",
+        "packages:",
+        "  cli:",
+        "    path: packages/cli",
+        "    git: yes",
+        "hooks:",
+        "  after_create:",
+        "    - echo one",
+        "  after_archive:",
+        "    - echo two",
+        "",
+      ].join("\n"),
+    );
+    expect(result).toEqual({
+      session_auto_commit: "false",
+      packages: { cli: { path: "packages/cli", git: "yes" } },
+      hooks: { after_create: ["echo one"], after_archive: ["echo two"] },
+    });
+    expect(stderr).toBe("");
   });
 });
 
@@ -10447,4 +10540,285 @@ describe("regression: break-loop skill carries the artifact existence guard", ()
       ).toBe(rendered);
     });
   }
+});
+
+// =============================================================================
+// regression: lifecycle hook + config parser hardening (runtime audit §4/§5)
+// =============================================================================
+//
+// Audit findings this locks down:
+//   - `run_task_hooks` ran `subprocess.run` with no `timeout=`, so a hook that
+//     waits on stdin/network wedged `task.py create` forever with no output
+//     (capture_output=True swallows everything while it hangs).
+//   - A failing hook reported neither its exit status nor its stdout, so the
+//     only symptom of a broken hook was "nothing happened".
+//   - `packages:\n  - name: cli\n    path: x` hoisted `path` to a TOP-LEVEL
+//     config key. A nested key silently became a root key.
+//   - `_is_true_config_value` accepted only the literal "true", while
+//     `get_session_auto_commit` accepted true/yes/1/on — so `git: yes` on a
+//     package silently meant false.
+//   - `_load_config` caught only (OSError, IOError) around read AND parse, so a
+//     parser exception crashed the lifecycle command outright, while
+//     `read_trellis_config` returned {} for the same input.
+//   - `hooks:\n  after_create: echo hi` (scalar instead of a list) parsed fine
+//     and registered nothing, silently.
+//
+// These run the real scripts in a temp repo rather than asserting on source.
+// =============================================================================
+
+describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
+  const pyCmd = process.platform === "win32" ? "python" : "python3";
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-hooks-"));
+    execSync("git init -q -b main", { cwd: tmpDir });
+    execSync('git config user.email "test@trellis.local"', { cwd: tmpDir });
+    execSync('git config user.name "Trellis Test"', { cwd: tmpDir });
+    for (const [rel, content] of getAllScripts()) {
+      const abs = path.join(tmpDir, ".trellis", "scripts", rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content, "utf-8");
+    }
+    fs.mkdirSync(path.join(tmpDir, ".trellis", "tasks"), { recursive: true });
+    writeFile(
+      ".trellis/.developer",
+      "name=test-dev\ninitialized_at=2026-08-09T00:00:00\n",
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function writeFile(rel: string, content: string): void {
+    const abs = path.join(tmpDir, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content, "utf-8");
+  }
+
+  function runTask(args: string[]): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
+    const proc = spawnSync(
+      pyCmd,
+      [path.join(tmpDir, ".trellis", "scripts", "task.py"), ...args],
+      { cwd: tmpDir, encoding: "utf-8", env: { ...process.env } },
+    );
+    return {
+      status: proc.status,
+      stdout: proc.stdout ?? "",
+      stderr: proc.stderr ?? "",
+    };
+  }
+
+  /** Run a probe script with .trellis/scripts on sys.path. */
+  function runProbe(body: string[]): { stdout: string; stderr: string } {
+    const probePath = path.join(tmpDir, "probe.py");
+    fs.writeFileSync(
+      probePath,
+      [
+        "import sys",
+        `sys.path.insert(0, ${JSON.stringify(
+          path.join(tmpDir, ".trellis", "scripts"),
+        )})`,
+        ...body,
+      ].join("\n"),
+    );
+    const proc = spawnSync(pyCmd, [probePath], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+    });
+    expect(proc.status, proc.stderr).toBe(0);
+    return { stdout: proc.stdout ?? "", stderr: proc.stderr ?? "" };
+  }
+
+  it("[hooks] a hanging hook is killed at the timeout and the command still returns", () => {
+    // The real default is 60s; the probe drops it to 1s so the test can
+    // observe the bounded behavior instead of the unbounded one.
+    writeFile(
+      ".trellis/config.yaml",
+      `hooks:\n  after_create:\n    - ${pyCmd} -c "import time; print('before'); time.sleep(30)"\n`,
+    );
+    const started = Date.now();
+    const { stdout, stderr } = runProbe([
+      "from pathlib import Path",
+      "from common import task_utils",
+      "task_utils.HOOK_TIMEOUT_SECONDS = 1",
+      `task_utils.run_task_hooks("after_create", Path("task.json"), Path(${JSON.stringify(
+        tmpDir,
+      )}))`,
+      "print('RETURNED')",
+    ]);
+    const elapsed = Date.now() - started;
+
+    expect(stderr).toContain("Hook timed out (after_create) after 1s");
+    // Fail-open: run_task_hooks returned instead of blocking on the 30s sleep.
+    expect(stdout).toContain("RETURNED");
+    expect(elapsed).toBeLessThan(20_000);
+  });
+
+  it("[hooks] the shipped default timeout is bounded and applied to the subprocess", () => {
+    expect(commonTaskUtils).toContain("HOOK_TIMEOUT_SECONDS = 60");
+    expect(commonTaskUtils).toContain("timeout=HOOK_TIMEOUT_SECONDS");
+  });
+
+  it("[hooks] a failing hook reports event, exit status, stdout and stderr", () => {
+    writeFile(
+      "hook_fail.py",
+      [
+        "import sys",
+        "print('hook-stdout-line')",
+        "print('hook-stderr-line', file=sys.stderr)",
+        "sys.exit(3)",
+      ].join("\n"),
+    );
+    writeFile(
+      ".trellis/config.yaml",
+      `hooks:\n  after_create:\n    - ${pyCmd} hook_fail.py\n`,
+    );
+
+    const { status, stderr } = runTask(["create", "Hook probe", "--no-start"]);
+
+    // Fail-open: the task command itself still succeeds.
+    expect(status).toBe(0);
+    expect(stderr).toContain("Hook failed (after_create): exit 3");
+    expect(stderr).toContain("hook-stdout-line");
+    expect(stderr).toContain("hook-stderr-line");
+  });
+
+  it("[hooks] a scalar hook declaration warns instead of silently registering nothing", () => {
+    // `after_create: echo hi` is an easy mistake — it parses fine and then
+    // never runs. Silence here is indistinguishable from a working hook.
+    writeFile(".trellis/config.yaml", "hooks:\n  after_create: echo hi\n");
+
+    const { status, stderr } = runTask(["create", "Scalar hook", "--no-start"]);
+
+    expect(status).toBe(0);
+    expect(stderr).toContain("ignoring hook `after_create`");
+    expect(stderr).toContain("expected a list of commands");
+  });
+
+  it("[hooks] a well-formed hook list produces no warning and runs", () => {
+    writeFile(
+      ".trellis/config.yaml",
+      `hooks:\n  after_create:\n    - ${pyCmd} -c "open('hook-ran.txt','w').write('yes')"\n`,
+    );
+
+    const { status, stderr } = runTask(["create", "Good hook", "--no-start"]);
+
+    expect(status).toBe(0);
+    expect(fs.existsSync(path.join(tmpDir, "hook-ran.txt"))).toBe(true);
+    expect(stderr).not.toContain("Hook failed");
+    expect(stderr).not.toContain("ignoring hook");
+  });
+
+  it("[config] `git: yes` on a package is truthy (was silently false)", () => {
+    writeFile(
+      ".trellis/config.yaml",
+      [
+        "packages:",
+        "  yes_pkg:",
+        "    path: a",
+        "    git: yes",
+        "  on_pkg:",
+        "    path: b",
+        "    git: ON",
+        "  true_pkg:",
+        "    path: c",
+        "    git: true",
+        "  off_pkg:",
+        "    path: d",
+        "    git: no",
+        "",
+      ].join("\n"),
+    );
+    const { stdout } = runProbe([
+      "import json",
+      "from pathlib import Path",
+      "from common.config import get_git_packages",
+      `print(json.dumps(get_git_packages(Path(${JSON.stringify(tmpDir)}))))`,
+    ]);
+    expect(JSON.parse(stdout.trim())).toEqual({
+      yes_pkg: "a",
+      on_pkg: "b",
+      true_pkg: "c",
+    });
+  });
+
+  it("[config] an unrecognized boolean warns and falls back instead of meaning false", () => {
+    writeFile(
+      ".trellis/config.yaml",
+      "packages:\n  p:\n    path: a\n    git: maybe\n",
+    );
+    const { stdout, stderr } = runProbe([
+      "import json",
+      "from pathlib import Path",
+      "from common.config import get_git_packages",
+      `print(json.dumps(get_git_packages(Path(${JSON.stringify(tmpDir)}))))`,
+    ]);
+    expect(JSON.parse(stdout.trim())).toEqual({});
+    expect(stderr).toContain("invalid packages.p.git value");
+  });
+
+  it("[config] a list of mappings does not hoist keys into the top-level config", () => {
+    writeFile(
+      ".trellis/config.yaml",
+      [
+        "packages:",
+        "  - name: cli",
+        "    default_package: hijacked",
+        "",
+      ].join("\n"),
+    );
+    const { stdout, stderr } = runProbe([
+      "import json",
+      "from pathlib import Path",
+      "from common.config import _load_config",
+      `print(json.dumps(_load_config(Path(${JSON.stringify(tmpDir)}))))`,
+    ]);
+    const parsed = JSON.parse(stdout.trim()) as Record<string, unknown>;
+    expect(parsed).not.toHaveProperty("default_package");
+    expect(stderr).toContain("mappings inside a list are not supported");
+  });
+
+  it("[config] a parser exception is fail-open — the lifecycle command still works", () => {
+    // 1500 levels of nesting overflows the recursive block parser with a
+    // RecursionError. `_load_config` used to catch only (OSError, IOError),
+    // so this crashed `task.py create` with a traceback; `read_trellis_config`
+    // already returned {} for the same file.
+    const deep = Array.from(
+      { length: 1500 },
+      (_unused, i) => `${" ".repeat(i * 2)}k${i}:`,
+    ).join("\n");
+    writeFile(".trellis/config.yaml", `${deep}\n`);
+
+    const { status, stdout } = runTask(["create", "Deep config", "--no-start"]);
+    expect(status).toBe(0);
+    expect(stdout).toContain(".trellis/tasks/");
+
+    const { stdout: probeOut, stderr: probeErr } = runProbe([
+      "import json",
+      "from pathlib import Path",
+      "from common.config import _load_config",
+      `print(json.dumps(_load_config(Path(${JSON.stringify(tmpDir)}))))`,
+    ]);
+    expect(JSON.parse(probeOut.trim())).toEqual({});
+    expect(probeErr).toContain("could not parse");
+  });
+
+  it("[config] both parsers are one implementation, not two copies", () => {
+    // The two byte-equivalent `parse_simple_yaml` copies were the drift
+    // hazard the audit flagged; config.py now imports the canonical one.
+    expect(commonConfig).toContain(
+      "from .trellis_config import parse_simple_yaml",
+    );
+    expect(commonConfig).not.toContain("def parse_simple_yaml(");
+    expect(commonTrellisConfig).toContain("def parse_simple_yaml(");
+    // trellis_config.py must stay loadable as a single file (hooks copy it
+    // alone), so it may not import from the package.
+    expect(commonTrellisConfig).not.toContain("from .");
+  });
 });
