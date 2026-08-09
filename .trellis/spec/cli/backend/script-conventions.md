@@ -350,9 +350,9 @@ _mark_attempted(repo_root)
 
 ## Shared Module API Reference
 
-### `common/io.py` — JSON File I/O
+### `common/io.py` — File I/O
 
-The single source of truth for all JSON file operations. Replaces 8 duplicated `_read_json_file` and 5 duplicated `_write_json_file` functions.
+The single source of truth for all JSON file operations. Replaces 8 duplicated `_read_json_file` and 5 duplicated `_write_json_file` functions. It also owns `write_text_atomic`, the same never-truncate-in-place guarantee for the Markdown state files (`journal-*.md`, `index.md`) that hold durable session state.
 
 | Function | Signature | Returns | Error Behavior |
 |----------|-----------|---------|----------------|
@@ -360,6 +360,7 @@ The single source of truth for all JSON file operations. Replaces 8 duplicated `
 | `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of `JSON_READ_MISSING` / `INVALID` / `UNREADABLE` / `NOT_OBJECT` / `EMPTY` |
 | `describe_json_read_failure` | `(path: Path, reason: str \| None) -> tuple[str, str]` | `(what happened, what to do)` | Never raises; unknown reasons get a generic pair |
 | `write_json` | `(path: Path, data: dict) -> bool` | `True` on success | Returns `False` on `OSError`, `IOError` |
+| `write_text_atomic` | `(path: Path, text: str) -> bool` | `True` on success | Returns `False` on `OSError`; unlinks the temp file and re-raises on `BaseException` (Ctrl-C) |
 
 **Contracts**:
 - Always uses `encoding="utf-8"` and `ensure_ascii=False`
@@ -1679,11 +1680,14 @@ from common.safe_commit import (
 )
 from common.config import get_session_auto_commit
 
-def _auto_commit_workspace(repo_root: Path) -> None:
+def _auto_commit_workspace(repo_root: Path) -> str:
+    # Returns COMMIT_DONE / COMMIT_SKIPPED / COMMIT_BLOCKED / COMMIT_FAILED.
+    # The caller turns COMMIT_FAILED into a non-zero exit + checkpoint; see
+    # "Session recording is a resumable state machine" below.
     if not get_session_auto_commit(repo_root):
         print("[OK] session_auto_commit: false — skipping git stage/commit.",
               file=sys.stderr)
-        return
+        return COMMIT_SKIPPED
 
     # Scope staging to the CURRENT task only (#303) — never iterdir all tasks.
     current = get_current_task(repo_root)
@@ -1716,12 +1720,16 @@ Behavior contract:
   non-existent arguments to `git`.
 - `safe_git_add` runs `git add -- <paths>` exactly once. No retry, no `-f`.
 - On `ignored by` failure → call `print_gitignore_warning(paths)`.
-  `add_session.py` returns after writing files to disk. `task.py archive`
-  returns success only when the archived source was not tracked; if tracked
-  task files were moved and the archive commit cannot be created, `archive`
-  exits non-zero so callers do not continue to journal over dirty deletes.
-- On any other failure → log the stderr and return. Do not re-attempt with
-  different flags.
+  `add_session.py` returns `COMMIT_BLOCKED` and still exits 0: a gitignored
+  `.trellis/` is the user telling git to stay out of this tree, which is the
+  same configured skip as `session_auto_commit: false`, not a failure worth
+  retrying. `task.py archive` returns success only when the archived source
+  was not tracked; if tracked task files were moved and the archive commit
+  cannot be created, `archive` exits non-zero so callers do not continue to
+  journal over dirty deletes.
+- On any other failure → log the stderr and return `COMMIT_FAILED`. Do not
+  re-attempt with different flags. `add_session.py` exits non-zero and prints
+  the resume checkpoint.
 - `task.py archive` is stricter than `add_session.py`: when `session_auto_commit`
   is enabled and the source task had tracked files, the archive move must be
   accompanied by a successful bookkeeping commit. A failed commit leaves the
@@ -1730,6 +1738,180 @@ Behavior contract:
 - `used_force` in `safe_git_add`'s return tuple is kept for signature
   compatibility but is always `False`. Do not introduce a code path that
   sets it to `True`.
+
+### Scenario: Session recording is a resumable state machine
+
+#### 1. Scope / Trigger
+
+Any change to `add_session.py`'s rendering, journal append, index update,
+auto-commit, or session numbering. Recording used to be three unguarded steps
+in a row: append, update index, best-effort commit. A crash or a failed commit
+between them left a half-recorded session that the next identical run happily
+appended a *second* time, and the commit table rendered `(see git log)` for
+every hash because no code ever asked git what the commit said.
+
+#### 2. Signatures
+
+```python
+# add_session.py
+def parse_commit_tokens(commit: str) -> tuple[list[str], str | None]
+def parse_subject_overrides(values: list[str] | None) -> tuple[dict[str, str], str | None]
+def resolve_commit_subject(repo_root: Path, oid: str) -> str | None
+def build_commit_evidence(repo_root, tokens, overrides) -> tuple[list[tuple[str, str]], str | None]
+def escape_markdown_cell(text: str) -> str
+def compute_record_fingerprint(...) -> str          # 16 hex chars
+def render_marker(fingerprint: str) -> str          # HTML comment
+def classify_record(repo_root, dev_dir, index_file, marker
+    ) -> tuple[str, Path | None, int | None, str | None]
+def resolve_next_session(repo_root, dev_dir, index_file) -> int
+def _auto_commit_workspace(repo_root: Path) -> str
+```
+
+New CLI surface: `--commit-subject OID=SUBJECT` (repeatable) and
+`--idempotency-key <key>`.
+
+#### 3. Contracts
+
+**Accurate commit evidence, or no write at all.** Every `--commit` token is a
+bounded hex OID (`^[0-9a-fA-F]{7,40}$`); anything else is rejected. Each OID is
+resolved to its real subject with `git show -s --format=%s <oid>^{commit} --`
+— argv, never shell interpolation, and peeled to `commit` so a hex-looking ref
+name cannot resolve to a tree. An OID that does not resolve fails the command
+**before the journal or index is touched**. The only escape hatch is an
+explicit, one-to-one `--commit-subject <oid>=<subject>` mapping; a mapping for
+an OID that is not in `--commit`, a duplicate mapping, or an empty subject is
+an error. Generic prose (`(see git log)`, `not recorded`, `(Add details)`) is
+never substituted — that is the whole point of the requirement.
+
+**Record identity is a retry key, not a dedupe key.** The fingerprint is a
+SHA-256 over the normalized semantic inputs (developer, date, title, summary,
+package, branch, resolved commits *and their subjects*, changes, extra
+content, tests, next steps, idempotency key), truncated to 16 hex chars, and
+persisted as `<!-- trellis-session: fp=<hash> -->` on the line directly under
+the `## Session N:` heading. An HTML comment renders as nothing, so the human
+evidence is unchanged by its presence. The marker only matches a record that
+is **still uncommitted in this worktree**: once the entry is present in
+`git show HEAD:<journal>`, an identical later request is a legitimately new
+session and gets a new number. `--idempotency-key` is the one way to say
+otherwise — with a key, an already-committed match is reported and exits 0.
+
+**Five states, one direction.** `classify_record` returns `absent`,
+`journal-recorded`, `index-recorded`, or `committed`, and the run walks them
+in order:
+
+| From | Step | To |
+| --- | --- | --- |
+| absent | atomically append the complete marked entry | journal-recorded |
+| journal-recorded | write the exact index row | index-recorded |
+| index-recorded | stage the scoped paths and commit | committed |
+
+A retry re-enters at whichever state it finds. `journal-recorded` repairs
+*only* the index row — it never appends a second entry. `index-recorded`
+retries *only* the commit.
+
+**Only a unique exact match is ever adopted.** Two entries carrying the same
+marker, a marker with no `## Session N:` heading above it, or a missing index
+row while `Total Sessions` already counts past this session all return an
+error and change nothing. Ambiguous or malformed pending evidence is never
+guessed into completion.
+
+**A failed auto-commit is a failure.** `_auto_commit_workspace` returns
+`COMMIT_DONE` / `COMMIT_SKIPPED` / `COMMIT_BLOCKED` / `COMMIT_FAILED`. On
+`COMMIT_FAILED` the command exits 1 after printing a `[BLOCKED] Checkpoint:`
+block naming the session, the journal file, and the fact that re-running the
+identical command resumes rather than duplicates. Reporting overall success
+because the append worked is what made the producer gap invisible. After a
+reported-successful commit the marker is re-read from `HEAD:<journal>`; if it
+is not there, the same checkpoint fires.
+
+**Session numbers converge across branches.** The next number is
+`max(...) + 1` over the working tree (index `Total Sessions` plus every
+`## Session N:` heading in every local `journal-*.md`) **and** every recorded
+ref. The refs come from `for-each-ref` — HEAD and the default branch first,
+then the other local heads (where a parallel worktree's branch lives, which is
+the case that actually collided twice on 2026-08-06), then remote-tracking
+refs — capped at `MAX_CONVERGENCE_REFS` and read with a single `git grep` over
+all of them, not an `ls-tree` + `show` per ref. Deriving the number from the
+working tree alone lets two branches claim the same number; the
+`journal-*.md merge=union` driver then merges two *different* sessions that
+both call themselves N. The default branch is resolved locally only
+(`refs/remotes/origin/HEAD`, then `main`/`master`) — `resolve_default_branch`
+falls back to `git remote show origin`, which can block on the network, and
+session recording is a hot path.
+
+**Writes are crash-safe.** The journal append and the index rewrite both go
+through `io.write_text_atomic` (temp in the same dir, then `os.replace`), so a
+crash mid-write leaves the previous content rather than a half-record no retry
+could classify. See
+[Filesystem Safety](./filesystem-safety.md#1-atomic-writes--never-truncate-a-state-file-in-place).
+
+#### 4. Validation & Error Matrix
+
+| Condition | Behavior |
+| --- | --- |
+| `--commit` token is not 7-40 hex chars | Exit 1, names the token; nothing written |
+| `--commit` OID does not resolve locally | Exit 1, names the OID and the `--commit-subject` remedy; nothing written |
+| `--commit-subject` for an OID not in `--commit`, duplicated, or empty | Exit 1; nothing written |
+| `--commit-subject` subject contains `|` or newlines | Accepted; escaped for the Markdown cell |
+| `--commit -` (default) | `(No commits - planning session)`; no git resolution at all |
+| `--idempotency-key` outside `[A-Za-z0-9._-]{1,64}` | Exit 1; nothing written |
+| Retry after a failed index update | Index row repaired, journal entry count unchanged |
+| Retry after a failed auto-commit | Only the commit is retried; journal and index unchanged |
+| Retry of an already-committed record, no idempotency key | New session, new number |
+| Retry of an already-committed record, with idempotency key | Exit 0, reports "already recorded"; nothing written |
+| Marker found in two entries | Exit 1, names the files; nothing written |
+| Marker with no `## Session N:` heading above it | Exit 1, "malformed"; nothing written |
+| Auto-commit fails | Exit 1 with the `[BLOCKED] Checkpoint:` block |
+| `.trellis/` is gitignored | `print_gitignore_warning`, exit 0 (configured skip) |
+| Not a git repository | `COMMIT_BLOCKED`, exit 0 — retry could never succeed, so it is not `COMMIT_FAILED` |
+| `session_auto_commit: false` | Stops after verified journal + index, exit 0 |
+
+#### 5. Good / Base / Bad Cases
+
+- **Good** — a session recorded with three real OIDs renders three real
+  subjects; a later interrupted run of the same command lands on the same
+  fingerprint, sees the entry uncommitted with no index row, writes the row,
+  commits, and exits 0 with one journal entry.
+- **Base** — a planning session (`--commit -`) with auto-commit disabled.
+  No git resolution, no staging, exit 0 once journal and index agree.
+- **Bad** — "the append succeeded, so report success and warn about the
+  commit." The next identical run then appends a second entry for a session
+  the user believes is already recorded.
+
+#### 6. Tests Required
+
+`test/scripts/add-session.integration.test.ts`, real `python3` against real
+git repos — not source-string assertions. Subject rendering and escaping,
+unresolved-OID fail-before-write (assertion point: the journal file is byte
+unchanged), explicit mapping accepted, planning `-`, auto-commit disabled,
+rotation, fault injection at each of append / index / commit with a retry that
+proves convergence, a repeated committed record producing a *new* session, the
+idempotency-key no-op, concurrent-branch numbering, a malformed marker, and
+the staging scope staying inside Trellis-owned paths.
+
+#### 7. Wrong vs Correct
+
+##### Wrong
+
+```python
+for c in commit.split(","):
+    commit_table += f"\n| `{c.strip()}` | (see git log) |"
+```
+
+The table has a Message column and this fills it with an instruction to go
+look somewhere else. Every consumer of the journal then reads evidence that
+says nothing.
+
+##### Correct
+
+```python
+evidence, error = build_commit_evidence(repo_root, tokens, overrides)
+if error:
+    print(f"Error: {error}", file=sys.stderr)
+    return 1                      # before any mutation
+for oid, subject in evidence:
+    commit_table += f"\n| `{oid}` | {escape_markdown_cell(subject)} |"
+```
 
 ### Pattern: `session_auto_commit` config gate (added 0.5.11)
 
