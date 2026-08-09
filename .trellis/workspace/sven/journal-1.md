@@ -33,3 +33,27 @@ Housekeeping: renamed branch to chore/task-backlog-2026-08, applied trellis upda
 ### Status
 
 [OK] **Completed**
+
+
+## Session 2: Backlog sweep: verified upstream-covered tasks, landed three CLI hardening features
+
+**Date**: 2026-08-09
+**Task**: Backlog sweep: verified upstream-covered tasks, landed three CLI hardening features
+**Package**: cli
+**Branch**: `chore/task-backlog-2026-08`
+
+### Summary
+
+Verified 08-06-converge-platform-templates fully covered by upstream 6ddd9412 and archived it; verified all in-repo acceptance criteria of 08-06-adopt-trellis-finish-clear-fix (fix present at active_task.py:695, E2E fallback-clear proven in temp repo, no local orphans) leaving only cross-repo consumer rollout. Implemented and archived three tasks: create-empty-metadata-rejection (validation before any filesystem write, explicit whitespace predicate covering U+FEFF/U+0085), archive-index-lock-retry (bounded backoff on transient index.lock, moved-with-pending-commit abort design naming the lock), task.py rename (atomic identity+back-reference rewrite, dry-run/apply from one plan structure). All via trellis-implement/check agent loop with independent probes. Per user instruction: taosu-owned upstream tasks excluded from backlog work. Remaining owned backlog: developer-worktree-provisioning, validate-task-branch-metadata-before-archive, align-task-validation-preflight, add-session retry, OpenCode mem reader.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e1a17984` | (see git log) |
+| `a95e7483` | (see git log) |
+| `f8d5de5f` | (see git log) |
+
+### Status
+
+[OK] **Completed**
