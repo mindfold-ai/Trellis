@@ -57,3 +57,42 @@ Verified 08-06-converge-platform-templates fully covered by upstream 6ddd9412 an
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: Backlog batch: validation preflight, add_session state machine, OpenCode mem reader
+<!-- trellis-session: fp=498f88303810ef61 -->
+
+**Date**: 2026-08-09
+**Task**: Backlog batch: validation preflight, add_session state machine, OpenCode mem reader
+**Package**: cli
+**Branch**: `chore/task-backlog-2026-08`
+
+### Summary
+
+Landed five features on chore/task-backlog-2026-08 and archived their tasks: branch-at-start recording with archive-time metadata validation, worktree developer identity, empty context manifests with _example rejection aligned to PR preflight, add_session rewritten as a resumable state machine with real commit subjects and collision-proof numbering, and the OpenCode mem reader restored on the zero-dependency SQLite parser. Marketplace and docs-site submodules synced on local branches (no push access upstream).
+
+### Main Changes
+
+- task.py start records the checked-out branch; archive validates branch metadata
+- developer.py resolves identity in linked worktrees via git-common-dir inheritance
+- task creation writes empty implement/check.jsonl; validate rejects legacy _example rows and non-object rows; list-context guarded
+- add_session.py: preflight OID-to-subject resolution, fingerprint markers, journal/index/commit retry convergence, ref-union session numbering, write_text_atomic
+- OpenCode mem adapter on sqlite-readonly.ts: XDG/OPENCODE_DB paths, name-matched schema validation, three structured warning codes, store-leak fix in sessions.ts
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `adb7acfb` | feat(mem): restore install-safe OpenCode session reader |
+
+### Testing
+
+- [OK] CLI suite 1773 passed (73 files); core 368 passed, 1 skipped; hostile probes in temp repos for every feature; live dogfood: 6 OpenCode sessions listed, db bytes unchanged
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Push submodule branches once forks exist; consumer rollout for finish-clear fix via sd-status fleet; upstream PR from fork branch
