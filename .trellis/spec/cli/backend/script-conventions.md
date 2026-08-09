@@ -1412,7 +1412,9 @@ def get_hooks(event: str, repo_root: Path | None = None) -> list[str]
 
 # task_utils.py — execute hooks (never blocks main operation)
 HOOK_TIMEOUT_SECONDS = 60
+HOOK_KILL_GRACE_SECONDS = 5
 def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None
+def _kill_hook_tree(proc: subprocess.Popen[str]) -> None
 ```
 
 ### Trust boundary
@@ -1436,7 +1438,10 @@ Consequences for implementers:
   `finish`, `archive`); a hook on `list` or `current` would turn inspecting a
   cloned repo into executing it.
 - The bounded timeout below is a liveness guarantee, not a security boundary.
-  It does not contain what a hook can do.
+  It does not contain what a hook can do. The tree-kill on timeout is part of
+  that same liveness guarantee: a hook that calls `setsid` itself leaves the
+  process group and survives the kill. That is accepted and out of scope —
+  arbitrary code cannot be contained by the code that launches it.
 
 ### Contracts
 
@@ -1468,27 +1473,71 @@ import subprocess
 
 env = {**os.environ, "TASK_JSON_PATH": str(task_json_path)}
 
-result = subprocess.run(
+# POSIX: a fresh session puts the shell and every descendant in one process
+# group, which is what makes the timeout able to kill the whole tree.
+popen_kwargs: dict = {}
+if os.name == "posix":
+    popen_kwargs["start_new_session"] = True
+
+with subprocess.Popen(
     cmd,
     shell=True,
     cwd=repo_root,
     env=env,
-    capture_output=True,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
     text=True,
     encoding="utf-8",              # REQUIRED: cross-platform
     errors="replace",              # REQUIRED: cross-platform
-    timeout=HOOK_TIMEOUT_SECONDS,  # REQUIRED: output is captured, so an
-                                   # unbounded hook wedges the lifecycle
-                                   # command silently
-)
+    **popen_kwargs,
+) as proc:
+    try:
+        stdout, stderr = proc.communicate(  # REQUIRED: output is captured, so
+            timeout=HOOK_TIMEOUT_SECONDS,   # an unbounded hook wedges the
+        )                                   # lifecycle command silently
+    except subprocess.TimeoutExpired:
+        _kill_hook_tree(proc)               # whole tree, not just the shell
+        ...
 ```
 
-`capture_output=True` is what makes a missing `timeout=` unacceptable rather
-than merely untidy: a hook waiting on stdin, a network call, or an auth prompt
-produces *no output at all* while it blocks, so the user sees `task.py create`
-hang with an empty terminal and no way to tell what it is waiting for. The
-timeout is a module constant, not a config key — a hook slow enough to need
-more than a minute belongs in a background job, not on a lifecycle event.
+`capture_output` (here, explicit `PIPE`s) is what makes a missing `timeout=`
+unacceptable rather than merely untidy: a hook waiting on stdin, a network call,
+or an auth prompt produces *no output at all* while it blocks, so the user sees
+`task.py create` hang with an empty terminal and no way to tell what it is
+waiting for. The timeout is a module constant, not a config key — a hook slow
+enough to need more than a minute belongs in a background job, not on a
+lifecycle event.
+
+#### Timeout kills the process tree, not the direct child
+
+`shell=True` means the direct child is the shell; the hook's actual work runs in
+its children. `subprocess.run(..., timeout=...)` kills only that shell, which
+leaves two defects:
+
+1. Grandchildren survive the timeout and keep running after the lifecycle
+   command has returned — they also still hold the inherited stdout/stderr
+   pipes.
+2. Anything that collects output after the kill blocks until those orphans
+   release the pipes. That is the "command that never returns" the timeout
+   exists to prevent, reintroduced by the timeout handler itself.
+
+So hooks run through `Popen` + `communicate(timeout=...)`, and the timeout path
+kills the tree via `_kill_hook_tree(proc)`:
+
+| Platform | Mechanism | Fallback |
+|----------|-----------|----------|
+| POSIX | `start_new_session=True` at spawn, then `os.killpg(os.getpgid(proc.pid), SIGKILL)`, guarded against `ProcessLookupError` / `PermissionError` | `proc.kill()` |
+| Windows | `taskkill /F /T /PID <pid>` (best effort) | `proc.kill()` |
+
+Output is then collected under a **bounded** grace —
+`proc.communicate(timeout=HOOK_KILL_GRACE_SECONDS)`. If that also times out, the
+partial output already carried on the `TimeoutExpired` is printed and the pipes
+are abandoned. Never collect post-kill output unbounded: an orphan that escaped
+the kill would hang the lifecycle command forever.
+
+**Known limitation:** a hook that calls `setsid` itself (or otherwise leaves the
+group) escapes the kill and survives. Accepted and out of scope — see the trust
+boundary above.
 
 ### Diagnostics
 
@@ -1515,7 +1564,9 @@ its diagnosis and exits 1 would otherwise show the exit code with no reason.
 | Event key missing | No-op (empty list) |
 | Event value is a scalar, not a list (`after_create: echo hi`) | `[WARN]` naming the event and showing the list form — it parses fine and would otherwise register nothing |
 | Hook command exits non-zero | `[WARN]` with exit status + both streams, continues to next hook |
-| Hook command exceeds `HOOK_TIMEOUT_SECONDS` | Killed; `[WARN]` naming the timeout, continues to next hook |
+| Hook command exceeds `HOOK_TIMEOUT_SECONDS` | Whole process tree killed; `[WARN]` naming the timeout, continues to next hook |
+| Hook spawned a grandchild that outlives the shell | Killed with the group (POSIX) / tree (Windows); a `setsid`-escaping hook survives |
+| Post-kill output collection still blocked | Abandoned after `HOOK_KILL_GRACE_SECONDS`; whatever partial output exists is printed |
 | Hook command throws exception | `[WARN]` with exception type, continues to next hook |
 | `linearis` not installed | Hook fails with warning, task operation succeeds |
 
@@ -1535,24 +1586,47 @@ if result.returncode != 0:
         print(f"  {result.stderr.strip()}", file=sys.stderr)
 ```
 
+#### Wrong — timeout that kills only the shell
+```python
+# The shell dies; `sleep 300 &` does not. The orphan keeps the captured pipes
+# open, so any post-kill collect blocks on it.
+result = subprocess.run(cmd, shell=True, capture_output=True,
+                        timeout=HOOK_TIMEOUT_SECONDS)
+```
+
 #### Correct — warn and continue, bounded, diagnosable
 ```python
 try:
-    result = subprocess.run(cmd, shell=True, ..., timeout=HOOK_TIMEOUT_SECONDS)
-    if result.returncode != 0:
-        print(
-            f"[WARN] Hook failed ({event}): exit {result.returncode}: {cmd}",
-            file=sys.stderr,
-        )
-        print(f"  cwd: {repo_root}", file=sys.stderr)
-        _print_hook_stream("stdout", result.stdout or "")
-        _print_hook_stream("stderr", result.stderr or "")
-except subprocess.TimeoutExpired as e:
-    print(
-        f"[WARN] Hook timed out ({event}) after {HOOK_TIMEOUT_SECONDS}s: {cmd}",
-        file=sys.stderr,
-    )
-    # TimeoutExpired carries bytes on POSIX and str on Windows — decode both.
+    with subprocess.Popen(cmd, shell=True, ..., **popen_kwargs) as proc:
+        try:
+            stdout, stderr = proc.communicate(timeout=HOOK_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired as e:
+            _kill_hook_tree(proc)                  # process group / tree
+            stdout = _decode_hook_output(e.stdout)  # bytes on some paths
+            stderr = _decode_hook_output(e.stderr)
+            try:
+                rest_out, rest_err = proc.communicate(
+                    timeout=HOOK_KILL_GRACE_SECONDS  # bounded, never unbounded
+                )
+                stdout = rest_out or stdout
+                stderr = rest_err or stderr
+            except (subprocess.TimeoutExpired, OSError, ValueError):
+                pass
+            print(
+                f"[WARN] Hook timed out ({event}) after "
+                f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
+                file=sys.stderr,
+            )
+            ...
+            continue
+        if proc.returncode != 0:
+            print(
+                f"[WARN] Hook failed ({event}): exit {proc.returncode}: {cmd}",
+                file=sys.stderr,
+            )
+            print(f"  cwd: {repo_root}", file=sys.stderr)
+            _print_hook_stream("stdout", stdout or "")
+            _print_hook_stream("stderr", stderr or "")
 except Exception as e:
     print(
         f"[WARN] Hook error ({event}): {cmd} — {type(e).__name__}: {e}",

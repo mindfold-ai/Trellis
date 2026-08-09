@@ -17,8 +17,12 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .paths import get_repo_root, get_tasks_dir
+
+if TYPE_CHECKING:
+    import subprocess
 
 
 # =============================================================================
@@ -269,7 +273,51 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
 # =============================================================================
 
 HOOK_TIMEOUT_SECONDS = 60
+HOOK_KILL_GRACE_SECONDS = 5
 HOOK_OUTPUT_LIMIT = 2000
+
+
+def _kill_hook_tree(proc: subprocess.Popen[str]) -> None:
+    """Kill a timed-out hook's whole process tree, not just the shell.
+
+    With ``shell=True`` the direct child is the shell; the actual work runs in
+    its children. Killing only the shell leaves grandchildren alive holding the
+    inherited stdout/stderr pipes, and collecting output afterwards then blocks
+    until those orphans exit — the exact "command that never returns" the
+    timeout exists to prevent.
+
+    POSIX: the hook is started with ``start_new_session=True``, so the shell and
+    every descendant share one fresh process group; SIGKILL the group.
+    Windows: ``taskkill /F /T`` walks the tree (best effort).
+    Either way ``proc.kill()`` is the fallback.
+
+    Limitation: a hook that calls ``setsid`` itself leaves the group and
+    survives this. Accepted and out of scope — a hook is arbitrary code, and the
+    timeout is a liveness guarantee, not a containment boundary.
+    """
+    import os
+    import signal
+    import subprocess
+
+    if os.name == "posix":
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            return
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+    else:
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+            )
+        except (OSError, ValueError):
+            pass
+
+    try:
+        proc.kill()
+    except OSError:
+        pass
 
 
 def _decode_hook_output(raw: object) -> str:
@@ -308,7 +356,10 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
     captured streams, because a hook whose only symptom is "nothing happened"
     is undebuggable. A hook that hangs is bounded by
     ``HOOK_TIMEOUT_SECONDS``; output is captured, so without the timeout the
-    user sees a task command that never returns and prints nothing.
+    user sees a task command that never returns and prints nothing. On timeout
+    the hook's entire process tree is killed (see ``_kill_hook_tree``) and
+    output is collected under a bounded grace, so a surviving grandchild
+    holding the pipes cannot re-create that same hang.
 
     Args:
         event: Event name (e.g. "after_create").
@@ -327,42 +378,67 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
 
     env = {**os.environ, "TASK_JSON_PATH": str(task_json_path)}
 
+    # POSIX only: a fresh session puts the shell and every descendant in one
+    # process group, which is what makes the timeout kill the whole tree.
+    popen_kwargs: dict = {}
+    if os.name == "posix":
+        popen_kwargs["start_new_session"] = True
+
     for cmd in commands:
         try:
-            result = subprocess.run(
+            with subprocess.Popen(
                 cmd,
                 shell=True,
                 cwd=repo_root,
                 env=env,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=HOOK_TIMEOUT_SECONDS,
-            )
-            if result.returncode != 0:
-                print(
-                    colored(
-                        f"[WARN] Hook failed ({event}): exit {result.returncode}: {cmd}",
-                        Colors.YELLOW,
-                    ),
-                    file=sys.stderr,
-                )
-                print(f"  cwd: {repo_root}", file=sys.stderr)
-                _print_hook_stream("stdout", result.stdout or "")
-                _print_hook_stream("stderr", result.stderr or "")
-        except subprocess.TimeoutExpired as e:
-            print(
-                colored(
-                    f"[WARN] Hook timed out ({event}) after "
-                    f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
-                    Colors.YELLOW,
-                ),
-                file=sys.stderr,
-            )
-            print(f"  cwd: {repo_root}", file=sys.stderr)
-            _print_hook_stream("stdout", _decode_hook_output(e.stdout))
-            _print_hook_stream("stderr", _decode_hook_output(e.stderr))
+                **popen_kwargs,
+            ) as proc:
+                try:
+                    stdout, stderr = proc.communicate(timeout=HOOK_TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired as e:
+                    _kill_hook_tree(proc)
+                    stdout = _decode_hook_output(e.stdout)
+                    stderr = _decode_hook_output(e.stderr)
+                    try:
+                        # Bounded: an orphan that escaped the kill still holds
+                        # the pipes, and waiting on it forever here would be
+                        # the very hang the timeout prevents.
+                        rest_out, rest_err = proc.communicate(
+                            timeout=HOOK_KILL_GRACE_SECONDS
+                        )
+                        stdout = rest_out or stdout
+                        stderr = rest_err or stderr
+                    except (subprocess.TimeoutExpired, OSError, ValueError):
+                        pass
+                    print(
+                        colored(
+                            f"[WARN] Hook timed out ({event}) after "
+                            f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
+                            Colors.YELLOW,
+                        ),
+                        file=sys.stderr,
+                    )
+                    print(f"  cwd: {repo_root}", file=sys.stderr)
+                    _print_hook_stream("stdout", stdout)
+                    _print_hook_stream("stderr", stderr)
+                    continue
+
+                if proc.returncode != 0:
+                    print(
+                        colored(
+                            f"[WARN] Hook failed ({event}): exit {proc.returncode}: {cmd}",
+                            Colors.YELLOW,
+                        ),
+                        file=sys.stderr,
+                    )
+                    print(f"  cwd: {repo_root}", file=sys.stderr)
+                    _print_hook_stream("stdout", stdout or "")
+                    _print_hook_stream("stderr", stderr or "")
         except Exception as e:
             print(
                 colored(

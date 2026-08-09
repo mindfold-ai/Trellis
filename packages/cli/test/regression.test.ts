@@ -11647,6 +11647,84 @@ describe("regression: lifecycle hooks fail open, loudly, and bounded", () => {
     expect(commonTaskUtils).toContain("timeout=HOOK_TIMEOUT_SECONDS");
   });
 
+  // A timed-out hook used to lose only its shell: `shell=True` makes the direct
+  // child a shell, so `sleep 300 &` outlived the kill still holding the
+  // captured stdout/stderr pipes. Two defects followed — an orphan running
+  // after the lifecycle command returned, and (on the collect-after-kill path)
+  // a block on pipes nobody would ever close.
+  const hooksIsWindows = process.platform === "win32";
+
+  /** True once `pid` is gone; polls because SIGKILL reaping is async. */
+  async function pidGoneWithin(pid: number, ms: number): Promise<boolean> {
+    const deadline = Date.now() + ms;
+    for (;;) {
+      try {
+        process.kill(pid, 0);
+      } catch (err) {
+        // ESRCH: no such process. EPERM: alive, owned by someone else.
+        if ((err as NodeJS.ErrnoException).code === "ESRCH") return true;
+      }
+      if (Date.now() > deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  it.skipIf(hooksIsWindows)(
+    "[hooks] a timed-out hook loses its whole process tree, not just its shell",
+    async () => {
+      // The grandchild records its own pid, then both it and the shell sleep
+      // far longer than the (probe-shortened) 1s timeout.
+      writeFile(
+        ".trellis/config.yaml",
+        'hooks:\n  after_create:\n    - "sleep 300 & echo $! > grandchild.pid; sleep 300"\n',
+      );
+
+      const started = Date.now();
+      const { stdout, stderr } = runProbe([
+        "from pathlib import Path",
+        "from common import task_utils",
+        "task_utils.HOOK_TIMEOUT_SECONDS = 1",
+        `task_utils.run_task_hooks("after_create", Path("task.json"), Path(${JSON.stringify(
+          tmpDir,
+        )}))`,
+        "print('RETURNED')",
+      ]);
+      const elapsed = Date.now() - started;
+
+      expect(stderr).toContain("Hook timed out (after_create) after 1s");
+      expect(stdout).toContain("RETURNED");
+      // No post-kill hang: 1s timeout + at most HOOK_KILL_GRACE_SECONDS, never
+      // the grandchild's 300s sleep.
+      expect(elapsed).toBeLessThan(30_000);
+
+      const pidFile = path.join(tmpDir, "grandchild.pid");
+      const pid = Number(fs.readFileSync(pidFile, "utf-8").trim());
+      expect(Number.isInteger(pid) && pid > 0).toBe(true);
+      expect(
+        await pidGoneWithin(pid, 5_000),
+        `grandchild ${pid} survived the hook timeout`,
+      ).toBe(true);
+    },
+    60_000,
+  );
+
+  it("[hooks] the shipped timeout path kills the tree and bounds the post-kill collect", () => {
+    // POSIX is exercised above; the Windows branch is review-only here.
+    expect(commonTaskUtils).toContain(
+      'popen_kwargs["start_new_session"] = True',
+    );
+    expect(commonTaskUtils).toContain(
+      "os.killpg(os.getpgid(proc.pid), signal.SIGKILL)",
+    );
+    expect(commonTaskUtils).toContain(
+      '["taskkill", "/F", "/T", "/PID", str(proc.pid)]',
+    );
+    // Collecting output after the kill must itself be bounded, or an orphan
+    // that escaped the group re-creates the hang the timeout prevents.
+    expect(commonTaskUtils).toContain("HOOK_KILL_GRACE_SECONDS = 5");
+    expect(commonTaskUtils).toContain("timeout=HOOK_KILL_GRACE_SECONDS");
+  });
+
   it("[hooks] a failing hook reports event, exit status, stdout and stderr", () => {
     writeFile(
       "hook_fail.py",
