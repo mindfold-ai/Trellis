@@ -788,6 +788,22 @@ describe.skipIf(!hasPython())("add_session.py session numbering", () => {
 
     expect(sessionNumbers(tmp)).toEqual([1, 2]);
   });
+
+  it("derives the next number from an uncommitted journal, not just index.md", () => {
+    // With --no-commit nothing reaches a ref, so the ref-union scan sees
+    // nothing: the working-tree journal is the only record of session 1.
+    // SESSION_HEADING_RE without re.MULTILINE never matched a heading past
+    // the journal's first line, which made this path silently return 0.
+    runAddSession(tmp, "first", ["--no-commit"]);
+    fs.writeFileSync(
+      indexPath(tmp),
+      readIndex(tmp).replace("**Total Sessions**: 1", "**Total Sessions**: 0"),
+    );
+
+    runAddSession(tmp, "second", ["--no-commit"]);
+
+    expect(sessionNumbers(tmp)).toEqual([1, 2]);
+  });
 });
 
 /**

@@ -81,7 +81,7 @@ const {
   prepareOpencodeSessionStore,
   releaseOpencodeSessionStore,
 } = await import("../../src/mem/adapters/opencode.js");
-const { opencodeDataDir, opencodeDbPath } =
+const { opencodeDataDir, opencodeDbPath, HOME } =
   await import("../../src/mem/internal/paths.js");
 const { piListSessions, piExtractDialogue, piSearch } =
   await import("../../src/mem/adapters/pi.js");
@@ -1588,6 +1588,13 @@ describe.skipIf(!SQLITE_PY)("opencode adapter", () => {
     process.env.OPENCODE_DB = ":memory:";
     expect(opencodeDbPath()).toBeUndefined();
     expect(opencodeListSessions(mkFilter())).toEqual([]);
+
+    // `~/...` must expand like the other overrides in this file (Pi does),
+    // not be joined under the data dir as a literal relative name.
+    process.env.OPENCODE_DB = "~/elsewhere/custom.db";
+    expect(opencodeDbPath()).toBe(
+      nodePath.join(HOME, "elsewhere", "custom.db"),
+    );
   });
 
   it("falls back to the newest opencode-<channel>.db when opencode.db is absent", () => {
@@ -1894,6 +1901,21 @@ describe.skipIf(!SQLITE_PY)("opencode adapter", () => {
     const turns = opencodeExtractDialogue(ocSession("s1"));
     expect(turns.map((t) => t.text)).toEqual(["still parsed", "healthy row"]);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("degrades an out-of-range timestamp to no timestamp instead of throwing", () => {
+    // new Date(9e15).toISOString() throws RangeError; a hostile time_created
+    // must cost that session its timestamp, not fail the whole command.
+    buildOpencodeDb({
+      sessions: [
+        { id: "s_bad", directory: "/p", time_created: 9e15, time_updated: 9e15 },
+        { id: "s_ok", directory: "/p", time_created: 1000, time_updated: 2000 },
+      ],
+    });
+    const rows = opencodeListSessions(mkFilter({ cwd: undefined }));
+    expect(rows.map((r) => r.id).sort()).toEqual(["s_bad", "s_ok"]);
+    const bad = rows.find((r) => r.id === "s_bad");
+    expect(bad?.created).toBeUndefined();
   });
 
   it("search counts user/assistant occurrences", () => {

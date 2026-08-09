@@ -483,10 +483,15 @@ function buildTextTurn(
 
 // ---------- list ----------
 
+/** Largest absolute time value an ECMAScript Date can represent. */
+const MAX_TIME_VALUE = 8.64e15;
+
 function toIso(epochMs: unknown): string | undefined {
-  return typeof epochMs === "number" && epochMs > 0
-    ? new Date(epochMs).toISOString()
-    : undefined;
+  // A corrupt or hostile timestamp must degrade to "no timestamp", not throw
+  // RangeError out of the row loop and fail the whole command.
+  if (typeof epochMs !== "number" || !Number.isFinite(epochMs)) return undefined;
+  if (epochMs <= 0 || epochMs > MAX_TIME_VALUE) return undefined;
+  return new Date(epochMs).toISOString();
 }
 
 /**

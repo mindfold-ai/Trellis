@@ -723,6 +723,37 @@ def clear_task_from_sessions(task_path: str, repo_root: Path) -> int:
     return cleared
 
 
+def repoint_task_in_sessions(old_path: str, new_path: str, repo_root: Path) -> int:
+    """Rewrite session runtime files from one task path to another.
+
+    Used by `task.py rename`: the task stays active, so clearing the pointer
+    would be wrong — the session must follow the task to its new name.
+    """
+    target = _canonical_task_ref(old_path, repo_root) or normalize_task_ref(old_path)
+    replacement = normalize_task_ref(new_path)
+    if not target or not replacement:
+        return 0
+
+    repointed = 0
+    sessions_dir = _runtime_sessions_dir(repo_root)
+    if not sessions_dir.is_dir():
+        return repointed
+
+    for session_path in sessions_dir.glob("*.json"):
+        context = _read_json(session_path) or {}
+        current = _string_value(context.get("current_task"))
+        if not current:
+            continue
+        current_ref = _canonical_task_ref(current, repo_root) or normalize_task_ref(current)
+        if current_ref != target:
+            continue
+        context["current_task"] = replacement
+        if _write_json(session_path, context):
+            repointed += 1
+
+    return repointed
+
+
 def get_current_task_source(
     repo_root: Path,
     platform_input: dict[str, Any] | None = None,

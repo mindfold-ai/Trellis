@@ -93,7 +93,7 @@ MAX_SUBJECT_LEN = 500
 # Machine-readable record identity. An HTML comment renders as nothing, so the
 # human evidence in the entry is unchanged by its presence.
 MARKER_PREFIX = "<!-- trellis-session:"
-SESSION_HEADING_RE = re.compile(r"^## Session (\d+):")
+SESSION_HEADING_RE = re.compile(r"^## Session (\d+):", re.MULTILINE)
 
 # Recording states, in the order the operation walks them.
 STATE_ABSENT = "absent"
@@ -517,10 +517,13 @@ def _default_branch_local(repo_root: Path) -> str | None:
 def _convergence_refs(repo_root: Path) -> list[str]:
     """Refs whose recorded workspace state must be folded into the counter.
 
-    Ordered by how much they matter, then capped: HEAD and the default branch
-    first (the merge target every branch eventually meets), then every other
-    local head — a parallel worktree's branch lives there and is the case that
-    actually collided — then remote-tracking refs.
+    Ordered by how much they matter: HEAD and the default branch first (the
+    merge target every branch eventually meets), then every other local head —
+    a parallel worktree's branch lives there and is the case that actually
+    collided — then remote-tracking refs. Only the remote-tracking tail is
+    capped: dropping a local head could hand two branches the same session
+    number, so local refs are never truncated, and a truncated remote tail is
+    reported so the degraded convergence is visible.
     """
     refs: list[str] = []
 
@@ -541,6 +544,7 @@ def _convergence_refs(repo_root: Path) -> list[str]:
             if rc == 0:
                 add(ref)
 
+    local_count = 0
     for pattern in ("refs/heads/", "refs/remotes/"):
         rc, out, _ = run_git(
             ["for-each-ref", "--format=%(refname)", pattern],
@@ -555,8 +559,18 @@ def _convergence_refs(repo_root: Path) -> list[str]:
             # the branch it points at and git grep rejects some of them.
             if ref and not ref.endswith("/HEAD"):
                 add(ref)
+        if pattern == "refs/heads/":
+            local_count = len(refs)
 
-    return refs[:MAX_CONVERGENCE_REFS]
+    cap = max(MAX_CONVERGENCE_REFS, local_count)
+    if len(refs) > cap:
+        print(
+            f"[WARN] Session-number convergence is checking {cap} of "
+            f"{len(refs)} refs; every local head is included but some "
+            "remote-tracking refs were skipped.",
+            file=sys.stderr,
+        )
+    return refs[:cap]
 
 
 def _max_session_across_refs(repo_root: Path, refs: list[str], dev_rel: str) -> int:

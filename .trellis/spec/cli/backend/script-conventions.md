@@ -1830,8 +1830,11 @@ is not there, the same checkpoint fires.
 ref. The refs come from `for-each-ref` — HEAD and the default branch first,
 then the other local heads (where a parallel worktree's branch lives, which is
 the case that actually collided twice on 2026-08-06), then remote-tracking
-refs — capped at `MAX_CONVERGENCE_REFS` and read with a single `git grep` over
-all of them, not an `ls-tree` + `show` per ref. Deriving the number from the
+refs — read with a single `git grep` over all of them, not an `ls-tree` +
+`show` per ref. Only the remote-tracking tail is capped (at
+`MAX_CONVERGENCE_REFS`, with a warning when the cap bites): truncating a
+local head could hand two branches the same number, which is the exact
+failure this exists to prevent. Deriving the number from the
 working tree alone lets two branches claim the same number; the
 `journal-*.md merge=union` driver then merges two *different* sessions that
 both call themselves N. The default branch is resolved locally only

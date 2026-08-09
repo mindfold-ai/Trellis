@@ -59,7 +59,8 @@ export function opencodeDbPath(): string | undefined {
   const override = process.env.OPENCODE_DB?.trim();
   if (override) {
     if (override === ":memory:") return undefined;
-    return path.isAbsolute(override) ? override : path.join(dir, override);
+    const expanded = expandHome(override);
+    return path.isAbsolute(expanded) ? expanded : path.join(dir, expanded);
   }
 
   const primary = path.join(dir, "opencode.db");

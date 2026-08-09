@@ -951,6 +951,13 @@ def _apply_rename(plan: _RenamePlan, repo_root: Path) -> int:
         _rename_interrupted(plan)
         return 1
 
+    # The task is still active, so any session pointing at it must follow the
+    # move — clearing the pointer would drop the user's current task.
+    from .active_task import repoint_task_in_sessions
+    repointed = repoint_task_in_sessions(plan.old_rel, plan.new_rel, repo_root)
+    if repointed:
+        print(f"  sessions repointed: {repointed}", file=sys.stderr)
+
     return 0
 
 

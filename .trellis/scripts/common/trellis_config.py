@@ -18,6 +18,7 @@ and skipped rather than parsed into a plausible-looking wrong value.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -132,8 +133,23 @@ def _parse_yaml_block(
             break
 
         if stripped.startswith("- "):
+            item = stripped[2:].strip()
+            # `- name: cli` is the first key of a mapping inside the list.
+            # Storing it as the string "name: cli" would corrupt the list, so
+            # warn and skip it like the mapping's follow-up keys below. Match
+            # the `key:` / `key: value` shape only — a quoted scalar or a URL
+            # containing ":" is a legitimate list item.
+            if re.match(r"^[^\s:'\"]+:(\s|$)", item):
+                _warn_unsupported(
+                    source,
+                    i + 1,
+                    line,
+                    "mappings inside a list are not supported",
+                )
+                i += 1
+                continue
             if current_list is not None:
-                current_list.append(_unquote(stripped[2:].strip()))
+                current_list.append(_unquote(item))
             i += 1
         elif ":" in stripped:
             if current_list is not None and indent > list_owner_indent:

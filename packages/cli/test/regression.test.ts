@@ -9307,7 +9307,7 @@ describe("regression: parse_simple_yaml uses _unquote not greedy strip (0.3.8)",
     // The bug: .strip('"').strip("'") greedily eats nested quotes
     // e.g. "echo 'hello'" -> strip("'") -> echo 'hello (broken!)
     expect(commonTrellisConfig).not.toContain(".strip('\"').strip(\"'\")");
-    expect(commonTrellisConfig).toContain("_unquote(stripped[2:].strip())");
+    expect(commonTrellisConfig).toContain("_unquote(item)");
   });
 
   it("trellis_config.py uses _unquote for key-value, not .strip('\"')", () => {
@@ -9411,14 +9411,26 @@ describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
 
   it("a mapping inside a list is not hoisted into the parent dict", () => {
     // Was: {"packages": ["name: cli"], "path": "packages/cli"} — the nested
-    // `path` key silently became a top-level config key.
+    // `path` key silently became a top-level config key, and the mapping's
+    // first key leaked into the list as the string "name: cli".
     const { result, stderr } = runPythonYamlFull(
       "packages:\n  - name: cli\n    path: packages/cli\n",
     );
     expect(result).not.toHaveProperty("path");
-    expect(result).toEqual({ packages: ["name: cli"] });
+    expect(result).toEqual({ packages: [] });
     expect(stderr).toContain("mappings inside a list are not supported");
+    expect(stderr).toContain("name: cli");
     expect(stderr).toContain("path: packages/cli");
+  });
+
+  it("scalar list items that merely contain a colon are kept", () => {
+    // The mapping-shaped rejection must not eat quoted scalars or URLs.
+    const { result } = runPythonYamlFull(
+      'items:\n  - plain\n  - "quoted: ok"\n  - https://example.com/a\n',
+    );
+    expect(result).toEqual({
+      items: ["plain", "quoted: ok", "https://example.com/a"],
+    });
   });
 
   it("block scalars are reported and their body is not leaked", () => {
@@ -12210,6 +12222,47 @@ describe("regression: task.py rename rewrites every reference in one pass", () =
     expect(after).toContain(`".trellis/tasks/${sibling}/notes.md"`);
   });
 
+  it("[task-rename] session runtime files follow the task to its new name", () => {
+    // The task stays active across a rename, so a session pointing at it must
+    // be repointed — clearing it would drop the user's current task, and
+    // leaving it would strand the session on a path that no longer exists.
+    const target = create("target");
+    const sessionsDir = path.join(
+      tmpDir,
+      ".trellis",
+      ".runtime",
+      "sessions",
+    );
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(sessionsDir, "claude_abc.json"),
+      JSON.stringify({
+        current_task: `.trellis/tasks/${target}`,
+        context_key: "claude_abc",
+      }),
+    );
+    fs.writeFileSync(
+      path.join(sessionsDir, "claude_other.json"),
+      JSON.stringify({
+        current_task: ".trellis/tasks/some-other-task",
+        context_key: "claude_other",
+      }),
+    );
+
+    expect(runTask("rename", target, "renamed").status).toBe(0);
+
+    const repointed = JSON.parse(
+      fs.readFileSync(path.join(sessionsDir, "claude_abc.json"), "utf-8"),
+    );
+    expect(repointed.current_task).toBe(
+      `.trellis/tasks/${datePrefix}-renamed`,
+    );
+    const untouched = JSON.parse(
+      fs.readFileSync(path.join(sessionsDir, "claude_other.json"), "utf-8"),
+    );
+    expect(untouched.current_task).toBe(".trellis/tasks/some-other-task");
+  });
+
   it("[task-rename] refuses an existing destination, an archived name, a bad slug and an unknown task", () => {
     const other = create("other");
     const target = create("target");
@@ -12468,6 +12521,28 @@ describe("regression: a linked worktree inherits developer identity", () => {
       }).status,
     ).toBe(0);
     expect(assigneeOf(worktreeDir, "flag")).toBe("flag-dev");
+  });
+
+  it("[worktree-identity] a traversal-shaped identity is rejected, not joined under workspace/", () => {
+    // The developer name becomes a path component of .trellis/workspace/<name>,
+    // so "../../evil" from the env or the .developer file would redirect
+    // journal writes outside the workspace tree. Both sources must fall
+    // through to the next resolution step instead.
+    buildRepo("main-dev");
+    expect(
+      createTask(worktreeDir, "traverse", [], {
+        TRELLIS_DEVELOPER: "../../evil",
+      }).status,
+    ).toBe(0);
+    expect(assigneeOf(worktreeDir, "traverse")).toBe("main-dev");
+
+    fs.writeFileSync(
+      path.join(worktreeDir, ".trellis", ".developer"),
+      "name=..\\..\\evil\ninitialized_at=2026-08-09T00:00:00\n",
+      "utf-8",
+    );
+    expect(createTask(worktreeDir, "filetraverse").status).toBe(0);
+    expect(assigneeOf(worktreeDir, "filetraverse")).toBe("main-dev");
   });
 
   it("[worktree-identity] the env var alone is enough in the main checkout too", () => {

@@ -80,6 +80,23 @@ def get_repo_root(start_path: Path | None = None) -> Path:
 # Developer
 # =============================================================================
 
+def _safe_developer_name(name: str | None) -> str | None:
+    """Return the name only if it is a single, safe directory component.
+
+    The developer name is joined under `.trellis/workspace/`, so a value
+    carrying separators or `..` would redirect journal and index writes
+    outside the workspace tree. Reject those instead of sanitizing: a
+    mangled identity would silently split one developer's history in two.
+    """
+    if not name:
+        return None
+    if name in (".", "..") or "\x00" in name:
+        return None
+    if "/" in name or "\\" in name or os.sep in name:
+        return None
+    return name
+
+
 def _read_developer_file(dev_file: Path) -> str | None:
     """Read the `name=` field out of a .developer file, or None."""
     if not dev_file.is_file():
@@ -92,7 +109,7 @@ def _read_developer_file(dev_file: Path) -> str | None:
 
     for line in content.splitlines():
         if line.startswith("name="):
-            return line.split("=", 1)[1].strip() or None
+            return _safe_developer_name(line.split("=", 1)[1].strip())
 
     return None
 
@@ -121,7 +138,7 @@ def get_developer(repo_root: Path | None = None) -> str | None:
     Returns:
         Developer name or None if not initialized.
     """
-    env_name = os.environ.get(ENV_DEVELOPER, "").strip()
+    env_name = _safe_developer_name(os.environ.get(ENV_DEVELOPER, "").strip())
     if env_name:
         return env_name
 
