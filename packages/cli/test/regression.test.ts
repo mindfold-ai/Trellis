@@ -986,6 +986,282 @@ describe("regression: task lifecycle overwrite and collision safety", () => {
   );
 });
 
+describe("regression: JSON read/write failure reporting", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  const now = new Date();
+  const datePrefix = `${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  // chmod is the only way to provoke a read/write failure, and root ignores
+  // the mode bits — skip rather than assert something that cannot happen.
+  const canProvokePermissionFailure =
+    process.platform !== "win32" && process.getuid?.() !== 0;
+
+  function runTask(
+    args: string[],
+    env: Record<string, string> = {},
+  ): { status: number | null; stdout: string; stderr: string } {
+    const result = spawnSync(
+      pythonCmd,
+      [path.join(".trellis", "scripts", "task.py"), ...args],
+      { cwd: tmpDir, encoding: "utf-8", env: { ...process.env, ...env } },
+    );
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    };
+  }
+
+  function taskDir(...segments: string[]): string {
+    return path.join(tmpDir, ".trellis", "tasks", ...segments);
+  }
+
+  function taskJsonPath(name: string): string {
+    return path.join(taskDir(name), "task.json");
+  }
+
+  function readTaskJson(name: string): Record<string, unknown> {
+    return JSON.parse(fs.readFileSync(taskJsonPath(name), "utf-8")) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-task-json-io-"));
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", ".developer"),
+      "name=tester\n",
+    );
+    fs.mkdirSync(taskDir("archive"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("[audit] set-meta on a corrupt task.json names the file and the failure class", () => {
+    expect(runTask(["create", "Broken", "--slug", "broken", "--no-start"]).status).toBe(0);
+    const name = `${datePrefix}-broken`;
+    fs.writeFileSync(taskJsonPath(name), "{ not json");
+
+    const r = runTask(["set-meta", name, "k", "v"]);
+    expect(r.status).not.toBe(0);
+    // Previously: exit 1 with completely empty stdout AND stderr.
+    expect(r.stderr).toContain("task.json");
+    expect(r.stderr).toContain("not valid JSON");
+    expect(r.stderr).toContain("json.tool");
+    expect(fs.readFileSync(taskJsonPath(name), "utf-8")).toBe("{ not json");
+  });
+
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] set-meta on an unreadable task.json reports permissions, not a parse error",
+    () => {
+      expect(runTask(["create", "Locked", "--slug", "locked", "--no-start"]).status).toBe(0);
+      const name = `${datePrefix}-locked`;
+      fs.chmodSync(taskJsonPath(name), 0o000);
+
+      try {
+        const r = runTask(["set-meta", name, "k", "v"]);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain("could not be read");
+        expect(r.stderr).toContain("permission");
+        // The whole point of the split: this must NOT read as a parse error.
+        expect(r.stderr).not.toContain("not valid JSON");
+      } finally {
+        fs.chmodSync(taskJsonPath(name), 0o644);
+      }
+    },
+  );
+
+  it("[audit] set-scope on a task dir without task.json reports the missing file", () => {
+    fs.mkdirSync(taskDir(`${datePrefix}-bare`), { recursive: true });
+    const r = runTask(["set-scope", `${datePrefix}-bare`, "cli"]);
+    expect(r.status).not.toBe(0);
+    expect(r.stdout + r.stderr).toContain("task.json not found");
+  });
+
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] set-branch reports a failed write instead of printing success",
+    () => {
+      expect(runTask(["create", "Ro", "--slug", "ro", "--no-start"]).status).toBe(0);
+      const name = `${datePrefix}-ro`;
+      // Read-only task dir: write_json's mkstemp fails, the original survives.
+      fs.chmodSync(taskDir(name), 0o555);
+
+      try {
+        const r = runTask(["set-branch", name, "feat/x"]);
+        expect(r.status).not.toBe(0);
+        expect(r.stdout).not.toContain("Branch set to");
+        expect(r.stderr).toContain("Failed to write");
+        expect(r.stderr).toContain("unchanged");
+      } finally {
+        fs.chmodSync(taskDir(name), 0o755);
+      }
+      expect(readTaskJson(name).branch).toBeNull();
+    },
+  );
+
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] create reports a failed task.json write instead of 'Created task'",
+    () => {
+      expect(runTask(["create", "First", "--slug", "dup", "--no-start"]).status).toBe(0);
+      const name = `${datePrefix}-dup`;
+      fs.chmodSync(taskDir(name), 0o555);
+
+      try {
+        const r = runTask(["create", "Second", "--slug", "dup", "--no-start", "--force"]);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain("Failed to write");
+        expect(r.stderr).toContain("No task was created");
+        expect(r.stderr).not.toContain("Created task");
+        // Nothing on stdout means nothing for a script to chain onto.
+        expect(r.stdout.trim()).toBe("");
+      } finally {
+        fs.chmodSync(taskDir(name), 0o755);
+      }
+      expect(readTaskJson(name).title).toBe("First");
+    },
+  );
+
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] archive stops before moving when a child cannot be unlinked",
+    () => {
+      expect(runTask(["create", "Mum", "--slug", "mum", "--no-start"]).status).toBe(0);
+      const parentName = `${datePrefix}-mum`;
+      const childName = `${datePrefix}-kid`;
+      expect(
+        runTask([
+          "create",
+          "Kid",
+          "--slug",
+          "kid",
+          "--no-start",
+          "--parent",
+          parentName,
+        ]).status,
+      ).toBe(0);
+
+      fs.chmodSync(taskDir(childName), 0o555);
+      try {
+        const r = runTask(["archive", parentName, "--no-commit"]);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain("Failed to write");
+        expect(r.stderr).toContain(childName);
+        expect(r.stderr).toContain("Not archived");
+      } finally {
+        fs.chmodSync(taskDir(childName), 0o755);
+      }
+      // The task must still be where the user left it, not half-moved.
+      expect(fs.existsSync(taskJsonPath(parentName))).toBe(true);
+      expect(readTaskJson(childName).parent).toBe(parentName);
+    },
+  );
+
+  it("[audit] list warns about a skipped task instead of silently dropping it", () => {
+    expect(runTask(["create", "Good", "--slug", "good", "--no-start"]).status).toBe(0);
+    expect(runTask(["create", "Bad", "--slug", "bad", "--no-start"]).status).toBe(0);
+    fs.writeFileSync(taskJsonPath(`${datePrefix}-bad`), "{ not json");
+
+    const r = runTask(["list"]);
+    expect(r.status).toBe(0);
+    // Tolerant: the healthy task still lists.
+    expect(r.stdout).toContain(`${datePrefix}-good`);
+    // Observable: the vanished one is named, with the reason.
+    expect(r.stderr).toContain(`${datePrefix}-bad`);
+    expect(r.stderr).toContain("Skipping task");
+    expect(r.stderr).toContain("not valid JSON");
+  });
+
+  it("[audit] start still activates a task with a corrupt task.json but says why the status stayed", () => {
+    const env = { TRELLIS_CONTEXT_ID: "json-io-start" };
+    expect(runTask(["create", "Rot", "--slug", "rot", "--no-start"], env).status).toBe(0);
+    const name = `${datePrefix}-rot`;
+    fs.writeFileSync(taskJsonPath(name), "{ not json");
+
+    const r = runTask(["start", name], env);
+    // Tolerant: the session pointer is the point of the command.
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("Current task set to");
+    // Observable: without this the absent status line reads as "not in planning".
+    expect(r.stderr).toContain("not valid JSON");
+    expect(r.stderr).toContain("status not updated");
+  });
+
+  it("[audit] current --json carries a read-failure signal and stays silent when healthy", () => {
+    const env = { TRELLIS_CONTEXT_ID: "json-io-test" };
+    expect(runTask(["create", "Live", "--slug", "live", "--no-start"], env).status).toBe(0);
+    const name = `${datePrefix}-live`;
+    expect(runTask(["start", name], env).status).toBe(0);
+
+    const healthy = runTask(["current", "--json"], env);
+    expect(healthy.status).toBe(0);
+    const healthyPayload = JSON.parse(healthy.stdout) as Record<string, unknown>;
+    expect(Object.keys(healthyPayload).sort()).toEqual([
+      "current_task",
+      "source",
+      "stale",
+    ]);
+
+    fs.writeFileSync(taskJsonPath(name), "{ not json");
+    const broken = runTask(["current", "--json"], env);
+    const brokenPayload = JSON.parse(broken.stdout) as {
+      current_task: Record<string, unknown> | null;
+      error?: { file: string; reason: string; message: string };
+    };
+    // All-null fields are still emitted, but no longer indistinguishable
+    // from a task whose fields really are null.
+    expect(brokenPayload.current_task?.status).toBeNull();
+    expect(brokenPayload.error?.reason).toBe("invalid");
+    expect(brokenPayload.error?.file).toContain("task.json");
+    expect(brokenPayload.error?.message).toContain("not valid JSON");
+  });
+
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] a session pointer that cannot be written atomically is left intact",
+    () => {
+      const env = { TRELLIS_CONTEXT_ID: "json-io-session" };
+      expect(runTask(["create", "One", "--slug", "one", "--no-start"], env).status).toBe(0);
+      expect(runTask(["create", "Two", "--slug", "two", "--no-start"], env).status).toBe(0);
+      expect(runTask(["start", `${datePrefix}-one`], env).status).toBe(0);
+
+      const sessionsDir = path.join(
+        tmpDir,
+        ".trellis",
+        ".runtime",
+        "sessions",
+      );
+      const sessionFile = path.join(sessionsDir, "json-io-session.json");
+      expect(fs.existsSync(sessionFile)).toBe(true);
+
+      // A read-only sessions dir blocks the temp-file write. The old plain
+      // write_text would have opened the existing file for writing (which
+      // needs no directory permission) and truncated it before writing.
+      fs.chmodSync(sessionsDir, 0o555);
+      try {
+        const r = runTask(["start", `${datePrefix}-two`], env);
+        expect(r.status).not.toBe(0);
+        expect(r.stdout + r.stderr).toContain("Failed to set current task");
+      } finally {
+        fs.chmodSync(sessionsDir, 0o755);
+      }
+
+      const session = JSON.parse(fs.readFileSync(sessionFile, "utf-8")) as {
+        current_task: string;
+      };
+      expect(session.current_task).toBe(`.trellis/tasks/${datePrefix}-one`);
+    },
+  );
+});
+
 describe("regression: is_within_tasks_dir archive boundary (issue #428)", () => {
   let tmpDir: string;
   const pythonCmd = process.platform === "win32" ? "python" : "python3";

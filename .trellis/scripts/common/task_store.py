@@ -32,7 +32,7 @@ from .config import (
     validate_package,
 )
 from .git import branch_exists_locally, resolve_default_branch, run_git
-from .io import read_json, write_json
+from .io import describe_json_read_failure, read_json_checked, write_json
 from .log import Colors, colored
 from .paths import (
     DIR_ARCHIVE,
@@ -109,6 +109,29 @@ def _repo_relative_path(path: Path, repo_root: Path) -> str:
         return path.relative_to(repo_root).as_posix()
     except ValueError:
         return str(path)
+
+
+def _report_read_failure(path: Path, reason: str | None) -> None:
+    """Print why a JSON file could not be loaded, and what to do about it.
+
+    These commands are about to rewrite the file they just failed to read, so
+    this message is the last warning the user gets. Exiting non-zero with no
+    output at all leaves a parse error, a permissions error and an empty file
+    indistinguishable.
+    """
+    problem, hint = describe_json_read_failure(path, reason)
+    print(colored(f"Error: {problem}", Colors.RED), file=sys.stderr)
+    print(hint, file=sys.stderr)
+
+
+def _report_write_failure(path: Path) -> None:
+    """Print that a JSON write failed. Writes are atomic, so nothing changed."""
+    print(colored(f"Error: Failed to write {path}", Colors.RED), file=sys.stderr)
+    print(
+        "The existing file is unchanged (writes are atomic). "
+        "Check permissions and free disk space, then retry.",
+        file=sys.stderr,
+    )
 
 
 # =============================================================================
@@ -333,9 +356,9 @@ def cmd_create(args: argparse.Namespace) -> int:
             print(colored(f"Error: Parent task.json not found: {args.parent}", Colors.RED), file=sys.stderr)
             print("No task was created. Pass an existing task directory to --parent.", file=sys.stderr)
             return 1
-        parent_data = read_json(parent_json_path)
-        if not parent_data:
-            print(colored(f"Error: Could not read parent task.json: {parent_json_path}", Colors.RED), file=sys.stderr)
+        parent_data, parent_reason = read_json_checked(parent_json_path)
+        if parent_data is None:
+            _report_read_failure(parent_json_path, parent_reason)
             print("No task was created. Fix the parent task.json, then retry.", file=sys.stderr)
             return 1
 
@@ -370,8 +393,10 @@ def cmd_create(args: argparse.Namespace) -> int:
             ),
             file=sys.stderr,
         )
+        created_dir = False
     else:
         task_dir.mkdir(parents=True)
+        created_dir = True
 
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -439,7 +464,21 @@ def cmd_create(args: argparse.Namespace) -> int:
         "meta": meta,
     }
 
-    write_json(task_json_path, task_data)
+    # A directory without task.json is not a task: `list` hides it and every
+    # lifecycle command refuses it. Fail here rather than printing "Created
+    # task" and emitting the path for script chaining.
+    if not write_json(task_json_path, task_data):
+        _report_write_failure(task_json_path)
+        print(colored(f"No task was created: {dir_name}", Colors.RED), file=sys.stderr)
+        if created_dir:
+            try:
+                task_dir.rmdir()
+            except OSError:
+                print(
+                    f"Leftover empty directory: {_repo_relative_path(task_dir, repo_root)}",
+                    file=sys.stderr,
+                )
+        return 1
 
     prd_path = task_dir / "prd.md"
     if not prd_path.exists():
@@ -470,11 +509,26 @@ def cmd_create(args: argparse.Namespace) -> int:
         if dir_name not in parent_children:
             parent_children.append(dir_name)
             parent_data["children"] = parent_children
-            write_json(parent_json_path, parent_data)
+            if not write_json(parent_json_path, parent_data):
+                _report_write_failure(parent_json_path)
+                print(
+                    f"The task exists at {_repo_relative_path(task_dir, repo_root)} but is NOT "
+                    f"linked to {parent_dir.name}. Re-link with: task.py add-subtask "
+                    f"{parent_dir.name} {dir_name}",
+                    file=sys.stderr,
+                )
+                return 1
 
         # Set parent in child's task.json
         task_data["parent"] = parent_dir.name
-        write_json(task_json_path, task_data)
+        if not write_json(task_json_path, task_data):
+            _report_write_failure(task_json_path)
+            print(
+                f"Link is half-written: {parent_dir.name} now lists '{dir_name}' as a child, "
+                f"but the new task does not record its parent.",
+                file=sys.stderr,
+            )
+            return 1
 
         print(colored(f"Linked as child of: {parent_dir.name}", Colors.GREEN), file=sys.stderr)
 
@@ -626,8 +680,20 @@ def cmd_archive(args: argparse.Namespace) -> int:
     # into safe_archive_paths_to_add so they're staged in this commit.
     modified_children: list[str] = []
     if task_json_path.is_file():
-        data = read_json(task_json_path)
-        if data:
+        data, read_reason = read_json_checked(task_json_path)
+        if data is None:
+            # Archiving is still the right outcome for a task whose task.json
+            # is broken — but say so, or the missing "completed" status looks
+            # like the archive silently did half its job.
+            problem, _ = describe_json_read_failure(task_json_path, read_reason)
+            print(
+                colored(
+                    f"Warning: {problem}; archiving without updating status/children.",
+                    Colors.YELLOW,
+                ),
+                file=sys.stderr,
+            )
+        else:
             # Warn (don't block) when the recorded branch is stale — it was
             # likely already merged and deleted (#399 item 2).
             stored_branch = data.get("branch")
@@ -643,7 +709,15 @@ def cmd_archive(args: argparse.Namespace) -> int:
 
             data["status"] = "completed"
             data["completedAt"] = today
-            write_json(task_json_path, data)
+            if not write_json(task_json_path, data):
+                _report_write_failure(task_json_path)
+                print(
+                    f"Not archived: {_repo_relative_path(task_dir, repo_root)} is unchanged. "
+                    "Archiving a task still marked in progress would hide it from `list` "
+                    "with the wrong status.",
+                    file=sys.stderr,
+                )
+                return 1
 
             # Handle subtask relationships on archive.
             # Keep this task in its parent's children list so progress
@@ -658,11 +732,35 @@ def cmd_archive(args: argparse.Namespace) -> int:
                     if child_dir_path:
                         child_json = child_dir_path / FILE_TASK_JSON
                         if child_json.is_file():
-                            child_data = read_json(child_json)
-                            if child_data:
-                                child_data["parent"] = None
-                                write_json(child_json, child_data)
-                                modified_children.append(child_dir_path.name)
+                            child_data, child_reason = read_json_checked(child_json)
+                            if child_data is None:
+                                problem, _ = describe_json_read_failure(child_json, child_reason)
+                                print(
+                                    colored(
+                                        f"Warning: {problem}; child '{child_dir_path.name}' "
+                                        "keeps its parent reference.",
+                                        Colors.YELLOW,
+                                    ),
+                                    file=sys.stderr,
+                                )
+                                continue
+                            child_data["parent"] = None
+                            if not write_json(child_json, child_data):
+                                # Stop before the move: a child pointing at a
+                                # parent that has left .trellis/tasks/ is a
+                                # dangling reference nothing repairs later.
+                                # Retrying is safe — every step so far is
+                                # idempotent.
+                                _report_write_failure(child_json)
+                                print(
+                                    f"Not archived: {_repo_relative_path(task_dir, repo_root)} is "
+                                    f"marked completed but stays in place because child "
+                                    f"'{child_dir_path.name}' could not be unlinked. "
+                                    "Fix the child, then run archive again.",
+                                    file=sys.stderr,
+                                )
+                                return 1
+                            modified_children.append(child_dir_path.name)
 
     # Clear any session that still points at this task before the path moves.
     from .active_task import clear_task_from_sessions
@@ -808,11 +906,13 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
         print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
         return 1
 
-    parent_data = read_json(parent_json_path)
-    child_data = read_json(child_json_path)
-
-    if not parent_data or not child_data:
-        print(colored("Error: Failed to read task.json", Colors.RED), file=sys.stderr)
+    parent_data, parent_reason = read_json_checked(parent_json_path)
+    if parent_data is None:
+        _report_read_failure(parent_json_path, parent_reason)
+        return 1
+    child_data, child_reason = read_json_checked(child_json_path)
+    if child_data is None:
+        _report_read_failure(child_json_path, child_reason)
         return 1
 
     # Check if child already has a parent
@@ -875,11 +975,13 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
         print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
         return 1
 
-    parent_data = read_json(parent_json_path)
-    child_data = read_json(child_json_path)
-
-    if not parent_data or not child_data:
-        print(colored("Error: Failed to read task.json", Colors.RED), file=sys.stderr)
+    parent_data, parent_reason = read_json_checked(parent_json_path)
+    if parent_data is None:
+        _report_read_failure(parent_json_path, parent_reason)
+        return 1
+    child_data, child_reason = read_json_checked(child_json_path)
+    if child_data is None:
+        _report_read_failure(child_json_path, child_reason)
         return 1
 
     # Remove child from parent's children list
@@ -933,12 +1035,15 @@ def cmd_set_branch(args: argparse.Namespace) -> int:
         print(colored(f"Error: task.json not found at {target_dir}", Colors.RED))
         return 1
 
-    data = read_json(task_json)
-    if not data:
+    data, reason = read_json_checked(task_json)
+    if data is None:
+        _report_read_failure(task_json, reason)
         return 1
 
     data["branch"] = branch
-    write_json(task_json, data)
+    if not write_json(task_json, data):
+        _report_write_failure(task_json)
+        return 1
 
     print(colored(f"✓ Branch set to: {branch}", Colors.GREEN))
     return 0
@@ -969,12 +1074,15 @@ def cmd_set_base_branch(args: argparse.Namespace) -> int:
         print(colored(f"Error: task.json not found at {target_dir}", Colors.RED))
         return 1
 
-    data = read_json(task_json)
-    if not data:
+    data, reason = read_json_checked(task_json)
+    if data is None:
+        _report_read_failure(task_json, reason)
         return 1
 
     data["base_branch"] = base_branch
-    write_json(task_json, data)
+    if not write_json(task_json, data):
+        _report_write_failure(task_json)
+        return 1
 
     print(colored(f"✓ Base branch set to: {base_branch}", Colors.GREEN))
     print(f"  PR will target: {base_branch}")
@@ -1003,12 +1111,15 @@ def cmd_set_scope(args: argparse.Namespace) -> int:
         print(colored(f"Error: task.json not found at {target_dir}", Colors.RED))
         return 1
 
-    data = read_json(task_json)
-    if not data:
+    data, reason = read_json_checked(task_json)
+    if data is None:
+        _report_read_failure(task_json, reason)
         return 1
 
     data["scope"] = scope
-    write_json(task_json, data)
+    if not write_json(task_json, data):
+        _report_write_failure(task_json)
+        return 1
 
     print(colored(f"✓ Scope set to: {scope}", Colors.GREEN))
     return 0
@@ -1037,8 +1148,9 @@ def cmd_set_meta(args: argparse.Namespace) -> int:
         print(colored(f"Error: task.json not found at {target_dir}", Colors.RED))
         return 1
 
-    data = read_json(task_json)
-    if not data:
+    data, reason = read_json_checked(task_json)
+    if data is None:
+        _report_read_failure(task_json, reason)
         return 1
 
     meta = data.get("meta")
@@ -1046,7 +1158,9 @@ def cmd_set_meta(args: argparse.Namespace) -> int:
         meta = {}
     meta[key] = value
     data["meta"] = meta
-    write_json(task_json, data)
+    if not write_json(task_json, data):
+        _report_write_failure(task_json)
+        return 1
 
     print(colored(f"✓ Meta set: {key} = {value}", Colors.GREEN))
     return 0

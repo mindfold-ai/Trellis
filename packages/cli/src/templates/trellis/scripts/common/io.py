@@ -13,15 +13,79 @@ import tempfile
 from pathlib import Path
 
 
+JSON_READ_MISSING = "missing"
+JSON_READ_INVALID = "invalid"
+JSON_READ_UNREADABLE = "unreadable"
+JSON_READ_NOT_OBJECT = "not-object"
+JSON_READ_EMPTY = "empty"
+
+
 def read_json(path: Path) -> dict | None:
     """Read and parse a JSON file.
 
     Returns None if the file doesn't exist, is invalid JSON, or can't be read.
+    Use this for optional reads only — a caller that is about to overwrite the
+    file, or that must tell a parse error from a permissions error, wants
+    read_json_checked instead.
     """
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
+
+
+def read_json_checked(path: Path) -> tuple[dict | None, str | None]:
+    """Read a JSON object, keeping the ways it can fail distinguishable.
+
+    Returns ``(data, None)`` on success, or ``(None, reason)`` where reason is
+    one of the ``JSON_READ_*`` constants. An empty object counts as a failure:
+    a state file that parses to ``{}`` carries none of the fields callers read,
+    and treating it as success would silently rebuild it from defaults.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None, JSON_READ_MISSING
+    except OSError:
+        return None, JSON_READ_UNREADABLE
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None, JSON_READ_INVALID
+
+    if not isinstance(data, dict):
+        return None, JSON_READ_NOT_OBJECT
+    if not data:
+        return None, JSON_READ_EMPTY
+    return data, None
+
+
+def describe_json_read_failure(path: Path, reason: str | None) -> tuple[str, str]:
+    """Return ``(what happened, what to do)`` for a read_json_checked reason."""
+    if reason == JSON_READ_MISSING:
+        return (f"{path}: file not found", "Pass an existing task directory, or create the task first.")
+    if reason == JSON_READ_UNREADABLE:
+        return (
+            f"{path}: could not be read (permission denied or I/O error)",
+            "Check the file and directory permissions, then retry.",
+        )
+    if reason == JSON_READ_INVALID:
+        return (
+            f"{path}: not valid JSON",
+            f"Fix the syntax (e.g. `python3 -m json.tool {path}`), then retry.",
+        )
+    if reason == JSON_READ_NOT_OBJECT:
+        return (
+            f"{path}: top level is not a JSON object",
+            "Restore the file to a JSON object ({ ... }), then retry.",
+        )
+    if reason == JSON_READ_EMPTY:
+        return (
+            f"{path}: contains an empty JSON object",
+            "Restore the task fields (or recreate the task), then retry.",
+        )
+    return (f"{path}: could not be loaded", "Inspect the file, then retry.")
 
 
 def write_json(path: Path, data: dict) -> bool:

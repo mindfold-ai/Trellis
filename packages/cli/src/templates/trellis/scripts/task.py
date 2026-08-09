@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from common.log import Colors, colored
 from common.paths import (
@@ -44,7 +45,11 @@ from common.active_task import (
     resolve_context_key,
     set_active_task,
 )
-from common.io import read_json, write_json
+from common.io import (
+    describe_json_read_failure,
+    read_json_checked,
+    write_json,
+)
 from common.task_utils import resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
 
@@ -69,6 +74,40 @@ from common.task_context import (
 # =============================================================================
 # Command: start / finish
 # =============================================================================
+
+def _flip_status_to_in_progress(task_json_path: Path, label: str = "") -> None:
+    """Move a freshly started task from planning to in_progress.
+
+    Tolerant on purpose — a broken task.json does not fail `start`, because the
+    session pointer is the point of the command. But the read overwrites the
+    file it just read, so neither failure may be silent: without a message the
+    absent status line looks like the task simply was not in planning.
+    """
+    data, reason = read_json_checked(task_json_path)
+    if data is None:
+        problem, hint = describe_json_read_failure(task_json_path, reason)
+        print(
+            colored(f"Warning: {problem}; status not updated.", Colors.YELLOW),
+            file=sys.stderr,
+        )
+        print(hint, file=sys.stderr)
+        return
+
+    if data.get("status") != "planning":
+        return
+
+    data["status"] = "in_progress"
+    if write_json(task_json_path, data):
+        print(colored(f"✓ Status: planning → in_progress{label}", Colors.GREEN))
+    else:
+        print(
+            colored(
+                f"Warning: Failed to write {task_json_path}; status stays 'planning'.",
+                Colors.YELLOW,
+            ),
+            file=sys.stderr,
+        )
+
 
 def cmd_start(args: argparse.Namespace) -> int:
     """Set active task."""
@@ -113,11 +152,7 @@ def cmd_start(args: argparse.Namespace) -> int:
 
         # Still flip task.json status: planning → in_progress so downstream phases proceed.
         if task_json_path.is_file():
-            data = read_json(task_json_path)
-            if data and data.get("status") == "planning":
-                data["status"] = "in_progress"
-                if write_json(task_json_path, data):
-                    print(colored("✓ Status: planning → in_progress (degraded)", Colors.GREEN))
+            _flip_status_to_in_progress(task_json_path, " (degraded)")
             run_task_hooks("after_start", task_json_path, repo_root)
         return 0
 
@@ -127,11 +162,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         print(f"Source: {active.source}")
 
         if task_json_path.is_file():
-            data = read_json(task_json_path)
-            if data and data.get("status") == "planning":
-                data["status"] = "in_progress"
-                if write_json(task_json_path, data):
-                    print(colored("✓ Status: planning → in_progress", Colors.GREEN))
+            _flip_status_to_in_progress(task_json_path)
 
         print()
         print(colored("The hook will now inject context from this task's jsonl files.", Colors.BLUE))
@@ -171,8 +202,20 @@ def cmd_current(args: argparse.Namespace) -> int:
 
     if getattr(args, "json", False):
         task_obj = None
+        read_error = None
         if active.task_path:
-            data = read_json(repo_root / active.task_path / FILE_TASK_JSON) or {}
+            task_json_path = repo_root / active.task_path / FILE_TASK_JSON
+            data, reason = read_json_checked(task_json_path)
+            if data is None:
+                # Without this, a corrupt task.json emits null for every field
+                # — indistinguishable from a task whose fields really are null.
+                problem, hint = describe_json_read_failure(task_json_path, reason)
+                read_error = {
+                    "file": str(task_json_path),
+                    "reason": reason,
+                    "message": f"{problem}. {hint}",
+                }
+                data = {}
             task_obj = {
                 "dir": active.task_path,
                 "id": data.get("id") or data.get("name"),
@@ -183,11 +226,15 @@ def cmd_current(args: argparse.Namespace) -> int:
                 "branch": data.get("branch"),
                 "base_branch": data.get("base_branch"),
             }
-        print(json.dumps({
+        payload = {
             "current_task": task_obj,
             "source": active.source,
             "stale": active.stale,
-        }, ensure_ascii=False))
+        }
+        # Only present when the read failed, so the healthy shape is unchanged.
+        if read_error:
+            payload["error"] = read_error
+        print(json.dumps(payload, ensure_ascii=False))
         return 0 if active.task_path else 1
 
     if args.source:

@@ -357,12 +357,35 @@ The single source of truth for all JSON file operations. Replaces 8 duplicated `
 | Function | Signature | Returns | Error Behavior |
 |----------|-----------|---------|----------------|
 | `read_json` | `(path: Path) -> dict \| None` | Parsed dict, or `None` | Returns `None` on `FileNotFoundError`, `JSONDecodeError`, `OSError` |
+| `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of `JSON_READ_MISSING` / `INVALID` / `UNREADABLE` / `NOT_OBJECT` / `EMPTY` |
+| `describe_json_read_failure` | `(path: Path, reason: str \| None) -> tuple[str, str]` | `(what happened, what to do)` | Never raises; unknown reasons get a generic pair |
 | `write_json` | `(path: Path, data: dict) -> bool` | `True` on success | Returns `False` on `OSError`, `IOError` |
 
 **Contracts**:
 - Always uses `encoding="utf-8"` and `ensure_ascii=False`
 - `write_json` outputs with `indent=2` (pretty-printed)
 - Callers must check return value — no exceptions are raised
+- **Tolerant vs safety-sensitive reads.** `read_json` is for *optional* reads
+  only: it collapses missing, invalid and unreadable into one `None`, so a
+  caller cannot report which happened. Any caller that is about to overwrite
+  the file it just read, or whose failure the user must act on, uses
+  `read_json_checked` + `describe_json_read_failure` and prints both the file
+  and the failure class. Exiting non-zero with empty output — the pre-0.6.14
+  behavior of `task.py set-branch` / `set-base-branch` / `set-scope` /
+  `set-meta` on a corrupt `task.json` — is not an acceptable failure mode.
+- **Every `write_json` return is checked.** A success message printed after an
+  unchecked write is a false report: writes are atomic, so a failed write left
+  the old content in place and the user believes the new value landed.
+  Safety-sensitive writes fail the command (non-zero exit, naming the file and
+  which side of a two-file change did land); genuinely optional writes warn on
+  stderr. `task.py list` staying silent about a task it skipped counts as a
+  safety failure too — the task disappears from every listing with no
+  diagnostic, so `tasks.py:load_task` warns on stderr for a `task.json` that
+  exists but cannot be loaded (a directory with no `task.json` stays silent).
+- Session runtime files go through `write_json` as well: `active_task.py`'s
+  private `_write_json` only adds the `mkdir(parents=True)` the runtime
+  directory needs and then delegates, so session pointers get the same
+  never-truncate-in-place guarantee as `task.json`.
 - `write_json` is atomic: it writes to a temp file in `path.parent`
   (`tempfile.mkstemp`) then `os.replace(tmp, path)`. It never
   `path.write_text()`s over the target in place. A crash or Ctrl-C mid-write
@@ -588,7 +611,11 @@ a `.current-task` fallback or a Python hook directory.
   active task, otherwise `{dir, id, title, status, parent, children, branch,
   base_branch}` read from that task's `task.json`. Exit 0 when a task is
   active, exit 1 when `current_task` is `null`. Human output (no `--json`)
-  is unchanged.
+  is unchanged. When that `task.json` cannot be read, the fields are still
+  emitted as `null` and a fourth key `error` — `{file, reason, message}`,
+  with `reason` from `read_json_checked` — is added so all-null output is
+  distinguishable from a task whose fields genuinely are null. The key is
+  absent on the healthy path, and the exit code is unchanged.
 - `task.py list --json` prints `{tasks: [...]}` on one line, one object per
   task after `--mine`/`--status` filtering: `{dir, id, title, status,
   display_status, priority, assignee, parent, children, package}`. With
@@ -618,6 +645,13 @@ a `.current-task` fallback or a Python hook directory.
 | `current --source` without context | Prints `(none)` and `Source: none` |
 | `current --json` with active task | `{current_task: {...}, source, stale}`; exit 0 |
 | `current --json` with no active task | `{current_task: null, source, stale}`; exit 1 |
+| `current --json` with an active task whose `task.json` is corrupt/unreadable | `{current_task: {... nulls}, source, stale, error: {file, reason, message}}`; exit 0 |
+| `set-branch` / `set-base-branch` / `set-scope` / `set-meta` on a corrupt or unreadable `task.json` | Names the file and the failure class on stderr; exit 1; file untouched |
+| Any of those four when the write fails | Reports the failed write instead of the `✓` line; exit 1 |
+| `create` when the `task.json` write fails | No "Created task", nothing on stdout, exit 1; a directory it created is removed |
+| `archive` when the status write or a child re-parent write fails | Nothing is moved; the failure and the affected child are named; exit 1 |
+| `list` with one corrupt `task.json` | Other tasks still list; the skipped task is named on stderr with the reason; exit 0 |
+| `start` on a task whose `task.json` is corrupt, or whose status write fails | Session pointer is still set and `after_start` hooks still run; the skipped status flip is named on stderr; exit 0 |
 | `list --json --mine` with no developer configured | `{"error": "No developer set"}` on stderr; exit 1 |
 | `list --json` / `list` with a parent whose stored status is `planning` and a child past `planning` | `display_status` (and human list label) shows `"active"`; `task.json.status` on disk stays `planning` |
 | `archive` / `validate` when `task.json.branch` no longer exists locally | Prints a yellow warning; does not block archive or fail validation |
