@@ -32,6 +32,7 @@ from pathlib import Path
 
 from common.log import Colors, colored
 from common.paths import (
+    DEVELOPER_HINT,
     DIR_WORKFLOW,
     DIR_TASKS,
     FILE_TASK_JSON,
@@ -356,7 +357,10 @@ def cmd_list(args: argparse.Namespace) -> int:
 
     if as_json:
         if filter_mine and not developer:
-            print(json.dumps({"error": "No developer set"}), file=sys.stderr)
+            print(
+                json.dumps({"error": "No developer set", "hint": DEVELOPER_HINT}),
+                file=sys.stderr,
+            )
             return 1
 
         items = []
@@ -384,6 +388,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     if filter_mine:
         if not developer:
             print(colored("Error: No developer set. Run init_developer.py first", Colors.RED), file=sys.stderr)
+            print(DEVELOPER_HINT, file=sys.stderr)
             return 1
         print(colored(f"My tasks (assignee: {developer}):", Colors.BLUE))
     else:

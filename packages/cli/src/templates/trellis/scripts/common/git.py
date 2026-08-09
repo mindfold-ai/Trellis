@@ -19,6 +19,12 @@ from pathlib import Path
 INDEX_LOCK_RETRY_BACKOFF = (0.5, 1.0)
 INDEX_LOCK_RETRY_ATTEMPTS = len(INDEX_LOCK_RETRY_BACKOFF) + 1
 
+# Whether a checkout is a linked worktree cannot change while a script runs, and
+# the answer costs two subprocesses. Developer-identity resolution asks several
+# times per command whenever the local `.developer` file is absent, so memoize.
+_CACHE_MISS = object()
+_MAIN_WORKTREE_CACHE: dict[Path, Path | None] = {}
+
 
 def run_git(
     args: list[str],
@@ -132,6 +138,58 @@ def has_git_remote(repo_root: Path) -> bool:
     """Whether the repository has at least one configured remote."""
     rc, out, _ = run_git(["remote"], cwd=repo_root)
     return rc == 0 and bool(out.strip())
+
+
+def main_worktree_root(repo_root: Path) -> Path | None:
+    """Root of the main working tree when `repo_root` is a linked worktree.
+
+    Returns None in the main working tree itself, outside a git repository, and
+    for a linked worktree of a bare repository (no main checkout to point at).
+
+    `git worktree list --porcelain` reports the main working tree as its first
+    record, so git identifies it rather than this code deriving it from the
+    `.git` layout. Deriving it — taking the parent of `--git-common-dir` — is
+    wrong for a bare repository that happens to sit inside an unrelated
+    checkout (`~/repos/project.git` under a `~/repos` that is itself a repo):
+    the parent is a real checkout with a real `.developer`, so the guess is
+    indistinguishable from a hit and identity leaks across repositories.
+    """
+    cached = _MAIN_WORKTREE_CACHE.get(repo_root, _CACHE_MISS)
+    if cached is not _CACHE_MISS:
+        return cached  # type: ignore[return-value]
+
+    result = _probe_main_worktree_root(repo_root)
+    _MAIN_WORKTREE_CACHE[repo_root] = result
+    return result
+
+
+def _probe_main_worktree_root(repo_root: Path) -> Path | None:
+    rc_list, listing, _ = run_git(["worktree", "list", "--porcelain"], cwd=repo_root)
+    rc_top, toplevel, _ = run_git(["rev-parse", "--show-toplevel"], cwd=repo_root)
+    if rc_list != 0 or rc_top != 0:
+        return None
+
+    lines = listing.splitlines()
+    if not lines or not lines[0].startswith("worktree "):
+        return None
+
+    # Records are blank-line separated; a `bare` attribute on the first one
+    # means the "main working tree" is a bare repo with nothing to inherit.
+    for line in lines[1:]:
+        if not line.strip():
+            break
+        if line.strip() == "bare":
+            return None
+
+    try:
+        main_root = Path(lines[0][len("worktree ") :].strip()).resolve()
+        current_root = Path(toplevel.strip()).resolve()
+    except (OSError, ValueError):
+        return None
+
+    if main_root == current_root:
+        return None
+    return main_root
 
 
 def branch_exists_locally(branch: str, repo_root: Path) -> bool:

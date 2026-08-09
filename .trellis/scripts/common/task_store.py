@@ -46,6 +46,7 @@ from .git import (
 from .io import describe_json_read_failure, read_json_checked, write_json
 from .log import Colors, colored
 from .paths import (
+    DEVELOPER_HINT,
     DIR_ARCHIVE,
     DIR_TASKS,
     DIR_WORKFLOW,
@@ -365,6 +366,7 @@ def cmd_create(args: argparse.Namespace) -> int:
         assignee = get_developer(repo_root)
         if not assignee:
             print(colored("Error: No developer set. Run init_developer.py first or use --assignee", Colors.RED), file=sys.stderr)
+            print(DEVELOPER_HINT, file=sys.stderr)
             return 1
 
     ensure_tasks_dir(repo_root)

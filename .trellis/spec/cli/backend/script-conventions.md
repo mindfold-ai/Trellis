@@ -449,6 +449,50 @@ def has_git_remote(repo_root: Path) -> bool
 - `has_git_remote()` (`git remote`, non-empty) is only used as half of the
   PR-backed predicate below.
 
+```python
+def main_worktree_root(repo_root: Path) -> Path | None
+```
+
+- Returns the main working tree's root when `repo_root` is a **linked** git
+  worktree, and `None` in the main working tree itself, outside a git
+  repository, and for a linked worktree of a bare repo.
+- The main root comes from the **first record of
+  `git worktree list --porcelain`**, compared against `rev-parse
+  --show-toplevel` (equal means this *is* the main working tree). A `bare`
+  attribute on that first record is the bare case.
+- Do **not** re-derive this from the `.git` layout by taking the parent of
+  `--git-common-dir`. For a bare repo nested in an unrelated checkout
+  (`~/repos/project.git` under a `~/repos` that is itself a repo) that parent
+  is a real checkout with a real `.developer`, so the wrong answer is
+  indistinguishable from the right one and identity leaks between
+  repositories. Covered by `[worktree-identity] a bare repo nested inside an
+  unrelated checkout does not leak that checkout's identity`.
+- Memoized per `repo_root` for the life of the process: a checkout cannot
+  become a worktree mid-run, and the answer costs two subprocesses on a path
+  that is consulted several times per command.
+
+#### Developer identity resolution
+
+`.trellis/.developer` is gitignored on purpose — it carries a personal
+identity and **no tracked file may carry one**. A fresh `git worktree add`
+therefore has no identity file, so `paths.get_developer()` resolves in a fixed
+order, first hit wins:
+
+1. `TRELLIS_DEVELOPER` environment variable (non-empty after strip).
+2. `.trellis/.developer` in this checkout.
+3. `.trellis/.developer` in the main checkout, when this is a linked worktree
+   (`main_worktree_root()`).
+
+A CLI `--assignee` overrides all three — it is applied by the command before
+`get_developer()` is consulted. Step 3 **reads and never copies**: writing the
+inherited name into the worktree would go stale and shadow later changes in
+the main checkout. Steps 2 and 3 are skipped entirely when step 1 hits, so no
+git subprocess runs on the common path.
+
+Every "no developer set" error appends `paths.DEVELOPER_HINT`, which names the
+env var and the worktree-inheritance behavior — the two sources a user cannot
+guess from `init_developer.py` alone.
+
 #### `task.json.branch` lifecycle
 
 `branch` names the feature branch the work was done on; `base_branch` names
@@ -660,7 +704,8 @@ a `.current-task` fallback or a Python hook directory.
   task after `--mine`/`--status` filtering: `{dir, id, title, status,
   display_status, priority, assignee, parent, children, package}`. With
   `--mine --json` and no developer configured, prints `{"error": "No
-  developer set"}` to stderr and exits 1 (mirrors the human-mode error).
+  developer set", "hint": ...}` to stderr and exits 1 (mirrors the human-mode
+  error; `hint` carries `paths.DEVELOPER_HINT`).
   `--json` and human `list` share one iteration pass over
   `iter_active_tasks()` — do not add a second pass for either mode.
 - `display_status` (`_display_status()` in `task.py`) shows `"active"`
@@ -692,7 +737,7 @@ a `.current-task` fallback or a Python hook directory.
 | `archive` when the status write or a child re-parent write fails | Nothing is moved; the failure and the affected child are named; exit 1 |
 | `list` with one corrupt `task.json` | Other tasks still list; the skipped task is named on stderr with the reason; exit 0 |
 | `start` on a task whose `task.json` is corrupt, or whose status write fails | Session pointer is still set and `after_start` hooks still run; the skipped status flip is named on stderr; exit 0 |
-| `list --json --mine` with no developer configured | `{"error": "No developer set"}` on stderr; exit 1 |
+| `list --json --mine` with no developer configured | `{"error": "No developer set", "hint": ...}` on stderr; exit 1 |
 | `list --json` / `list` with a parent whose stored status is `planning` and a child past `planning` | `display_status` (and human list label) shows `"active"`; `task.json.status` on disk stays `planning` |
 | `archive` / `validate` when `task.json.branch` no longer exists locally | Prints a yellow warning; does not block archive or fail validation |
 | stale session task + stale `.current-task` exists | Returns stale session state; no `.current-task` fallback |
