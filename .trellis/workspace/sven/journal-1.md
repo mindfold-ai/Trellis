@@ -96,3 +96,38 @@ Landed five features on chore/task-backlog-2026-08 and archived their tasks: bra
 ### Next Steps
 
 - Push submodule branches once forks exist; consumer rollout for finish-clear fix via sd-status fleet; upstream PR from fork branch
+
+
+## Session 4: PR 534 review convergence
+<!-- trellis-session: fp=734118e44a93414b -->
+
+**Date**: 2026-08-09
+**Task**: PR 534 review convergence
+**Package**: cli
+**Branch**: `chore/task-backlog-2026-08`
+
+### Summary
+
+Session summary was not supplied.
+
+### Main Changes
+
+- Fixed 9 bot review findings: journal MULTILINE regex, convergence ref cap local-head exemption, developer-name traversal + Windows drive letters, rename session repoint, OPENCODE_DB tilde expansion, config list-mapping rejection, toIso range guard, stale-index test precondition
+- Rebutted archived-artifact edits, start-gate enforcement, repoint failure-contract comments with verified reasoning
+- Filed follow-up task 08-09-hook-timeout-process-tree; documented marketplace submodule CI gap on PR with ready-to-apply git-am patch
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] Full CLI suite 1777 passed; core 369 passed; script trees byte parity
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Plan and implement hook-timeout process-tree kill task
