@@ -60,6 +60,8 @@ def cmd_add_context(args: argparse.Namespace) -> int:
     """Add entry to JSONL context file."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
 
     jsonl_name = args.file
     path = args.path
@@ -67,6 +69,15 @@ def cmd_add_context(args: argparse.Namespace) -> int:
 
     if not target_dir.is_dir():
         print(colored(f"Error: Directory not found: {target_dir}", Colors.RED))
+        return 1
+
+    # The JSONL name is user input joined onto the task dir — keep it a plain
+    # filename so it cannot create files elsewhere.
+    if "/" in jsonl_name or "\\" in jsonl_name or jsonl_name in (".", ".."):
+        print(colored(
+            f"Error: context file must be a plain name (e.g. implement, check): {jsonl_name}",
+            Colors.RED,
+        ))
         return 1
 
     # Support shorthand
@@ -115,7 +126,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir.is_dir():
+    if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 
@@ -323,7 +334,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir.is_dir():
+    if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 

@@ -563,14 +563,26 @@ a `.current-task` fallback or a Python hook directory.
   bulk-clear other sessions.
 - `task.py archive <task>` deletes every runtime session file whose
   `current_task` points at the archived task before moving the task directory.
-- Before moving anything, `cmd_archive` (`task_store.py`) calls
+- `resolve_task_dir(target_dir, repo_root)` (`task_utils.py`) is the
+  containment chokepoint for every command taking a task-directory argument.
+  It resolves the candidate (following symlinks) and returns `None`, after
+  printing an error naming the path, unless the result lands strictly under
+  `.trellis/tasks/` — archived tasks under `archive/<YYYY-MM>/` included.
+  Traversal (`../victim`), an absolute path outside the repo, a task dir
+  symlinked elsewhere, an unknown name, and an ambiguous suffix (two tasks
+  ending in `-<name>`; every match is printed) all resolve to nothing.
+  Callers must handle `None`; they must not add their own containment checks.
+- Before moving anything, `cmd_archive` (`task_store.py`) additionally calls
   `is_within_tasks_dir(task_dir_abs, repo_root)` (`task_utils.py`) and refuses
   with "refusing to archive ..." (exit 1) unless the resolved dir is a direct
-  child of `.trellis/tasks/`. `resolve_task_dir` falls back to
-  `repo_root / <name>` for a name it can't find, so a mistyped
-  `task.py archive src` would otherwise resolve to and `shutil.move` the
-  repo's real `src/` directory. See
+  child of `.trellis/tasks/`, so an already-archived task is not archived
+  twice. A mistyped `task.py archive src` is stopped one step earlier, by
+  `resolve_task_dir`, with the same refusal wording. See
   [Filesystem Safety](./filesystem-safety.md#2-path--name-safety--validate-at-the-chokepoint-before-pathjoin).
+- `task.py create --slug` is user input joined into the task directory name:
+  a slug containing `/`, `\`, or `..` is rejected (exit 1) rather than
+  sanitized. `task.py add-context <dir> <file>` applies the same rule to the
+  JSONL filename, which is otherwise joined onto the task dir unvalidated.
 - `task.py current --json` prints `{current_task, source, stale}` on one
   line (`ensure_ascii=False`); `current_task` is `null` when there is no
   active task, otherwise `{dir, id, title, status, parent, children, branch,
@@ -615,7 +627,10 @@ a `.current-task` fallback or a Python hook directory.
 | `finish` with a missing exact match and multiple session files | Returns no current task and deletes nothing |
 | `finish` without context key | Returns no current task; does not delete `.current-task` |
 | `archive` for a task referenced by runtime sessions | Deletes those session files even when `finish` was skipped |
-| `archive` on a name that resolves outside `.trellis/tasks/` (e.g. `archive src` falling back to `repo_root/src`) | Refuses with "refusing to archive ..." and exit 1; source directory is left untouched |
+| `archive` on a name that is not a task under `.trellis/tasks/` (e.g. `archive src`) | Refuses with "refusing to archive ..." and exit 1; source directory is left untouched |
+| Any task-dir argument that traverses out, is an outside absolute path, or is a symlink to outside the tasks dir | `resolve_task_dir` prints "refusing to use ..." naming the resolved path and returns `None`; the command exits 1 without reading or writing anything |
+| A bare task name matching two or more `-<name>` suffixes | Every match is listed, the command exits 1; no task is picked |
+| `create --slug` or `add-context <file>` containing `/`, `\`, or `..` | Rejected with exit 1 before any file is created |
 
 ##### 5. Good/Base/Bad Cases
 

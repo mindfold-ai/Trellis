@@ -267,10 +267,22 @@ def cmd_create(args: argparse.Namespace) -> int:
     # Get current developer as creator
     creator = get_developer(repo_root) or assignee
 
-    # Generate slug if not provided
+    # Generate slug if not provided. A title-derived slug is sanitized by
+    # _slugify; an explicit --slug is not, so reject the characters that would
+    # let it escape the tasks directory once joined into the dir name.
     slug = args.slug or _slugify(args.title)
     if not slug:
         print(colored("Error: could not generate slug from title", Colors.RED), file=sys.stderr)
+        return 1
+
+    if args.slug and ("/" in slug or "\\" in slug or ".." in slug):
+        print(
+            colored(
+                f"Error: --slug must be a plain name without path separators or '..': {slug}",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
         return 1
 
     # Create task directory with MM-DD-slug format
@@ -410,10 +422,12 @@ def cmd_create(args: argparse.Namespace) -> int:
     # Handle --parent: establish bidirectional link
     if args.parent:
         parent_dir = resolve_task_dir(args.parent, repo_root)
-        parent_json_path = parent_dir / FILE_TASK_JSON
-        if not parent_json_path.is_file():
+        if parent_dir is None:
+            print(colored(f"Warning: Parent task not resolved: {args.parent}", Colors.YELLOW), file=sys.stderr)
+        elif not (parent_dir / FILE_TASK_JSON).is_file():
             print(colored(f"Warning: Parent task.json not found: {args.parent}", Colors.YELLOW), file=sys.stderr)
         else:
+            parent_json_path = parent_dir / FILE_TASK_JSON
             parent_data = read_json(parent_json_path)
             if parent_data:
                 # Add child to parent's children list
@@ -525,8 +539,16 @@ def cmd_archive(args: argparse.Namespace) -> int:
     # Resolve task directory (supports task name, relative path, or absolute path)
     task_dir = resolve_task_dir(task_name, repo_root)
 
-    if not task_dir or not task_dir.is_dir():
-        print(colored(f"Error: Task not found: {task_name}", Colors.RED), file=sys.stderr)
+    if task_dir is None or not task_dir.is_dir():
+        if task_dir is None:
+            # resolve_task_dir already reported why; keep the archive-specific
+            # refusal so it reads the same as the is_within_tasks_dir guard.
+            print(colored(
+                f"Error: refusing to archive '{task_name}': "
+                f"it does not resolve to a task under {tasks_dir}",
+                Colors.RED), file=sys.stderr)
+        else:
+            print(colored(f"Error: Task not found: {task_name}", Colors.RED), file=sys.stderr)
         print("Active tasks:", file=sys.stderr)
         # Import lazily to avoid circular dependency
         from .tasks import iter_active_tasks
@@ -535,9 +557,9 @@ def cmd_archive(args: argparse.Namespace) -> int:
         return 1
 
     # Refuse to archive anything that isn't a real task directly under
-    # .trellis/tasks/. A mistyped name (e.g. "src") resolves to repo_root/src,
-    # which is a dir but not a task — without this guard archive would move the
-    # user's source directory out of the repo.
+    # .trellis/tasks/. resolve_task_dir keeps the target inside the tasks dir;
+    # this narrows it further to a direct child, so an already-archived task
+    # (.trellis/tasks/archive/<month>/<task>) is not archived a second time.
     if not is_within_tasks_dir(task_dir, repo_root):
         print(colored(
             f"Error: refusing to archive '{task_name}': "
@@ -722,6 +744,8 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
 
     parent_dir = resolve_task_dir(args.parent_dir, repo_root)
     child_dir = resolve_task_dir(args.child_dir, repo_root)
+    if parent_dir is None or child_dir is None:
+        return 1
 
     parent_json_path = parent_dir / FILE_TASK_JSON
     child_json_path = child_dir / FILE_TASK_JSON
@@ -775,6 +799,8 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
 
     parent_dir = resolve_task_dir(args.parent_dir, repo_root)
     child_dir = resolve_task_dir(args.child_dir, repo_root)
+    if parent_dir is None or child_dir is None:
+        return 1
 
     parent_json_path = parent_dir / FILE_TASK_JSON
     child_json_path = child_dir / FILE_TASK_JSON
@@ -820,6 +846,8 @@ def cmd_set_branch(args: argparse.Namespace) -> int:
     """Set git branch for task."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
     branch = args.branch
 
     if not branch:
@@ -851,6 +879,8 @@ def cmd_set_base_branch(args: argparse.Namespace) -> int:
     """Set the base branch (PR target) for task."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
     base_branch = args.base_branch
 
     if not base_branch:
@@ -886,6 +916,8 @@ def cmd_set_scope(args: argparse.Namespace) -> int:
     """Set scope for PR title."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
     scope = args.scope
 
     if not scope:
@@ -917,6 +949,8 @@ def cmd_set_meta(args: argparse.Namespace) -> int:
     """Set/overwrite one metadata key on an existing task."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
     key = args.key
     value = args.value
 

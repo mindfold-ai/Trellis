@@ -3,7 +3,7 @@
 Task utility functions.
 
 Provides:
-    is_safe_task_path   - Validate task path is safe to operate on
+    is_within_tasks_dir - Check a resolved path is a task directly under tasks/
     find_task_by_name   - Find task directory by name
     resolve_task_dir    - Resolve task directory from name, relative, or absolute path
     archive_task_dir    - Archive task to monthly directory
@@ -24,62 +24,16 @@ from .paths import get_repo_root, get_tasks_dir
 # Path Safety
 # =============================================================================
 
-def is_safe_task_path(task_path: str, repo_root: Path | None = None) -> bool:
-    """Check if a relative task path is safe to operate on.
-
-    Args:
-        task_path: Task path (relative to repo_root).
-        repo_root: Repository root path. Defaults to auto-detected.
-
-    Returns:
-        True if safe, False if dangerous.
-    """
-    if repo_root is None:
-        repo_root = get_repo_root()
-
-    normalized = task_path.replace("\\", "/")
-
-    # Check empty or null
-    if not normalized or normalized == "null":
-        print("Error: empty or null task path", file=sys.stderr)
-        return False
-
-    # Reject absolute paths
-    if Path(task_path).is_absolute():
-        print(f"Error: absolute path not allowed: {task_path}", file=sys.stderr)
-        return False
-
-    # Reject ".", "..", paths starting with "./" or "../", or containing ".."
-    if normalized in (".", "..") or normalized.startswith("./") or normalized.startswith("../") or ".." in normalized:
-        print(f"Error: path traversal not allowed: {task_path}", file=sys.stderr)
-        return False
-
-    # Final check: ensure resolved path is not the repo root
-    abs_path = repo_root / Path(normalized)
-    if abs_path.exists():
-        try:
-            resolved = abs_path.resolve()
-            root_resolved = repo_root.resolve()
-            if resolved == root_resolved:
-                print(f"Error: path resolves to repo root: {task_path}", file=sys.stderr)
-                return False
-        except (OSError, IOError):
-            pass
-
-    return True
-
-
 def is_within_tasks_dir(task_dir_abs: Path, repo_root: Path | None = None) -> bool:
     """Check that a resolved task directory really is a task under the tasks dir.
 
     A real task lives directly at ``.trellis/tasks/<name>``. This returns True
     only when ``task_dir_abs`` is an immediate child of the tasks directory.
 
-    Guards archive: ``resolve_task_dir`` falls back to ``repo_root/<name>`` for
-    an unknown name, so a mistyped ``task.py archive src`` resolves to the real
-    ``src/`` source directory. Without this check archive would ``shutil.move``
-    it out of the repo. Also rejects the tasks dir itself and anything nested
-    under ``archive/`` (already-archived tasks).
+    Narrows ``resolve_task_dir``'s containment for archive: that chokepoint
+    accepts anything under the tasks dir, including a task already in
+    ``archive/<YYYY-MM>/``. This rejects those, plus the tasks dir itself, so
+    ``shutil.move`` never re-archives an archived task into a nested copy.
     """
     if repo_root is None:
         repo_root = get_repo_root()
@@ -100,14 +54,27 @@ def is_within_tasks_dir(task_dir_abs: Path, repo_root: Path | None = None) -> bo
 def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
     """Find task directory by name (exact or suffix match).
 
+    A task name is a single directory name under ``tasks_dir``, never a path:
+    names carrying a separator or a dot segment are rejected before the join,
+    so ``".."`` cannot hand back the tasks dir's own parent.
+
+    An ambiguous suffix (two tasks created on different days with the same
+    slug) is a failure, not a coin flip — ``iterdir()`` order is filesystem
+    order, so silently picking the first match picks a different task on a
+    different machine.
+
     Args:
         task_name: Task name to find.
         tasks_dir: Tasks directory path.
 
     Returns:
-        Absolute path to task directory, or None if not found.
+        Absolute path to task directory, or None if not found or ambiguous.
     """
     if not task_name or not tasks_dir or not tasks_dir.is_dir():
+        return None
+
+    if "/" in task_name or "\\" in task_name or task_name in (".", ".."):
+        print(f"Error: invalid task name: {task_name}", file=sys.stderr)
         return None
 
     # Try exact match first
@@ -116,9 +83,17 @@ def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
         return exact_match
 
     # Try suffix match (e.g., "my-task" matches "01-21-my-task")
-    for d in tasks_dir.iterdir():
-        if d.is_dir() and d.name.endswith(f"-{task_name}"):
-            return d
+    matches = sorted(
+        d for d in tasks_dir.iterdir()
+        if d.is_dir() and d.name.endswith(f"-{task_name}")
+    )
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        print(f"Error: ambiguous task name '{task_name}' matches:", file=sys.stderr)
+        for match in matches:
+            print(f"  - {match.name}", file=sys.stderr)
+        print("Pass the full task directory name.", file=sys.stderr)
 
     return None
 
@@ -195,44 +170,80 @@ def archive_task_complete(
 # Task Directory Resolution
 # =============================================================================
 
-def resolve_task_dir(target_dir: str, repo_root: Path) -> Path:
-    """Resolve task directory to absolute path.
+def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
+    """Resolve task directory to an absolute path inside the tasks directory.
 
     Supports:
     - Absolute path: /path/to/task
     - Relative path: .trellis/tasks/01-31-my-task
     - Task name: my-task (uses find_task_by_name for lookup)
 
+    This is the containment chokepoint for every command that accepts a task
+    directory argument. The candidate is resolved (following symlinks) and must
+    land strictly under ``.trellis/tasks/``; archived tasks under
+    ``archive/<YYYY-MM>/`` qualify. Traversal (``../victim``), absolute paths
+    outside the repo, a task dir symlinked to somewhere else, and the tasks
+    directory itself are all rejected here so no caller has to re-check.
+
     Args:
         target_dir: Task directory specification.
         repo_root: Repository root path.
 
     Returns:
-        Resolved absolute path.
+        Resolved absolute path, or None when it is not a location inside the
+        tasks directory (an error naming the path is printed to stderr).
     """
     if not target_dir:
-        return Path()
+        print("Error: task directory is required", file=sys.stderr)
+        return None
 
     normalized = target_dir.replace("\\", "/")
     while normalized.startswith("./"):
         normalized = normalized[2:]
 
-    # Absolute path
-    if Path(target_dir).is_absolute():
-        return Path(target_dir)
-
-    # Relative path (contains path separator or starts with .trellis)
-    if "/" in normalized or normalized.startswith(".trellis"):
-        return repo_root / Path(normalized)
-
-    # Task name - try to find in tasks directory
     tasks_dir = get_tasks_dir(repo_root)
-    found = find_task_by_name(target_dir, tasks_dir)
-    if found:
-        return found
 
-    # Fallback to treating as relative path
-    return repo_root / Path(normalized)
+    if Path(target_dir).is_absolute():
+        candidate = Path(target_dir)
+    elif "/" in normalized or normalized.startswith(".trellis"):
+        # Relative path (contains path separator or starts with .trellis)
+        candidate = repo_root / Path(normalized)
+    else:
+        # Task name - must resolve inside the tasks directory. The historical
+        # fallback to repo_root/<name> only ever produced a path the check
+        # below rejects, so a miss ends here instead.
+        candidate = find_task_by_name(target_dir, tasks_dir)
+        if candidate is None:
+            # find_task_by_name reports invalid names and ambiguity itself.
+            print(
+                f"Error: could not resolve task '{target_dir}' under {tasks_dir}",
+                file=sys.stderr,
+            )
+            return None
+
+    try:
+        resolved = candidate.resolve()
+        tasks_resolved = tasks_dir.resolve()
+    except (OSError, RuntimeError) as e:
+        print(f"Error: could not resolve task directory '{target_dir}': {e}", file=sys.stderr)
+        return None
+
+    if resolved == tasks_resolved:
+        print(
+            f"Error: refusing to use '{target_dir}': {tasks_resolved} is the tasks "
+            "directory itself, not a task",
+            file=sys.stderr,
+        )
+        return None
+
+    if tasks_resolved not in resolved.parents:
+        print(
+            f"Error: refusing to use '{target_dir}': {resolved} is outside {tasks_resolved}",
+            file=sys.stderr,
+        )
+        return None
+
+    return resolved
 
 
 # =============================================================================
@@ -294,5 +305,5 @@ if __name__ == "__main__":
     tasks = get_tasks_dir(repo)
 
     print(f"Tasks dir: {tasks}")
-    print(f"is_safe_task_path('.trellis/tasks/test'): {is_safe_task_path('.trellis/tasks/test', repo)}")
-    print(f"is_safe_task_path('../test'): {is_safe_task_path('../test', repo)}")
+    print(f"resolve_task_dir('.trellis/tasks/test'): {resolve_task_dir('.trellis/tasks/test', repo)}")
+    print(f"resolve_task_dir('../test'): {resolve_task_dir('../test', repo)}")

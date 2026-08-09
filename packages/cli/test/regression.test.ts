@@ -562,6 +562,186 @@ describe("regression: resolve_task_dir path handling", () => {
   });
 });
 
+describe("regression: resolve_task_dir containment chokepoint", () => {
+  let tmpDir: string;
+  const pythonCmd = process.platform === "win32" ? "python" : "python3";
+
+  function runTask(
+    ...args: string[]
+  ): { status: number | null; stdout: string; stderr: string } {
+    const result = spawnSync(
+      pythonCmd,
+      [path.join(".trellis", "scripts", "task.py"), ...args],
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    };
+  }
+
+  function taskDir(...segments: string[]): string {
+    return path.join(tmpDir, ".trellis", "tasks", ...segments);
+  }
+
+  function makeTask(name: string): void {
+    fs.mkdirSync(taskDir(name), { recursive: true });
+    fs.writeFileSync(
+      path.join(taskDir(name), "task.json"),
+      JSON.stringify({ id: name, meta: {}, children: [] }) + "\n",
+    );
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-task-escape-"));
+    const scriptsDir = path.join(tmpDir, ".trellis", "scripts");
+    for (const [relativePath, content] of getAllScripts()) {
+      const absPath = path.join(scriptsDir, relativePath);
+      fs.mkdirSync(path.dirname(absPath), { recursive: true });
+      fs.writeFileSync(absPath, content, "utf-8");
+    }
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", ".developer"),
+      "name=tester\n",
+    );
+    fs.mkdirSync(taskDir("archive"), { recursive: true });
+    makeTask("08-09-real");
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("[audit] set-meta on a traversal path fails and leaves the outside task.json untouched", () => {
+    const victimDir = path.join(tmpDir, "..", path.basename(tmpDir) + "-victim");
+    fs.mkdirSync(victimDir, { recursive: true });
+    const victimJson = path.join(victimDir, "task.json");
+    fs.writeFileSync(victimJson, JSON.stringify({ id: "victim", meta: {} }));
+
+    try {
+      const r = runTask(
+        "set-meta",
+        `../${path.basename(victimDir)}`,
+        "pwned",
+        "yes",
+      );
+      expect(r.status).not.toBe(0);
+      expect(r.stderr).toContain("refusing to use");
+      expect(JSON.parse(fs.readFileSync(victimJson, "utf-8")).meta).toEqual({});
+    } finally {
+      fs.rmSync(victimDir, { recursive: true, force: true });
+    }
+  });
+
+  it("[audit] set-meta through a symlinked task dir fails and leaves the link target untouched", () => {
+    const outsideDir = path.join(tmpDir, "outside-target");
+    fs.mkdirSync(outsideDir, { recursive: true });
+    const outsideJson = path.join(outsideDir, "task.json");
+    fs.writeFileSync(outsideJson, JSON.stringify({ id: "outside", meta: {} }));
+    fs.symlinkSync(
+      outsideDir,
+      taskDir("08-09-symlinked"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+
+    const r = runTask("set-meta", "08-09-symlinked", "pwned", "yes");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("refusing to use");
+    expect(JSON.parse(fs.readFileSync(outsideJson, "utf-8")).meta).toEqual({});
+  });
+
+  it("[audit] create --slug with traversal fails and writes nothing outside the tasks dir", () => {
+    const r = runTask("create", "Evil", "--slug", "../../../escaped");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("--slug must be a plain name");
+    expect(fs.existsSync(path.join(tmpDir, ".trellis", "escaped"))).toBe(false);
+    expect(fs.readdirSync(path.join(tmpDir, ".trellis", "tasks")).sort()).toEqual(
+      ["08-09-real", "archive"],
+    );
+  });
+
+  it("[audit] add-context rejects a traversal JSONL filename", () => {
+    const r = runTask(
+      "add-context",
+      "08-09-real",
+      "../../../evil-ctx",
+      ".trellis/tasks/08-09-real/task.json",
+    );
+    expect(r.status).not.toBe(0);
+    expect(r.stdout + r.stderr).toContain("must be a plain name");
+    expect(fs.existsSync(path.join(tmpDir, "..", "evil-ctx.jsonl"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, "evil-ctx.jsonl"))).toBe(false);
+  });
+
+  it("[audit] add-context on '..' fails instead of writing into .trellis/", () => {
+    const r = runTask(
+      "add-context",
+      "..",
+      "implement",
+      ".trellis/tasks/08-09-real/task.json",
+    );
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("invalid task name");
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "implement.jsonl")),
+    ).toBe(false);
+  });
+
+  it("[audit] an ambiguous suffix name fails and lists every match", () => {
+    makeTask("01-01-dupe");
+    makeTask("12-31-dupe");
+
+    const r = runTask("set-meta", "dupe", "k", "v");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("ambiguous task name");
+    expect(r.stderr).toContain("01-01-dupe");
+    expect(r.stderr).toContain("12-31-dupe");
+    for (const name of ["01-01-dupe", "12-31-dupe"]) {
+      expect(
+        JSON.parse(fs.readFileSync(path.join(taskDir(name), "task.json"), "utf-8"))
+          .meta,
+      ).toEqual({});
+    }
+  });
+
+  it("[audit] legitimate task paths still resolve: name, repo-relative path, and archived task", () => {
+    fs.mkdirSync(taskDir("archive", "2026-07", "08-09-old"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(taskDir("archive", "2026-07", "08-09-old"), "task.json"),
+      JSON.stringify({ id: "old", meta: {} }) + "\n",
+    );
+
+    expect(runTask("set-meta", "08-09-real", "by-name", "1").status).toBe(0);
+    expect(
+      runTask("set-meta", ".trellis/tasks/08-09-real", "by-path", "2").status,
+    ).toBe(0);
+    expect(
+      runTask(
+        "set-meta",
+        ".trellis/tasks/archive/2026-07/08-09-old",
+        "archived",
+        "3",
+      ).status,
+    ).toBe(0);
+
+    expect(
+      JSON.parse(fs.readFileSync(path.join(taskDir("08-09-real"), "task.json"), "utf-8"))
+        .meta,
+    ).toEqual({ "by-name": "1", "by-path": "2" });
+    expect(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(taskDir("archive", "2026-07", "08-09-old"), "task.json"),
+          "utf-8",
+        ),
+      ).meta,
+    ).toEqual({ archived: "3" });
+  });
+});
+
 describe("regression: is_within_tasks_dir archive boundary (issue #428)", () => {
   let tmpDir: string;
   const pythonCmd = process.platform === "win32" ? "python" : "python3";
