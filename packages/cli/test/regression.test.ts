@@ -1396,7 +1396,7 @@ describe("regression: JSON read/write failure reporting", () => {
     expect(r.stderr).toContain("not valid JSON");
   });
 
-  it("[audit] start still activates a task with a corrupt task.json but says why the status stayed", () => {
+  it("[audit] start still activates a task with a corrupt task.json but says why status and branch stayed", () => {
     const env = { TRELLIS_CONTEXT_ID: "json-io-start" };
     expect(
       runTask(
@@ -1421,7 +1421,7 @@ describe("regression: JSON read/write failure reporting", () => {
     expect(r.stdout).toContain("Current task set to");
     // Observable: without this the absent status line reads as "not in planning".
     expect(r.stderr).toContain("not valid JSON");
-    expect(r.stderr).toContain("status not updated");
+    expect(r.stderr).toContain("task.json not updated");
   });
 
   it("[audit] current --json carries a read-failure signal and stays silent when healthy", () => {
@@ -8180,6 +8180,212 @@ print(len(entries))
     expect(result.stderr).toContain(
       "recorded branch 'task/deleted-branch-does-not-exist' no longer exists locally",
     );
+  });
+
+  // --- Branch metadata recorded at start, validated at archive -------------
+
+  function initTaskGitRepo(branch: string, withRemote = false): void {
+    execSync(`git init -q -b ${branch}`, { cwd: tmpDir });
+    execSync("git config user.email test@example.com", { cwd: tmpDir });
+    execSync("git config user.name Test", { cwd: tmpDir });
+    execSync("git add -A", { cwd: tmpDir });
+    execSync("git commit -q -m init", { cwd: tmpDir });
+    if (withRemote) {
+      // Never contacted: only `git remote` (the PR-backed predicate) reads it.
+      execSync("git remote add origin https://example.invalid/repo.git", {
+        cwd: tmpDir,
+      });
+    }
+  }
+
+  function patchIssue106Task(fields: Record<string, unknown>): string {
+    const taskJsonPath = path.join(
+      tmpDir,
+      ".trellis",
+      "tasks",
+      "issue-106",
+      "task.json",
+    );
+    const data = JSON.parse(fs.readFileSync(taskJsonPath, "utf-8"));
+    fs.writeFileSync(
+      taskJsonPath,
+      JSON.stringify({ ...data, ...fields }, null, 2),
+    );
+    return taskJsonPath;
+  }
+
+  function readIssue106Task(): { branch: string | null; status: string } {
+    return JSON.parse(
+      fs.readFileSync(
+        path.join(tmpDir, ".trellis", "tasks", "issue-106", "task.json"),
+        "utf-8",
+      ),
+    );
+  }
+
+  it("[issue-399.3] task.py start records the checked-out branch when none is set", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main");
+    execSync("git checkout -q -b feature/record-me", { cwd: tmpDir });
+    patchIssue106Task({ status: "planning", branch: null, base_branch: "main" });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [taskScriptPath, "start", ".trellis/tasks/issue-106"],
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "start-branch-session" }),
+      },
+    );
+
+    expect(result.stdout).toContain("Branch recorded: feature/record-me");
+    expect(readIssue106Task()).toMatchObject({
+      branch: "feature/record-me",
+      status: "in_progress",
+    });
+  });
+
+  it("[issue-399.3] task.py start does not clobber an explicitly set branch", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main");
+    execSync("git checkout -q -b feature/current", { cwd: tmpDir });
+    patchIssue106Task({
+      status: "planning",
+      branch: "task/set-by-hand",
+      base_branch: "main",
+    });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [taskScriptPath, "start", ".trellis/tasks/issue-106"],
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "start-noclobber-session" }),
+      },
+    );
+
+    expect(result.stdout).not.toContain("Branch recorded");
+    expect(readIssue106Task().branch).toBe("task/set-by-hand");
+  });
+
+  it("[issue-399.3] task.py start on a detached HEAD notes the skip and still starts", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main");
+    execSync("git checkout -q --detach", { cwd: tmpDir });
+    patchIssue106Task({ status: "planning", branch: null, base_branch: "main" });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [taskScriptPath, "start", ".trellis/tasks/issue-106"],
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({ TRELLIS_CONTEXT_ID: "start-detached-session" }),
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("no checked-out branch");
+    expect(readIssue106Task()).toMatchObject({
+      branch: null,
+      status: "in_progress",
+    });
+  });
+
+  it("[issue-399.3] task.py archive refuses a PR-backed task with no recorded branch", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main", true);
+    patchIssue106Task({ branch: null, base_branch: "main" });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [taskScriptPath, "archive", ".trellis/tasks/issue-106", "--no-commit"],
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("no branch is recorded");
+    expect(result.stderr).toContain("task.py set-branch");
+    expect(result.stderr).toContain("--skip-branch-validation");
+    // Refused before any mutation: the task stays put, still un-completed.
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "tasks", "issue-106")),
+    ).toBe(true);
+    expect(readIssue106Task().status).toBe("in_progress");
+  });
+
+  it("[issue-399.3] task.py archive refuses a task whose branch equals its base_branch", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main", true);
+    patchIssue106Task({ branch: "main", base_branch: "main" });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [taskScriptPath, "archive", ".trellis/tasks/issue-106", "--no-commit"],
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("branch and base_branch are both 'main'");
+    expect(result.stderr).toContain("task.py set-base-branch");
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "tasks", "issue-106")),
+    ).toBe(true);
+  });
+
+  it("[issue-399.3] task.py archive --skip-branch-validation archives despite missing branch metadata", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main", true);
+    patchIssue106Task({ branch: null, base_branch: "main" });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [
+        taskScriptPath,
+        "archive",
+        ".trellis/tasks/issue-106",
+        "--no-commit",
+        "--skip-branch-validation",
+      ],
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    expect(result.status).toBe(0);
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "tasks", "issue-106")),
+    ).toBe(false);
+  });
+
+  it("[issue-399.3] task.py archive still only warns when a PR-backed branch was merged and deleted", () => {
+    setupTaskRepo();
+    initTaskGitRepo("main", true);
+    patchIssue106Task({
+      branch: "feature/merged-and-deleted",
+      base_branch: "main",
+    });
+
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+    const result = spawnSync(
+      pythonCmd,
+      [taskScriptPath, "archive", ".trellis/tasks/issue-106", "--no-commit"],
+      { cwd: tmpDir, encoding: "utf-8", env: sessionEnv() },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain(
+      "recorded branch 'feature/merged-and-deleted' no longer exists locally",
+    );
+    expect(
+      fs.existsSync(path.join(tmpDir, ".trellis", "tasks", "issue-106")),
+    ).toBe(false);
   });
 });
 

@@ -36,6 +36,7 @@ from .config import (
 from .git import (
     INDEX_LOCK_RETRY_ATTEMPTS,
     branch_exists_locally,
+    has_git_remote,
     index_lock_path,
     resolve_default_branch,
     run_git,
@@ -1115,6 +1116,92 @@ def cmd_rename(args: argparse.Namespace) -> int:
 # Command: archive
 # =============================================================================
 
+def _task_branch_field(data: dict, key: str) -> str:
+    """Read a branch field as a trimmed string ("" when unset or not a string)."""
+    value = data.get(key)
+    return strip_blank(value) if isinstance(value, str) else ""
+
+
+def _validate_branch_metadata(
+    data: dict,
+    task_name: str,
+    repo_root: Path,
+    skip: bool,
+) -> bool:
+    """Check branch metadata before the task leaves the active tree.
+
+    Returns False when archiving must stop. Archive is the last gate that sees
+    a task, so metadata nobody can reconstruct afterwards is refused here
+    rather than repaired by hand later (#399 follow-up).
+
+    "PR-backed" is deliberately pragmatic: a task carrying a base_branch in a
+    repo that has a remote was created expecting a PR, so a missing `branch`
+    means the metadata was never recorded — not that the work had no branch.
+    Local-only repos and tasks without a base_branch are left alone.
+
+    A recorded branch that no longer exists locally stays a warning: after a
+    merge the feature branch is normally deleted, and refusing to archive then
+    would be backwards.
+    """
+    branch = _task_branch_field(data, "branch")
+    base_branch = _task_branch_field(data, "base_branch")
+    task_py = f"python3 {DIR_WORKFLOW}/scripts/task.py"
+
+    if branch and not branch_exists_locally(branch, repo_root):
+        print(
+            colored(
+                f"Warning: recorded branch '{branch}' no longer exists locally "
+                "(likely merged and deleted).",
+                Colors.YELLOW,
+            ),
+            file=sys.stderr,
+        )
+
+    if skip:
+        return True
+
+    if branch and base_branch and branch == base_branch:
+        print(
+            colored(
+                f"Error: refusing to archive '{task_name}': branch and base_branch "
+                f"are both '{branch}'. A PR cannot target its own branch, so this "
+                "metadata cannot describe the work that was merged.",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
+        print("Repair whichever field is wrong:", file=sys.stderr)
+        print(f"  {task_py} set-branch {task_name} <feature-branch>", file=sys.stderr)
+        print(f"  {task_py} set-base-branch {task_name} <target-branch>", file=sys.stderr)
+        print(
+            f"  {task_py} archive {task_name} --skip-branch-validation"
+            "   # only if this task was never PR-backed",
+            file=sys.stderr,
+        )
+        return False
+
+    if not branch and base_branch and has_git_remote(repo_root):
+        print(
+            colored(
+                f"Error: refusing to archive '{task_name}': no branch is recorded, "
+                f"but the task targets base_branch '{base_branch}' in a repo with a "
+                "remote — the branch it was built on was never written down.",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
+        print("Repair with:", file=sys.stderr)
+        print(f"  {task_py} set-branch {task_name} <branch>", file=sys.stderr)
+        print(
+            f"  {task_py} archive {task_name} --skip-branch-validation"
+            "   # only if the work landed without a branch of its own",
+            file=sys.stderr,
+        )
+        return False
+
+    return True
+
+
 def cmd_archive(args: argparse.Namespace) -> int:
     """Archive completed task."""
     repo_root = get_repo_root()
@@ -1195,18 +1282,19 @@ def cmd_archive(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
         else:
-            # Warn (don't block) when the recorded branch is stale — it was
-            # likely already merged and deleted (#399 item 2).
-            stored_branch = data.get("branch")
-            if stored_branch and not branch_exists_locally(stored_branch, repo_root):
+            # Before any mutation: branch metadata is unrecoverable once the
+            # task leaves the active tree. Stale branches only warn.
+            if not _validate_branch_metadata(
+                data,
+                task_name,
+                repo_root,
+                getattr(args, "skip_branch_validation", False),
+            ):
                 print(
-                    colored(
-                        f"Warning: recorded branch '{stored_branch}' no longer exists locally "
-                        "(likely merged and deleted).",
-                        Colors.YELLOW,
-                    ),
+                    f"Not archived: {_repo_relative_path(task_dir, repo_root)} is unchanged.",
                     file=sys.stderr,
                 )
+                return 1
 
             data["status"] = "completed"
             data["completedAt"] = today
