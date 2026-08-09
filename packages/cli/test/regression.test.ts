@@ -11178,3 +11178,274 @@ describe("regression: compat alias must not win platform detection", () => {
     });
   }
 });
+
+describe("regression: task.py rename rewrites every reference in one pass", () => {
+  // Renaming a task used to be a hand-edited multi-file operation (directory
+  // name, task.json identity fields, parent/children back-references, jsonl
+  // context paths), and a partial hand-rename left dangling references that
+  // preflight gates reject later.
+  const pyCmd = process.platform === "win32" ? "python" : "python3";
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  const now = new Date();
+  const datePrefix = `${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const yearMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-task-rename-"));
+    for (const [rel, content] of getAllScripts()) {
+      const abs = path.join(tmpDir, ".trellis", "scripts", rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content, "utf-8");
+    }
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", ".developer"),
+      "name=test-dev\ninitialized_at=2026-08-09T00:00:00\n",
+    );
+    fs.mkdirSync(taskDir("archive"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function runTask(...args: string[]): {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+  } {
+    const proc = spawnSync(
+      pyCmd,
+      [path.join(".trellis", "scripts", "task.py"), ...args],
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+    return {
+      status: proc.status,
+      stdout: proc.stdout ?? "",
+      stderr: proc.stderr ?? "",
+    };
+  }
+
+  function taskDir(...segments: string[]): string {
+    return path.join(tmpDir, ".trellis", "tasks", ...segments);
+  }
+
+  function readTaskJson(name: string): Record<string, unknown> {
+    return JSON.parse(
+      fs.readFileSync(path.join(taskDir(name), "task.json"), "utf-8"),
+    ) as Record<string, unknown>;
+  }
+
+  function create(slug: string, parent?: string): string {
+    const args = [
+      "create",
+      slug,
+      "--description",
+      "rename fixture",
+      "--slug",
+      slug,
+      "--no-start",
+    ];
+    if (parent) args.push("--parent", parent);
+    const r = runTask(...args);
+    expect(r.status, r.stderr).toBe(0);
+    return `${datePrefix}-${slug}`;
+  }
+
+  /** Every `<file>:<line>` under .trellis/tasks/ that still names `taskName`. */
+  function scanForName(taskName: string): string[] {
+    const pattern = new RegExp(`(?<![0-9A-Za-z_-])${taskName}(?![0-9A-Za-z_-])`);
+    const hits: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const abs = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(abs);
+          if (pattern.test(entry.name)) hits.push(`${abs}/ (directory name)`);
+          continue;
+        }
+        const lines = fs.readFileSync(abs, "utf-8").split("\n");
+        lines.forEach((line, index) => {
+          if (pattern.test(line)) hits.push(`${abs}:${index + 1}`);
+        });
+      }
+    };
+    walk(taskDir());
+    return hits;
+  }
+
+  it("[task-rename] a task with a parent and two children leaves no dangling reference", () => {
+    const parent = create("mum");
+    const target = create("target", parent);
+    const childA = create("kid-a", target);
+    const childB = create("kid-b", target);
+
+    const r = runTask("rename", target, "renamed");
+    expect(r.status, r.stderr).toBe(0);
+
+    const renamed = `${datePrefix}-renamed`;
+    expect(fs.existsSync(taskDir(target))).toBe(false);
+    expect(fs.existsSync(taskDir(renamed))).toBe(true);
+
+    // Identity fields carry the bare slug; back-references carry the full
+    // directory name.
+    expect(readTaskJson(renamed).id).toBe("renamed");
+    expect(readTaskJson(renamed).name).toBe("renamed");
+    expect(readTaskJson(renamed).parent).toBe(parent);
+    expect(readTaskJson(parent).children).toEqual([renamed]);
+    expect(readTaskJson(childA).parent).toBe(renamed);
+    expect(readTaskJson(childB).parent).toBe(renamed);
+
+    expect(scanForName(target)).toEqual([]);
+  });
+
+  it("[task-rename] legacy subtasks back-references are rewritten too", () => {
+    const parent = create("mum");
+    const target = create("target", parent);
+
+    const parentJson = readTaskJson(parent);
+    parentJson.subtasks = [target];
+    fs.writeFileSync(
+      path.join(taskDir(parent), "task.json"),
+      JSON.stringify(parentJson, null, 2) + "\n",
+    );
+
+    const r = runTask("rename", target, "renamed");
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("subtasks[0]");
+    expect(readTaskJson(parent).subtasks).toEqual([`${datePrefix}-renamed`]);
+    expect(scanForName(target)).toEqual([]);
+  });
+
+  it("[task-rename] --dry-run prints the change set it would apply, and writes nothing", () => {
+    const parent = create("mum");
+    const target = create("target", parent);
+    create("kid", target);
+    fs.writeFileSync(
+      path.join(taskDir(target), "implement.jsonl"),
+      `{"file": ".trellis/tasks/${target}/research.md", "reason": "findings"}\n`,
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", "workflow.md"),
+      `The plan is tracked in ${target}.\n`,
+    );
+
+    const dry = runTask("rename", target, "renamed", "--dry-run");
+    expect(dry.status, dry.stderr).toBe(0);
+    expect(dry.stderr).toContain("Dry run: nothing was written");
+    expect(fs.existsSync(taskDir(target))).toBe(true);
+    expect(fs.existsSync(taskDir(`${datePrefix}-renamed`))).toBe(false);
+    expect(readTaskJson(target).id).toBe("target");
+    expect(readTaskJson(parent).children).toEqual([target]);
+
+    const applied = runTask("rename", target, "renamed");
+    expect(applied.status, applied.stderr).toBe(0);
+
+    // The whole point of the dry run: what it printed is what the real run did.
+    expect(applied.stdout).toBe(dry.stdout);
+    expect(dry.stdout).toContain(
+      `dir: .trellis/tasks/${target} -> .trellis/tasks/${datePrefix}-renamed`,
+    );
+    expect(dry.stdout).toContain("task.json: id: target -> renamed");
+    expect(dry.stdout).toContain(
+      `backref: .trellis/tasks/${parent}/task.json: children[0]: ${target} -> ${datePrefix}-renamed`,
+    );
+    expect(dry.stdout).toContain(
+      `jsonl: .trellis/tasks/${target}/implement.jsonl:1:`,
+    );
+    // References outside the task dir are reported, never rewritten.
+    expect(dry.stdout).toContain(
+      "reported (not rewritten): .trellis/workflow.md:1",
+    );
+    expect(
+      fs.readFileSync(path.join(tmpDir, ".trellis", "workflow.md"), "utf-8"),
+    ).toContain(target);
+  });
+
+  it("[task-rename] jsonl paths under the task dir move, a sibling's do not", () => {
+    const target = create("target");
+    const sibling = create("target-other");
+    fs.writeFileSync(
+      path.join(taskDir(target), "check.jsonl"),
+      [
+        `{"file": ".trellis/tasks/${target}/research.md", "reason": "findings"}`,
+        `{"file": ".trellis/spec/guides/style.md", "reason": "spec"}`,
+        `{"file": ".trellis/tasks/${sibling}/notes.md", "reason": "sibling"}`,
+        "",
+      ].join("\n"),
+    );
+
+    expect(runTask("rename", target, "renamed").status).toBe(0);
+
+    const renamed = `${datePrefix}-renamed`;
+    const after = fs.readFileSync(
+      path.join(taskDir(renamed), "check.jsonl"),
+      "utf-8",
+    );
+    expect(after).toContain(`".trellis/tasks/${renamed}/research.md"`);
+    expect(after).toContain('".trellis/spec/guides/style.md"');
+    // `target` is a prefix of `target-other`; the sibling must survive intact.
+    expect(after).toContain(`".trellis/tasks/${sibling}/notes.md"`);
+  });
+
+  it("[task-rename] refuses an existing destination, an archived name, a bad slug and an unknown task", () => {
+    const other = create("other");
+    const target = create("target");
+
+    const occupied = runTask("rename", target, "other");
+    expect(occupied.status).not.toBe(0);
+    expect(occupied.stderr).toContain(`Task already exists: ${other}`);
+    expect(fs.existsSync(taskDir(target))).toBe(true);
+
+    fs.mkdirSync(taskDir("archive", yearMonth, `${datePrefix}-gone`), {
+      recursive: true,
+    });
+    const archived = runTask("rename", target, "gone");
+    expect(archived.status).not.toBe(0);
+    expect(archived.stderr).toContain(
+      `Task already archived: ${datePrefix}-gone`,
+    );
+
+    const badSlug = runTask("rename", target, "../evil");
+    expect(badSlug.status).not.toBe(0);
+    expect(badSlug.stderr).toContain("must be a plain name");
+
+    const unknown = runTask("rename", "no-such-task", "renamed");
+    expect(unknown.status).not.toBe(0);
+
+    // Every refusal is pre-flight: the task is still exactly where it was.
+    expect(fs.existsSync(taskDir(target))).toBe(true);
+    expect(readTaskJson(target).id).toBe("target");
+  });
+
+  it("[task-rename] refuses a slug carrying a date prefix, normalizing only its own", () => {
+    const target = create("target");
+
+    const wrongDate = runTask("rename", target, "01-02-renamed");
+    expect(wrongDate.status).not.toBe(0);
+    expect(wrongDate.stderr).toContain("keeps the task's own creation date");
+
+    // The task's own prefix pasted back in is a slip, not a request for
+    // MM-DD-MM-DD-slug (the create-side bug in #377).
+    const ownDate = runTask("rename", target, `${datePrefix}-renamed`);
+    expect(ownDate.status, ownDate.stderr).toBe(0);
+    expect(ownDate.stderr).toContain("should not include the MM-DD prefix");
+    expect(fs.existsSync(taskDir(`${datePrefix}-renamed`))).toBe(true);
+  });
+
+  it("[task-rename] refuses to rename an archived task", () => {
+    const target = create("target");
+    expect(runTask("archive", target, "--no-commit").status).toBe(0);
+
+    const r = runTask(
+      "rename",
+      path.posix.join(".trellis", "tasks", "archive", yearMonth, target),
+      "renamed",
+    );
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("is not an active task under");
+    expect(
+      fs.existsSync(taskDir("archive", yearMonth, target, "task.json")),
+    ).toBe(true);
+  });
+});
