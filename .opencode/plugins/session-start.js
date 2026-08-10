@@ -20,22 +20,6 @@ export default async ({ directory, client }) => {
   debugLog("session", "Plugin loaded, directory:", directory)
 
   return {
-    event: ({ event }) => {
-      try {
-        if (event?.type === "session.compacted" && event?.properties?.sessionID) {
-          const sessionID = event.properties.sessionID
-          contextCollector.clear(sessionID)
-          debugLog("session", "Cleared processed flag after compaction for session:", sessionID)
-        }
-      } catch (error) {
-        debugLog(
-          "session",
-          "Error in event hook:",
-          error instanceof Error ? error.message : String(error),
-        )
-      }
-    },
-
     // chat.message - triggered when user sends a message.
     // Insert a complete synthetic part so the context persists without changing the user prompt.
     "chat.message": async (input, output) => {

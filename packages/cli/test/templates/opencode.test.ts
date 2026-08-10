@@ -158,9 +158,6 @@ describe("opencode session-start history detection", () => {
         },
       },
     })) as {
-      event: (input: {
-        event: { type: string; properties?: { sessionID?: string } };
-      }) => void;
       "chat.message": (
         input: { sessionID: string; agent: string },
         output: ChatOutput,
@@ -205,12 +202,14 @@ describe("opencode session-start history detection", () => {
     });
 
     persistedParts = firstOutput.parts;
-    hooks.event({
-      event: {
-        type: "session.compacted",
-        properties: { sessionID: "session-a" },
-      },
-    });
+    // The plugin's `session.compacted` event handler was removed as dead
+    // code: clearing the in-memory processed flag there was always undone
+    // one line later by hasPersistedInjectedContext finding the
+    // pre-compaction marker still in history, so re-injecting fresh context
+    // after compaction is a known gap, not a design choice. Simulate a
+    // fresh process picking up this session instead, which exercises the
+    // real, still-live persisted-history dedupe path below.
+    contextCollector.clear("session-a");
 
     const secondOutput: ChatOutput = {
       parts: [
@@ -676,6 +675,26 @@ describe("opencode persisted synthetic context parts", () => {
     expect(duplicateParts).toEqual(duplicateBefore);
   });
 
+  it("fails closed on a legacy 19-character OpenCode part ID format without mutating parts", () => {
+    // OpenCode has changed its part ID format before: a live DB observed 5 of
+    // 2440 IDs still using this older, shorter shape. PART_ID_PATTERN must
+    // reject it rather than silently treat it as a valid identity source.
+    const legacyParts: ChatMessagePart[] = [
+      {
+        id: "prt_19b9634d8e5924s6zx6",
+        sessionID: "main-session",
+        messageID: "message-legacy",
+        type: "text",
+        text: "prompt",
+      },
+    ];
+    const legacyBefore = structuredClone(legacyParts);
+    expect(() =>
+      insertSyntheticTextPart(legacyParts, "context", "sessionStart"),
+    ).toThrow("no ordinary OpenCode part with a persisted identity");
+    expect(legacyParts).toEqual(legacyBefore);
+  });
+
   it("uses an ordinary attachment as the identity source", () => {
     const attachment: ChatMessagePart = {
       id: "prt_000000000010abcdefghijklmn",
@@ -700,6 +719,56 @@ describe("opencode persisted synthetic context parts", () => {
     });
     expect(parts[1]).toEqual(attachment);
     expect(findUserTextPart(parts)).toBeUndefined();
+  });
+
+  it("uses the minimum-ordinal ordinary part as the identity source when a message has both a text and a file part", () => {
+    // Real ID shapes from a live OpenCode DB: same millisecond, adjacent
+    // counters. The text part (…c001) must win over the file part (…c002).
+    const textPart: ChatMessagePart = {
+      id: "prt_b9634c88c001aaaaaaaaaaaaaa",
+      sessionID: "main-session",
+      messageID: "message-multi-part",
+      type: "text",
+      text: "typed message",
+    };
+    const filePart: ChatMessagePart = {
+      id: "prt_b9634c88c002aaaaaaaaaaaaaa",
+      sessionID: "main-session",
+      messageID: "message-multi-part",
+      type: "file",
+      mime: "application/pdf",
+      filename: "report.pdf",
+    };
+    const parts = [structuredClone(textPart), structuredClone(filePart)];
+
+    const sessionStartPart = insertSyntheticTextPart(
+      parts,
+      "session context",
+      "sessionStart",
+    );
+    const workflowStatePart = insertSyntheticTextPart(
+      parts,
+      "workflow context",
+      "workflowState",
+    );
+
+    for (const ordinary of [textPart, filePart]) {
+      expect(sessionStartPart.id < ordinary.id).toBe(true);
+      expect(workflowStatePart.id < ordinary.id).toBe(true);
+    }
+
+    // The sort-below assertions above are necessary but NOT sufficient with
+    // this exact fixture: they still pass even if findIdentitySourcePart
+    // picks the file part (the *maximum*-ordinal ordinary part) instead of
+    // the text part, because the wrongly-sourced workflowState ordinal then
+    // collides with the text part's own 12-hex ordinal, and the numeric
+    // slot digit "1" still sorts below the "a" tail character by ASCII
+    // luck. Pin the exact ordinal derived from the text part (the minimum)
+    // so an inverted comparator is actually caught:
+    // sessionStart = 0xb9634c88c001 - 2 = 0xb9634c88bfff,
+    // workflowState = 0xb9634c88c001 - 1 = 0xb9634c88c000.
+    expect(sessionStartPart.id.slice(0, 17)).toBe("prt_b9634c88bfff0");
+    expect(workflowStatePart.id.slice(0, 17)).toBe("prt_b9634c88c0001");
   });
 });
 

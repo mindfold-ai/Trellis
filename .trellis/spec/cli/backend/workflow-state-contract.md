@@ -174,8 +174,11 @@ persisted identity.
   attachment-only input, no partial mutation, and replay-order equality.
 - Real plugin tests run both plugin orders and deep-compare every ordinary part
   before and after injection.
-- SessionStart tests cover in-memory and persisted-history dedupe plus
-  compaction reset; workflow tests cover default/custom/disabled skip keywords.
+- SessionStart tests cover in-memory and persisted-history dedupe; workflow
+  tests cover default/custom/disabled skip keywords. There is no compaction
+  reset: history dedupe reads the whole session, so clearing the in-memory
+  flag after compaction is undone by the very next check. Re-injecting context
+  after compaction is a known gap, not a design choice.
 - Existing hook-disable, non-interactive, and Trellis sub-agent exclusion tests
   remain mandatory.
 - Template collection tests assert the helper ships through both fresh init and
