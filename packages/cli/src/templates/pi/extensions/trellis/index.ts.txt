@@ -95,6 +95,8 @@ const MAX_PARALLEL_PROMPTS = 6;
 const ABORT_KILL_GRACE_MS = 1500;
 const SESSION_OVERVIEW_TIMEOUT_MS = 1500;
 const THROTTLE_MS = 500;
+const LEGACY_SUBAGENT_ENABLED =
+  process.env.TRELLIS_ENABLE_LEGACY_SUBAGENT === "1";
 const FIRST_REPLY_NOTICE = `<first-reply-notice>
 On the first visible assistant reply in this session, briefly acknowledge that Trellis SessionStart context loaded.
 Choose the acknowledgment language in this order:
@@ -432,6 +434,9 @@ function exists(p: string) {
 function shellQuote(v: string) {
   return `'${v.replace(/'/g, `'\\''`)}'`;
 }
+function powershellQuote(v: string) {
+  return `'${v.replace(/'/g, "''")}'`;
+}
 function callStr(
   cb: (() => string | undefined) | undefined,
   receiver?: unknown,
@@ -463,11 +468,10 @@ function lookupStr(data: unknown, keys: string[]): string | null {
   return null;
 }
 function cmdHasTrellisCtx(cmd: string) {
-  const t = cmd.trimStart();
   return (
-    /^export\s+TRELLIS_CONTEXT_ID=/.test(t) ||
-    /^TRELLIS_CONTEXT_ID=/.test(t) ||
-    /^env\s+.*TRELLIS_CONTEXT_ID=/.test(t)
+    /(?:^|[;\r\n]\s*)(?:export\s+)?TRELLIS_CONTEXT_ID\s*=/i.test(cmd) ||
+    /(?:^|[;\r\n]\s*)env\s+[^\r\n;]*TRELLIS_CONTEXT_ID\s*=/i.test(cmd) ||
+    /(?:^|[;\r\n]\s*)\$env:TRELLIS_CONTEXT_ID\s*=/i.test(cmd)
   );
 }
 function fmtDur(ms: number) {
@@ -1664,7 +1668,11 @@ export default function trellisExtension(pi: {
   ) => void;
   getThinkingLevel?: () => string;
 }): void {
-  if (process.env.TRELLIS_SUBAGENT_CHILD === "1") return;
+  if (
+    process.env.TRELLIS_SUBAGENT_CHILD === "1" ||
+    process.env.PI_SUBAGENT_CHILD === "1"
+  )
+    return;
   const root = findRoot(process.cwd());
   const procKey = `pi_process_${hash([root, process.pid, Date.now(), randomBytes(8).toString("hex")].join(":"))}`;
   let curKey: string | null = null;
@@ -1727,13 +1735,15 @@ export default function trellisExtension(pi: {
     card.invalidate();
   };
 
-  pi.registerShortcut?.("alt+o", {
+  if (LEGACY_SUBAGENT_ENABLED)
+    pi.registerShortcut?.("alt+o", {
     description: "Toggle latest subagent card details",
     handler: async (ctx: PiExtensionContext) => toggleDetail(ctx),
   });
 
-  // Tool registration
-  pi.registerTool?.({
+  // Tool registration: retained for one explicit rollback cycle only.
+  if (LEGACY_SUBAGENT_ENABLED)
+    pi.registerTool?.({
     name: "trellis_subagent",
     label: "Trellis Subagent",
     description: "Run a Trellis project sub-agent with active task context.",
@@ -1893,6 +1903,11 @@ export default function trellisExtension(pi: {
   // Events
   pi.on?.("session_start", (event, ctx) => {
     getKey(event, ctx);
+    if (LEGACY_SUBAGENT_ENABLED)
+      ctx?.ui?.notify?.(
+        "Legacy trellis_subagent is explicitly enabled by TRELLIS_ENABLE_LEGACY_SUBAGENT=1. Prefer functions.subagent for all normal dispatch.",
+        "warning",
+      );
     ctx?.ui?.notify?.(
       "Trellis project context is available. Use /trellis-start to bootstrap or /trellis-continue to resume.",
       "info",
@@ -1912,6 +1927,13 @@ export default function trellisExtension(pi: {
       !cmdHasTrellisCtx(ev.input.command)
     )
       ev.input.command = `export TRELLIS_CONTEXT_ID=${shellQuote(k)}; ${ev.input.command}`;
+    if (
+      ev.toolName === "pwsh" &&
+      isObj(ev.input) &&
+      typeof ev.input.command === "string" &&
+      !cmdHasTrellisCtx(ev.input.command)
+    )
+      ev.input.command = `$env:TRELLIS_CONTEXT_ID = ${powershellQuote(k)}; ${ev.input.command}`;
   });
   // Preserve progress details from execute(); mark failed subagent results through
   // the official tool_result patch hook instead of throwing away renderer details.

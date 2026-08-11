@@ -8408,12 +8408,17 @@ describe("regression: pi uses TypeScript extension assets instead of Python hook
     expect(fs.existsSync(path.join(tmpDir, ".pi", "hooks"))).toBe(false);
   });
 
-  it("installs a subagent-capable extension and pull-based agent context", () => {
+  it("installs the community backend contract and pull-based agent context", () => {
     const extension = fs.readFileSync(
       path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
       "utf-8",
     );
+    const settings = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, ".pi", "settings.json"), "utf-8"),
+    ) as { packages?: string[] };
+    expect(settings.packages).toEqual(["npm:pi-subagents@0.46.0"]);
     expect(extension).toContain('name: "trellis_subagent"');
+    expect(extension).toContain("TRELLIS_ENABLE_LEGACY_SUBAGENT");
     expect(extension).toContain('pi.on?.("before_agent_start"');
     expect(extension).toContain('pi.on?.("tool_call"');
 
@@ -8423,7 +8428,9 @@ describe("regression: pi uses TypeScript extension assets instead of Python hook
         "utf-8",
       );
       expect(content).toContain("Required: Load Trellis Context First");
-      expect(content).toContain("task.py current --source");
+      expect(content).toContain("Task: Active task: <path>");
+      expect(content).toContain("extensions: []");
+      expect(content).toContain("thinking: medium");
     }
   });
 });

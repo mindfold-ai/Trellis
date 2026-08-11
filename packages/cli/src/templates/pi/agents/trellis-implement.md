@@ -2,7 +2,13 @@
 name: trellis-implement
 description: |
   Code implementation expert. Understands Trellis specs and requirements, then implements features. No git commit allowed.
-tools: read, write, edit, bash, find, grep
+tools: read, write, edit, bash
+extensions: []
+thinking: medium
+defaultContext: fresh
+maxSubagentDepth: 0
+acceptance: {"level":"checked","evidence":["changed-files","commands-run","validation-output","residual-risks"],"review":false}
+acceptanceRole: writer
 ---
 # Implement Agent
 

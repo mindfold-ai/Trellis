@@ -220,12 +220,12 @@ Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `trellis-bef
      therefore must cover every required step from implementation through
      commit, including Phase 3.3 spec update and Phase 3.4 commit. -->
 
-Sub-agent dispatch protocol applies to all platforms and all sub-agents, including native Codex `SubagentStart` context injection with child-side pull fallback, class-2 Gemini/Qoder/Copilot/Reasonix/Trae/Grok/Kimi Code, hook-backed ZCode/Snow, and `trellis-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions. On Grok Build, use `spawn_subagent` with `subagent_type` set to the Trellis agent name (e.g. `trellis-implement`). On Kimi Code, dispatch the built-in `coder` / `explore` sub-agent with the matching `.kimi-code/skills/trellis-<role>/SKILL.md` instructions.
+Sub-agent dispatch protocol applies to all platforms and all sub-agents, including native Codex `SubagentStart` context injection with child-side pull fallback, class-2 Gemini/Qoder/Copilot/Reasonix/Trae/Grok/Kimi Code, hook-backed ZCode/Snow, and `trellis-research`: every underlying dispatch task starts with `Active task: <task path from task.py current>` before role-specific instructions. Pi-subagents may expose that payload to the child as `Task: Active task: ...`; Pi Trellis roles strip exactly that one package-owned transport prefix and reject other prefixes. Every dispatch uses thinking level `medium`; pass it explicitly when the platform supports an override. On Pi, `functions.subagent` / `pi-subagents` is the only default execution backend: submit a visible `async:true` `workflowScript` with `mission:false`, explicit timeout/completion ownership, a fresh Trellis role, explicit acceptance, and an absolute task-local output. Never silently fall back to `trellis_subagent`; it is emergency env opt-in only. On `pi-subagents@0.46.0`, stopped Trellis runs are terminal and Trellis role resume is disabled because revival can replace explicit acceptance with inferred gates; recover with a new fresh run and task artifacts. On Grok Build, use `spawn_subagent` with `subagent_type` set to the Trellis agent name (e.g. `trellis-implement`). On Kimi Code, dispatch the built-in `coder` / `explore` sub-agent with the matching `.kimi-code/skills/trellis-<role>/SKILL.md` instructions.
 
 [workflow-state:in_progress]
 Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-update-spec` is a skill. `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
 Flow: `trellis-implement` -> `trellis-check` -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
-Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
+Main-session default: dispatch implement/check sub-agents. On Pi, dispatch only through visible async `functions.subagent` workflowScript runs with `mission:false`; retain exact workflow/child/session ids and use FleetView/status/completion ownership. Do not call or silently fall back to `trellis_subagent`, and do not resume Trellis roles on pi-subagents 0.46. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
 
@@ -360,6 +360,7 @@ Spawn the research sub-agent:
 - **Agent type**: `trellis-research`
 - **Task description**: Research <specific question>
 - **Key requirement**: Research output MUST be persisted to `{TASK_DIR}/research/`
+- **Pi dispatch**: use `functions.subagent` with one visible async workflow, `mission:false`, an exact run owner, explicit attested acceptance with `review:false`, and an absolute task-local output; do not use or resume `trellis_subagent`.
 
 [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
@@ -479,6 +480,7 @@ Spawn the implement sub-agent:
 - **Agent type**: `trellis-implement`
 - **Task description**: Implement the reviewed task artifacts, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
 - **Dispatch prompt guard**: The prompt MUST start with `Active task: <task path>`, then tell the spawned agent it is already the `trellis-implement` sub-agent and must implement directly, not spawn another `trellis-implement` / `trellis-check`.
+- **Pi execution contract**: call `functions.subagent` with visible `async:true` `workflowScript`, `mission:false`, `context:"fresh"`, explicit checked acceptance with `review:false`, an explicit timeout, an absolute task-local output, and retained workflow/child/session ids. Do not use or resume `trellis_subagent`.
 
 The platform hook/plugin auto-handles:
 - Reads `implement.jsonl` and injects referenced spec/research files into the agent prompt
@@ -534,6 +536,7 @@ Spawn the check sub-agent:
 - **Agent type**: `trellis-check`
 - **Task description**: Review all code changes against specs and task artifacts; fix any findings directly; ensure lint and type-check pass
 - **Dispatch prompt guard**: The prompt MUST start with `Active task: <task path>`, then tell the spawned agent it is already the `trellis-check` sub-agent and must review/fix directly, not spawn another `trellis-check` / `trellis-implement`.
+- **Pi execution contract**: call `functions.subagent` with visible `async:true` `workflowScript`, `mission:false`, `context:"fresh"`, explicit checked acceptance with `review:false`, an explicit timeout, an absolute task-local output, and retained workflow/child/session ids. Do not use or resume `trellis_subagent`.
 
 The check agent's job:
 - Review code changes against specs

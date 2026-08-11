@@ -19,7 +19,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | CodeBuddy | `--codebuddy` | `.codebuddy/` | `.codebuddy/skills/` | `.codebuddy/agents/` | `.codebuddy/hooks/` + `.codebuddy/settings.json` |
 | GitHub Copilot | `--copilot` | `.github/` | `.github/skills/` | `.github/agents/` | `.github/copilot/hooks/` + prompts |
 | Factory Droid | `--droid` | `.factory/` | `.factory/skills/` | `.factory/droids/` | `.factory/hooks/` + settings |
-| Pi Agent | `--pi` | `.pi/` | `.agents/skills/` | `.pi/agents/` | `.pi/extensions/trellis/` (native `trellis_subagent` tool) + `.pi/settings.json` |
+| Pi Agent | `--pi` | `.pi/` | `.agents/skills/` | `.pi/agents/` | `.pi/extensions/trellis/` (task/context control plane) + project-pinned `pi-subagents` backend + `.pi/settings.json` |
 | Trae IDE | `--trae` | `.trae/` | `.trae/skills/` | `.trae/agents/` | `.trae/hooks/` + `.trae/hooks.json` |
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | `.zcode/hooks/` + `.zcode/config.json` (SessionStart + UserPromptSubmit + PreToolUse Agent/Task); sub-agents use hook-injected context |
@@ -53,13 +53,13 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
 
-### Native Trellis Sub-Agent Tool
+### Pi Sub-Agent Backend
 
-Some platforms expose a first-class tool that the host runtime understands. The model calls it like any other tool and the host renders progress cards, validates the agent name against `.<platform>/agents/`, and enforces dispatch modes.
+Pi uses the project-pinned community `pi-subagents` package and its `subagent` tool as the normal visible async lifecycle backend. Trellis owns task artifacts, role definitions, explicit acceptance policy and context injection; it does not duplicate queue/session/resume behavior. The legacy `trellis_subagent` implementation remains in `.pi/extensions/trellis/index.ts` for one emergency rollback cycle, but it is registered only when the parent process explicitly sets `TRELLIS_ENABLE_LEGACY_SUBAGENT=1`, and that mode emits a warning.
 
-- Pi Agent — `trellis_subagent` tool, defined in `.pi/extensions/trellis/index.ts`. Supports `single` / `parallel` / `chain` dispatch modes and emits live `trellis-subagent-progress` events.
+On `pi-subagents@0.46.0`, Trellis role resume is disabled because revival can replace the original explicit acceptance contract with inferred reviewer gates. Restart interrupted work as a new fresh run from task artifacts with newly explicit acceptance.
 
-When changing sub-agent dispatch behavior on these platforms, edit the extension file, **not** the agent markdown — the agent markdown defines responsibilities, but the host extension owns dispatch, validation, and progress rendering.
+When changing Pi dispatch behavior, update the community backend dependency, workflow contract, Trellis role definitions and extension control-plane tests together. Do not re-enable silent fallback to the legacy launcher.
 
 ### Main-Session Workflow Platforms
 

@@ -62,6 +62,7 @@ interface PiExtensionInternals {
   }) => string | undefined;
   cmdHasTrellisCtx: (cmd: string) => boolean;
   shellQuote: (v: string) => string;
+  powershellQuote: (v: string) => string;
   trellisExtension: (pi: {
     registerTool?: (tool: unknown) => void;
     registerShortcut?: (key: string, opts: unknown) => void;
@@ -100,8 +101,10 @@ function evaluateExtension<T>(
   const require = createRequire(import.meta.url);
   const moduleObject: { exports: Record<string, unknown> } = { exports: {} };
   const sandboxProcess = Object.create(process) as NodeJS.Process;
-  const sandboxEnv = { ...process.env, ...env };
+  const sandboxEnv = { ...process.env };
   delete sandboxEnv.TRELLIS_SUBAGENT_CHILD;
+  delete sandboxEnv.PI_SUBAGENT_CHILD;
+  Object.assign(sandboxEnv, env);
   Object.defineProperty(sandboxProcess, "cwd", { value: () => cwd });
   Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
   const sandbox = vm.createContext({
@@ -132,6 +135,7 @@ export {
   contextModelRef,
   cmdHasTrellisCtx,
   shellQuote,
+  powershellQuote,
   trellisExtension,
   truncateUtf8,
   readContextInjectionLimits,
@@ -148,11 +152,7 @@ function loadMaxThinkingInternals(
 
 export { buildPiArgs, resolveRunCfg, splitModelThinking };
 `;
-  return evaluateExtension<MaxThinkingInternals>(
-    source,
-    process.cwd(),
-    {},
-  );
+  return evaluateExtension<MaxThinkingInternals>(source, process.cwd(), {});
 }
 
 function createMinimalTrellisRoot(): string {
@@ -195,6 +195,12 @@ describe("pi templates", () => {
     for (const agent of agents) {
       expect(agent.content).toContain(`name: ${agent.name}`);
       expect(agent.content).not.toContain("inject-subagent-context.py");
+      expect(agent.content).toContain("tools: read, write, edit, bash");
+      expect(agent.content).toContain("extensions: []");
+      expect(agent.content).toContain("thinking: medium");
+      expect(agent.content).toContain("defaultContext: fresh");
+      expect(agent.content).toContain("maxSubagentDepth: 0");
+      expect(agent.content).toContain('review":false');
     }
   });
 
@@ -211,7 +217,7 @@ describe("pi templates", () => {
     expect(settings.extensions).toEqual(["./extensions/trellis/index.ts"]);
     expect(settings.skills).toBeUndefined();
     expect(settings.prompts).toEqual(["./prompts"]);
-    expect(settings.packages).toBeUndefined();
+    expect(settings.packages).toEqual(["npm:pi-subagents@0.46.0"]);
   });
 
   it("writes shared skills to .agents/skills/, not a private .pi/skills/ root (#447)", () => {
@@ -239,24 +245,72 @@ describe("pi templates", () => {
     );
   });
 
-  it("extension registers the trellis_subagent tool with mode+thinking schema", () => {
+  it("collects Pi roles with explicit backend policy and package transport parsing", () => {
+    const templates = collectPiTemplates();
+
+    for (const name of [
+      "trellis-implement",
+      "trellis-check",
+      "trellis-research",
+    ]) {
+      const content = templates.get(`.pi/agents/${name}.md`);
+      expect(content).toContain("tools: read, write, edit, bash");
+      expect(content).toContain("extensions: []");
+      expect(content).toContain("thinking: medium");
+      expect(content).toContain("defaultContext: fresh");
+      expect(content).toContain("maxSubagentDepth: 0");
+      expect(content).toContain("Task: Active task: <path>");
+      expect(content).toContain("strip exactly one leading `Task: `");
+    }
+  });
+
+  it("keeps the legacy tool source behind an explicit rollback gate", () => {
     const extension = getExtensionTemplate();
 
-    // Tool name + label avoid collision with community subagent packages.
     expect(extension).toContain('name: "trellis_subagent"');
     expect(extension).toContain('label: "Trellis Subagent"');
-
-    // Schema must declare the three dispatch modes and the thinking enum so the LLM
-    // can pick a valid mode and override thinking per call.
+    expect(extension).toContain("TRELLIS_ENABLE_LEGACY_SUBAGENT");
+    expect(extension).toContain("LEGACY_SUBAGENT_ENABLED");
     expect(extension).toContain(
-      'enum: ["single", "parallel", "chain"]',
+      "Legacy trellis_subagent is explicitly enabled",
     );
-    expect(extension).toContain(
-      'enum: ["off", "minimal", "low", "medium", "high", "xhigh", "max"]',
-    );
+    expect(extension).toContain('enum: ["single", "parallel", "chain"]');
+  });
 
-    // Dispatch protocol carries the "Active task: <path>" prefix rule.
-    expect(extension).toContain("Active task:");
+  it("registers legacy dispatch only for explicit parent rollback", () => {
+    function load(env: NodeJS.ProcessEnv = {}) {
+      const { trellisExtension } = loadExtensionInternals(process.cwd(), env);
+      const tools: string[] = [];
+      const shortcuts: string[] = [];
+      const handlers: string[] = [];
+      trellisExtension({
+        registerTool(tool) {
+          tools.push((tool as { name?: string }).name ?? "");
+        },
+        registerShortcut(key) {
+          shortcuts.push(key);
+        },
+        on(event) {
+          handlers.push(event);
+        },
+      });
+      return { tools, shortcuts, handlers };
+    }
+
+    expect(load()).toEqual(
+      expect.objectContaining({ tools: [], shortcuts: [] }),
+    );
+    expect(load({ TRELLIS_ENABLE_LEGACY_SUBAGENT: "1" })).toEqual(
+      expect.objectContaining({
+        tools: ["trellis_subagent"],
+        shortcuts: ["alt+o"],
+      }),
+    );
+    expect(load({ PI_SUBAGENT_CHILD: "1" })).toEqual({
+      tools: [],
+      shortcuts: [],
+      handlers: [],
+    });
   });
 
   it("extension wires the Pi events Trellis needs for context flow", () => {
@@ -435,7 +489,13 @@ describe("pi templates", () => {
       recursive: true,
     });
     writeFileSync(
-      join(root, ".trellis", ".runtime", "sessions", "pi_pi-unit-task-update.json"),
+      join(
+        root,
+        ".trellis",
+        ".runtime",
+        "sessions",
+        "pi_pi-unit-task-update.json",
+      ),
       JSON.stringify({ current_task: "tasks/07-07-cache-fix" }),
     );
 
@@ -504,6 +564,15 @@ describe("pi templates", () => {
         "export TRELLIS_CONTEXT_ID='pi_native-window-b'; printf safe",
       );
 
+      const pwshEvent = {
+        toolName: "pwsh",
+        input: { command: "Get-Date" },
+      };
+      handlers.get("tool_call")?.(pwshEvent, ctx);
+      expect(pwshEvent.input.command).toBe(
+        "$env:TRELLIS_CONTEXT_ID = 'pi_native-window-b'; Get-Date",
+      );
+
       const collisionKeys = ["native/window", "native:window"].map(
         (sessionId) => {
           const collisionHandlers = new Map<
@@ -535,7 +604,9 @@ describe("pi templates", () => {
         { type: "before_agent_start", systemPrompt: "BASE" },
         ctx,
       ) as { systemPrompt?: string; message?: { content?: string } };
-      expect(beforeAgentStart.systemPrompt).not.toContain("FOREIGN TASK CONTENT");
+      expect(beforeAgentStart.systemPrompt).not.toContain(
+        "FOREIGN TASK CONTENT",
+      );
       expect(beforeAgentStart.message?.content).not.toContain(
         "FOREIGN TASK CONTENT",
       );
@@ -641,7 +712,9 @@ fallbackModels:
     const { buildPiArgs } = loadExtensionInternals();
 
     // model + thinking → composes "model:thinking" suffix when not already present
-    expect(buildPiArgs({ model: "anthropic/claude-sonnet-4", thinking: "high" })).toEqual([
+    expect(
+      buildPiArgs({ model: "anthropic/claude-sonnet-4", thinking: "high" }),
+    ).toEqual([
       "--mode",
       "json",
       "-p",
@@ -702,7 +775,15 @@ fallbackModels:
       fallbackModels: [],
     };
     const dogfoodExtension = readFileSync(
-      join(process.cwd(), "..", "..", ".pi", "extensions", "trellis", "index.ts"),
+      join(
+        process.cwd(),
+        "..",
+        "..",
+        ".pi",
+        "extensions",
+        "trellis",
+        "index.ts",
+      ),
       "utf-8",
     );
 
@@ -815,6 +896,7 @@ fallbackModels:
     try {
       const { trellisExtension } = loadExtensionInternals(root, {
         TRELLIS_PI_CLI_JS: fakeCli,
+        TRELLIS_ENABLE_LEGACY_SUBAGENT: "1",
       });
       let registeredTool: RegisteredPiTool | undefined;
       trellisExtension({
@@ -849,14 +931,31 @@ fallbackModels:
     }
   });
 
-  it("cmdHasTrellisCtx detects already-prefixed bash commands", () => {
+  it("cmdHasTrellisCtx detects existing Bash and PowerShell assignments at command boundaries", () => {
     const { cmdHasTrellisCtx } = loadExtensionInternals();
 
     expect(cmdHasTrellisCtx("export TRELLIS_CONTEXT_ID=foo; ls")).toBe(true);
     expect(cmdHasTrellisCtx("TRELLIS_CONTEXT_ID=foo ls")).toBe(true);
     expect(cmdHasTrellisCtx("env TRELLIS_CONTEXT_ID=foo ls")).toBe(true);
+    expect(
+      cmdHasTrellisCtx(
+        "Set-StrictMode -Version Latest; $env:TRELLIS_CONTEXT_ID='foo'; Get-Date",
+      ),
+    ).toBe(true);
+    expect(
+      cmdHasTrellisCtx(
+        "Set-StrictMode -Version Latest\n$env:TRELLIS_CONTEXT_ID='foo'\nGet-Date",
+      ),
+    ).toBe(true);
     expect(cmdHasTrellisCtx("ls -la")).toBe(false);
     expect(cmdHasTrellisCtx("")).toBe(false);
+  });
+
+  it("quotes PowerShell context values with single-quote doubling", () => {
+    const { powershellQuote } = loadExtensionInternals();
+
+    expect(powershellQuote("simple")).toBe("'simple'");
+    expect(powershellQuote("with 'quote'")).toBe("'with ''quote'''");
   });
 
   it("shellQuote single-quotes values and escapes embedded single quotes", () => {
@@ -1033,9 +1132,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
       mkdirSync(join(root, ".trellis"), { recursive: true });
       writeConfig(
         root,
-        ["context_injection:", "  max_artifact_bytes: not-a-number"].join(
-          "\n",
-        ),
+        ["context_injection:", "  max_artifact_bytes: not-a-number"].join("\n"),
       );
       const { readContextInjectionLimits } = loadExtensionInternals();
       expect(readContextInjectionLimits(root).max_artifact_bytes).toBe(65536);
@@ -1104,13 +1201,11 @@ describe("pi extension: context injection limits (issue #441)", () => {
     it("does not misclassify legitimate multi-byte UTF-8 content as binary", () => {
       const root = createRoot();
       const taskDir = activateTask(root, "task-utf8-not-binary");
-      const multiByteContent =
-        "emoji: 🎉🚀 cjk: 中文测试 bmp: café naïve\n";
+      const multiByteContent = "emoji: 🎉🚀 cjk: 中文测试 bmp: café naïve\n";
       writeFileSync(join(root, "multibyte.md"), multiByteContent, "utf-8");
       writeFileSync(
         join(taskDir, "implement.jsonl"),
-        JSON.stringify({ file: "multibyte.md", reason: "unicode spec" }) +
-          "\n",
+        JSON.stringify({ file: "multibyte.md", reason: "unicode spec" }) + "\n",
         "utf-8",
       );
       writeConfig(root, "");
@@ -1149,7 +1244,11 @@ describe("pi extension: context injection limits (issue #441)", () => {
     it("truncates an oversized jsonl-referenced file at max_file_bytes with a notice", () => {
       const root = createRoot();
       const taskDir = activateTask(root, "task-oversize");
-      writeFileSync(join(root, "big.txt"), "A".repeat(2 * 1024 * 1024), "utf-8");
+      writeFileSync(
+        join(root, "big.txt"),
+        "A".repeat(2 * 1024 * 1024),
+        "utf-8",
+      );
       writeFileSync(
         join(taskDir, "implement.jsonl"),
         JSON.stringify({ file: "big.txt", reason: "big" }) + "\n",

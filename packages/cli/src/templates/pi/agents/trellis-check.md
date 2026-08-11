@@ -2,7 +2,13 @@
 name: trellis-check
 description: |
   Code quality check expert. Reviews changes against Trellis specs, fixes issues directly, and verifies quality gates.
-tools: read, write, edit, bash, find, grep
+tools: read, write, edit, bash
+extensions: []
+thinking: medium
+defaultContext: fresh
+maxSubagentDepth: 0
+acceptance: {"level":"checked","evidence":["changed-files","commands-run","validation-output","review-findings","residual-risks"],"review":false}
+acceptanceRole: writer
 ---
 # Check Agent
 

@@ -1,9 +1,6 @@
 {
   "enableSkillCommands": true,
-  "extensions": [
-    "./extensions/trellis/index.ts"
-  ],
-  "prompts": [
-    "./prompts"
-  ]
+  "extensions": ["./extensions/trellis/index.ts"],
+  "prompts": ["./prompts"],
+  "packages": ["npm:pi-subagents@0.46.0"]
 }
