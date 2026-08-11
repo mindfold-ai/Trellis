@@ -9,6 +9,7 @@ import ts from "typescript";
 import { collectPiTemplates } from "../../src/configurators/pi.js";
 import {
   getAllAgents,
+  getContextTelemetryTemplate,
   getExtensionTemplate,
   getSettingsTemplate,
 } from "../../src/templates/pi/index.js";
@@ -155,6 +156,30 @@ export { buildPiArgs, resolveRunCfg, splitModelThinking };
   return evaluateExtension<MaxThinkingInternals>(source, process.cwd(), {});
 }
 
+interface ContextTelemetryInternals {
+  parseChildIdentity: (
+    env: Record<string, string | undefined>,
+  ) => { runId: string; agent: string; childIndex: number } | null;
+  normalizeContextUsage: (value: unknown) => unknown;
+  registerContextTelemetry: (
+    pi: {
+      on: (
+        event: string,
+        handler: (event: unknown, ctx: unknown) => void,
+      ) => void;
+    },
+    overrides?: Record<string, unknown>,
+  ) => void;
+}
+
+function loadContextTelemetryInternals(): ContextTelemetryInternals {
+  return evaluateExtension<ContextTelemetryInternals>(
+    getContextTelemetryTemplate(),
+    process.cwd(),
+    {},
+  );
+}
+
 function createMinimalTrellisRoot(): string {
   const root = mkdtempSync(join(tmpdir(), "trellis-pi-355-"));
   mkdirSync(join(root, ".pi"), { recursive: true });
@@ -196,11 +221,15 @@ describe("pi templates", () => {
       expect(agent.content).toContain(`name: ${agent.name}`);
       expect(agent.content).not.toContain("inject-subagent-context.py");
       expect(agent.content).toContain("tools: read, write, edit, bash");
-      expect(agent.content).toContain("extensions: []");
+      expect(agent.content).toContain(
+        "extensions: ./.pi/extensions/context-telemetry/index.ts",
+      );
       expect(agent.content).toContain("thinking: medium");
       expect(agent.content).toContain("defaultContext: fresh");
       expect(agent.content).toContain("maxSubagentDepth: 0");
+      expect(agent.content).toContain("nestedPiBoundary: unenforced");
       expect(agent.content).toContain('review":false');
+      expect(agent.content).toContain("do not create an OS sandbox");
     }
   });
 
@@ -255,13 +284,126 @@ describe("pi templates", () => {
     ]) {
       const content = templates.get(`.pi/agents/${name}.md`);
       expect(content).toContain("tools: read, write, edit, bash");
-      expect(content).toContain("extensions: []");
+      expect(content).toContain(
+        "extensions: ./.pi/extensions/context-telemetry/index.ts",
+      );
       expect(content).toContain("thinking: medium");
       expect(content).toContain("defaultContext: fresh");
       expect(content).toContain("maxSubagentDepth: 0");
+      expect(content).toContain("nestedPiBoundary: unenforced");
+      expect(content).toContain("do not create an OS sandbox");
       expect(content).toContain("Task: Active task: <path>");
       expect(content).toContain("strip exactly one leading `Task: `");
     }
+  });
+
+  it("registers passive child context telemetry for fresh init and update", () => {
+    const templates = collectPiTemplates();
+    const telemetry = templates.get(
+      ".pi/extensions/context-telemetry/index.ts",
+    );
+
+    expect(telemetry).toBe(getContextTelemetryTemplate());
+    expect(telemetry).toContain("PI_SUBAGENT_CHILD_AGENT");
+    expect(telemetry).toContain(
+      'TELEMETRY_FILE_NAME = "context-telemetry.jsonl"',
+    );
+    expect(telemetry).not.toContain("PI_SUBAGENT_AGENT");
+  });
+
+  it("keeps context telemetry child-only, nullable, attributed, and passive", () => {
+    const {
+      parseChildIdentity,
+      normalizeContextUsage,
+      registerContextTelemetry,
+    } = loadContextTelemetryInternals();
+    const validEnv = {
+      PI_SUBAGENT_CHILD: "1",
+      PI_SUBAGENT_RUN_ID: "run-123",
+      PI_SUBAGENT_CHILD_AGENT: "trellis-implement",
+      PI_SUBAGENT_CHILD_INDEX: "0",
+    };
+
+    expect(parseChildIdentity(validEnv)).toEqual({
+      runId: "run-123",
+      agent: "trellis-implement",
+      childIndex: 0,
+    });
+    expect(
+      parseChildIdentity({ ...validEnv, PI_SUBAGENT_CHILD_INDEX: "00" }),
+    ).toBeNull();
+    expect(
+      parseChildIdentity({
+        ...validEnv,
+        PI_SUBAGENT_CHILD_AGENT: undefined,
+      }),
+    ).toBeNull();
+    expect(normalizeContextUsage(undefined)).toBeNull();
+    expect(
+      normalizeContextUsage({
+        tokens: null,
+        contextWindow: 200_000,
+        percent: null,
+      }),
+    ).toEqual({ tokens: null, contextWindow: 200_000, percent: null });
+
+    const handlers = new Map<string, (event: unknown, ctx: unknown) => void>();
+    const writes: { filePath: string; content: string }[] = [];
+    const registerTool = vi.fn();
+    const pi = {
+      on(event: string, handler: (event: unknown, ctx: unknown) => void) {
+        handlers.set(event, handler);
+      },
+      registerTool,
+    };
+    registerContextTelemetry(pi, {
+      env: validEnv,
+      now: () => new Date("2026-08-11T12:34:56.789Z"),
+      appendFile: (filePath: string, content: string) =>
+        writes.push({ filePath, content }),
+    });
+
+    expect([...handlers.keys()].sort()).toEqual([
+      "message_end",
+      "session_compact",
+      "session_shutdown",
+      "session_start",
+      "turn_end",
+    ]);
+    expect(registerTool).not.toHaveBeenCalled();
+
+    const sessionFile = join(tmpdir(), "pi-child", "session.jsonl");
+    handlers.get("session_compact")?.(
+      {},
+      {
+        sessionManager: { getSessionFile: () => sessionFile },
+        getContextUsage: () => ({
+          tokens: null,
+          contextWindow: 200_000,
+          percent: null,
+        }),
+        abort: vi.fn(),
+        shutdown: vi.fn(),
+        compact: vi.fn(),
+      },
+    );
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.filePath).toBe(
+      join(tmpdir(), "pi-child", "context-telemetry.jsonl"),
+    );
+    const record = JSON.parse(writes[0]?.content ?? "null") as Record<
+      string,
+      unknown
+    >;
+    expect(record).toEqual(
+      expect.objectContaining({
+        schemaVersion: 1,
+        event: "session_compact",
+        sessionFile: "session.jsonl",
+        context: { tokens: null, contextWindow: 200_000, percent: null },
+      }),
+    );
+    expect(JSON.stringify(record)).not.toContain(sessionFile);
   });
 
   it("keeps the legacy tool source behind an explicit rollback gate", () => {

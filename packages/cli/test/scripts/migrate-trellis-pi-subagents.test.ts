@@ -24,6 +24,16 @@ const canonicalExtensionPath = join(
   "trellis",
   "index.ts.txt",
 );
+const canonicalTelemetryPath = join(
+  cliRoot,
+  "src",
+  "templates",
+  "pi",
+  "extensions",
+  "context-telemetry",
+  "index.ts.txt",
+);
+const telemetryRelativePath = ".pi/extensions/context-telemetry/index.ts";
 const pwshProbe = spawnSync(
   "pwsh",
   ["-NoLogo", "-NoProfile", "-Command", "$PSVersionTable.PSVersion.Major"],
@@ -155,13 +165,16 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
     const preview = run(["-ProjectRoot", root, "-WhatIf"]);
     expect(preview.status, preview.stderr).toBe(0);
     expect(preview.stdout).toContain("recognized-legacy .pi/settings.json");
-    expect(preview.stdout).toContain("WhatIf: 6 targeted file(s)");
+    expect(preview.stdout).toContain(
+      "managed-new .pi/extensions/context-telemetry/index.ts",
+    );
+    expect(preview.stdout).toContain("WhatIf: 7 targeted file(s)");
     expect(snapshot(root)).toEqual(before);
     expect(existsSync(join(root, ".trellis/.migrations"))).toBe(false);
 
     const applied = run(["-ProjectRoot", root]);
     expect(applied.status, applied.stderr).toBe(0);
-    expect(applied.stdout).toContain("Migration complete: 6 file(s).");
+    expect(applied.stdout).toContain("Migration complete: 7 file(s).");
     const settings = JSON.parse(
       readFileSync(join(root, ".pi/settings.json"), "utf-8"),
     ) as { packages: string[] };
@@ -175,10 +188,18 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
         join(root, `.pi/agents/${name}.md`),
         "utf-8",
       );
-      expect(content).toContain("extensions: []");
+      expect(content).toContain(
+        "extensions: ./.pi/extensions/context-telemetry/index.ts",
+      );
       expect(content).toContain("thinking: medium");
       expect(content).toContain("defaultContext: fresh");
       expect(content).toContain("maxSubagentDepth: 0");
+      expect(content).toContain("nestedPiBoundary: unenforced");
+      expect(content).toContain("do not create an OS sandbox");
+      expect(content).toContain('"review":false');
+      if (name === "trellis-check") {
+        expect(content).toContain('"review-findings"');
+      }
       expect(content).toContain("Task: Active task: <path>");
       if (name === "trellis-research") {
         expect(content).toContain(
@@ -193,6 +214,9 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
     expect(
       readFileSync(join(root, ".pi/extensions/trellis/index.ts"), "utf-8"),
     ).toBe(readFileSync(canonicalExtensionPath, "utf-8"));
+    expect(readFileSync(join(root, telemetryRelativePath), "utf-8")).toBe(
+      readFileSync(canonicalTelemetryPath, "utf-8"),
+    );
     expect(readFileSync(join(root, "unrelated.txt"), "utf-8")).toBe(
       "preserve me\n",
     );
@@ -205,6 +229,7 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
       ".pi/agents/trellis-check.md",
       ".pi/agents/trellis-research.md",
       ".pi/extensions/trellis/index.ts",
+      telemetryRelativePath,
     ]) {
       expect(migratedHashes.hashes[relativePath]).toBe(
         sha256(readFileSync(join(root, relativePath), "utf-8")).toUpperCase(),
@@ -244,6 +269,7 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
       ".pi/agents/trellis-check.md",
       ".pi/agents/trellis-research.md",
       ".pi/extensions/trellis/index.ts",
+      telemetryRelativePath,
     ]) {
       expect(hashes.hashes[relativePath]).toBe(
         sha256(readFileSync(join(root, relativePath), "utf-8")).toUpperCase(),
@@ -272,6 +298,25 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
     expect(existsSync(join(root, ".trellis/.migrations"))).toBe(false);
   });
 
+  it("fails closed when an already-managed telemetry extension was customized", () => {
+    const { root } = createLegacyProject();
+    const applied = run(["-ProjectRoot", root]);
+    expect(applied.status, applied.stderr).toBe(0);
+
+    const telemetryPath = join(root, telemetryRelativePath);
+    writeFileSync(
+      telemetryPath,
+      readFileSync(telemetryPath, "utf-8") + "// local customization\n",
+      "utf-8",
+    );
+    const before = snapshot(root);
+
+    const result = run(["-ProjectRoot", root]);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("Unknown customization detected");
+    expect(snapshot(root)).toEqual(before);
+  });
+
   it("writes a SHA256 manifest and verifies both rollback inputs and restoration", () => {
     const { root, originals } = createLegacyProject();
     const applied = run(["-ProjectRoot", root]);
@@ -288,31 +333,44 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
         path: string;
         classification: string;
         recordedTemplateHash: string | null;
-        beforeHash: string;
+        existedBefore: boolean;
+        beforeHash: string | null;
         afterHash: string;
-        backupPath: string;
+        backupPath: string | null;
       }[];
     };
     expect(manifest.schemaVersion).toBe(1);
-    expect(manifest.files).toHaveLength(6);
+    expect(manifest.files).toHaveLength(7);
     for (const entry of manifest.files) {
       if (entry.path === ".trellis/.template-hashes.json") {
         expect(entry.classification).toBe("migration-metadata");
         expect(entry.recordedTemplateHash).toBeNull();
+        expect(entry.existedBefore).toBe(true);
+      } else if (entry.path === telemetryRelativePath) {
+        expect(entry.classification).toBe("managed-new");
+        expect(entry.recordedTemplateHash).toBeNull();
+        expect(entry.existedBefore).toBe(false);
+        expect(entry.beforeHash).toBeNull();
+        expect(entry.backupPath).toBeNull();
       } else {
         expect(entry.classification).toBe("recognized-legacy");
         expect(entry.recordedTemplateHash).toBe(entry.beforeHash);
         expect(entry.recordedTemplateHash).toMatch(/^[A-F0-9]{64}$/);
+        expect(entry.existedBefore).toBe(true);
       }
-      expect(entry.beforeHash).toMatch(/^[A-F0-9]{64}$/);
+      if (entry.beforeHash !== null) {
+        expect(entry.beforeHash).toMatch(/^[A-F0-9]{64}$/);
+      }
       expect(entry.afterHash).toMatch(/^[A-F0-9]{64}$/);
-      expect(entry.backupPath).toBe(`files/${entry.path}`);
+      if (entry.existedBefore) {
+        expect(entry.backupPath).toBe(`files/${entry.path}`);
+      }
     }
 
     const rollbackPreview = run(["-RollbackManifest", manifestPath, "-WhatIf"]);
     expect(rollbackPreview.status, rollbackPreview.stderr).toBe(0);
     expect(rollbackPreview.stdout).toContain(
-      "rollback validated for 6 file(s)",
+      "rollback validated for 7 file(s)",
     );
 
     const rollback = run(["-RollbackManifest", manifestPath]);
@@ -321,6 +379,7 @@ describe.skipIf(!hasPwsh)("guarded Pi subagents PowerShell migrator", () => {
     for (const [relativePath, original] of originals) {
       expect(readFileSync(join(root, relativePath), "utf-8")).toBe(original);
     }
+    expect(existsSync(join(root, telemetryRelativePath))).toBe(false);
     expect(readFileSync(join(root, "unrelated.txt"), "utf-8")).toBe(
       "preserve me\n",
     );

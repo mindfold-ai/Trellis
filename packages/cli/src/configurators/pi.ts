@@ -9,6 +9,7 @@ import {
 } from "./shared.js";
 import {
   getAllAgents,
+  getContextTelemetryTemplate,
   getExtensionTemplate,
   getSettingsTemplate,
 } from "../templates/pi/index.js";
@@ -82,6 +83,10 @@ export function collectPiTemplates(): Map<string, string> {
   }
 
   files.set(".pi/extensions/trellis/index.ts", getExtensionTemplate());
+  files.set(
+    ".pi/extensions/context-telemetry/index.ts",
+    getContextTelemetryTemplate(),
+  );
 
   const settings = getSettingsTemplate();
   files.set(

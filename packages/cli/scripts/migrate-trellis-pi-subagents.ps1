@@ -16,6 +16,8 @@ $ErrorActionPreference = "Stop"
 $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $PackageId = "npm:pi-subagents@0.46.0"
 $RoleNames = @("trellis-implement", "trellis-check", "trellis-research")
+$TelemetryRelativePath = ".pi/extensions/context-telemetry/index.ts"
+$TelemetryExtensionReference = "./.pi/extensions/context-telemetry/index.ts"
 $LegacyTaskLine = '1. **Look at the dispatch prompt** you received from the main agent. If its first line is `Active task: <path>` (e.g. `Active task: .trellis/tasks/04-17-foo`), use that path. The main agent is required to include this line on class-2 platforms.'
 $MigratedTaskLine = '1. **Look at the dispatch prompt** you received from the main agent. Accept either an exact first line `Active task: <path>` or pi-subagents'' package-owned transport form `Task: Active task: <path>`. For the transport form, strip exactly one leading `Task: ` and require `Active task:` to remain the first line of the underlying task payload. Use that path and stop resolving; reject any other prefix.'
 $LegacyResearchTaskLine = '1. Resolve the active task with `python3 ./.trellis/scripts/task.py current --source`.'
@@ -138,23 +140,28 @@ function Test-RoleContract([string]$Content, [string]$Name) {
   $frontmatter = $match.Groups['frontmatter'].Value
   $expectedAcceptance = if ($Name -eq "trellis-research") {
     'acceptance: {"level":"attested","evidence":["changed-files","review-findings","residual-risks"],"review":false}'
+  } elseif ($Name -eq "trellis-check") {
+    'acceptance: {"level":"checked","evidence":["changed-files","commands-run","validation-output","review-findings","residual-risks"],"review":false}'
   } else {
     'acceptance: {"level":"checked","evidence":["changed-files","commands-run","validation-output","residual-risks"],"review":false}'
   }
   $checks = @(
     "(?m)^name\s*:\s*$([regex]::Escape($Name))\s*$",
     '(?m)^tools\s*:\s*read, write, edit, bash\s*$',
-    '(?m)^extensions\s*:\s*\[\]\s*$',
+    "(?m)^extensions\s*:\s*$([regex]::Escape($TelemetryExtensionReference))\s*$",
     '(?m)^thinking\s*:\s*medium\s*$',
     '(?m)^defaultContext\s*:\s*fresh\s*$',
     '(?m)^maxSubagentDepth\s*:\s*0\s*$',
+    '(?m)^nestedPiBoundary\s*:\s*unenforced\s*$',
     "(?m)^$([regex]::Escape($expectedAcceptance))\s*$",
     '(?m)^acceptanceRole\s*:\s*writer\s*$'
   )
   foreach ($check in $checks) {
     if ($frontmatter -notmatch $check) { return $false }
   }
-  return $Content.Contains('Task: Active task: <path>') -and $Content.Contains('strip exactly one leading `Task: `')
+  return $Content.Contains('Task: Active task: <path>') -and
+    $Content.Contains('strip exactly one leading `Task: `') -and
+    $Content.Contains('do not create an OS sandbox')
 }
 
 function Convert-Role([string]$Content, [string]$Name, [string]$RelativePath) {
@@ -166,15 +173,18 @@ function Convert-Role([string]$Content, [string]$Name, [string]$RelativePath) {
   $acceptanceLevel = if ($Name -eq "trellis-research") { "attested" } else { "checked" }
   $acceptanceEvidence = if ($Name -eq "trellis-research") {
     '["changed-files","review-findings","residual-risks"]'
+  } elseif ($Name -eq "trellis-check") {
+    '["changed-files","commands-run","validation-output","review-findings","residual-risks"]'
   } else {
     '["changed-files","commands-run","validation-output","residual-risks"]'
   }
   $updates = [ordered]@{
     tools = "read, write, edit, bash"
-    extensions = "[]"
+    extensions = $TelemetryExtensionReference
     thinking = "medium"
     defaultContext = "fresh"
     maxSubagentDepth = "0"
+    nestedPiBoundary = "unenforced"
     acceptance = "{`"level`":`"$acceptanceLevel`",`"evidence`":$acceptanceEvidence,`"review`":false}"
     acceptanceRole = "writer"
   }
@@ -195,6 +205,9 @@ function Convert-Role([string]$Content, [string]$Name, [string]$RelativePath) {
   }
   if (-not $updated.Contains('Task: Active task: <path>')) {
     throw "Recognized legacy task identity line is missing from $RelativePath"
+  }
+  if (-not $updated.Contains('do not create an OS sandbox')) {
+    $updated = $updated.TrimEnd("`r", "`n") + "`n`nPackage-managed depth and tool controls limit normal fanout only. The builtin ``bash`` tool remains available, so ``nestedPiBoundary`` is ``unenforced``; these controls do not create an OS sandbox.`n"
   }
   if (-not (Test-RoleContract $updated $Name)) {
     throw "Generated role contract failed validation for $RelativePath"
@@ -227,6 +240,23 @@ function Test-ExtensionContract([string]$Content) {
     if ($Content -notmatch $pattern) { return $false }
   }
   return $true
+}
+
+function Test-TelemetryContract([string]$Content) {
+  $required = @(
+    'PI_SUBAGENT_CHILD',
+    'PI_SUBAGENT_RUN_ID',
+    'PI_SUBAGENT_CHILD_AGENT',
+    'PI_SUBAGENT_CHILD_INDEX',
+    'context-telemetry.jsonl',
+    'getContextUsage()',
+    'sessionPathSha256',
+    'registerContextTelemetry'
+  )
+  foreach ($marker in $required) {
+    if (-not $Content.Contains($marker)) { return $false }
+  }
+  return -not $Content.Contains('PI_SUBAGENT_AGENT')
 }
 
 function Test-SettingsContract($Settings) {
@@ -283,15 +313,18 @@ function Invoke-Rollback([string]$ManifestPath) {
   $manifestDirectory = [System.IO.Path]::GetDirectoryName($resolvedManifest)
   foreach ($entry in @($manifest.files)) {
     $target = Resolve-InRoot $root ([string]$entry.path)
-    $backup = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($manifestDirectory, ([string]$entry.backupPath).Replace('/', [System.IO.Path]::DirectorySeparatorChar)))
-    if (-not $backup.StartsWith($manifestDirectory + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
-      throw "Backup path escapes manifest directory: $($entry.backupPath)"
-    }
-    if ((Get-Sha256 $target) -ne ([string]$entry.afterHash).ToUpperInvariant()) {
+    $existedBefore = $entry.PSObject.Properties['existedBefore'] -eq $null -or [bool]$entry.existedBefore
+    if (-not (Test-Path -LiteralPath $target -PathType Leaf) -or (Get-Sha256 $target) -ne ([string]$entry.afterHash).ToUpperInvariant()) {
       throw "Rollback refused because migrated file changed: $($entry.path)"
     }
-    if ((Get-Sha256 $backup) -ne ([string]$entry.beforeHash).ToUpperInvariant()) {
-      throw "Rollback backup hash mismatch: $($entry.path)"
+    if ($existedBefore) {
+      $backup = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($manifestDirectory, ([string]$entry.backupPath).Replace('/', [System.IO.Path]::DirectorySeparatorChar)))
+      if (-not $backup.StartsWith($manifestDirectory + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Backup path escapes manifest directory: $($entry.backupPath)"
+      }
+      if ((Get-Sha256 $backup) -ne ([string]$entry.beforeHash).ToUpperInvariant()) {
+        throw "Rollback backup hash mismatch: $($entry.path)"
+      }
     }
   }
   if ($WhatIf) {
@@ -300,10 +333,18 @@ function Invoke-Rollback([string]$ManifestPath) {
   }
   foreach ($entry in @($manifest.files)) {
     $target = Resolve-InRoot $root ([string]$entry.path)
-    $backup = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($manifestDirectory, ([string]$entry.backupPath).Replace('/', [System.IO.Path]::DirectorySeparatorChar)))
-    Write-AtomicText $target (Read-Utf8Text $backup)
-    if ((Get-Sha256 $target) -ne ([string]$entry.beforeHash).ToUpperInvariant()) {
-      throw "Rollback verification failed: $($entry.path)"
+    $existedBefore = $entry.PSObject.Properties['existedBefore'] -eq $null -or [bool]$entry.existedBefore
+    if ($existedBefore) {
+      $backup = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($manifestDirectory, ([string]$entry.backupPath).Replace('/', [System.IO.Path]::DirectorySeparatorChar)))
+      Write-AtomicText $target (Read-Utf8Text $backup)
+      if ((Get-Sha256 $target) -ne ([string]$entry.beforeHash).ToUpperInvariant()) {
+        throw "Rollback verification failed: $($entry.path)"
+      }
+    } else {
+      [System.IO.File]::Delete($target)
+      if (Test-Path -LiteralPath $target) {
+        throw "Rollback verification failed to remove: $($entry.path)"
+      }
     }
   }
   Write-Output "Rollback complete and verified: $resolvedManifest"
@@ -326,15 +367,42 @@ $extensionTemplate = Read-Utf8Text $extensionTemplatePath
 if (-not (Test-ExtensionContract $extensionTemplate)) {
   throw "Canonical extension template failed migration contract validation"
 }
+$telemetryTemplatePath = Join-Path $templateRoot "extensions/context-telemetry/index.ts.txt"
+if (-not (Test-Path -LiteralPath $telemetryTemplatePath -PathType Leaf)) {
+  throw "Canonical telemetry template is missing: $telemetryTemplatePath"
+}
+$telemetryTemplate = Read-Utf8Text $telemetryTemplatePath
+if (-not (Test-TelemetryContract $telemetryTemplate)) {
+  throw "Canonical telemetry template failed migration contract validation"
+}
 
 $plans = [System.Collections.Generic.List[object]]::new()
 $managedFinalHashes = [ordered]@{}
-$relativePaths = @(".pi/settings.json") + @($RoleNames | ForEach-Object { ".pi/agents/$_.md" }) + ".pi/extensions/trellis/index.ts"
+$relativePaths = @(".pi/settings.json") + @($RoleNames | ForEach-Object { ".pi/agents/$_.md" }) + ".pi/extensions/trellis/index.ts" + $TelemetryRelativePath
 foreach ($relativePath in $relativePaths) {
   $target = Resolve-InRoot $root $relativePath
-  if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
+  $targetExists = Test-Path -LiteralPath $target -PathType Leaf
+  if (-not $targetExists -and $relativePath -ne $TelemetryRelativePath) {
     throw "Required project file is missing: $relativePath"
   }
+
+  if (-not $targetExists) {
+    $desiredHash = Get-TextSha256 $telemetryTemplate
+    $managedFinalHashes[$relativePath] = $desiredHash
+    $plans.Add([pscustomobject]@{
+      path = $relativePath
+      target = $target
+      content = $telemetryTemplate
+      classification = "managed-new"
+      recordedTemplateHash = $null
+      existedBefore = $false
+      beforeHash = $null
+      afterHash = $desiredHash
+    })
+    Write-Output "managed-new $relativePath -> $desiredHash"
+    continue
+  }
+
   $current = Read-Utf8Text $target
   $currentHash = Get-Sha256 $target
   $desired = $null
@@ -346,6 +414,9 @@ foreach ($relativePath in $relativePaths) {
   } elseif ($relativePath -eq ".pi/extensions/trellis/index.ts") {
     $already = Test-ExtensionContract $current
     if (-not $already) { $desired = $extensionTemplate }
+  } elseif ($relativePath -eq $TelemetryRelativePath) {
+    $already = (Get-TextSha256 $current) -eq (Get-TextSha256 $telemetryTemplate)
+    if (-not $already) { $desired = $telemetryTemplate }
   } else {
     $name = [System.IO.Path]::GetFileNameWithoutExtension($relativePath)
     $already = Test-RoleContract $current $name
@@ -372,6 +443,7 @@ foreach ($relativePath in $relativePaths) {
     content = $desired
     classification = "recognized-legacy"
     recordedTemplateHash = $storedHash
+    existedBefore = $true
     beforeHash = $currentHash
     afterHash = $desiredHash
   })
@@ -386,11 +458,11 @@ $hashDocument = Read-Json $hashTarget
 $hashChanged = $false
 foreach ($relativePath in $relativePaths) {
   $property = $hashDocument.hashes.PSObject.Properties[$relativePath]
-  if ($null -eq $property) {
-    throw "Template hash metadata changed after preflight: $relativePath"
-  }
   $finalHash = [string]$managedFinalHashes[$relativePath]
-  if (([string]$property.Value).ToUpperInvariant() -ne $finalHash) {
+  if ($null -eq $property) {
+    $hashDocument.hashes | Add-Member -NotePropertyName $relativePath -NotePropertyValue $finalHash
+    $hashChanged = $true
+  } elseif (([string]$property.Value).ToUpperInvariant() -ne $finalHash) {
     $property.Value = $finalHash
     $hashChanged = $true
   }
@@ -403,6 +475,7 @@ if ($hashChanged) {
     content = $hashDesired
     classification = "migration-metadata"
     recordedTemplateHash = $null
+    existedBefore = $true
     beforeHash = $hashBefore
     afterHash = Get-TextSha256 $hashDesired
   })
@@ -422,17 +495,20 @@ $backupRoot = Join-Path $root ".trellis/.migrations/pi-subagents/$timestamp"
 [System.IO.Directory]::CreateDirectory($backupRoot) | Out-Null
 $entries = [System.Collections.Generic.List[object]]::new()
 foreach ($plan in $plans) {
-  $backupRelative = "files/$($plan.path)"
-  $backupPath = [System.IO.Path]::Combine($backupRoot, $backupRelative.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
-  [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($backupPath)) | Out-Null
-  [System.IO.File]::Copy($plan.target, $backupPath, $false)
-  if ((Get-Sha256 $backupPath) -ne $plan.beforeHash) {
-    throw "Backup verification failed: $($plan.path)"
+  $backupRelative = if ($plan.existedBefore) { "files/$($plan.path)" } else { $null }
+  if ($plan.existedBefore) {
+    $backupPath = [System.IO.Path]::Combine($backupRoot, $backupRelative.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+    [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($backupPath)) | Out-Null
+    [System.IO.File]::Copy($plan.target, $backupPath, $false)
+    if ((Get-Sha256 $backupPath) -ne $plan.beforeHash) {
+      throw "Backup verification failed: $($plan.path)"
+    }
   }
   $entries.Add([pscustomobject]@{
     path = $plan.path
     classification = $plan.classification
     recordedTemplateHash = $plan.recordedTemplateHash
+    existedBefore = $plan.existedBefore
     beforeHash = $plan.beforeHash
     afterHash = $plan.afterHash
     backupPath = $backupRelative
@@ -452,8 +528,12 @@ Write-AtomicText $manifestPath (($manifest | ConvertTo-Json -Depth 10) + "`n")
 
 try {
   foreach ($plan in $plans) {
-    if ((Get-Sha256 $plan.target) -ne $plan.beforeHash) {
-      throw "File changed after preflight: $($plan.path)"
+    if ($plan.existedBefore) {
+      if ((Get-Sha256 $plan.target) -ne $plan.beforeHash) {
+        throw "File changed after preflight: $($plan.path)"
+      }
+    } elseif (Test-Path -LiteralPath $plan.target) {
+      throw "File appeared after preflight: $($plan.path)"
     }
     Write-AtomicText $plan.target $plan.content
     if ((Get-Sha256 $plan.target) -ne $plan.afterHash) {
@@ -469,6 +549,9 @@ try {
   if (-not (Test-ExtensionContract (Read-Utf8Text (Join-Path $root ".pi/extensions/trellis/index.ts")))) {
     throw "Post-validation failed for .pi/extensions/trellis/index.ts"
   }
+  if (-not (Test-TelemetryContract (Read-Utf8Text (Join-Path $root $TelemetryRelativePath)))) {
+    throw "Post-validation failed for $TelemetryRelativePath"
+  }
   $hashesAfter = Get-HashMap $root
   foreach ($relativePath in $relativePaths) {
     $target = Resolve-InRoot $root $relativePath
@@ -479,8 +562,12 @@ try {
 } catch {
   foreach ($entry in $entries) {
     $target = Resolve-InRoot $root $entry.path
-    $backupPath = Join-Path $backupRoot $entry.backupPath
-    Write-AtomicText $target (Read-Utf8Text $backupPath)
+    if ([bool]$entry.existedBefore) {
+      $backupPath = Join-Path $backupRoot $entry.backupPath
+      Write-AtomicText $target (Read-Utf8Text $backupPath)
+    } elseif (Test-Path -LiteralPath $target) {
+      [System.IO.File]::Delete($target)
+    }
   }
   throw "Migration failed and targeted files were restored from backup. $($_.Exception.Message)"
 }

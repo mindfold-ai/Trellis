@@ -3,10 +3,11 @@ name: trellis-research
 description: |
   Code and technical research expert. Finds relevant files, patterns, docs, and persists findings to the current task's research/ directory.
 tools: read, write, edit, bash
-extensions: []
+extensions: ./.pi/extensions/context-telemetry/index.ts
 thinking: medium
 defaultContext: fresh
 maxSubagentDepth: 0
+nestedPiBoundary: unenforced
 acceptance: {"level":"attested","evidence":["changed-files","review-findings","residual-risks"],"review":false}
 acceptanceRole: writer
 ---
@@ -30,3 +31,5 @@ Persist every finding to a file. Chat context is temporary; files under the task
 ## Scope Limits
 
 Write only under the current task's `research/` directory. Do not edit code, specs, platform config, or task files outside research artifacts.
+
+`maxSubagentDepth: 0`, `fanoutAuthorized:false`, and the absence of a `subagent` tool limit package-managed fanout only. The builtin `bash` tool remains available, so `nestedPiBoundary` is `unenforced`; these controls do not create an OS sandbox.

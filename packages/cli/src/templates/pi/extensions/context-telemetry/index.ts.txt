@@ -1,0 +1,267 @@
+import { createHash } from "node:crypto";
+import { appendFileSync } from "node:fs";
+import * as path from "node:path";
+import type {
+  ContextUsage,
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+
+export const TELEMETRY_SCHEMA_VERSION = 1 as const;
+export const TELEMETRY_FILE_NAME = "context-telemetry.jsonl";
+export const MAX_TELEMETRY_LINE_BYTES = 2048;
+
+const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const PATH_HASH_PATTERN = /^[a-f0-9]{64}$/;
+const ISO_TIME_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const EVENTS = [
+  "session_start",
+  "message_end",
+  "turn_end",
+  "session_compact",
+  "session_shutdown",
+] as const;
+
+export type ContextTelemetryEvent = (typeof EVENTS)[number];
+
+export type NormalizedContextUsage = null | {
+  tokens: number | null;
+  contextWindow: number;
+  percent: number | null;
+};
+
+export type ContextTelemetryRecord = {
+  schemaVersion: typeof TELEMETRY_SCHEMA_VERSION;
+  observedAt: string;
+  sequence: number;
+  event: ContextTelemetryEvent;
+  runId: string;
+  agent: string;
+  childIndex: number;
+  sessionFile: "session.jsonl";
+  sessionPathSha256: string;
+  context: NormalizedContextUsage;
+};
+
+export type ChildIdentity = {
+  runId: string;
+  agent: string;
+  childIndex: number;
+};
+
+export type TelemetryDependencies = {
+  env: Record<string, string | undefined>;
+  now: () => Date;
+  appendFile: (filePath: string, content: string) => void;
+  hashPath: (normalizedAbsolutePath: string) => string;
+  stringify: (value: ContextTelemetryRecord) => string;
+};
+
+const defaultDependencies: TelemetryDependencies = {
+  env: process.env,
+  now: () => new Date(),
+  appendFile: (filePath, content) =>
+    appendFileSync(filePath, content, { encoding: "utf8" }),
+  hashPath: (normalizedAbsolutePath) =>
+    createHash("sha256")
+      .update(normalizedAbsolutePath, "utf8")
+      .digest("hex"),
+  stringify: (value) => JSON.stringify(value),
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): boolean {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  return (
+    actual.length === wanted.length &&
+    actual.every((key, index) => key === wanted[index])
+  );
+}
+
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isFiniteNonNegative(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+export function parseChildIdentity(
+  env: Record<string, string | undefined>,
+): ChildIdentity | null {
+  try {
+    if (env.PI_SUBAGENT_CHILD !== "1") return null;
+    const runId = env.PI_SUBAGENT_RUN_ID;
+    const agent = env.PI_SUBAGENT_CHILD_AGENT;
+    const rawIndex = env.PI_SUBAGENT_CHILD_INDEX;
+    if (!runId || !IDENTIFIER_PATTERN.test(runId)) return null;
+    if (!agent || !IDENTIFIER_PATTERN.test(agent)) return null;
+    if (!rawIndex || !/^(?:0|[1-9]\d{0,6})$/.test(rawIndex)) return null;
+    const childIndex = Number(rawIndex);
+    if (!Number.isSafeInteger(childIndex)) return null;
+    return { runId, agent, childIndex };
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeContextUsage(
+  value: ContextUsage | undefined | null | unknown,
+): NormalizedContextUsage {
+  if (!isRecord(value)) return null;
+  const { tokens, contextWindow, percent } = value;
+  if (!Number.isSafeInteger(contextWindow) || (contextWindow as number) <= 0) {
+    return null;
+  }
+  if (tokens === null && percent === null) {
+    return {
+      tokens: null,
+      contextWindow: contextWindow as number,
+      percent: null,
+    };
+  }
+  if (!isSafeNonNegativeInteger(tokens) || !isFiniteNonNegative(percent)) {
+    return null;
+  }
+  return { tokens, contextWindow: contextWindow as number, percent };
+}
+
+export function decodeContextTelemetryRecord(
+  value: unknown,
+): ContextTelemetryRecord | null {
+  if (!isRecord(value)) return null;
+  if (
+    !hasExactKeys(value, [
+      "schemaVersion",
+      "observedAt",
+      "sequence",
+      "event",
+      "runId",
+      "agent",
+      "childIndex",
+      "sessionFile",
+      "sessionPathSha256",
+      "context",
+    ])
+  ) {
+    return null;
+  }
+  if (value.schemaVersion !== TELEMETRY_SCHEMA_VERSION) return null;
+  if (
+    typeof value.observedAt !== "string" ||
+    !ISO_TIME_PATTERN.test(value.observedAt) ||
+    !Number.isFinite(Date.parse(value.observedAt))
+  ) {
+    return null;
+  }
+  if (!Number.isSafeInteger(value.sequence) || (value.sequence as number) <= 0) {
+    return null;
+  }
+  if (
+    typeof value.event !== "string" ||
+    !(EVENTS as readonly string[]).includes(value.event)
+  ) {
+    return null;
+  }
+  if (typeof value.runId !== "string" || !IDENTIFIER_PATTERN.test(value.runId)) {
+    return null;
+  }
+  if (typeof value.agent !== "string" || !IDENTIFIER_PATTERN.test(value.agent)) {
+    return null;
+  }
+  if (!isSafeNonNegativeInteger(value.childIndex) || value.childIndex > 9_999_999) {
+    return null;
+  }
+  if (value.sessionFile !== "session.jsonl") return null;
+  if (
+    typeof value.sessionPathSha256 !== "string" ||
+    !PATH_HASH_PATTERN.test(value.sessionPathSha256)
+  ) {
+    return null;
+  }
+  const context = normalizeContextUsage(value.context);
+  if (value.context !== null && context === null) return null;
+  return value as ContextTelemetryRecord;
+}
+
+function normalizedSessionFile(ctx: ExtensionContext): string | null {
+  const sessionFile = ctx.sessionManager.getSessionFile();
+  if (typeof sessionFile !== "string" || !path.isAbsolute(sessionFile)) {
+    return null;
+  }
+  const normalized = path.normalize(path.resolve(sessionFile));
+  return path.basename(normalized) === "session.jsonl" ? normalized : null;
+}
+
+function isFailedAssistantMessage(event: unknown): boolean {
+  if (!isRecord(event) || !isRecord(event.message)) return false;
+  if (event.message.role !== "assistant") return false;
+  return (
+    event.message.stopReason === "aborted" ||
+    event.message.stopReason === "error"
+  );
+}
+
+export function registerContextTelemetry(
+  pi: ExtensionAPI,
+  overrides: Partial<TelemetryDependencies> = {},
+): void {
+  const deps = { ...defaultDependencies, ...overrides };
+  const identity = parseChildIdentity(deps.env);
+  if (!identity) return;
+
+  let sequence = 0;
+  const observe = (event: ContextTelemetryEvent, ctx: ExtensionContext): void => {
+    try {
+      const sessionFile = normalizedSessionFile(ctx);
+      if (!sessionFile) return;
+      const record: ContextTelemetryRecord = {
+        schemaVersion: TELEMETRY_SCHEMA_VERSION,
+        observedAt: deps.now().toISOString(),
+        sequence: sequence + 1,
+        event,
+        runId: identity.runId,
+        agent: identity.agent,
+        childIndex: identity.childIndex,
+        sessionFile: "session.jsonl",
+        sessionPathSha256: deps.hashPath(sessionFile),
+        context: normalizeContextUsage(ctx.getContextUsage()),
+      };
+      if (!decodeContextTelemetryRecord(record)) return;
+      const line = `${deps.stringify(record)}\n`;
+      if (Buffer.byteLength(line, "utf8") > MAX_TELEMETRY_LINE_BYTES) return;
+      deps.appendFile(
+        path.join(path.dirname(sessionFile), TELEMETRY_FILE_NAME),
+        line,
+      );
+      sequence = record.sequence;
+    } catch {
+      // Best-effort telemetry must never affect the child lifecycle.
+    }
+  };
+
+  pi.on("session_start", (_event, ctx) => observe("session_start", ctx));
+  pi.on("session_compact", (_event, ctx) => observe("session_compact", ctx));
+  pi.on("message_end", (event, ctx) => {
+    if (isFailedAssistantMessage(event)) return;
+    if (!isRecord(event.message) || event.message.role !== "assistant") return;
+    observe("message_end", ctx);
+  });
+  pi.on("turn_end", (event, ctx) => {
+    if (isFailedAssistantMessage(event)) return;
+    observe("turn_end", ctx);
+  });
+  pi.on("session_shutdown", (_event, ctx) => observe("session_shutdown", ctx));
+}
+
+export default function contextTelemetry(pi: ExtensionAPI): void {
+  registerContextTelemetry(pi);
+}

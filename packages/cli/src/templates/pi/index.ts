@@ -19,3 +19,7 @@ export function getSettingsTemplate(): HookTemplate {
 export function getExtensionTemplate(): string {
   return readTemplate("extensions/trellis/index.ts.txt");
 }
+
+export function getContextTelemetryTemplate(): string {
+  return readTemplate("extensions/context-telemetry/index.ts.txt");
+}

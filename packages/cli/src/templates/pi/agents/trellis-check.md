@@ -3,10 +3,11 @@ name: trellis-check
 description: |
   Code quality check expert. Reviews changes against Trellis specs, fixes issues directly, and verifies quality gates.
 tools: read, write, edit, bash
-extensions: []
+extensions: ./.pi/extensions/context-telemetry/index.ts
 thinking: medium
 defaultContext: fresh
 maxSubagentDepth: 0
+nestedPiBoundary: unenforced
 acceptance: {"level":"checked","evidence":["changed-files","commands-run","validation-output","review-findings","residual-risks"],"review":false}
 acceptanceRole: writer
 ---
@@ -37,6 +38,10 @@ You are already the `trellis-check` sub-agent that the main session dispatched. 
 - Spec or platform contract violations.
 - Missing or weak tests for logic changes.
 - Cross-platform path, command, and encoding assumptions.
+
+## Process Boundary
+
+`maxSubagentDepth: 0`, `fanoutAuthorized:false`, and the absence of a `subagent` tool limit package-managed fanout only. The builtin `bash` tool remains available, so `nestedPiBoundary` is `unenforced`; these controls do not create an OS sandbox.
 
 ## Output
 

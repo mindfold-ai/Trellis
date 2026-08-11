@@ -3,10 +3,11 @@ name: trellis-implement
 description: |
   Code implementation expert. Understands Trellis specs and requirements, then implements features. No git commit allowed.
 tools: read, write, edit, bash
-extensions: []
+extensions: ./.pi/extensions/context-telemetry/index.ts
 thinking: medium
 defaultContext: fresh
 maxSubagentDepth: 0
+nestedPiBoundary: unenforced
 acceptance: {"level":"checked","evidence":["changed-files","commands-run","validation-output","residual-risks"],"review":false}
 acceptanceRole: writer
 ---
@@ -46,3 +47,4 @@ Do not run:
 - Do not revert unrelated user or concurrent changes.
 - Fix root causes rather than masking symptoms.
 - Prefer existing local helpers and platform patterns over new abstractions.
+- `maxSubagentDepth: 0`, `fanoutAuthorized:false`, and the absence of a `subagent` tool limit package-managed fanout only. The builtin `bash` tool remains available, so `nestedPiBoundary` is `unenforced`; these controls do not create an OS sandbox.
