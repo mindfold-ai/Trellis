@@ -29,7 +29,10 @@ import { workerFile } from "./store/paths.js";
 import { scheduleSupervisorIdleTimer } from "./supervisor/idle.js";
 import { runInboxWatcher } from "./supervisor/inbox.js";
 import { createShutdown, type ShutdownReason } from "./supervisor/shutdown.js";
-import { startStdoutPump } from "./supervisor/stdout.js";
+import {
+  createStdoutDrainControl,
+  startStdoutPump,
+} from "./supervisor/stdout.js";
 import { TurnTracker } from "./supervisor/turns.js";
 import { scheduleSupervisorTimeoutWarning } from "./supervisor/warning.js";
 
@@ -239,15 +242,7 @@ export async function runSupervisor(
       : {}),
   });
 
-  let resolveStdoutReady!: (processLines: boolean) => void;
-  const stdoutReady = new Promise<boolean>((resolve) => {
-    resolveStdoutReady = resolve;
-  });
-  const stdoutDrainAbort = new AbortController();
-  const abortStdoutDrain = (): void => {
-    resolveStdoutReady(false);
-    stdoutDrainAbort.abort();
-  };
+  const stdoutDrain = createStdoutDrainControl();
   const idleTimerRef: {
     current?: ReturnType<typeof scheduleSupervisorIdleTimer>;
   } = {};
@@ -269,8 +264,8 @@ export async function runSupervisor(
     log,
     shutdown,
     turnTracker,
-    processLines: stdoutReady,
-    signal: stdoutDrainAbort.signal,
+    processLines: stdoutDrain.processLines,
+    signal: stdoutDrain.signal,
   });
 
   // Gate the `spawned` event behind whichever child lifecycle event fires
@@ -307,7 +302,7 @@ export async function runSupervisor(
       // `exit` event that Node won't deliver.
       spawnFailed = true;
       settleSpawn();
-      abortStdoutDrain();
+      stdoutDrain.discard();
       void (async () => {
         try {
           await appendEvent(
@@ -363,7 +358,7 @@ export async function runSupervisor(
     void finalizeSupervisorExit({
       stdoutDrained,
       drainTimeoutMs: SHUTDOWN_GRACE_MS,
-      abortStdoutDrain,
+      abortStdoutDrain: stdoutDrain.abortReading,
       onDrainTimeout: () =>
         log.write(
           `[supervisor] stdout did not close within ${SHUTDOWN_GRACE_MS}ms; draining buffered lines and exiting\n`,
@@ -396,14 +391,14 @@ export async function runSupervisor(
   // off cleanup and can bail cleanly.
   await spawnSettled;
   if (spawnFailed) {
-    abortStdoutDrain();
+    stdoutDrain.discard();
     return;
   }
   // Codex #3 fix: if a signal/timeout requested shutdown while we were
   // waiting for spawn-settled, don't write a misleading `spawned` event;
   // let the in-flight `killed` append complete and bail.
   if (shutdown.isShuttingDown()) {
-    abortStdoutDrain();
+    stdoutDrain.discard();
     await shutdown.awaitFinalize();
     return;
   }
@@ -434,7 +429,7 @@ export async function runSupervisor(
       project,
     );
   } catch (err) {
-    abortStdoutDrain();
+    stdoutDrain.discard();
     throw err;
   }
 
@@ -449,7 +444,7 @@ export async function runSupervisor(
     log,
   });
   process.on("exit", () => idleTimerRef.current?.cancel());
-  resolveStdoutReady(true);
+  stdoutDrain.allowProcessing();
 
   // ── timeout guard (anti-zombie) ──
   if (config.timeoutMs && config.timeoutMs > 0) {

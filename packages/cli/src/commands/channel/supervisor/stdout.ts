@@ -24,6 +24,39 @@ import type { TurnOutcome, TurnTracker } from "./turns.js";
 type Child = ChildProcessByStdio<Writable, Readable, Readable>;
 
 /**
+ * Coordinate early stdout capture with the durable `spawned` event.
+ *
+ * Startup failures discard captured lines because no `spawned` event exists.
+ * Normal shutdown may stop waiting for inherited pipe owners, but must leave
+ * the processing decision to the in-flight `spawned` append so stdout events
+ * can never overtake it in events.jsonl.
+ */
+export function createStdoutDrainControl(): {
+  processLines: Promise<boolean>;
+  signal: AbortSignal;
+  allowProcessing: () => void;
+  discard: () => void;
+  abortReading: () => void;
+} {
+  let resolveProcessLines!: (processLines: boolean) => void;
+  const processLines = new Promise<boolean>((resolve) => {
+    resolveProcessLines = resolve;
+  });
+  const controller = new AbortController();
+
+  return {
+    processLines,
+    signal: controller.signal,
+    allowProcessing: () => resolveProcessLines(true),
+    discard: () => {
+      resolveProcessLines(false);
+      controller.abort();
+    },
+    abortReading: () => controller.abort(),
+  };
+}
+
+/**
  * 按行读取 stdout，并把非空行串行交给 onLine
  *
  * @param stream 子进程 stdout 可读流

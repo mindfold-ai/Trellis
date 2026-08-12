@@ -19,6 +19,7 @@ import { finalizeSupervisorExit } from "../../src/commands/channel/supervisor.js
 import { runInboxWatcher } from "../../src/commands/channel/supervisor/inbox.js";
 import {
   applyParseResult,
+  createStdoutDrainControl,
   pumpStdout,
   startStdoutPump,
 } from "../../src/commands/channel/supervisor/stdout.js";
@@ -637,25 +638,39 @@ describe("channel stdout pump", () => {
     expect(settled).toBe(true);
   });
 
-  it("bounds an inherited stdout handle and drains its buffered tail", async () => {
-    const stream = new PassThrough();
-    const controller = new AbortController();
+  it("bounds an inherited stdout handle without bypassing the processing gate", async () => {
+    const control = createStdoutDrainControl();
+    const stdout = new PassThrough();
     const order: string[] = [];
-    const stdoutDrained = pumpStdout(
-      stream,
-      (line) => {
-        order.push(`line:${line}`);
-      },
-      undefined,
-      controller.signal,
-    );
-    stream.write("captured-tail");
+    const adapter = {
+      parseLine: vi.fn(() => ({ events: [] })),
+    };
+    const stdoutDrained = startStdoutPump({
+      channelName: "inherited-output",
+      workerName: "worker",
+      child: { stdout } as never,
+      adapter: adapter as never,
+      adapterCtx: undefined,
+      log: { write: (data) => order.push(`line:${data.trimEnd()}`) },
+      shutdown: { markTerminalEmitted: noop } as never,
+      processLines: control.processLines,
+      signal: control.signal,
+    });
+    stdout.write("captured-line\ncaptured-tail");
 
-    await finalizeSupervisorExit({
+    let timeoutReached!: () => void;
+    const timedOut = new Promise<void>((resolve) => {
+      timeoutReached = resolve;
+    });
+
+    const finalized = finalizeSupervisorExit({
       stdoutDrained,
       drainTimeoutMs: 10,
-      abortStdoutDrain: () => controller.abort(),
-      onDrainTimeout: () => order.push("timeout"),
+      abortStdoutDrain: control.abortReading,
+      onDrainTimeout: () => {
+        order.push("timeout");
+        timeoutReached();
+      },
       finalizeOnExit: async () => {
         order.push("finalize");
       },
@@ -666,15 +681,56 @@ describe("channel stdout pump", () => {
         order.push("exit");
       },
     });
-    stream.destroy();
+
+    await timedOut;
+    expect(order).toEqual(["timeout"]);
+
+    // The timeout stops waiting for inherited pipe owners, but line handling
+    // must still wait until the durable `spawned` event releases the gate.
+    control.allowProcessing();
+    await finalized;
+    stdout.destroy();
 
     expect(order).toEqual([
       "timeout",
+      "line:captured-line",
       "line:captured-tail",
       "finalize",
       "cleanup",
       "exit",
     ]);
+    expect(adapter.parseLine.mock.calls.map(([line]) => line)).toEqual([
+      "captured-line",
+      "captured-tail",
+    ]);
+  });
+
+  it("discards captured stdout when startup never becomes durable", async () => {
+    const control = createStdoutDrainControl();
+    const stdout = new PassThrough();
+    const logged: string[] = [];
+    const adapter = {
+      parseLine: vi.fn(() => ({ events: [] })),
+    };
+    const drained = startStdoutPump({
+      channelName: "failed-startup",
+      workerName: "worker",
+      child: { stdout } as never,
+      adapter: adapter as never,
+      adapterCtx: undefined,
+      log: { write: (data) => logged.push(data) },
+      shutdown: { markTerminalEmitted: noop } as never,
+      processLines: control.processLines,
+      signal: control.signal,
+    });
+    stdout.write("captured-line\ncaptured-tail");
+
+    control.discard();
+    await drained;
+    stdout.destroy();
+
+    expect(logged).toEqual([]);
+    expect(adapter.parseLine).not.toHaveBeenCalled();
   });
 
   it("retains a fast child's output while event processing is gated", async () => {
