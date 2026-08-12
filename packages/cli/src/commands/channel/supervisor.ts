@@ -84,6 +84,38 @@ interface ResolvedProviderPath {
 }
 
 /**
+ * Drain worker stdout before synthesising terminal state and removing the
+ * supervisor's runtime files.
+ */
+export async function finalizeSupervisorExit(args: {
+  stdoutDrained: Promise<void>;
+  drainTimeoutMs: number;
+  abortStdoutDrain: () => void;
+  onDrainTimeout?: () => void;
+  finalizeOnExit: () => Promise<void>;
+  cleanup: () => Promise<void>;
+  exit: () => void;
+}): Promise<void> {
+  const timer = setTimeout(() => {
+    try {
+      args.onDrainTimeout?.();
+    } catch {
+      // Logging must not prevent supervisor teardown.
+    }
+    try {
+      args.abortStdoutDrain();
+    } catch {
+      // Continue teardown even if the drain abort hook fails.
+    }
+  }, args.drainTimeoutMs);
+  await args.stdoutDrained.catch(() => undefined);
+  clearTimeout(timer);
+  await args.finalizeOnExit().catch(() => undefined);
+  await args.cleanup().catch(() => undefined);
+  args.exit();
+}
+
+/**
  * Resolve the real launch target for npm `.cmd` shims on Windows.
  *
  * @param provider CLI basename for the provider, such as `codex` or `claude`.
@@ -207,6 +239,40 @@ export async function runSupervisor(
       : {}),
   });
 
+  let resolveStdoutReady!: (processLines: boolean) => void;
+  const stdoutReady = new Promise<boolean>((resolve) => {
+    resolveStdoutReady = resolve;
+  });
+  const stdoutDrainAbort = new AbortController();
+  const abortStdoutDrain = (): void => {
+    resolveStdoutReady(false);
+    stdoutDrainAbort.abort();
+  };
+  const idleTimerRef: {
+    current?: ReturnType<typeof scheduleSupervisorIdleTimer>;
+  } = {};
+  const turnTracker = new TurnTracker({
+    onIdleExit: () => idleTimerRef.current?.pause(),
+    onIdleEnter: () => idleTimerRef.current?.reset(),
+  });
+
+  // Attach before any await. Node drains unread child stdio after `exit`, so
+  // attaching only after the durable `spawned` append can silently discard a
+  // fast worker's final output. Line processing stays gated until `spawned`
+  // is durable, preserving event-log order.
+  const stdoutDrained = startStdoutPump({
+    channelName,
+    workerName,
+    child,
+    adapter,
+    adapterCtx,
+    log,
+    shutdown,
+    turnTracker,
+    processLines: stdoutReady,
+    signal: stdoutDrainAbort.signal,
+  });
+
   // Gate the `spawned` event behind whichever child lifecycle event fires
   // first: `spawn` (success) or `error` (launch failure, e.g. ENOENT).
   // Without this gate the post-spawn path writes `spawned` even when the
@@ -241,6 +307,7 @@ export async function runSupervisor(
       // `exit` event that Node won't deliver.
       spawnFailed = true;
       settleSpawn();
+      abortStdoutDrain();
       void (async () => {
         try {
           await appendEvent(
@@ -293,11 +360,18 @@ export async function runSupervisor(
     // adapter never produced one (otherwise `wait --kind done` hangs),
     // and await any in-flight `killed` append from a concurrent shutdown
     // before exiting so the event doesn't race the process death.
-    void (async () => {
-      await shutdown.finalizeOnExit(code, sig).catch(() => undefined);
-      await cleanup(channelName, workerName).catch(() => undefined);
-      process.exit(0);
-    })();
+    void finalizeSupervisorExit({
+      stdoutDrained,
+      drainTimeoutMs: SHUTDOWN_GRACE_MS,
+      abortStdoutDrain,
+      onDrainTimeout: () =>
+        log.write(
+          `[supervisor] stdout did not close within ${SHUTDOWN_GRACE_MS}ms; draining buffered lines and exiting\n`,
+        ),
+      finalizeOnExit: () => shutdown.finalizeOnExit(code, sig),
+      cleanup: () => cleanup(channelName, workerName),
+      exit: () => process.exit(0),
+    });
   });
 
   // Signal handlers MUST be registered before any await so a SIGTERM
@@ -321,67 +395,61 @@ export async function runSupervisor(
   // so reaching this point with `spawnFailed=true` means we already kicked
   // off cleanup and can bail cleanly.
   await spawnSettled;
-  if (spawnFailed) return;
+  if (spawnFailed) {
+    abortStdoutDrain();
+    return;
+  }
   // Codex #3 fix: if a signal/timeout requested shutdown while we were
   // waiting for spawn-settled, don't write a misleading `spawned` event;
   // let the in-flight `killed` append complete and bail.
   if (shutdown.isShuttingDown()) {
+    abortStdoutDrain();
     await shutdown.awaitFinalize();
     return;
   }
 
-  fs.writeFileSync(
-    workerFile(channelName, workerName, "worker-pid", project),
-    String(child.pid),
-  );
+  try {
+    fs.writeFileSync(
+      workerFile(channelName, workerName, "worker-pid", project),
+      String(child.pid),
+    );
 
-  await appendEvent(
-    channelName,
-    {
-      kind: "spawned",
-      by: config.spawnedBy ?? "main",
-      as: workerName,
-      provider: config.provider,
-      pid: child.pid,
-      inboxPolicy: config.inboxPolicy ?? DEFAULT_INBOX_POLICY,
-      ...(config.agent ? { agent: config.agent } : {}),
-      ...(config.contextFiles && config.contextFiles.length > 0
-        ? { files: config.contextFiles }
-        : {}),
-      ...(config.contextManifests && config.contextManifests.length > 0
-        ? { manifests: config.contextManifests }
-        : {}),
-    },
-    project,
-  );
+    await appendEvent(
+      channelName,
+      {
+        kind: "spawned",
+        by: config.spawnedBy ?? "main",
+        as: workerName,
+        provider: config.provider,
+        pid: child.pid,
+        inboxPolicy: config.inboxPolicy ?? DEFAULT_INBOX_POLICY,
+        ...(config.agent ? { agent: config.agent } : {}),
+        ...(config.contextFiles && config.contextFiles.length > 0
+          ? { files: config.contextFiles }
+          : {}),
+        ...(config.contextManifests && config.contextManifests.length > 0
+          ? { manifests: config.contextManifests }
+          : {}),
+      },
+      project,
+    );
+  } catch (err) {
+    abortStdoutDrain();
+    throw err;
+  }
 
   // OOM-guard idle timer: start only after `spawned` is durable. Hooks
   // wired through the TurnTracker pause it mid-turn and reset it on
   // turn finish / interrupted (the same transitions that drive durable
   // `idleSince`). `<=0` short-circuits the timer to a no-op.
-  const idleTimer = scheduleSupervisorIdleTimer({
+  idleTimerRef.current = scheduleSupervisorIdleTimer({
     idleTimeoutMs: config.idleTimeoutMs ?? 0,
     shutdown,
     isChildExited: () => child.exitCode !== null || child.signalCode !== null,
     log,
   });
-  const turnTracker = new TurnTracker({
-    onIdleExit: () => idleTimer.pause(),
-    onIdleEnter: () => idleTimer.reset(),
-  });
-  process.on("exit", () => idleTimer.cancel());
-
-  // ── 1. stdout reader ──
-  startStdoutPump({
-    channelName,
-    workerName,
-    child,
-    adapter,
-    adapterCtx,
-    log,
-    shutdown,
-    turnTracker,
-  });
+  process.on("exit", () => idleTimerRef.current?.cancel());
+  resolveStdoutReady(true);
 
   // ── timeout guard (anti-zombie) ──
   if (config.timeoutMs && config.timeoutMs > 0) {
