@@ -1025,6 +1025,7 @@ interface InitOptions {
   grok?: boolean;
   kimi?: boolean;
   snow?: boolean;
+  dsh?: boolean;
   yes?: boolean;
   user?: string;
   force?: boolean;

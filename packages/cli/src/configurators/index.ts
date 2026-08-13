@@ -43,6 +43,7 @@ import { collectOmpTemplates } from "./omp.js";
 import { collectGrokTemplates } from "./grok.js";
 import { collectKimiTemplates } from "./kimi.js";
 import { collectSnowTemplates } from "./snow.js";
+import { collectDshTemplates } from "./dsh.js";
 
 // Shared utilities
 import {
@@ -106,6 +107,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
   grok: fromTemplates(collectGrokTemplates),
   kimi: fromTemplates(collectKimiTemplates),
   snow: fromTemplates(collectSnowTemplates),
+  dsh: fromTemplates(collectDshTemplates),
 };
 
 // =============================================================================

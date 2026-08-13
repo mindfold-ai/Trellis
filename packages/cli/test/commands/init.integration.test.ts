@@ -680,6 +680,66 @@ describe("init() integration", () => {
     expect(trackedPaths).toEqual(expect.arrayContaining(expectedKimiPaths));
   });
 
+  it("#3m-dsh dsh platform creates shared skills and .dsh skills", async () => {
+    await init({ yes: true, dsh: true });
+
+    // Shared workflow + bundled skills → .agents/skills/
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-meta", "SKILL.md"),
+      ),
+    ).toBe(true);
+
+    // dsh-private skills: commands-as-skills + agent prompts
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-finish-work", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-implement", "SKILL.md"),
+      ),
+    ).toBe(true);
+
+    // dsh has no project-level hooks/settings surface.
+    expect(fs.existsSync(path.join(tmpDir, ".dsh", "hooks"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".dsh", "settings.json"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
+
+    const hashFile = path.join(
+      tmpDir,
+      DIR_NAMES.WORKFLOW,
+      ".template-hashes.json",
+    );
+    const hashesFile = JSON.parse(fs.readFileSync(hashFile, "utf-8")) as {
+      __version?: number;
+      hashes?: Record<string, string>;
+    };
+    const hashes = hashesFile.hashes ?? {};
+    const trackedPaths = Object.keys(hashes).map((p) => p.replace(/\\/g, "/"));
+    const dshTemplates = collectPlatformTemplates("dsh");
+    expect(dshTemplates).toBeInstanceOf(Map);
+    if (!dshTemplates) {
+      throw new Error("Expected dsh templates to be collectable");
+    }
+    const expectedDshPaths = [...dshTemplates.keys()];
+    expect(trackedPaths).toEqual(expect.arrayContaining(expectedDshPaths));
+  });
+
   it("#3l trae platform writes hooks, commands, agents, and tracked templates", async () => {
     await init({ yes: true, trae: true });
 

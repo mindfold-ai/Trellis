@@ -1054,6 +1054,7 @@ describe("regression: update only configured platforms (beta.16)", () => {
       "omp",
       "grok",
       "kimi",
+      "dsh",
     ] as const;
     for (const id of withTracking) {
       const result = collectPlatformTemplates(id);

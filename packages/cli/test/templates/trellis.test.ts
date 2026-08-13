@@ -182,7 +182,7 @@ describe("trellis template constants", () => {
       "[Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Snow, Oh My Pi]",
     );
     const pullBasedMarker =
-      "[Gemini, Qoder, Copilot, Reasonix, Trae, Grok, Kimi Code]";
+      "[Gemini, Qoder, Copilot, Reasonix, Trae, Grok, Kimi Code, DeepSeek Harness]";
     const pullBasedBlock = platformBlock(implement, pullBasedMarker);
 
     const workflowLabelByPlatform: Partial<Record<AITool, string>> = {
@@ -192,6 +192,7 @@ describe("trellis template constants", () => {
       trae: "Trae",
       grok: "Grok",
       kimi: "Kimi Code",
+      dsh: "DeepSeek Harness",
     };
     // Pi templates keep a pull-based fallback, but workflow 2.1 routes Pi
     // through the extension-backed context path.
