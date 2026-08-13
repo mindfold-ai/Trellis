@@ -77,6 +77,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".github/hooks/trellis.json")).toBe(true);
     expect(isManagedPath(".pi/extensions/trellis/index.ts")).toBe(true);
     expect(isManagedPath(".pi/prompts/trellis-continue.md")).toBe(true);
+    expect(isManagedPath(".dsh/skills/trellis-start/SKILL.md")).toBe(true);
   });
 
   // Positive: exact match (startsWith(d + "/") = false, === d = true)
@@ -91,6 +92,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".devin/workflows")).toBe(true);
     expect(isManagedPath(".github/prompts")).toBe(true);
     expect(isManagedPath(".github/hooks")).toBe(true);
+    expect(isManagedPath(".dsh")).toBe(true);
     expect(isManagedPath(".trellis")).toBe(true);
   });
 
@@ -114,6 +116,7 @@ describe("isManagedPath", () => {
     expect(isManagedPath(".github/prompts-backup")).toBe(false);
     expect(isManagedPath(".github/copilot-backup")).toBe(false);
     expect(isManagedPath(".github/hooks-backup")).toBe(false);
+    expect(isManagedPath(".dsh-backup")).toBe(false);
   });
 
   // Boundary: empty string

@@ -35,6 +35,7 @@ import { collectQoderTemplates } from "./qoder.js";
 import { collectCodebuddyTemplates } from "./codebuddy.js";
 import { collectCopilotTemplates } from "./copilot.js";
 import { collectDroidTemplates } from "./droid.js";
+import { collectDshTemplates } from "./dsh.js";
 import { collectPiTemplates } from "./pi.js";
 import { collectReasonixTemplates } from "./reasonix.js";
 import { collectZcodeTemplates, configureZcode } from "./zcode.js";
@@ -98,6 +99,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
   codebuddy: fromTemplates(collectCodebuddyTemplates),
   copilot: fromTemplates(collectCopilotTemplates),
   droid: fromTemplates(collectDroidTemplates),
+  dsh: fromTemplates(collectDshTemplates),
   pi: fromTemplates(collectPiTemplates),
   reasonix: fromTemplates(collectReasonixTemplates),
   zcode: { configure: configureZcode, collectTemplates: collectZcodeTemplates },

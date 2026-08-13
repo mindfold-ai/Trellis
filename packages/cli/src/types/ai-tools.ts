@@ -21,6 +21,7 @@ export type AITool =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -48,6 +49,7 @@ export type TemplateDir =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -75,6 +77,7 @@ export type CliFlag =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -96,7 +99,8 @@ export interface TemplateContext {
     | "$"
     | "/"
     | "/skill trellis-"
-    | "/skill:trellis-";
+    | "/skill:trellis-"
+    | "trellis-";
   /** Description of AI executor actions shown in role tables */
   executorAI:
     | "Bash scripts or Task calls"
@@ -389,6 +393,31 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: true,
       cliFlag: "droid",
+    },
+  },
+  dsh: {
+    // DeepSeek Harness (dsh) is a skills-first pull-based host: it reads
+    // `.agents/skills/` (agentskills.io, rank-200 project root) and its own
+    // `.dsh/skills/` (rank-100 project root) natively and the agent loads
+    // skills by name through its skill-loader tool. No session-start hook
+    // ships in the default web/headless profiles, so `hasHooks: false` and
+    // `trellis-start` stays as a user-invocable skill. Entry skills reference
+    // other skills by bare name (`trellis-<name>`), hence `cmdRefPrefix:
+    // "trellis-"`.
+    name: "DeepSeek Harness (dsh)",
+    templateDirs: ["common", "dsh"],
+    configDir: ".dsh",
+    supportsAgentSkills: true,
+    cliFlag: "dsh",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "trellis-",
+      executorAI: "Bash scripts or tool calls",
+      userActionLabel: "Skills",
+      agentCapable: true,
+      hasHooks: false,
+      cliFlag: "dsh",
     },
   },
   pi: {

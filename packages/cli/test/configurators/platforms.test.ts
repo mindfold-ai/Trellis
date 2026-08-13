@@ -1030,6 +1030,60 @@ describe("configurePlatform", () => {
     );
   });
 
+  it("configurePlatform('dsh') writes shared + dsh-private skills and the operator guide", async () => {
+    await configurePlatform("dsh", tmpDir);
+
+    // hasHooks=false → trellis-start stays as a user-invocable dsh skill
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-continue", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-finish-work", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.readFileSync(
+        path.join(tmpDir, ".dsh", "skills", "trellis-start", "SKILL.md"),
+        "utf-8",
+      ),
+    ).toContain("--platform dsh");
+
+    // Shared workflow skills land in .agents/skills/, entry skills stay private
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-check", "SKILL.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agents", "skills", "trellis-start", "SKILL.md"),
+      ),
+    ).toBe(false);
+
+    expect(
+      fs.readFileSync(path.join(tmpDir, ".dsh", "DSH.md"), "utf-8"),
+    ).toContain("class-2");
+
+    // No hooks/settings — dsh ships no project-level hook surface
+    expect(fs.existsSync(path.join(tmpDir, ".dsh", "settings.json"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(tmpDir, ".dsh", "hooks"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".dsh", "agents"))).toBe(false);
+
+    expect(AI_TOOLS.dsh.templateContext.hasHooks).toBe(false);
+    expect(AI_TOOLS.dsh.hasPythonHooks).toBe(false);
+    expect(AI_TOOLS.dsh.supportsAgentSkills).toBe(true);
+  });
+
   it("configurePlatform('zcode') writes only .zcode-owned skills", async () => {
     await configurePlatform("zcode", tmpDir);
 
