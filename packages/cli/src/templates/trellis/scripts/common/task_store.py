@@ -137,6 +137,7 @@ _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
     ".zcode",     # ZCode
     ".grok",      # Grok Build
     ".kimi-code", # Kimi Code
+    ".dsh",       # DeepSeek Harness
 )
 _CODEX_CONFIG_DIR = ".codex"
 

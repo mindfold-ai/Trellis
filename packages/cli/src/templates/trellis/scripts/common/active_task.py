@@ -55,6 +55,7 @@ _KNOWN_PLATFORMS = {
     "kimi",
     "zcode",
     "snow",
+    "dsh",
 }
 
 # Every name below records how it was checked. Do NOT add a name by analogy
@@ -480,6 +481,14 @@ def resolve_context_key(
         override = _string_value(os.environ.get("TRELLIS_CONTEXT_ID"))
         if override:
             return _sanitize_key(override) or _hash_value(override)
+        # DeepSeek Harness (dsh): the dsh-trellis harness plugin exports this
+        # DSH_* variable into every agent shell (REAL by vendor design — the
+        # shell-env registry delivers declared DSH_* facts per tool call), so
+        # main-session `task.py start` / `create` and the sub-agent prelude's
+        # `task.py current` resolve the same per-session pointer.
+        dsh_override = _string_value(os.environ.get("DSH_TRELLIS_CONTEXT_ID"))
+        if dsh_override:
+            return _sanitize_key(dsh_override) or _hash_value(dsh_override)
 
     data = _as_dict(platform_input)
     platform_name = _detect_platform(data, platform) if data or platform else None
