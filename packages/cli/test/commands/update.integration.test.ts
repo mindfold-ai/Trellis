@@ -814,6 +814,9 @@ describe("update() integration", () => {
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(expectedWorkflow);
     expect(readProjectFile(MANAGED_FILE)).toBe(expectedGetContext);
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
+      "[Gemini, Qoder, Copilot, Reasonix, Trae, Grok, Kimi Code, DeepSeek Harness]",
+    );
+    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
       "[codex-inline, Kilo, Antigravity, Devin]",
     );
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain("[Codex]");
