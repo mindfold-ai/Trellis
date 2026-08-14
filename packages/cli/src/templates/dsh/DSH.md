@@ -70,5 +70,8 @@ launching DSH from another Trellis-enabled AI host.
   to the detected Windows launcher during `trellis init` / `trellis update`.
 - Role dispatch prompts start with `Active task: <task path>`. This exact task
   path is the child's primary context source; children must not guess globally.
+- Each `dsh --profile headless` invocation creates a fresh DSH session. Do not
+  expect an active-task pointer to persist across separate headless calls; keep
+  the workflow in one session or explicitly resume its returned session id.
 - The optional companion plugin is maintained separately at
   <https://github.com/SajoLuo/dsh-trellis>.
