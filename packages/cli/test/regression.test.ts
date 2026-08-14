@@ -799,6 +799,7 @@ describe("regression: task auto-activation failure diagnostics (issue #430)", ()
     "TRELLIS_CONTEXT_ID",
     "DSH_TRELLIS_CONTEXT_ID",
     "DSH_SESSION_ID",
+    "DSH_SHELL",
     "CLAUDE_SESSION_ID",
     "CLAUDE_CODE_SESSION_ID",
     "CODEX_SESSION_ID",
@@ -1700,6 +1701,7 @@ describe("regression: current-task path normalization", () => {
     "TRELLIS_CONTEXT_ID",
     "DSH_TRELLIS_CONTEXT_ID",
     "DSH_SESSION_ID",
+    "DSH_SHELL",
     "CLAUDE_SESSION_ID",
     "CLAUDE_CODE_SESSION_ID",
     "CODEX_SESSION_ID",
@@ -2877,6 +2879,59 @@ print(json.dumps({
     ).toBe(false);
   });
 
+  it("[session-current-task] managed DSH shell outranks an inherited outer Trellis override without the plugin", () => {
+    setupTaskRepo();
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(".trellis/tasks/issue-106")}`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({
+          TRELLIS_CONTEXT_ID: "claude_outer-session",
+          DSH_SHELL: "1",
+          DSH_SESSION_ID: "inner-session",
+        }),
+      },
+    );
+
+    expect(output).toContain("Source: session:dsh_inner-session");
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    expect(fs.existsSync(path.join(sessionsDir, "dsh_inner-session.json"))).toBe(
+      true,
+    );
+    expect(
+      fs.existsSync(path.join(sessionsDir, "claude_outer-session.json")),
+    ).toBe(false);
+  });
+
+  it("[session-current-task] DSH_SESSION_ID alone does not displace an explicit Trellis override", () => {
+    setupTaskRepo();
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+
+    const output = execSync(
+      `${pythonCmd} ${JSON.stringify(taskScriptPath)} start ${JSON.stringify(".trellis/tasks/issue-106")}`,
+      {
+        cwd: tmpDir,
+        encoding: "utf-8",
+        env: sessionEnv({
+          TRELLIS_CONTEXT_ID: "claude_outer-session",
+          DSH_SESSION_ID: "unmanaged-session",
+        }),
+      },
+    );
+
+    expect(output).toContain("Source: session:claude_outer-session");
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    expect(
+      fs.existsSync(path.join(sessionsDir, "claude_outer-session.json")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(sessionsDir, "dsh_unmanaged-session.json")),
+    ).toBe(false);
+  });
+
   it("[session-current-task] task.py start ignores OPENCODE_RUN_ID and enters degraded mode", () => {
     // Inverted from "uses OPENCODE_RUN_ID" on 2026-08-05. All three declared
     // OpenCode names (OPENCODE_SESSION_ID / OPENCODE_SESSIONID /
@@ -2984,6 +3039,7 @@ print(json.dumps({
         "            os.environ.pop(_key, None)",
         'os.environ.pop("TRELLIS_CONTEXT_ID", None)',
         'os.environ.pop("DSH_TRELLIS_CONTEXT_ID", None)',
+        'os.environ.pop("DSH_SHELL", None)',
         ...bodyLines,
       ].join("\n"),
     );

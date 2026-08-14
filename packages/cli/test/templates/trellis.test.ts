@@ -249,6 +249,9 @@ describe("trellis template constants", () => {
     );
     expect(workflowMdTemplate).not.toContain("Start-Sleep");
     expect(workflowMdTemplate).toContain("trellis-agent-<role>");
+    expect(workflowMdTemplate).toContain(
+      "on Claude Code: use the Task/Agent tool, never the Skill tool",
+    );
     expect(hookAutoBlock).toContain("codex-sub-agent");
     expect(hookAutoBlock).toContain("SubagentStart");
   });

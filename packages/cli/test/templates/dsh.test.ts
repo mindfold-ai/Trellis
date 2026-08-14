@@ -51,7 +51,9 @@ describe("dsh template readers", () => {
     expect(guide).toContain("If unavailable");
     expect(guide).toContain("run_in_background: false");
     expect(guide).toContain("DSH_TRELLIS_CONTEXT_ID");
-    expect(guide).toContain("unset `TRELLIS_CONTEXT_ID`");
+    expect(guide).toContain("`DSH_SHELL=1` together with `DSH_SESSION_ID`");
+    expect(guide).toContain("including nested launches");
+    expect(guide).not.toContain("unset `TRELLIS_CONTEXT_ID`");
     expect(guide).toContain("creates a fresh DSH session");
   });
 });

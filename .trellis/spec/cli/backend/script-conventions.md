@@ -433,12 +433,13 @@ All current-task consumers must use the active task resolver instead of reading
 `.trellis/.current-task` directly. The resolver is the single source of truth
 for session/window scoped task state:
 
-1. Derive a context key, in this order (`resolve_context_key`, `:468-509`): a
+1. Derive a context key, in this order (`resolve_context_key`, `:478-540`): a
    managed `DSH_TRELLIS_CONTEXT_ID` contributed per execution by the optional
-   DSH plugin; `TRELLIS_CONTEXT_ID`; then session / conversation / transcript
-   ids from the hook payload; then a platform-native session environment
-   variable for the detected platform; then a shell ticket for a matching
-   AI-run `task.py` command.
+   DSH plugin; a verified DSH managed shell (`DSH_SHELL=1` together with
+   `DSH_SESSION_ID`); `TRELLIS_CONTEXT_ID`; then session / conversation /
+   transcript ids from the hook payload; then a platform-native session
+   environment variable for the detected platform; then a shell ticket for a
+   matching AI-run `task.py` command.
 2. Read `.trellis/.runtime/sessions/<session-key>.json`.
 3. If no context key or no session task is present, return no active task.
 4. If a session task exists but the task directory is stale, return stale
@@ -476,12 +477,15 @@ assignment before the user's command so compound commands like
 `task.py start && task.py current` keep the same context for every command in
 the Bash invocation.
 An inner DSH session can inherit `TRELLIS_CONTEXT_ID` from an already-active
-outer Trellis host. The optional `dsh-trellis` plugin therefore contributes
-`DSH_TRELLIS_CONTEXT_ID = dsh_<session-id>` through DSH's managed `shellEnv`
-registry. DSH scrubs ambient `DSH_*` variables before rebuilding the registry
-for each execution, so this plugin value is the current native identity and
-must resolve before the inherited generic override. Plugin utility-command
-subprocesses must explicitly replace `TRELLIS_CONTEXT_ID` with the same key.
+outer Trellis host. DSH scrubs ambient `DSH_*` variables before rebuilding its
+managed shell namespace, so `DSH_SHELL=1` together with `DSH_SESSION_ID` proves
+the current process is inside DSH and must resolve through the canonical DSH
+env-table entry before the inherited generic override. The optional
+`dsh-trellis` plugin additionally contributes
+`DSH_TRELLIS_CONTEXT_ID = dsh_<session-id>` per execution; it remains first so
+a forwarded child identity may differ from the shell's own session id. Plugin
+utility-command subprocesses must explicitly replace `TRELLIS_CONTEXT_ID` with
+the same key.
 Do not choose this prefix from OS alone. On Windows, Git Bash / MSYS2 still
 parse POSIX syntax, so OpenCode must treat `MSYSTEM`, `MINGW_PREFIX`,
 `OSTYPE=msys|mingw|cygwin`, `SHELL=...bash`, or `OPENCODE_GIT_BASH_PATH` as

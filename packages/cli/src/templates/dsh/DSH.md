@@ -7,7 +7,7 @@ review roles, and exposes a stable `DSH_SESSION_ID` to every managed shell.
 | Capability | Without companion plugin | With `dsh-trellis` |
 | --- | --- | --- |
 | Shared and entry skills | Works | Works |
-| Session-scoped active task | Works through native `DSH_SESSION_ID`; nested launches must not inherit an outer `TRELLIS_CONTEXT_ID` | Managed per-execution identity isolates nested launches |
+| Session-scoped active task | Works through verified `DSH_SHELL=1` + `DSH_SESSION_ID`, including nested launches | Managed per-execution identity can forward a distinct child session |
 | Implement/check/research roles | Foreground native sub-agent | Background native sub-agent |
 | Per-turn workflow breadcrumb | Not available | Injected from `workflow.md` |
 | Event-driven child wait | Not available | `trellis_wait` |
@@ -48,10 +48,12 @@ repeated agent-list polling.
 DSH inherits ordinary environment variables from the process that launches it.
 If that outer process is already an active Trellis session,
 `TRELLIS_CONTEXT_ID` would otherwise override the inner `DSH_SESSION_ID`.
-The optional plugin contributes a trusted `DSH_TRELLIS_CONTEXT_ID` for each
-managed shell execution, and the DSH adapter resolves it before the inherited
-generic override. Without the plugin, unset `TRELLIS_CONTEXT_ID` before
-launching DSH from another Trellis-enabled AI host.
+DSH rebuilds its complete `DSH_*` namespace for each managed shell, so the beta
+adapter treats `DSH_SHELL=1` together with `DSH_SESSION_ID` as the current DSH
+identity and resolves it before an inherited generic override, even without the
+plugin. The optional plugin additionally contributes a trusted
+`DSH_TRELLIS_CONTEXT_ID` when it must forward a child identity that differs
+from the shell's own session id.
 
 ## File map
 

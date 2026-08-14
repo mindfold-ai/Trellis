@@ -407,22 +407,24 @@ sub-agent context injection, or platform plugins. Direct reads reintroduce
 multi-window task pollution.
 
 Context-key precedence, as implemented in `active_task.py:resolve_context_key`
-(`:468-509`):
+(`:478-540`):
 
 1. Managed `DSH_TRELLIS_CONTEXT_ID`, when the optional `dsh-trellis` plugin
    contributes it for the current DSH shell execution.
-2. `TRELLIS_CONTEXT_ID` environment override for subprocesses.
-3. From the hook payload: `session_id`, `sessionId`, or `sessionID`.
-4. From the hook payload: `conversation_id` / `conversationId` / `conversationID`.
-5. From the hook payload: `transcript_path` / `transcriptPath` / `transcript`
+2. The canonical DSH env-table identity when both `DSH_SHELL=1` and a non-empty
+   `DSH_SESSION_ID` prove the process is inside a DSH managed shell.
+3. `TRELLIS_CONTEXT_ID` environment override for subprocesses.
+4. From the hook payload: `session_id`, `sessionId`, or `sessionID`.
+5. From the hook payload: `conversation_id` / `conversationId` / `conversationID`.
+6. From the hook payload: `transcript_path` / `transcriptPath` / `transcript`
    when non-empty.
-6. A platform-native session environment variable — but only for the handful of
+7. A platform-native session environment variable — but only for the handful of
    names that have actually been verified to exist, and only for the platform
    the resolver detected (`_iter_env_keys` filters by platform name, so ZCode's
    entry cannot fire in a Claude session). Session names are tried first, then
    conversation names, then transcript names (`active_task.py:294-322`).
-7. A short-lived shell ticket, checked **last** and **not** gated on platform
-   name (`active_task.py:505-508`) — see "Shell-ticket bridge" below. Last on
+8. A short-lived shell ticket, checked **last** and **not** gated on platform
+   name (`active_task.py:537-540`) — see "Shell-ticket bridge" below. Last on
    purpose: a platform that genuinely exports identity into the shell outranks
    a ticket written on its behalf.
 
@@ -439,15 +441,19 @@ scoping when `session_id` or `conversation_id` is present.
 DeepSeek Harness is the verified shell-env exception. It exposes
 `DSH_SESSION_ID`, but an inner DSH process also inherits ordinary variables such
 as an outer Claude/Codex session's `TRELLIS_CONTEXT_ID`; the generic override
-would silently claim the inner task before the native table is consulted. The
-optional `dsh-trellis` plugin must therefore register a managed
-`DSH_TRELLIS_CONTEXT_ID = dsh_<session-id>` through DSH's `shellEnv` registry.
-DSH discards ambient `DSH_*` values before rebuilding that per-execution
-namespace, so the managed value is trusted and may outrank the generic override
-without changing other platforms' semantics. Plugin-owned subprocess commands
-must also set `TRELLIS_CONTEXT_ID` explicitly to the same DSH context key.
-Regression coverage must set both an outer `TRELLIS_CONTEXT_ID` and the managed
-DSH value and assert that only the `dsh_*` runtime pointer is written.
+would silently claim the inner task before the native table is consulted. DSH
+discards ambient `DSH_*` values before rebuilding its managed namespace, so the
+pair `DSH_SHELL=1` plus a non-empty `DSH_SESSION_ID` is trusted evidence for the
+current DSH shell and its native table identity may outrank the generic override
+without changing other platforms' semantics. The optional `dsh-trellis` plugin
+additionally registers a managed
+`DSH_TRELLIS_CONTEXT_ID = dsh_<session-id>` through DSH's `shellEnv` registry;
+that forwarded identity remains first because a child may differ from the
+shell's own session. Plugin-owned subprocess commands must also set
+`TRELLIS_CONTEXT_ID` explicitly to the same DSH context key. Regression coverage
+must pin the plugin-present and plugin-absent nested cases, assert that only the
+`dsh_*` runtime pointer is written, and prove that `DSH_SESSION_ID` without the
+`DSH_SHELL=1` sentinel does not displace an explicit generic override.
 
 OpenCode has **no** entry in any env table. Its plugin holds the session
 identity and injects it, so the plugin must prefix Bash tool commands in
