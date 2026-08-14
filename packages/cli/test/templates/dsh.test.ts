@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getAllAgents } from "../../src/templates/dsh/index.js";
-import { applyPullBasedPreludeMarkdown } from "../../src/configurators/shared.js";
+import { getAllAgents, getDshGuide } from "../../src/templates/dsh/index.js";
+import {
+  applyPullBasedPreludeMarkdown,
+  replacePythonCommandLiterals,
+} from "../../src/configurators/shared.js";
 import { collectDshTemplates } from "../../src/configurators/dsh.js";
 import { collectPiTemplates } from "../../src/configurators/pi.js";
 
@@ -10,35 +13,43 @@ const EXPECTED_AGENT_NAMES = [
   "trellis-research",
 ];
 
-describe("dsh getAllAgents", () => {
-  it("returns the expected agent prompt set", () => {
+describe("dsh template readers", () => {
+  it("returns the expected child-only role prompt set", () => {
     const agents = getAllAgents();
-    const names = agents.map((agent) => agent.name);
-    expect(names).toEqual(EXPECTED_AGENT_NAMES);
-  });
+    expect(agents.map((agent) => agent.name)).toEqual(EXPECTED_AGENT_NAMES);
 
-  it("each agent is a Markdown file with YAML frontmatter (dsh SKILL.md requires name + description)", () => {
-    for (const agent of getAllAgents()) {
+    for (const agent of agents) {
       const content = agent.content.replace(/\r\n/g, "\n");
-      expect(content.length).toBeGreaterThan(0);
       expect(content).toMatch(/^---\n/);
-      expect(content).toContain("name: ");
+      expect(content).toContain(`name: ${agent.name}`);
       expect(content).toContain("description:");
-      // dsh agents document dispatch through the subagent tool
-      expect(content).toContain("`subagent` tool");
+      expect(content).toContain("user-invocable: false");
+      expect(content).toContain("Child-agent-only");
+      expect(content).not.toContain("## Dispatch note (main session)");
     }
   });
 
-  it("dispatches research through the subagent tool with research-only writes", () => {
+  it("keeps research read-only and uses the portable Python template command", () => {
     const research = getAllAgents().find(
       (agent) => agent.name === "trellis-research",
     );
     expect(research).toBeDefined();
     if (!research) return;
 
-    expect(research.content).toContain("`subagent` tool");
-    expect(research.content).toContain("may write only under");
-    expect(research.content).toContain("Active task: <path");
+    expect(research.content).toContain(
+      "Run `python3 ./.trellis/scripts/task.py current --source`",
+    );
+    expect(research.content).toContain(
+      "Don't write code or modify files outside `{TASK_DIR}/research/`",
+    );
+  });
+
+  it("ships an operator guide with both plugin and no-plugin paths", () => {
+    const guide = getDshGuide();
+    expect(guide).toContain("Without companion plugin");
+    expect(guide).toContain("With `dsh-trellis`");
+    expect(guide).toContain("If unavailable");
+    expect(guide).toContain("run_in_background: false");
   });
 });
 
@@ -57,8 +68,9 @@ describe("dsh pull-based prelude injection", () => {
   });
 
   it("does not inject the pull-based prelude into research", () => {
-    const agents = applyPullBasedPreludeMarkdown(getAllAgents());
-    const research = agents.find((agent) => agent.name === "trellis-research");
+    const research = applyPullBasedPreludeMarkdown(getAllAgents()).find(
+      (agent) => agent.name === "trellis-research",
+    );
     expect(research).toBeDefined();
     if (!research) return;
     expect(research.content).not.toContain("Load Trellis Context First");
@@ -67,55 +79,77 @@ describe("dsh pull-based prelude injection", () => {
 });
 
 describe("dsh collectDshTemplates", () => {
-  it("writes commands-as-skills and agent prompts under .dsh/skills/", () => {
+  it("writes entry skills and collision-free role skills under .dsh/skills/", () => {
     const files = collectDshTemplates();
 
-    // User-invocable entry points (/trellis-<name>)
     expect(files.has(".dsh/skills/trellis-start/SKILL.md")).toBe(true);
     expect(files.has(".dsh/skills/trellis-continue/SKILL.md")).toBe(true);
     expect(files.has(".dsh/skills/trellis-finish-work/SKILL.md")).toBe(true);
 
-    // Trellis agent prompts (dsh has no declarative custom sub-agent definitions)
-    expect(files.has(".dsh/skills/trellis-implement/SKILL.md")).toBe(true);
-    expect(files.has(".dsh/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".dsh/skills/trellis-research/SKILL.md")).toBe(true);
+    expect(files.has(".dsh/skills/trellis-agent-implement/SKILL.md")).toBe(
+      true,
+    );
+    expect(files.has(".dsh/skills/trellis-agent-check/SKILL.md")).toBe(true);
+    expect(files.has(".dsh/skills/trellis-agent-research/SKILL.md")).toBe(true);
+    expect(files.has(".dsh/skills/trellis-check/SKILL.md")).toBe(false);
 
-    const implement = files.get(".dsh/skills/trellis-implement/SKILL.md");
+    const implement = files.get(".dsh/skills/trellis-agent-implement/SKILL.md");
     expect(implement).toContain("Load Trellis Context First");
-    const research = files.get(".dsh/skills/trellis-research/SKILL.md");
+    expect(implement).toContain("name: trellis-agent-implement");
+    expect(implement).toContain("user-invocable: false");
+
+    const check = files.get(".dsh/skills/trellis-agent-check/SKILL.md");
+    expect(check).toContain("quality gate as **blocked** or **failed**");
+
+    const research = files.get(".dsh/skills/trellis-agent-research/SKILL.md");
     expect(research).not.toContain("Load Trellis Context First");
-
-    // No hooks/settings files — dsh has no project-level hook or settings
-    // surface Trellis may write; skills are the only payload.
-    for (const key of files.keys()) {
-      expect(key.startsWith(".dsh/hooks")).toBe(false);
-      expect(key).not.toBe(".dsh/settings.json");
-      expect(key).not.toBe(".dsh/config.toml");
-    }
-  });
-
-  it("writes workflow + bundled skills to the shared .agents/skills/ root", () => {
-    const files = collectDshTemplates();
-    expect(files.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".agents/skills/trellis-before-dev/SKILL.md")).toBe(true);
-    expect(files.has(".agents/skills/trellis-meta/SKILL.md")).toBe(true);
-    // Command-as-skill files stay dsh-private (Codex owns the shared
-    // trellis-start/continue/finish-work fallback copies).
-    expect(files.has(".agents/skills/trellis-start/SKILL.md")).toBe(false);
-    expect(files.has(".agents/skills/trellis-finish-work/SKILL.md")).toBe(
-      false,
+    expect(research).toContain("user-invocable: false");
+    expect(research).toContain(
+      replacePythonCommandLiterals(
+        "python3 ./.trellis/scripts/task.py current --source",
+      ),
     );
   });
 
-  it("renders .agents/skills/ files byte-identically to Pi's shared writes", () => {
+  it("resolves entry-skill placeholders for dsh", () => {
+    const files = collectDshTemplates();
+    const start = files.get(".dsh/skills/trellis-start/SKILL.md");
+    const finish = files.get(".dsh/skills/trellis-finish-work/SKILL.md");
+
+    expect(start).toContain("--platform dsh");
+    expect(start).toContain("name: trellis-start");
+    expect(finish).toContain("`trellis-finish-work`");
+  });
+
+  it("writes workflow + bundled skills byte-identically to Pi's shared writes", () => {
     const dshFiles = collectDshTemplates();
     const piFiles = collectPiTemplates();
-    for (const [key, content] of dshFiles) {
+
+    expect(dshFiles.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
+    expect(dshFiles.has(".agents/skills/trellis-before-dev/SKILL.md")).toBe(
+      true,
+    );
+    expect(dshFiles.has(".agents/skills/trellis-meta/SKILL.md")).toBe(true);
+    expect(dshFiles.has(".agents/skills/trellis-start/SKILL.md")).toBe(false);
+
+    for (const [key, value] of dshFiles) {
       if (!key.startsWith(".agents/skills/")) continue;
       expect(
         piFiles.get(key),
         `${key} must be byte-identical to Pi's shared-skill write`,
-      ).toBe(content);
+      ).toBe(value);
+    }
+  });
+
+  it("ships the operator guide and no hooks/settings files", () => {
+    const files = collectDshTemplates();
+    expect(files.get(".dsh/DSH.md")).toContain(
+      "Companion plugin fallback contract",
+    );
+    for (const key of files.keys()) {
+      expect(key.startsWith(".dsh/hooks")).toBe(false);
+      expect(key).not.toBe(".dsh/settings.json");
+      expect(key).not.toBe(".dsh/config.toml");
     }
   });
 });

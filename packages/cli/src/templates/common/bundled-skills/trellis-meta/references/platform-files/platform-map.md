@@ -26,6 +26,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Grok Build | `--grok` | `.grok/` | `.grok/skills/` | `.grok/agents/` | pull-based prelude (no hooks; flat `.grok/commands/trellis-*.md`) |
 | Kimi Code | `--kimi` | `.kimi-code/` | `.agents/skills/` (shared) + `.kimi-code/skills/` | None — agent prompts are skills under `.kimi-code/skills/` and dispatch to the built-in `coder` | None (pull-based prelude; no project hooks/settings) |
 | Snow CLI | `--snow` | `.snow/` | `.snow/skills/` | `.snow/agents/` (auto-discovered; primary path) | class-1: auto inject + project agents + `beforeSubAgentStart` (`.snow/hooks/` `session`/`user`/`subagent` modes -> `additionalContext` JSON); no legacy sub-agent JSON; commands `.snow/commands/trellis-*.json` |
+| DeepSeek Harness | `--dsh` | `.dsh/` | `.agents/skills/` (shared) + `.dsh/skills/` | None — role prompts are collision-free `trellis-agent-*` skills under `.dsh/skills/` | None installed by Trellis (pull-based roles; optional `dsh-trellis` adds event-driven wait, otherwise foreground dispatch) |
 
 ## Capability Groups
 
@@ -50,6 +51,7 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 - Grok Build (`.grok/agents/`; dispatch via `spawn_subagent` with `subagent_type`)
 - Kimi Code (delivered as skills under `.kimi-code/skills/`; dispatched to the built-in `coder`, including research because it must persist files)
 - Snow CLI (`.snow/agents/`; auto-discovered project agents + class-1 hooks)
+- DeepSeek Harness (role prompts delivered as `.dsh/skills/trellis-agent-*/SKILL.md`; dispatched through the continuable `subagent` tool)
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
 
@@ -73,7 +75,7 @@ When changing behavior, inspect workflows and skills first. Do not assume Trelli
 
 ### Shared `.agents/skills/`
 
-Codex, Gemini CLI, Pi Agent, and Kimi Code write the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it. ZCode keeps Trellis-managed skills under `.zcode/skills/`.
+Codex, Gemini CLI, Pi Agent, Kimi Code, and DeepSeek Harness write the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it. ZCode keeps Trellis-managed skills under `.zcode/skills/`.
 
 ## Decision Rules When Modifying Platform Files
 

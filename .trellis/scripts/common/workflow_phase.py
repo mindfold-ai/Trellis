@@ -158,6 +158,11 @@ def resolve_effective_platform(platform: str, config: dict) -> str:
 
     Other platforms are returned unchanged.
     """
+    if platform.lower() == "dsh":
+        # Workflow marker blocks use the product label, while CLI callers use
+        # the stable platform id. Keep the alias here so every workflow phase
+        # renderer sees the same effective name.
+        return "DeepSeek Harness"
     if platform == "codex":
         mode = "auto"
         codex_cfg = config.get("codex") if isinstance(config, dict) else None

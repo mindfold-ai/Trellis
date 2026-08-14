@@ -21,6 +21,7 @@ export type AITool =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -28,8 +29,7 @@ export type AITool =
   | "omp"
   | "grok"
   | "kimi"
-  | "snow"
-  | "dsh";
+  | "snow";
 
 /**
  * Template directory categories
@@ -49,6 +49,7 @@ export type TemplateDir =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -56,8 +57,7 @@ export type TemplateDir =
   | "omp"
   | "grok"
   | "kimi"
-  | "snow"
-  | "dsh";
+  | "snow";
 
 /**
  * CLI flag names for platform selection (e.g., --claude, --cursor, --kilo, --kiro, --gemini, --antigravity)
@@ -77,6 +77,7 @@ export type CliFlag =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -84,8 +85,7 @@ export type CliFlag =
   | "omp"
   | "grok"
   | "kimi"
-  | "snow"
-  | "dsh";
+  | "snow";
 
 /**
  * Template context for placeholder resolution.
@@ -99,7 +99,8 @@ export interface TemplateContext {
     | "$"
     | "/"
     | "/skill trellis-"
-    | "/skill:trellis-";
+    | "/skill:trellis-"
+    | "trellis-";
   /** Description of AI executor actions shown in role tables */
   executorAI:
     | "Bash scripts or Task calls"
@@ -394,6 +395,46 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       cliFlag: "droid",
     },
   },
+  /**
+   * DeepSeek Harness (dsh) — class-2 pull-based platform.
+   *
+   * DSH discovers skills from `<projectRoot>/.agents/skills/` (shared root,
+   * rank 200) and `<projectRoot>/.dsh/skills/` (DSH-private root, rank 100),
+   * plus user roots under `$DSH_HOME/skills` / `$DSH_AGENTS_HOME/skills`.
+   * SKILL.md frontmatter uses `name` (kebab-case) + `description`, matching
+   * Trellis's skill rendering. The model loads skills via the `skill` tool;
+   * users can load entry points by their `trellis-<name>` skill names. DSH
+   * surfaces that expose the slash pipeline may also accept `/trellis-<name>`.
+   *
+   * DSH injects project `AGENTS.md` at session start (workspace instructions)
+   * and supports isolated sub-agents through the `subagent` tool, so Trellis
+   * ships as class-2: workflow/bundled skills go to the shared `.agents/skills/`
+   * root via the neutral resolver (byte-identical to Codex/Gemini/Pi/Kimi
+   * writes), while DSH-private entry points (trellis-start / trellis-continue /
+   * trellis-finish-work) and collision-free role skills
+   * (trellis-agent-implement / trellis-agent-check / trellis-agent-research)
+   * live under `.dsh/skills/` with the pull-based prelude on implement/check.
+   *
+   * DSH has no project-level hooks/settings file Trellis may write, so
+   * hasHooks/hasPythonHooks stay false and no hook assets are emitted.
+   */
+  dsh: {
+    name: "DeepSeek Harness (dsh)",
+    templateDirs: ["common", "dsh"],
+    configDir: ".dsh",
+    supportsAgentSkills: true,
+    cliFlag: "dsh",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "trellis-",
+      executorAI: "Bash scripts or tool calls",
+      userActionLabel: "Skills",
+      agentCapable: true,
+      hasHooks: false,
+      cliFlag: "dsh",
+    },
+  },
   pi: {
     // Pi also writes .agents/skills/, which is read by Cursor, Gemini CLI,
     // GitHub Copilot, Amp, and Kimi Code. Keep that detail here rather than
@@ -590,45 +631,6 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: true,
       cliFlag: "snow",
-    },
-  },
-  /**
-   * DeepSeek Harness (dsh) — class-2 pull-based platform.
-   *
-   * DSH discovers skills from `<projectRoot>/.agents/skills/` (shared root,
-   * rank 200) and `<projectRoot>/.dsh/skills/` (DSH-private root, rank 100),
-   * plus user roots under `$DSH_HOME/skills` / `$DSH_AGENTS_HOME/skills`.
-   * SKILL.md frontmatter uses `name` (kebab-case) + `description`, matching
-   * Trellis's skill rendering. The model loads skills via the `skill` tool;
-   * users invoke entry points by typing `/trellis-<name>` (slash pipeline).
-   *
-   * DSH injects project `AGENTS.md` at session start (workspace instructions)
-   * and supports isolated sub-agents through the `subagent` tool, so Trellis
-   * ships as class-2: workflow/bundled skills go to the shared `.agents/skills/`
-   * root via the neutral resolver (byte-identical to Codex/Gemini/Pi/Kimi
-   * writes), while DSH-private entry points (trellis-start / trellis-continue /
-   * trellis-finish-work) and the Trellis agent prompts (trellis-implement /
-   * trellis-check / trellis-research) live under `.dsh/skills/` with the
-   * pull-based prelude on implement/check.
-   *
-   * DSH has no project-level hooks/settings file Trellis may write, so
-   * hasHooks/hasPythonHooks stay false and no hook assets are emitted.
-   */
-  dsh: {
-    name: "DeepSeek Harness",
-    templateDirs: ["common", "dsh"],
-    configDir: ".dsh",
-    supportsAgentSkills: true,
-    cliFlag: "dsh",
-    defaultChecked: false,
-    hasPythonHooks: false,
-    templateContext: {
-      cmdRefPrefix: "/trellis-",
-      executorAI: "Bash scripts or Agent calls",
-      userActionLabel: "Skills",
-      agentCapable: true,
-      hasHooks: false,
-      cliFlag: "dsh",
     },
   },
 };

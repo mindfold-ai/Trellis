@@ -1,10 +1,10 @@
 ---
 name: trellis-implement
+user-invocable: false
 description: |
-  Code implementation expert for Trellis. Understands specs and requirements,
-  then implements features. No git commit allowed. On DeepSeek Harness the
-  main session dispatches the `subagent` tool with these instructions; the
-  first prompt line must be Active task: <path>.
+  Child-agent-only implementation role for Trellis. Main sessions must not
+  load this skill directly. Understands specs and requirements, then
+  implements features. No git commit allowed.
 ---
 # Implement Agent
 
@@ -17,14 +17,6 @@ You are already the `trellis-implement` sub-agent that the main session dispatch
 - Do NOT spawn another `trellis-implement` or `trellis-check` sub-agent.
 - If workflow.md, workflow-state breadcrumbs, or the parent prompt say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
 - Only the main session may dispatch Trellis implement/check agents. If more parallel work is needed, report that recommendation instead of spawning.
-
-## Dispatch note (main session)
-
-DeepSeek Harness has no declarative custom sub-agent definitions, but it provides the `subagent` tool (isolated context) and `subagent_fork` (conversation inheritance). The main session dispatches a plain `subagent` with a prompt that:
-
-1. Starts with `Active task: <path from task.py current>`
-2. Includes this skill's instructions (`.dsh/skills/trellis-implement/SKILL.md`), or tells the child to load them via its own `skill` tool
-3. States that the spawned agent is already `trellis-implement` and must implement directly without spawning another `trellis-implement` / `trellis-check`
 
 dsh does not auto-inject SessionStart task context. Always pull context as required below.
 

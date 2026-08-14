@@ -2,14 +2,17 @@
  * DeepSeek Harness (dsh) configurator.
  *
  * dsh is a class-2 pull-based platform (agentCapable via the `subagent` tool,
- * no hooks, no project-level settings/extensions). Two output paths:
+ * no shipped session-start hook, no project-level hooks/settings Trellis may
+ * write). Three output paths:
  * - `.agents/skills/` — workflow + bundled skills, written via the NEUTRAL
  *   resolver so the files stay byte-identical to Codex/Gemini/Pi/Kimi writes
  *   into the same shared root (dsh discovers `.agents/skills/` natively).
- * - `.dsh/skills/` — dsh-private entry points: the user-invocable commands as
- *   skills (`/trellis-start`, `/trellis-continue`, `/trellis-finish-work`)
- *   plus the Trellis agent prompts (trellis-implement / trellis-check /
- *   trellis-research) with the pull-based prelude on implement/check.
+ * - `.dsh/skills/` — dsh-private entry skills (trellis-start /
+ *   trellis-continue / trellis-finish-work) plus collision-free Trellis role
+ *   skills (trellis-agent-implement / trellis-agent-check /
+ *   trellis-agent-research) with the pull-based prelude on implement/check.
+ * - `.dsh/DSH.md` — operator guide and a configDir-owned tracked file for
+ *   platform detection and uninstall scoping.
  *
  * dsh has no project-level hooks/settings file Trellis may write and no
  * declarative custom sub-agent definitions (dispatch goes through the
@@ -18,10 +21,11 @@
  */
 
 import { AI_TOOLS } from "../types/ai-tools.js";
-import { getAllAgents } from "../templates/dsh/index.js";
+import { getAllAgents, getDshGuide } from "../templates/dsh/index.js";
 import {
   applyPullBasedPreludeMarkdown,
   collectSkillTemplates,
+  replacePythonCommandLiterals,
   resolveAllAsSkills,
   resolveBundledSkills,
   resolveSkillsNeutral,
@@ -30,9 +34,8 @@ import {
 
 /**
  * Command templates that become user-invocable dsh skills
- * (`/trellis-<name>` in the input box). dsh has no slash-command mechanism
- * besides user-invocable skills, so the session-boundary commands are
- * delivered as SKILL.md files.
+ * (loaded by their `trellis-<name>` skill names). The session-boundary
+ * commands are delivered as SKILL.md files in DSH's private project root.
  */
 const DSH_COMMAND_SKILL_NAMES = new Set([
   "trellis-start",
@@ -49,10 +52,21 @@ function resolveDshCommandSkills(): ReturnType<typeof resolveAllAsSkills> {
   );
 }
 
-/** Trellis agent prompts as dsh skills, with the pull-based prelude on
- *  implement/check. */
+/** Trellis agent prompts as DSH-private skills. The `trellis-agent-*` names
+ *  intentionally do not collide with shared main-session workflow skills such
+ *  as `.agents/skills/trellis-check`. */
 function resolveDshAgentSkills(): AgentContent[] {
-  return applyPullBasedPreludeMarkdown(getAllAgents());
+  return applyPullBasedPreludeMarkdown(getAllAgents()).map((agent) => {
+    const name = agent.name.replace(/^trellis-/, "trellis-agent-");
+    return {
+      ...agent,
+      name,
+      content: replacePythonCommandLiterals(agent.content).replace(
+        /^name:\s*trellis-[^\r\n]+$/m,
+        `name: ${name}`,
+      ),
+    };
+  });
 }
 
 /**
@@ -79,6 +93,9 @@ export function collectDshTemplates(): Map<string, string> {
   ])) {
     files.set(filePath, content);
   }
+
+  // 3. Operator guide → `.dsh/DSH.md`.
+  files.set(".dsh/DSH.md", getDshGuide());
 
   return files;
 }

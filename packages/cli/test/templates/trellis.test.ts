@@ -239,6 +239,16 @@ describe("trellis template constants", () => {
     expect(pullBasedBlock).toContain(
       "The pull-based sub-agent definition auto-handles the context load requirement",
     );
+    expect(workflowMdTemplate).toContain("default continuable background mode");
+    expect(workflowMdTemplate).toContain("native settlement notice");
+    expect(workflowMdTemplate).toContain("optional companion plugin");
+    expect(workflowMdTemplate).toContain("Without `trellis_wait`");
+    expect(workflowMdTemplate).toContain("run_in_background: false");
+    expect(workflowMdTemplate).toContain(
+      "Never simulate waiting with shell sleep, polling loops",
+    );
+    expect(workflowMdTemplate).not.toContain("Start-Sleep");
+    expect(workflowMdTemplate).toContain("trellis-agent-<role>");
     expect(hookAutoBlock).toContain("codex-sub-agent");
     expect(hookAutoBlock).toContain("SubagentStart");
   });

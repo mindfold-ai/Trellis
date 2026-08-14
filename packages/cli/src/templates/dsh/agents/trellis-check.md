@@ -1,10 +1,9 @@
 ---
 name: trellis-check
+user-invocable: false
 description: |
-  Code quality check expert for Trellis. Reviews code changes against specs
-  and self-fixes issues. On DeepSeek Harness the main session dispatches the
-  `subagent` tool with these instructions; the first prompt line must be
-  Active task: <path>.
+  Child-agent-only quality role for Trellis. Main sessions must not load this
+  skill directly. Reviews code changes against specs and self-fixes issues.
 ---
 # Check Agent
 
@@ -17,14 +16,6 @@ You are already the `trellis-check` sub-agent that the main session dispatched. 
 - Do NOT spawn another `trellis-check` or `trellis-implement` sub-agent.
 - If workflow.md, workflow-state breadcrumbs, or the parent prompt say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.
 - Only the main session may dispatch Trellis implement/check agents. If more implementation work is needed, report that recommendation instead of spawning.
-
-## Dispatch note (main session)
-
-DeepSeek Harness has no declarative custom sub-agent definitions, but it provides the `subagent` tool (isolated context) and `subagent_fork` (conversation inheritance). The main session dispatches a plain `subagent` with a prompt that:
-
-1. Starts with `Active task: <path from task.py current>`
-2. Includes this skill's instructions (`.dsh/skills/trellis-check/SKILL.md`), or tells the child to load them via its own `skill` tool
-3. States that the spawned agent is already `trellis-check` and must review/fix directly without spawning another `trellis-check` / `trellis-implement`
 
 dsh does not auto-inject SessionStart task context. Always pull context as required below.
 
@@ -81,6 +72,11 @@ After finding issues:
 Run project's lint and typecheck commands to verify changes.
 
 If failed, fix issues and re-run.
+
+If a required command cannot run, is skipped, or still exits non-zero, report
+the quality gate as **blocked** or **failed**. Never label it passed, weaken or
+rewrite acceptance criteria, or substitute an easier command just to advance
+the workflow.
 
 ---
 

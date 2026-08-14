@@ -695,7 +695,7 @@ describe("init() integration", () => {
       ),
     ).toBe(true);
 
-    // dsh-private skills: commands-as-skills + agent prompts
+    // dsh-private skills: commands-as-skills + collision-free role prompts
     expect(
       fs.existsSync(
         path.join(tmpDir, ".dsh", "skills", "trellis-start", "SKILL.md"),
@@ -708,9 +708,16 @@ describe("init() integration", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".dsh", "skills", "trellis-implement", "SKILL.md"),
+        path.join(
+          tmpDir,
+          ".dsh",
+          "skills",
+          "trellis-agent-implement",
+          "SKILL.md",
+        ),
       ),
     ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".dsh", "DSH.md"))).toBe(true);
 
     // dsh has no project-level hooks/settings surface.
     expect(fs.existsSync(path.join(tmpDir, ".dsh", "hooks"))).toBe(false);

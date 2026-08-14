@@ -510,13 +510,18 @@ describe("collectPlatformTemplates", () => {
       true,
     );
     expect(result?.has(".agents/skills/trellis-meta/SKILL.md")).toBe(true);
-    // dsh-private entry points + agent prompts
+    // dsh-private entry points + collision-free role prompts
     expect(result?.has(".dsh/skills/trellis-start/SKILL.md")).toBe(true);
     expect(result?.has(".dsh/skills/trellis-continue/SKILL.md")).toBe(true);
     expect(result?.has(".dsh/skills/trellis-finish-work/SKILL.md")).toBe(true);
-    expect(result?.has(".dsh/skills/trellis-implement/SKILL.md")).toBe(true);
-    expect(result?.has(".dsh/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(result?.has(".dsh/skills/trellis-research/SKILL.md")).toBe(true);
+    expect(result?.has(".dsh/skills/trellis-agent-implement/SKILL.md")).toBe(
+      true,
+    );
+    expect(result?.has(".dsh/skills/trellis-agent-check/SKILL.md")).toBe(true);
+    expect(result?.has(".dsh/skills/trellis-agent-research/SKILL.md")).toBe(
+      true,
+    );
+    expect(result?.has(".dsh/DSH.md")).toBe(true);
     // No project-level hooks/settings for dsh
     expect(
       [...(result?.keys() ?? [])].some((key) => key.startsWith(".dsh/hooks")),
