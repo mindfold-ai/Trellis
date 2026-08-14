@@ -498,8 +498,8 @@ def resolve_context_key(
             return _sanitize_key(dsh_override) or _hash_value(dsh_override)
 
         # A real DSH managed shell rebuilds the complete DSH_* namespace: the
-        # paired sentinel and session id cannot be forged by or inherited from
-        # an outer Trellis host. Prefer that canonical env-table identity over
+        # paired sentinel and session id cannot be inherited from an outer
+        # Trellis host. Prefer that canonical env-table identity over
         # a generic override that ordinary process inheritance may carry in.
         if (
             _string_value(os.environ.get("DSH_SHELL")) == "1"
