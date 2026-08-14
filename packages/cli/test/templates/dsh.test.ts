@@ -147,6 +147,17 @@ describe("dsh collectDshTemplates", () => {
     }
   });
 
+  it("keeps the bundled meta reference explicit about the DSH fallback", () => {
+    const metaAgents = collectDshTemplates().get(
+      ".agents/skills/trellis-meta/references/platform-files/agents.md",
+    );
+
+    expect(metaAgents).toContain(
+      "without it, dispatch every child with `run_in_background: false` from the outset",
+    );
+    expect(metaAgents).not.toContain("otherwise initial foreground dispatch");
+  });
+
   it("ships the operator guide and no hooks/settings files", () => {
     const files = collectDshTemplates();
     expect(files.get(".dsh/DSH.md")).toContain(
