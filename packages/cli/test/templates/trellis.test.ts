@@ -242,6 +242,7 @@ describe("trellis template constants", () => {
     expect(workflowMdTemplate).toContain("default continuable background mode");
     expect(workflowMdTemplate).toContain("native settlement notice");
     expect(workflowMdTemplate).toContain("optional companion plugin");
+    expect(workflowMdTemplate).toContain("once per dependent child id");
     expect(workflowMdTemplate).toContain("Without `trellis_wait`");
     expect(workflowMdTemplate).toContain("run_in_background: false");
     expect(workflowMdTemplate).toContain(

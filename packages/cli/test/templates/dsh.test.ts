@@ -49,6 +49,7 @@ describe("dsh template readers", () => {
     expect(guide).toContain("Without companion plugin");
     expect(guide).toContain("With `dsh-trellis`");
     expect(guide).toContain("If unavailable");
+    expect(guide).toContain("once per dependent child id");
     expect(guide).toContain("run_in_background: false");
     expect(guide).toContain("DSH_TRELLIS_CONTEXT_ID");
     expect(guide).toContain("`DSH_SHELL=1` together with `DSH_SESSION_ID`");
