@@ -400,6 +400,7 @@ extension, and sub-agent consumers must call the shared resolver path:
 | Existing Python callers         | `common.paths.get_current_task()` / `get_current_task_abs()` / `get_current_task_source()`            |
 | OpenCode plugin                 | JS resolver in `lib/trellis-context.js`, mirroring `active_task.py`                                   |
 | Pi extension                    | Extension-local resolver using `ctx.sessionManager.getSessionId()` and Bash `tool_call` env injection |
+| Optional DSH companion          | Managed `DSH_TRELLIS_CONTEXT_ID` from the current shell execution's native DSH session                |
 
 Do not add direct `.trellis/.current-task` reads in hooks, statusline scripts,
 sub-agent context injection, or platform plugins. Direct reads reintroduce
@@ -408,17 +409,19 @@ multi-window task pollution.
 Context-key precedence, as implemented in `active_task.py:resolve_context_key`
 (`:468-509`):
 
-1. `TRELLIS_CONTEXT_ID` environment override for subprocesses.
-2. From the hook payload: `session_id`, `sessionId`, or `sessionID`.
-3. From the hook payload: `conversation_id` / `conversationId` / `conversationID`.
-4. From the hook payload: `transcript_path` / `transcriptPath` / `transcript`
+1. Managed `DSH_TRELLIS_CONTEXT_ID`, when the optional `dsh-trellis` plugin
+   contributes it for the current DSH shell execution.
+2. `TRELLIS_CONTEXT_ID` environment override for subprocesses.
+3. From the hook payload: `session_id`, `sessionId`, or `sessionID`.
+4. From the hook payload: `conversation_id` / `conversationId` / `conversationID`.
+5. From the hook payload: `transcript_path` / `transcriptPath` / `transcript`
    when non-empty.
-5. A platform-native session environment variable — but only for the handful of
+6. A platform-native session environment variable — but only for the handful of
    names that have actually been verified to exist, and only for the platform
    the resolver detected (`_iter_env_keys` filters by platform name, so ZCode's
    entry cannot fire in a Claude session). Session names are tried first, then
    conversation names, then transcript names (`active_task.py:294-322`).
-6. A short-lived shell ticket, checked **last** and **not** gated on platform
+7. A short-lived shell ticket, checked **last** and **not** gated on platform
    name (`active_task.py:505-508`) — see "Shell-ticket bridge" below. Last on
    purpose: a platform that genuinely exports identity into the shell outranks
    a ticket written on its behalf.
@@ -432,6 +435,19 @@ session env var may be named here without the same grade of evidence.
 
 Cursor IDE may send `transcript_path: null`; this must not prevent session
 scoping when `session_id` or `conversation_id` is present.
+
+DeepSeek Harness is the verified shell-env exception. It exposes
+`DSH_SESSION_ID`, but an inner DSH process also inherits ordinary variables such
+as an outer Claude/Codex session's `TRELLIS_CONTEXT_ID`; the generic override
+would silently claim the inner task before the native table is consulted. The
+optional `dsh-trellis` plugin must therefore register a managed
+`DSH_TRELLIS_CONTEXT_ID = dsh_<session-id>` through DSH's `shellEnv` registry.
+DSH discards ambient `DSH_*` values before rebuilding that per-execution
+namespace, so the managed value is trusted and may outrank the generic override
+without changing other platforms' semantics. Plugin-owned subprocess commands
+must also set `TRELLIS_CONTEXT_ID` explicitly to the same DSH context key.
+Regression coverage must set both an outer `TRELLIS_CONTEXT_ID` and the managed
+DSH value and assert that only the `dsh_*` runtime pointer is written.
 
 OpenCode has **no** entry in any env table. Its plugin holds the session
 identity and injects it, so the plugin must prefix Bash tool commands in

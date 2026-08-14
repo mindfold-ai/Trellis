@@ -50,6 +50,8 @@ describe("dsh template readers", () => {
     expect(guide).toContain("With `dsh-trellis`");
     expect(guide).toContain("If unavailable");
     expect(guide).toContain("run_in_background: false");
+    expect(guide).toContain("DSH_TRELLIS_CONTEXT_ID");
+    expect(guide).toContain("unset `TRELLIS_CONTEXT_ID`");
   });
 });
 

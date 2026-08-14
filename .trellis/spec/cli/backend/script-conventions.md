@@ -433,20 +433,23 @@ All current-task consumers must use the active task resolver instead of reading
 `.trellis/.current-task` directly. The resolver is the single source of truth
 for session/window scoped task state:
 
-1. Derive a context key, in this order (`resolve_context_key`, `:468-509`):
-   `TRELLIS_CONTEXT_ID`; then session / conversation / transcript ids from the
-   hook payload; then a platform-native session environment variable for the
-   detected platform; then a shell ticket for a matching AI-run `task.py`
-   command.
+1. Derive a context key, in this order (`resolve_context_key`, `:468-509`): a
+   managed `DSH_TRELLIS_CONTEXT_ID` contributed per execution by the optional
+   DSH plugin; `TRELLIS_CONTEXT_ID`; then session / conversation / transcript
+   ids from the hook payload; then a platform-native session environment
+   variable for the detected platform; then a shell ticket for a matching
+   AI-run `task.py` command.
 2. Read `.trellis/.runtime/sessions/<session-key>.json`.
 3. If no context key or no session task is present, return no active task.
 4. If a session task exists but the task directory is stale, return stale
    session state.
 
-The env branch is the exception, not a peer alternative. **No researched
-platform exports a session id into a shell child** (2026-08-05 audit of all 21;
-`inject-shell-session-context.py:3-8`, `active_task.py:59-64`), so for most
-platforms the ticket — checked *last* — is the path that actually fires.
+The env branch is the exception, not a peer alternative. The 2026-08-05 audit
+of the then-current 21 platforms found no researched platform exporting a
+session id into a shell child (`inject-shell-session-context.py:3-8`,
+`active_task.py:59-64`), so for most platforms the ticket — checked *last* — is
+the path that actually fires. DSH is the later verified exception: its managed
+shell exports `DSH_SESSION_ID`.
 
 | Function | Purpose |
 |----------|---------|
@@ -472,6 +475,13 @@ shell child at all. The prefix must match the host shell: use
 assignment before the user's command so compound commands like
 `task.py start && task.py current` keep the same context for every command in
 the Bash invocation.
+An inner DSH session can inherit `TRELLIS_CONTEXT_ID` from an already-active
+outer Trellis host. The optional `dsh-trellis` plugin therefore contributes
+`DSH_TRELLIS_CONTEXT_ID = dsh_<session-id>` through DSH's managed `shellEnv`
+registry. DSH scrubs ambient `DSH_*` variables before rebuilding the registry
+for each execution, so this plugin value is the current native identity and
+must resolve before the inherited generic override. Plugin utility-command
+subprocesses must explicitly replace `TRELLIS_CONTEXT_ID` with the same key.
 Do not choose this prefix from OS alone. On Windows, Git Bash / MSYS2 still
 parse POSIX syntax, so OpenCode must treat `MSYSTEM`, `MINGW_PREFIX`,
 `OSTYPE=msys|mingw|cygwin`, `SHELL=...bash`, or `OPENCODE_GIT_BASH_PATH` as

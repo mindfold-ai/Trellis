@@ -487,6 +487,16 @@ def resolve_context_key(
     scripts and subprocesses. It does not store the task itself.
     """
     if allow_environment_context:
+        # The optional dsh-trellis plugin contributes this managed DSH_* value
+        # per shell execution from the current DSH session header. DSH scrubs
+        # ambient DSH_* values before rebuilding that namespace, so this value
+        # cannot be inherited from an outer Claude/Codex Trellis session. It
+        # must outrank the generic override below, which ordinary child
+        # processes inherit indiscriminately.
+        dsh_override = _string_value(os.environ.get("DSH_TRELLIS_CONTEXT_ID"))
+        if dsh_override:
+            return _sanitize_key(dsh_override) or _hash_value(dsh_override)
+
         override = _string_value(os.environ.get("TRELLIS_CONTEXT_ID"))
         if override:
             return _sanitize_key(override) or _hash_value(override)
