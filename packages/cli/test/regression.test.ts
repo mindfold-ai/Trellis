@@ -3022,6 +3022,16 @@ print(json.dumps({
           { CLAUDE_CODE_SESSION_ID: "real", CLAUDE_SESSION_ID: "legacy" },
           "zcode",
         ],
+        ["dsh", { DSH_SESSION_ID: "probe" }, "dsh"],
+        // DSH ships no hook, so the shell path resolves with no platform hint
+        // and walks the whole table. A DSH launched from Codex inherits
+        // CODEX_THREAD_ID; without DSH sitting first this returned a foreign
+        // `codex_outer` pointer (reported by @SajoLuo against DSH 0.1.0-rc.6).
+        [
+          "dsh-inherits-codex",
+          { DSH_SESSION_ID: "own", CODEX_THREAD_ID: "outer" },
+          null,
+        ],
       ],
     );
 
@@ -3043,6 +3053,8 @@ print(json.dumps({
       "zcode-real": "claude_probe",
       "zcode-legacy": "claude_probe",
       "zcode-prefers-real": "claude_real",
+      dsh: "dsh_probe",
+      "dsh-inherits-codex": "dsh_own",
     });
   });
 

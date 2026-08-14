@@ -813,8 +813,11 @@ describe("update() integration", () => {
     // auto-updated to the current packaged template.
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(expectedWorkflow);
     expect(readProjectFile(MANAGED_FILE)).toBe(expectedGetContext);
+    // Prefix, not the whole marker: the inline block gains members as
+    // sub-agent-less platforms are added, and this assertion is about the
+    // block surviving the update, not about who is currently in it.
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
-      "[codex-inline, Kilo, Antigravity, Devin]",
+      "[codex-inline, Kilo, Antigravity, Devin",
     );
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain("[Codex]");
 
@@ -1507,7 +1510,7 @@ describe("update() integration", () => {
     expect(updated).toContain(
       "[/Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Snow, Oh My Pi]",
     );
-    expect(updated).toContain("[codex-inline, Kilo, Antigravity, Devin]");
+    expect(updated).toContain("[codex-inline, Kilo, Antigravity, Devin");
     expect(updated).not.toContain("[Codex]");
     expect(updated).not.toContain("[Kilo, Antigravity, Windsurf]");
     expect(updated).not.toContain("legacy body");

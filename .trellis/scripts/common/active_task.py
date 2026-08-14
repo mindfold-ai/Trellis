@@ -55,6 +55,7 @@ _KNOWN_PLATFORMS = {
     "kimi",
     "zcode",
     "snow",
+    "dsh",
 }
 
 # Every name below records how it was checked. Do NOT add a name by analogy
@@ -64,6 +65,15 @@ _KNOWN_PLATFORMS = {
 # only "evidence" behind them. A platform with no verified name belongs in no
 # table; it resolves through TRELLIS_CONTEXT_ID or its hook/plugin bridge.
 _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # REAL (reported 2026-08-13 against DSH 0.1.0-rc.6 by @SajoLuo, from a live
+    # run: DSH exports DSH_SESSION_ID plus DSH_SHELL=1 into its managed shell).
+    # MUST STAY FIRST. A DSH session can inherit an outer host's identity — a
+    # DSH launched from Codex still carries CODEX_THREAD_ID — and the untargeted
+    # lookup below walks this table in order, so any earlier entry would claim
+    # the session and write a foreign `codex_<thread>` pointer for DSH work.
+    # DSH_SESSION_ID is the only name here no other vendor sets, so first place
+    # is safe: it cannot mis-claim a non-DSH session.
+    ("dsh", ("DSH_SESSION_ID",)),
     # REAL, undocumented (verified 2026-08-05 in a live Claude Code 2.1.221 bash
     # child; absent from code.claude.com/docs/en/env-vars). CLAUDE_SESSION_ID
     # was removed here — verified absent from that same live environment.
