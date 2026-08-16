@@ -154,7 +154,16 @@ function cleanupFiles(
   project: string,
 ): void {
   // Keep `log` (forensic), `session-id` / `thread-id` (resume).
-  for (const suffix of ["pid", "worker-pid", "config", "spawnlock"]) {
+  // `system-prompt.md` may carry a large injected context; on Windows the
+  // SIGKILL'd supervisor cannot run its own cleanup, so the CLI removes it
+  // here too (unconditionally, so a prior oversized run leaves nothing).
+  for (const suffix of [
+    "pid",
+    "worker-pid",
+    "config",
+    "system-prompt.md",
+    "spawnlock",
+  ]) {
     try {
       fs.unlinkSync(workerFile(channelName, worker, suffix, project));
     } catch {
