@@ -552,10 +552,14 @@ async function cleanup(channelName: string, workerName: string): Promise<void> {
   // Keep `log` (forensic), `session-id` / `thread-id` (future resume).
   // `inbox-cursor` is kept so a respawn (same worker name without
   // killing the channel) doesn't replay messages.
+  // `system-prompt.md` may carry a large injected context; a respawn rewrites
+  // it from config when needed, so it is removed unconditionally (also when
+  // the current run inlined the prompt and would otherwise leave a stale one).
   for (const suffix of [
     "pid",
     "worker-pid",
     "config",
+    "system-prompt.md",
     "spawnlock",
     "shutdown-reason",
     "reservation",
