@@ -237,6 +237,14 @@ export function buildClaudeArgs(opts: {
   verbose?: boolean;
   /** Appended to Claude's default system prompt (per agent definition body). */
   systemPrompt?: string;
+  /**
+   * Path to a file whose content is appended to Claude's default system
+   * prompt. Takes precedence over `systemPrompt`. Inlining a large prompt
+   * on the command line breaks spawn(): Windows CreateProcess caps the
+   * command line at 32,767 chars (spawn ENAMETOOLONG), and Linux
+   * MAX_ARG_STRLEN caps a single arg at 128KiB.
+   */
+  systemPromptFile?: string;
 }): string[] {
   const args = [
     "-p",
@@ -251,7 +259,9 @@ export function buildClaudeArgs(opts: {
   if (opts.verbose !== false) args.push("--verbose");
   if (opts.resumeSessionId) args.push("--resume", opts.resumeSessionId);
   if (opts.model) args.push("--model", opts.model);
-  if (opts.systemPrompt?.trim()) {
+  if (opts.systemPromptFile) {
+    args.push("--append-system-prompt-file", opts.systemPromptFile);
+  } else if (opts.systemPrompt?.trim()) {
     args.push("--append-system-prompt", opts.systemPrompt);
   }
   return args;
