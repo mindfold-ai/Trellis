@@ -22,6 +22,7 @@ import {
   type InboxPolicy,
 } from "@mindfoldhq/trellis-core/channel";
 
+import { shouldUseSystemPromptFile } from "./adapters/claude.js";
 import type { CodexSandboxMode } from "./adapters/codex.js";
 import { getAdapter, type Provider } from "./adapters/index.js";
 import { appendEvent } from "./store/events.js";
@@ -191,14 +192,16 @@ export async function runSupervisor(
   // ── adapter selection ──
   const adapter = getAdapter(config.provider);
   const adapterCtx = adapter.createCtx();
-  // Persist a non-empty system prompt to the worker dir and hand adapters a
-  // file path. Inlining it on the worker command line breaks spawn() once the
-  // prompt (agent body + injected --file/--jsonl context) grows large:
-  // Windows CreateProcess caps the command line at 32,767 chars and fails
-  // with a silent-to-the-user ENAMETOOLONG. Adapters that support a
-  // file-based prompt flag (claude: --append-system-prompt-file) prefer it.
+  // Persist an oversized system prompt to the worker dir and hand adapters a
+  // file path. Inlining a large prompt (agent body + injected --file/--jsonl
+  // context) on the worker command line breaks spawn(): Windows CreateProcess
+  // caps the command line at 32,767 chars and fails with a silent-to-the-user
+  // ENAMETOOLONG. Prompts within the inline budget stay on the argv flag so
+  // Claude Code installs older than v2.0.34 (no --append-system-prompt-file)
+  // keep working exactly as before; adapters that do support a file-based
+  // prompt flag (claude: --append-system-prompt-file) prefer it.
   let systemPromptFile: string | undefined;
-  if (config.systemPrompt.trim()) {
+  if (shouldUseSystemPromptFile(config.systemPrompt)) {
     systemPromptFile = workerFile(
       channelName,
       workerName,
