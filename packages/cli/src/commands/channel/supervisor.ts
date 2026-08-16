@@ -40,7 +40,10 @@ export interface SupervisorConfig {
   provider: Provider;
   cwd: string;
   /** Combined worker system prompt: channel protocol prefix + agent body.
-   *  Injected via Claude `--append-system-prompt` or Codex `developerInstructions`.
+   *  Injected via Claude `--append-system-prompt(-file)` or Codex
+   *  `developerInstructions`. The supervisor also persists it to
+   *  `<worker>.system-prompt.md` and exposes the path as
+   *  `view.systemPromptFile` so adapters can avoid OS argv-length limits.
    *  No "initial user prompt" — the worker stays idle until the first
    *  inbox `send --to <worker>` arrives. */
   systemPrompt: string;
@@ -188,10 +191,27 @@ export async function runSupervisor(
   // ── adapter selection ──
   const adapter = getAdapter(config.provider);
   const adapterCtx = adapter.createCtx();
+  // Persist a non-empty system prompt to the worker dir and hand adapters a
+  // file path. Inlining it on the worker command line breaks spawn() once the
+  // prompt (agent body + injected --file/--jsonl context) grows large:
+  // Windows CreateProcess caps the command line at 32,767 chars and fails
+  // with a silent-to-the-user ENAMETOOLONG. Adapters that support a
+  // file-based prompt flag (claude: --append-system-prompt-file) prefer it.
+  let systemPromptFile: string | undefined;
+  if (config.systemPrompt.trim()) {
+    systemPromptFile = workerFile(
+      channelName,
+      workerName,
+      "system-prompt.md",
+      project,
+    );
+    fs.writeFileSync(systemPromptFile, config.systemPrompt);
+  }
   const view = {
     resume: config.resume,
     model: config.model,
     systemPrompt: config.systemPrompt,
+    ...(systemPromptFile ? { systemPromptFile } : {}),
     cwd: config.cwd,
     sandbox: config.sandbox,
   };
