@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildClaudeArgs } from "../../src/commands/channel/adapters/claude.js";
+import {
+  buildClaudeArgs,
+  INLINE_SYSTEM_PROMPT_MAX_CHARS,
+  shouldUseSystemPromptFile,
+} from "../../src/commands/channel/adapters/claude.js";
 
 describe("Claude channel adapter buildClaudeArgs", () => {
   it("inlines the system prompt when no prompt file is given", () => {
@@ -30,5 +34,24 @@ describe("Claude channel adapter buildClaudeArgs", () => {
     // cap → spawn ENAMETOOLONG; Linux MAX_ARG_STRLEN 128KiB per arg).
     expect(args).not.toContain("--append-system-prompt");
     expect(args.join(" ").length).toBeLessThan(300_000);
+  });
+});
+
+describe("shouldUseSystemPromptFile", () => {
+  it("keeps blank and small prompts inline (works on old Claude Code)", () => {
+    expect(shouldUseSystemPromptFile("")).toBe(false);
+    expect(shouldUseSystemPromptFile("   \n  ")).toBe(false);
+    expect(shouldUseSystemPromptFile("agent body")).toBe(false);
+    // At the budget exactly: still inline.
+    expect(shouldUseSystemPromptFile("x".repeat(INLINE_SYSTEM_PROMPT_MAX_CHARS))).toBe(false);
+  });
+
+  it("routes oversized prompts to a file before they hit argv limits", () => {
+    // One char over the budget: must go through a file.
+    expect(
+      shouldUseSystemPromptFile("x".repeat(INLINE_SYSTEM_PROMPT_MAX_CHARS + 1)),
+    ).toBe(true);
+    // The original bug: a whole design doc injected via --file.
+    expect(shouldUseSystemPromptFile("y".repeat(300_000))).toBe(true);
   });
 });
