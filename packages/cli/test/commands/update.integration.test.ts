@@ -309,6 +309,69 @@ describe("update() integration", () => {
     expect(fs.existsSync(projectFile(".agents/skills"))).toBe(false);
   });
 
+  it("[issue-zcode-plugin-hint] zcode update prints the bilingual plugin hint when already up to date", async () => {
+    await init({ yes: true, force: true, zcode: true });
+
+    const originalVitest = process.env.VITEST;
+    const originalQuiet = process.env.TRELLIS_QUIET;
+    const originalWrite = process.stderr.write.bind(process.stderr);
+    const stderr: string[] = [];
+    process.stderr.write = ((chunk: string) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    delete process.env.VITEST;
+    delete process.env.TRELLIS_QUIET;
+
+    try {
+      await update({});
+    } finally {
+      process.stderr.write = originalWrite;
+      if (originalVitest === undefined) delete process.env.VITEST;
+      else process.env.VITEST = originalVitest;
+      if (originalQuiet === undefined) delete process.env.TRELLIS_QUIET;
+      else process.env.TRELLIS_QUIET = originalQuiet;
+    }
+
+    expect(stderr.join("")).toBe(
+      "ℹ️  ZCode: if project Hooks are disabled, install trellis-bridge, then start a new session.\n" +
+        "   ZCode：若项目 Hooks 被禁用，请安装 trellis-bridge，然后新建会话。\n" +
+        "   请手动在 ZCode 插件市场中添加 https://github.com/CNHLAIA/ZCode-Trellis-Plugin.git，并手动安装 ZCode 补丁插件 trellis-bridge\n",
+    );
+  });
+
+  it("[issue-zcode-plugin-hint] zcode update prints the bilingual plugin hint after applying changes", async () => {
+    await init({ yes: true, force: true, zcode: true });
+    writeProjectFile(MANAGED_FILE, "user modified content");
+
+    const originalVitest = process.env.VITEST;
+    const originalQuiet = process.env.TRELLIS_QUIET;
+    const originalWrite = process.stderr.write.bind(process.stderr);
+    const stderr: string[] = [];
+    process.stderr.write = ((chunk: string) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    delete process.env.VITEST;
+    delete process.env.TRELLIS_QUIET;
+
+    try {
+      await update({ force: true });
+    } finally {
+      process.stderr.write = originalWrite;
+      if (originalVitest === undefined) delete process.env.VITEST;
+      else process.env.VITEST = originalVitest;
+      if (originalQuiet === undefined) delete process.env.TRELLIS_QUIET;
+      else process.env.TRELLIS_QUIET = originalQuiet;
+    }
+
+    expect(stderr.join("")).toBe(
+      "ℹ️  ZCode: if project Hooks are disabled, install trellis-bridge, then start a new session.\n" +
+        "   ZCode：若项目 Hooks 被禁用，请安装 trellis-bridge，然后新建会话。\n" +
+        "   请手动在 ZCode 插件市场中添加 https://github.com/CNHLAIA/ZCode-Trellis-Plugin.git，并手动安装 ZCode 补丁插件 trellis-bridge\n",
+    );
+  });
+
   it("[issue-447] 0.6.8 rename-dir migration moves legacy .pi/skills/ into shared .agents/skills/ even when Codex already installed the shared root", async () => {
     // Simulate a pre-0.6.8 project: Pi + Codex both installed. Pre-fix Pi
     // wrote its own Pi-flavored copy under `.pi/skills/` (via resolveSkills,

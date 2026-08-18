@@ -153,6 +153,16 @@ export interface AIToolConfig {
   defaultChecked: boolean;
   /** Whether this tool uses Python hooks (affects Windows encoding detection) */
   hasPythonHooks: boolean;
+  /**
+   * Optional user-global compatibility plugin for platform versions where
+   * project-level integration is unavailable. Trellis may surface a manual
+   * installation hint, but leaves installation and lifecycle management to
+   * the platform UI.
+   */
+  globalHookPlugin?: {
+    name: string;
+    marketplaceUrl: string;
+  };
   /** Template context for placeholder resolution in common templates */
   templateContext: TemplateContext;
 }
@@ -472,20 +482,26 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       ".zcode/agents",
       ".zcode/commands",
       ".zcode/skills",
-      // Hooks assets written by configureZcode.
+      // Hook implementations written by configureZcode. On ZCode builds that
+      // disable project hook registration, trellis-bridge invokes them instead.
       ".zcode/hooks",
     ],
     cliFlag: "zcode",
     defaultChecked: false,
     hasPythonHooks: true,
+    globalHookPlugin: {
+      name: "trellis-bridge",
+      marketplaceUrl: "https://github.com/CNHLAIA/ZCode-Trellis-Plugin.git",
+    },
     templateContext: {
       cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Skills",
       agentCapable: true,
-      // ZCode (3.x) supports a workspace hook config at .zcode/config.json
-      // with SessionStart / UserPromptSubmit / PreToolUse events. PreToolUse
-      // can mutate sub-agent prompts, so ZCode is class-1 hook-inject.
+      // ZCode supports project hook registration through .zcode/config.json.
+      // On builds that disable it, the optional global trellis-bridge plugin
+      // registers the same events and delegates to the project hook scripts.
+      // PreToolUse can mutate sub-agent prompts, so either path is class-1.
       hasHooks: true,
       cliFlag: "zcode",
     },
