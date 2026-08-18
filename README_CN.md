@@ -133,7 +133,7 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 
 ## Star 历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=mindfold-ai/Trellis&type=Date)](https://star-history.com/#mindfold-ai/Trellis&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=mindfold-ai/Trellis&type=Date)](https://star-history.dera.page/#mindfold-ai/Trellis&Date)
 
 ## 社区与资源
 
