@@ -1,0 +1,9 @@
+{
+  "version": "0.7.0-beta.3",
+  "description": "Sync release: the 0.7 beta line picks up v0.6.14",
+  "breaking": false,
+  "recommendMigrate": false,
+  "changelog": "**Bug Fixes:**\n- Synced from main: v0.6.14. Task tracking fixed on CodeBuddy, ZCode and Trae; PreToolUse matchers updated for IDE tool names; `trellis mem` returns compacted conversations and reads Grok sessions. No beta-only behavior changed.",
+  "migrations": [],
+  "notes": "Run `trellis update`, then restart your IDE, to pick up the hook fixes."
+}

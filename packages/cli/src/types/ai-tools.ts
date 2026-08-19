@@ -21,6 +21,7 @@ export type AITool =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -48,6 +49,7 @@ export type TemplateDir =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -75,6 +77,7 @@ export type CliFlag =
   | "codebuddy"
   | "copilot"
   | "droid"
+  | "dsh"
   | "pi"
   | "reasonix"
   | "zcode"
@@ -96,7 +99,8 @@ export interface TemplateContext {
     | "$"
     | "/"
     | "/skill trellis-"
-    | "/skill:trellis-";
+    | "/skill:trellis-"
+    | "trellis-";
   /** Description of AI executor actions shown in role tables */
   executorAI:
     | "Bash scripts or Task calls"
@@ -149,6 +153,16 @@ export interface AIToolConfig {
   defaultChecked: boolean;
   /** Whether this tool uses Python hooks (affects Windows encoding detection) */
   hasPythonHooks: boolean;
+  /**
+   * Optional user-global compatibility plugin for platform versions where
+   * project-level integration is unavailable. Trellis may surface a manual
+   * installation hint, but leaves installation and lifecycle management to
+   * the platform UI.
+   */
+  globalHookPlugin?: {
+    name: string;
+    marketplaceUrl: string;
+  };
   /** Template context for placeholder resolution in common templates */
   templateContext: TemplateContext;
 }
@@ -391,6 +405,31 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       cliFlag: "droid",
     },
   },
+  dsh: {
+    // DeepSeek Harness (dsh) is a skills-first pull-based host: it reads
+    // `.agents/skills/` (agentskills.io, rank-200 project root) and its own
+    // `.dsh/skills/` (rank-100 project root) natively and the agent loads
+    // skills by name through its skill-loader tool. No session-start hook
+    // ships in the default web/headless profiles, so `hasHooks: false` and
+    // `trellis-start` stays as a user-invocable skill. Entry skills reference
+    // other skills by bare name (`trellis-<name>`), hence `cmdRefPrefix:
+    // "trellis-"`.
+    name: "DeepSeek Harness (dsh)",
+    templateDirs: ["common", "dsh"],
+    configDir: ".dsh",
+    supportsAgentSkills: true,
+    cliFlag: "dsh",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "trellis-",
+      executorAI: "Bash scripts or tool calls",
+      userActionLabel: "Skills",
+      agentCapable: true,
+      hasHooks: false,
+      cliFlag: "dsh",
+    },
+  },
   pi: {
     // Pi also writes .agents/skills/, which is read by Cursor, Gemini CLI,
     // GitHub Copilot, Amp, and Kimi Code. Keep that detail here rather than
@@ -443,20 +482,26 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       ".zcode/agents",
       ".zcode/commands",
       ".zcode/skills",
-      // Hooks assets written by configureZcode.
+      // Hook implementations written by configureZcode. On ZCode builds that
+      // disable project hook registration, trellis-bridge invokes them instead.
       ".zcode/hooks",
     ],
     cliFlag: "zcode",
     defaultChecked: false,
     hasPythonHooks: true,
+    globalHookPlugin: {
+      name: "trellis-bridge",
+      marketplaceUrl: "https://github.com/CNHLAIA/ZCode-Trellis-Plugin.git",
+    },
     templateContext: {
       cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Skills",
       agentCapable: true,
-      // ZCode (3.x) supports a workspace hook config at .zcode/config.json
-      // with SessionStart / UserPromptSubmit / PreToolUse events. PreToolUse
-      // can mutate sub-agent prompts, so ZCode is class-1 hook-inject.
+      // ZCode supports project hook registration through .zcode/config.json.
+      // On builds that disable it, the optional global trellis-bridge plugin
+      // registers the same events and delegates to the project hook scripts.
+      // PreToolUse can mutate sub-agent prompts, so either path is class-1.
       hasHooks: true,
       cliFlag: "zcode",
     },
@@ -530,9 +575,11 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
    * `.kimi-code/skills/`.
    *
    * Kimi has no project-level hooks/settings file Trellis may write (hooks are
-   * user-level `~/.kimi-code/config.toml` only) and no project-level custom
-   * sub-agent definitions (only the built-in coder/explore/plan sub-agents), so
-   * the Trellis agent prompts ship as skills with the pull-based prelude.
+   * user-level `~/.kimi-code/config.toml` only), so the Trellis agent prompts
+   * keep the pull-based prelude. They ship both as skills and as project-level
+   * custom sub-agent definitions under `.kimi-code/agents/` (Claude
+   * Code-compatible frontmatter), so the main session can dispatch
+   * `trellis-<name>` sub-agents directly.
    */
   kimi: {
     name: "Kimi Code",

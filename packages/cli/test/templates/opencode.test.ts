@@ -10,6 +10,10 @@ import {
   truncateUtf8,
 } from "../../src/templates/opencode/lib/trellis-context.js";
 import {
+  findUserTextPart,
+  insertSyntheticTextPart,
+} from "../../src/templates/opencode/lib/context-visibility.js";
+import {
   buildSessionContext,
   hasInjectedTrellisContext,
 } from "../../src/templates/opencode/lib/session-utils.js";
@@ -126,8 +130,12 @@ describe("opencode session-start history detection", () => {
   it("persists startup context and suppresses reinjection from history", async () => {
     interface ChatOutput {
       parts: {
+        id: string;
+        sessionID: string;
+        messageID: string;
         type: string;
         text: string;
+        synthetic?: boolean;
         metadata?: { trellis?: { sessionStart?: boolean } };
       }[];
     }
@@ -157,27 +165,62 @@ describe("opencode session-start history detection", () => {
     };
 
     const firstOutput: ChatOutput = {
-      parts: [{ type: "text", text: "First request" }],
+      parts: [
+        {
+          id: "prt_000000000010abcdefghijklmn",
+          sessionID: "session-a",
+          messageID: "message-a",
+          type: "text",
+          text: "First request",
+        },
+      ],
     };
     await hooks["chat.message"](
       { sessionID: "session-a", agent: "build" },
       firstOutput,
     );
 
-    expect(firstOutput.parts[0].text).toMatch(
-      /^<session-context>[\s\S]*\n\n---\n\nFirst request$/,
-    );
+    expect(firstOutput.parts).toHaveLength(2);
+    expect(firstOutput.parts[0]).toMatchObject({
+      sessionID: "session-a",
+      messageID: "message-a",
+      type: "text",
+      synthetic: true,
+    });
+    expect(firstOutput.parts[0].text).toMatch(/^<session-context>/);
     expect(firstOutput.parts[0].text).toContain("<first-reply-notice>");
     expect(firstOutput.parts[0].text).toContain("Trellis SessionStart ✓");
     expect(firstOutput.parts[0].metadata).toEqual({
       trellis: { sessionStart: true },
     });
+    expect(firstOutput.parts[1]).toEqual({
+      id: "prt_000000000010abcdefghijklmn",
+      sessionID: "session-a",
+      messageID: "message-a",
+      type: "text",
+      text: "First request",
+    });
 
     persistedParts = firstOutput.parts;
+    // The plugin's `session.compacted` event handler was removed as dead
+    // code: clearing the in-memory processed flag there was always undone
+    // one line later by hasPersistedInjectedContext finding the
+    // pre-compaction marker still in history, so re-injecting fresh context
+    // after compaction is a known gap, not a design choice. Simulate a
+    // fresh process picking up this session instead, which exercises the
+    // real, still-live persisted-history dedupe path below.
     contextCollector.clear("session-a");
 
     const secondOutput: ChatOutput = {
-      parts: [{ type: "text", text: "Second request" }],
+      parts: [
+        {
+          id: "prt_000000000020abcdefghijklmn",
+          sessionID: "session-a",
+          messageID: "message-b",
+          type: "text",
+          text: "Second request",
+        },
+      ],
     };
     await hooks["chat.message"](
       { sessionID: "session-a", agent: "build" },
@@ -185,7 +228,13 @@ describe("opencode session-start history detection", () => {
     );
 
     expect(secondOutput.parts).toEqual([
-      { type: "text", text: "Second request" },
+      {
+        id: "prt_000000000020abcdefghijklmn",
+        sessionID: "session-a",
+        messageID: "message-b",
+        type: "text",
+        text: "Second request",
+      },
     ]);
     expect(historyReads).toBe(2);
   });
@@ -479,9 +528,14 @@ interface TaskToolHooks {
 }
 
 interface ChatMessagePart {
+  id?: string;
+  sessionID?: string;
+  messageID?: string;
   type: string;
   text?: string;
+  synthetic?: boolean;
   metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 interface ChatMessageHooks {
@@ -490,6 +544,233 @@ interface ChatMessageHooks {
     output: { parts: ChatMessagePart[] },
   ) => Promise<void>;
 }
+
+function createUserTextPart(
+  text: string,
+  sessionID = "main-session",
+  messageID = "message-a",
+  ordinal = "000000000010",
+): ChatMessagePart {
+  return {
+    id: `prt_${ordinal}abcdefghijklmn`,
+    sessionID,
+    messageID,
+    type: "text",
+    text,
+  };
+}
+
+describe("opencode persisted synthetic context parts", () => {
+  it("creates deterministic complete identities without changing ordinary parts", () => {
+    const ordinary = createUserTextPart("original prompt");
+    ordinary.metadata = { user: { preserved: true } };
+    const firstParts = [structuredClone(ordinary)];
+    const secondParts = [structuredClone(ordinary)];
+
+    const first = insertSyntheticTextPart(
+      firstParts,
+      "session context",
+      "sessionStart",
+    );
+    const second = insertSyntheticTextPart(
+      secondParts,
+      "session context",
+      "sessionStart",
+    );
+
+    expect(first).toEqual(second);
+    expect(first).toMatchObject({
+      sessionID: "main-session",
+      messageID: "message-a",
+      type: "text",
+      text: "session context",
+      synthetic: true,
+    });
+    expect(first.id).toMatch(/^prt_[0-9a-f]{12}[0-9A-Za-z]{14}$/);
+    expect(firstParts[1]).toEqual(ordinary);
+    expect(secondParts[1]).toEqual(ordinary);
+  });
+
+  it("keeps both insertion orders equal to ID-sorted replay order", () => {
+    for (const order of [
+      ["sessionStart", "workflowState"],
+      ["workflowState", "sessionStart"],
+    ]) {
+      const ordinary = createUserTextPart("ordinary user prompt");
+      const parts = [structuredClone(ordinary)];
+
+      for (const kind of order) {
+        insertSyntheticTextPart(
+          parts,
+          kind === "sessionStart" ? "session context" : "workflow context",
+          kind,
+        );
+      }
+
+      expect(parts.map(part => part.text)).toEqual([
+        "session context",
+        "workflow context",
+        "ordinary user prompt",
+      ]);
+      expect(parts.map(part => part.id)).toEqual(
+        [...parts]
+          .sort((left, right) =>
+            left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
+          )
+          .map(part => part.id),
+      );
+      expect(parts[0].id).not.toBe(parts[1].id);
+      expect(parts[2]).toEqual(ordinary);
+      expect(findUserTextPart(parts)).toBe(parts[2]);
+    }
+  });
+
+  it("rejects unsupported kinds, missing identities, and duplicate IDs before mutation", () => {
+    const unsupportedParts = [createUserTextPart("prompt")];
+    const unsupportedBefore = structuredClone(unsupportedParts);
+    expect(() =>
+      insertSyntheticTextPart(unsupportedParts, "context", "unknown"),
+    ).toThrow("unknown context part kind");
+    expect(unsupportedParts).toEqual(unsupportedBefore);
+
+    const unsupportedIdentityParts = [
+      createUserTextPart(
+        "prompt",
+        "main-session",
+        "message-low-ordinal",
+        "000000000001",
+      ),
+    ];
+    const unsupportedIdentityBefore = structuredClone(
+      unsupportedIdentityParts,
+    );
+    expect(() =>
+      insertSyntheticTextPart(
+        unsupportedIdentityParts,
+        "context",
+        "sessionStart",
+      ),
+    ).toThrow("unsupported OpenCode part ID ordinal");
+    expect(unsupportedIdentityParts).toEqual(unsupportedIdentityBefore);
+
+    const missingIdentityParts: ChatMessagePart[] = [
+      { type: "text", text: "prompt" },
+    ];
+    const missingIdentityBefore = structuredClone(missingIdentityParts);
+    expect(() =>
+      insertSyntheticTextPart(
+        missingIdentityParts,
+        "context",
+        "sessionStart",
+      ),
+    ).toThrow("no ordinary OpenCode part with a persisted identity");
+    expect(missingIdentityParts).toEqual(missingIdentityBefore);
+
+    const duplicateParts = [createUserTextPart("prompt")];
+    insertSyntheticTextPart(duplicateParts, "context", "workflowState");
+    const duplicateBefore = structuredClone(duplicateParts);
+    expect(() =>
+      insertSyntheticTextPart(duplicateParts, "context", "workflowState"),
+    ).toThrow("duplicate synthetic context part");
+    expect(duplicateParts).toEqual(duplicateBefore);
+  });
+
+  it("fails closed on a legacy 19-character OpenCode part ID format without mutating parts", () => {
+    // OpenCode has changed its part ID format before: a live DB observed 5 of
+    // 2440 IDs still using this older, shorter shape. PART_ID_PATTERN must
+    // reject it rather than silently treat it as a valid identity source.
+    const legacyParts: ChatMessagePart[] = [
+      {
+        id: "prt_19b9634d8e5924s6zx6",
+        sessionID: "main-session",
+        messageID: "message-legacy",
+        type: "text",
+        text: "prompt",
+      },
+    ];
+    const legacyBefore = structuredClone(legacyParts);
+    expect(() =>
+      insertSyntheticTextPart(legacyParts, "context", "sessionStart"),
+    ).toThrow("no ordinary OpenCode part with a persisted identity");
+    expect(legacyParts).toEqual(legacyBefore);
+  });
+
+  it("uses an ordinary attachment as the identity source", () => {
+    const attachment: ChatMessagePart = {
+      id: "prt_000000000010abcdefghijklmn",
+      sessionID: "attachment-session",
+      messageID: "attachment-message",
+      type: "file",
+      mime: "application/pdf",
+      filename: "report.pdf",
+    };
+    const parts = [structuredClone(attachment)];
+
+    const inserted = insertSyntheticTextPart(
+      parts,
+      "workflow context",
+      "workflowState",
+    );
+
+    expect(inserted).toMatchObject({
+      sessionID: "attachment-session",
+      messageID: "attachment-message",
+      synthetic: true,
+    });
+    expect(parts[1]).toEqual(attachment);
+    expect(findUserTextPart(parts)).toBeUndefined();
+  });
+
+  it("uses the minimum-ordinal ordinary part as the identity source when a message has both a text and a file part", () => {
+    // Real ID shapes from a live OpenCode DB: same millisecond, adjacent
+    // counters. The text part (…c001) must win over the file part (…c002).
+    const textPart: ChatMessagePart = {
+      id: "prt_b9634c88c001aaaaaaaaaaaaaa",
+      sessionID: "main-session",
+      messageID: "message-multi-part",
+      type: "text",
+      text: "typed message",
+    };
+    const filePart: ChatMessagePart = {
+      id: "prt_b9634c88c002aaaaaaaaaaaaaa",
+      sessionID: "main-session",
+      messageID: "message-multi-part",
+      type: "file",
+      mime: "application/pdf",
+      filename: "report.pdf",
+    };
+    const parts = [structuredClone(textPart), structuredClone(filePart)];
+
+    const sessionStartPart = insertSyntheticTextPart(
+      parts,
+      "session context",
+      "sessionStart",
+    );
+    const workflowStatePart = insertSyntheticTextPart(
+      parts,
+      "workflow context",
+      "workflowState",
+    );
+
+    for (const ordinary of [textPart, filePart]) {
+      expect(sessionStartPart.id < ordinary.id).toBe(true);
+      expect(workflowStatePart.id < ordinary.id).toBe(true);
+    }
+
+    // The sort-below assertions above are necessary but NOT sufficient with
+    // this exact fixture: they still pass even if findIdentitySourcePart
+    // picks the file part (the *maximum*-ordinal ordinary part) instead of
+    // the text part, because the wrongly-sourced workflowState ordinal then
+    // collides with the text part's own 12-hex ordinal, and the numeric
+    // slot digit "1" still sorts below the "a" tail character by ASCII
+    // luck. Pin the exact ordinal derived from the text part (the minimum)
+    // so an inverted comparator is actually caught:
+    // sessionStart = 0xb9634c88c001 - 2 = 0xb9634c88bfff,
+    // workflowState = 0xb9634c88c001 - 1 = 0xb9634c88c000.
+    expect(sessionStartPart.id.slice(0, 17)).toBe("prt_b9634c88bfff0");
+    expect(workflowStatePart.id.slice(0, 17)).toBe("prt_b9634c88c0001");
+  });
+});
 
 function setupTrellisProject(): string {
   const dir = mkdtempSync(join(tmpdir(), "trellis-opencode-264-"));
@@ -753,12 +1034,194 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     contextCollector.clear("main-session");
   });
 
+  it("persists separate context parts in replay order for both plugin execution orders", async () => {
+    for (const [index, order] of [
+      ["sessionStart", "workflowState"],
+      ["workflowState", "sessionStart"],
+    ].entries()) {
+      const sessionID = `plugin-order-${index}`;
+      const ordinary = createUserTextPart(
+        "ordinary user prompt",
+        sessionID,
+        `message-order-${index}`,
+      );
+      ordinary.metadata = { user: { preserved: true } };
+      const parts = [structuredClone(ordinary)];
+      const sessionHooks = (await sessionStartPlugin({
+        directory: dir,
+        client: {
+          session: { messages: async () => ({ data: [] }) },
+        },
+      })) as ChatMessageHooks;
+      const workflowHooks = (await injectWorkflowStatePlugin({
+        directory: dir,
+      })) as ChatMessageHooks;
+
+      for (const kind of order) {
+        const hooks = kind === "sessionStart" ? sessionHooks : workflowHooks;
+        await hooks["chat.message"](
+          { sessionID, agent: "build" },
+          { parts },
+        );
+      }
+
+      expect(parts).toHaveLength(3);
+      expect(parts[0]).toMatchObject({
+        sessionID,
+        messageID: `message-order-${index}`,
+        type: "text",
+        synthetic: true,
+        metadata: { trellis: { sessionStart: true } },
+      });
+      expect(parts[0].text).toMatch(/^<session-context>/);
+      expect(parts[1]).toMatchObject({
+        sessionID,
+        messageID: `message-order-${index}`,
+        type: "text",
+        synthetic: true,
+      });
+      expect(parts[1].text).toMatch(/^<workflow-state>/);
+      expect(parts[1].metadata).toBeUndefined();
+      expect(parts[2]).toEqual(ordinary);
+      expect(parts.map(part => part.id)).toEqual(
+        [...parts]
+          .sort((left, right) => {
+            if (typeof left.id !== "string" || typeof right.id !== "string") {
+              throw new TypeError("expected persisted part identities");
+            }
+            return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+          })
+          .map(part => part.id),
+      );
+      contextCollector.clear(sessionID);
+    }
+  });
+
+  it("uses attachment identity for both real plugins", async () => {
+    const sessionID = "attachment-only-session";
+    const attachment: ChatMessagePart = {
+      id: "prt_000000000010abcdefghijklmn",
+      sessionID,
+      messageID: "attachment-only-message",
+      type: "file",
+      mime: "application/pdf",
+      filename: "report.pdf",
+    };
+    const parts = [structuredClone(attachment)];
+    const sessionHooks = (await sessionStartPlugin({
+      directory: dir,
+      client: { session: { messages: async () => ({ data: [] }) } },
+    })) as ChatMessageHooks;
+    const workflowHooks = (await injectWorkflowStatePlugin({
+      directory: dir,
+    })) as ChatMessageHooks;
+
+    await workflowHooks["chat.message"](
+      { sessionID, agent: "build" },
+      { parts },
+    );
+    await sessionHooks["chat.message"](
+      { sessionID, agent: "build" },
+      { parts },
+    );
+
+    expect(parts).toHaveLength(3);
+    expect(parts[0].text).toMatch(/^<session-context>/);
+    expect(parts[1].text).toMatch(/^<workflow-state>/);
+    expect(parts[2]).toEqual(attachment);
+    contextCollector.clear(sessionID);
+  });
+
+  it("preserves the user message when persisted identity is unavailable", async () => {
+    const sessionHooks = (await sessionStartPlugin({
+      directory: dir,
+      client: { session: { messages: async () => ({ data: [] }) } },
+    })) as ChatMessageHooks;
+    const workflowHooks = (await injectWorkflowStatePlugin({
+      directory: dir,
+    })) as ChatMessageHooks;
+
+    for (const [sessionID, hooks] of [
+      ["missing-session-identity", sessionHooks],
+      ["missing-workflow-identity", workflowHooks],
+    ] as const) {
+      const parts: ChatMessagePart[] = [{ type: "text", text: "original" }];
+      await hooks["chat.message"](
+        { sessionID, agent: "build" },
+        { parts },
+      );
+      expect(parts).toEqual([{ type: "text", text: "original" }]);
+      contextCollector.clear(sessionID);
+    }
+  });
+
+  it("checks the skip keyword only in ordinary user text", async () => {
+    const hooks = (await injectWorkflowStatePlugin({
+      directory: dir,
+    })) as ChatMessageHooks;
+    const ordinary = createUserTextPart("ordinary prompt");
+    const parts = [structuredClone(ordinary)];
+    insertSyntheticTextPart(
+      parts,
+      "machine context containing no-trellis",
+      "sessionStart",
+    );
+
+    await hooks["chat.message"](
+      { sessionID: "main-session", agent: "build" },
+      { parts },
+    );
+
+    expect(parts).toHaveLength(3);
+    expect(parts[1].text).toMatch(/^<workflow-state>/);
+    expect(parts[2]).toEqual(ordinary);
+  });
+
+  it("keeps both plugins disabled by their existing environment gates", async () => {
+    const sessionHooks = (await sessionStartPlugin({
+      directory: dir,
+      client: { session: { messages: async () => ({ data: [] }) } },
+    })) as ChatMessageHooks;
+    const workflowHooks = (await injectWorkflowStatePlugin({
+      directory: dir,
+    })) as ChatMessageHooks;
+    const cases = [
+      ["TRELLIS_HOOKS", "0"],
+      ["TRELLIS_DISABLE_HOOKS", "1"],
+      ["OPENCODE_NON_INTERACTIVE", "1"],
+    ] as const;
+
+    for (const [key, value] of cases) {
+      const previous = process.env[key];
+      process.env[key] = value;
+      try {
+        for (const [suffix, hooks] of [
+          ["session", sessionHooks],
+          ["workflow", workflowHooks],
+        ] as const) {
+          const sessionID = `${key}-${suffix}`;
+          const ordinary = createUserTextPart("original", sessionID);
+          const parts = [structuredClone(ordinary)];
+          await hooks["chat.message"](
+            { sessionID, agent: "build" },
+            { parts },
+          );
+          expect(parts).toEqual([ordinary]);
+          contextCollector.clear(sessionID);
+        }
+      } finally {
+        if (previous === undefined) Reflect.deleteProperty(process.env, key);
+        else process.env[key] = previous;
+      }
+    }
+  });
+
   it("session-start.js early-returns when input.agent is a trellis sub-agent", async () => {
     const hooks = (await sessionStartPlugin({
       directory: dir,
       client: undefined,
     })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [{ type: "text", text: "original" }];
+    const parts: ChatMessagePart[] = [createUserTextPart("original")];
 
     await hooks["chat.message"](
       { sessionID: "subagent-session", agent: "trellis-implement" },
@@ -777,7 +1240,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     })) as ChatMessageHooks;
 
     for (const agent of ["trellis-check", "trellis-research"]) {
-      const parts: ChatMessagePart[] = [{ type: "text", text: "untouched" }];
+      const parts: ChatMessagePart[] = [createUserTextPart("untouched")];
       await hooks["chat.message"](
         { sessionID: "subagent-session", agent },
         { parts },
@@ -790,7 +1253,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     const hooks = (await injectWorkflowStatePlugin({
       directory: dir,
     })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [{ type: "text", text: "original" }];
+    const parts: ChatMessagePart[] = [createUserTextPart("original")];
 
     await hooks["chat.message"](
       { sessionID: "subagent-session", agent: "trellis-implement" },
@@ -805,15 +1268,18 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     const hooks = (await injectWorkflowStatePlugin({
       directory: dir,
     })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [{ type: "text", text: "user prompt" }];
+    const ordinary = createUserTextPart("user prompt");
+    const parts: ChatMessagePart[] = [structuredClone(ordinary)];
 
     await hooks["chat.message"](
       { sessionID: "main-session", agent: "build" },
       { parts },
     );
 
+    expect(parts).toHaveLength(2);
     expect(parts[0].text).toContain("<workflow-state>");
-    expect(parts[0].text).toContain("user prompt");
+    expect(parts[0].synthetic).toBe(true);
+    expect(parts[1]).toEqual(ordinary);
   });
 
   it("inject-workflow-state.js skips injection when the prompt contains the default skip keyword", async () => {
@@ -821,7 +1287,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       directory: dir,
     })) as ChatMessageHooks;
     const parts: ChatMessagePart[] = [
-      { type: "text", text: "no-trellis what does this regex do" },
+      createUserTextPart("no-trellis what does this regex do"),
     ];
 
     await hooks["chat.message"](
@@ -838,7 +1304,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       directory: dir,
     })) as ChatMessageHooks;
     const parts: ChatMessagePart[] = [
-      { type: "text", text: "no-trellisfoo is a strange word" },
+      createUserTextPart("no-trellisfoo is a strange word"),
     ];
 
     await hooks["chat.message"](
@@ -859,7 +1325,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     })) as ChatMessageHooks;
 
     const skipped: ChatMessagePart[] = [
-      { type: "text", text: "off-topic question" },
+      createUserTextPart("off-topic question"),
     ];
     await hooks["chat.message"](
       { sessionID: "main-session", agent: "build" },
@@ -868,7 +1334,11 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     expect(skipped[0].text).toBe("off-topic question");
 
     const notSkipped: ChatMessagePart[] = [
-      { type: "text", text: "no-trellis question" },
+      createUserTextPart(
+        "no-trellis question",
+        "main-session-2",
+        "message-custom-keyword",
+      ),
     ];
     await hooks["chat.message"](
       { sessionID: "main-session-2", agent: "build" },
@@ -886,7 +1356,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       directory: dir,
     })) as ChatMessageHooks;
     const parts: ChatMessagePart[] = [
-      { type: "text", text: "no-trellis question" },
+      createUserTextPart("no-trellis question"),
     ];
 
     await hooks["chat.message"](

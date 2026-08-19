@@ -84,6 +84,7 @@ program
   .option("--codebuddy", "Include CodeBuddy commands")
   .option("--copilot", "Include GitHub Copilot hooks")
   .option("--droid", "Include Factory Droid commands")
+  .option("--dsh", "Include DeepSeek Harness (dsh) skills")
   .option("--pi", "Include Pi Agent extension assets")
   .option("--reasonix", "Include Reasonix skills")
   .option("--zcode", "Include ZCode commands")

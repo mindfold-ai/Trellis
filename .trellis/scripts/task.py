@@ -184,11 +184,21 @@ def cmd_start(args: argparse.Namespace) -> int:
         print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.trellis/tasks/01-31-my-task')")
         return 1
 
-    # Convert to relative path for storage
+    # Convert to relative path for storage. repo_root is resolved because
+    # full_path already is (resolve_task_dir only returns paths inside the
+    # resolved root), so an unresolved repo_root would mismatch under a
+    # symlink (e.g. /tmp on macOS) and reject a perfectly normal task.
     try:
-        task_dir = full_path.relative_to(repo_root).as_posix()
+        task_dir = full_path.relative_to(repo_root.resolve()).as_posix()
     except ValueError:
-        task_dir = str(full_path)
+        # resolve_task_dir already refused everything outside the repo, so
+        # this is unreachable in practice. Refuse rather than fall back to
+        # str(full_path) — that fallback (a lexical relative_to() paired with
+        # an absolute-path fallback) is exactly the pattern that let a `..`
+        # ref escape into storage before this fix.
+        print(colored(f"Error: Task not found: {task_input}", Colors.RED))
+        print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.trellis/tasks/01-31-my-task')")
+        return 1
 
     task_json_path = full_path / FILE_TASK_JSON
 

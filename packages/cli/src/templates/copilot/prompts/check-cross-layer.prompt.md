@@ -73,7 +73,7 @@ Based on your change type, execute relevant checks below:
   # Search in source files (adjust extensions for your project)
   grep -r "value-to-change" src/
   ```
-- [ ] If 2+ places define same value -> Should extract to shared constant
+- [ ] If the same value repeats -> does it represent one stable concept whose callers must change together? Extract only then. Two literals that merely happen to match today should stay separate
 - [ ] After modification, all usage sites updated?
 - [ ] If creating utility: Does similar utility already exist?
 
@@ -105,7 +105,7 @@ Based on your change type, execute relevant checks below:
   grep -r "patternYouChanged" src/
   ```
 - [ ] Any files missed that should also be updated?
-- [ ] Should this pattern be abstracted to prevent future duplication?
+- [ ] Do the repeated sites represent one stable concept whose callers must change together? Abstract only then — not to pre-empt duplication that has not happened.
 
 ---
 
@@ -133,6 +133,19 @@ Based on your change type, execute relevant checks below:
   ```
 - [ ] Are these usages consistent?
 - [ ] Should they share configuration/constants?
+
+---
+
+## Dimension E: Scope Discipline (Always applicable)
+
+**Trigger**: Every change, before reporting done
+
+**Checklist**:
+- [ ] Any tidying of code the task did not require?
+- [ ] Any abstraction, config or extension point added for a case that does not exist yet?
+- [ ] Any speculative fallback for a state that cannot occur?
+- [ ] Any file changed that the acceptance criteria do not mention?
+- [ ] Any workaround added at the caller instead of a fix where the behavior actually lives?
 
 ---
 

@@ -7,3 +7,16 @@
 # picking either side (task state lives in task.json, not index.md). See
 # .trellis/spec/cli/backend/directory-structure.md for details.
 .trellis/workspace/*/journal-*.md merge=union
+
+# Normalize line endings on checkin. Windows contributors save with CRLF by
+# default, and without this git records the whole file as rewritten: #555
+# arrived as a 2159-line diff for ~75 lines of real work, and would have
+# landed three files with line endings unlike the rest of the repo.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.zstd binary

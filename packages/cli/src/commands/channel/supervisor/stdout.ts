@@ -24,22 +24,58 @@ import type { TurnOutcome, TurnTracker } from "./turns.js";
 type Child = ChildProcessByStdio<Writable, Readable, Readable>;
 
 /**
+ * Coordinate early stdout capture with the durable `spawned` event.
+ *
+ * Startup failures discard captured lines because no `spawned` event exists.
+ * Normal shutdown may stop waiting for inherited pipe owners, but must leave
+ * the processing decision to the in-flight `spawned` append so stdout events
+ * can never overtake it in events.jsonl.
+ */
+export function createStdoutDrainControl(): {
+  processLines: Promise<boolean>;
+  signal: AbortSignal;
+  allowProcessing: () => void;
+  discard: () => void;
+  abortReading: () => void;
+} {
+  let resolveProcessLines!: (processLines: boolean) => void;
+  const processLines = new Promise<boolean>((resolve) => {
+    resolveProcessLines = resolve;
+  });
+  const controller = new AbortController();
+
+  return {
+    processLines,
+    signal: controller.signal,
+    allowProcessing: () => resolveProcessLines(true),
+    discard: () => {
+      resolveProcessLines(false);
+      controller.abort();
+    },
+    abortReading: () => controller.abort(),
+  };
+}
+
+/**
  * 按行读取 stdout，并把非空行串行交给 onLine
  *
  * @param stream 子进程 stdout 可读流
  * @param onLine stdout 单行处理器，按读取顺序串行执行
  * @param onError onLine 抛错时的错误处理器，也在同一队列中执行
- * @returns 无返回值
+ * @param signal 中止等待并排空已读取内容的可选信号
+ * @returns stdout 结束且所有已排队行处理完成后 resolved 的 Promise
  */
 export function pumpStdout(
   stream: Readable,
   onLine: (line: string) => Promise<void> | void,
   onError?: (err: Error) => Promise<void> | void,
-): void {
+  signal?: AbortSignal,
+): Promise<void> {
   let buf = "";
   let queue: Promise<void> = Promise.resolve();
   let pending = 0;
   let paused = false;
+  let finished = false;
 
   /**
    * 在有待处理行时暂停 stdout 读取
@@ -96,7 +132,7 @@ export function pumpStdout(
       .catch(() => undefined);
   };
 
-  stream.on("data", (chunk: Buffer) => {
+  const onData = (chunk: Buffer): void => {
     buf += chunk.toString("utf-8");
     let nl: number;
     while ((nl = buf.indexOf("\n")) !== -1) {
@@ -106,7 +142,41 @@ export function pumpStdout(
         enqueue(line);
       }
     }
+  };
+
+  let resolveFinished!: () => void;
+  const streamFinished = new Promise<void>((resolve) => {
+    resolveFinished = resolve;
   });
+  const finish = (): void => {
+    if (finished) return;
+    finished = true;
+    stream.off("data", onData);
+    stream.off("end", finish);
+    stream.off("close", finish);
+    signal?.removeEventListener("abort", finish);
+    if (buf.trim()) {
+      enqueue(buf);
+    }
+    buf = "";
+    resolveFinished();
+  };
+
+  stream.on("data", onData);
+  stream.once("end", finish);
+  stream.once("close", finish);
+  signal?.addEventListener("abort", finish, { once: true });
+
+  if (
+    signal?.aborted ||
+    stream.readableEnded ||
+    stream.closed ||
+    stream.destroyed
+  ) {
+    queueMicrotask(finish);
+  }
+
+  return streamFinished.then(() => queue);
 }
 
 /**
@@ -191,7 +261,9 @@ export function startStdoutPump(args: {
   log: { write: (data: string) => void };
   shutdown: ShutdownController;
   turnTracker?: TurnTracker;
-}): void {
+  processLines?: Promise<boolean>;
+  signal?: AbortSignal;
+}): Promise<void> {
   const {
     channelName,
     workerName,
@@ -201,10 +273,13 @@ export function startStdoutPump(args: {
     log,
     shutdown,
     turnTracker,
+    processLines,
+    signal,
   } = args;
-  pumpStdout(
+  const drained = pumpStdout(
     child.stdout,
     async (line: string) => {
+      if (processLines && !(await processLines)) return;
       log.write(line + "\n");
       const result = adapter.parseLine(line, adapterCtx);
       await applyParseResult(
@@ -224,5 +299,9 @@ export function startStdoutPump(args: {
         message: `stdout pipeline error: ${err.message}`,
       }).catch(() => undefined);
     },
+    signal,
   );
+  return processLines
+    ? Promise.all([drained, processLines]).then(() => undefined)
+    : drained;
 }

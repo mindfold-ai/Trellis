@@ -7,11 +7,12 @@
  * - User-invocable entry points (`trellis-start` / `trellis-continue` /
  *   `trellis-finish-work`, invoked as `/skill:trellis-<name>`) and the Trellis
  *   agent prompts live under `.kimi-code/skills/<name>/SKILL.md`.
+ * - The same agent prompts are also installed as project-level custom
+ *   sub-agent definitions under `.kimi-code/agents/<name>.md`.
  *
- * Kimi has no project-level hooks/settings file Trellis may write and no
- * custom sub-agent definitions (built-in coder/explore/plan only), so the
- * Trellis agent prompts ship as skills; trellis-implement / trellis-check get
- * the pull-based prelude, trellis-research stays standalone.
+ * Kimi has no project-level hooks/settings file Trellis may write, so no
+ * hooks or settings are shipped; trellis-implement / trellis-check get the
+ * pull-based prelude, trellis-research stays standalone.
  */
 
 import { createTemplateReader, type AgentTemplate } from "../template-utils.js";

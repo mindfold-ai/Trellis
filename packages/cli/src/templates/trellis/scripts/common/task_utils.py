@@ -214,6 +214,8 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
     Returns:
         Resolved absolute path, or None when it is not a location inside the
         tasks directory (an error naming the path is printed to stderr).
+        Both sides are resolved before comparing, since the tasks directory
+        may itself sit behind a symlink (/tmp does on macOS).
     """
     if not target_dir:
         print("Error: task directory is required", file=sys.stderr)

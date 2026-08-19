@@ -92,9 +92,16 @@ def _detect_platform(input_data: dict) -> str | None:
         return "codex"
     if isinstance(input_data.get("cursor_version"), str):
         return "cursor"
+    # CLAUDE_PROJECT_DIR is a compatibility alias that several hosts set
+    # alongside their own variable — CodeBuddy, ZCode and Trae all do. It must
+    # therefore be checked LAST, or every one of them is detected as claude and
+    # the context key becomes `claude_<their-session-id>`. That key does not
+    # match the session file `task.py start` wrote under the host's real name,
+    # so the sub-agent starts with no task context while the pointer exists on
+    # disk. Same fix as inject-workflow-state.py and session-start.py; this
+    # third copy was missed when those two were corrected.
     env_map = {
         "ZCODE_PROJECT_DIR": "zcode",
-        "CLAUDE_PROJECT_DIR": "claude",
         "CURSOR_PROJECT_DIR": "cursor",
         "CODEBUDDY_PROJECT_DIR": "codebuddy",
         "FACTORY_PROJECT_DIR": "droid",
@@ -102,6 +109,9 @@ def _detect_platform(input_data: dict) -> str | None:
         "QODER_PROJECT_DIR": "qoder",
         "KIRO_PROJECT_DIR": "kiro",
         "COPILOT_PROJECT_DIR": "copilot",
+        "TRAE_PROJECT_DIR": "trae",
+        # Last: the shared alias, only meaningful once no vendor key matched.
+        "CLAUDE_PROJECT_DIR": "claude",
     }
     for env_name, platform in env_map.items():
         if os.environ.get(env_name):
@@ -986,6 +996,8 @@ def _extract_subagent_type(tool_input: dict) -> str:
         "subagentType",
         "subagent_type_name",
         "subagentTypeName",
+        "subagent_name",
+        "subagentName",
         "agent_type",
         "agentType",
         "name",
@@ -1001,7 +1013,8 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
 
     Returns (subagent_type, original_prompt, tool_input).
     Handles:
-    - Claude Code / Qoder / CodeBuddy / Droid: tool_name=Task|Agent, tool_input.subagent_type
+    - Claude Code / Qoder / Droid: tool_name=Task|Agent, tool_input.subagent_type
+    - CodeBuddy: tool_name=task (IDE) or Task (CLI), tool_input.subagent_name
     - Cursor: tool_name=Task|Subagent, tool_input.subagent_type
     - Copilot CLI: toolName=task (camelCase key, lowercase value)
     - ZCode: toolName=Agent, toolInput/tool_input.subagent_type
@@ -1080,8 +1093,21 @@ def main():
     if subagent_type in AGENTS_REQUIRE_TASK:
         if not task_dir:
             sys.exit(0)
-        # Check if task directory exists
-        task_dir_full = os.path.join(repo_root, task_dir)
+        # Contain the pointer before reading anything through it. `task.py` now
+        # refuses to store a ref that leaves the repo, but a session file
+        # written before that fix can still hold one, and `trellis update`
+        # does not rewrite session files — so a poisoned pointer outlives the
+        # upgrade that closed the writer. This is the last hop before the
+        # task's prd.md/design.md reach the model prompt, so it checks again.
+        try:
+            root_real = os.path.realpath(repo_root)
+            task_dir_full = os.path.realpath(os.path.join(repo_root, task_dir))
+            # ValueError on Windows when the two sit on different drives; that
+            # is outside the repo by definition, so it fails closed below.
+            if os.path.commonpath([root_real, task_dir_full]) != root_real:
+                sys.exit(0)
+        except (OSError, ValueError):
+            sys.exit(0)
         if not os.path.exists(task_dir_full):
             sys.exit(0)
 

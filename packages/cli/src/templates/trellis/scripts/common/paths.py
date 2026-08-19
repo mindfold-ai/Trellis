@@ -299,7 +299,25 @@ def normalize_task_ref(task_ref: str) -> str:
 
 
 def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | None:
-    """Resolve a task ref to an absolute task directory path."""
+    """Resolve a task ref to an absolute task directory path inside the repo.
+
+    Returns None when the ref resolves outside `repo_root`. Every reader of the
+    active task — `task.py`, the shared hooks, the platform extensions — comes
+    through here, so containment is enforced at this one point rather than at
+    each call site.
+
+    It matters because a ref is not always something the user typed. It round
+    trips through the session pointer under `.trellis/.runtime/sessions/`, and
+    `..` segments used to survive that trip intact: `_canonical_task_ref`
+    compares lexically, and a lexical `relative_to` accepts
+    `<root>/.trellis/tasks/../../../elsewhere` because the string does start
+    with the root. The ref was then stored verbatim and replayed on every later
+    turn, so `task.py start .trellis/tasks/../../../elsewhere` both rewrote that
+    directory's `task.json` and fed its files to the model.
+
+    Resolving here also normalises the path, so callers get a ref without `..`
+    to store.
+    """
     if repo_root is None:
         repo_root = get_repo_root()
 
@@ -309,12 +327,27 @@ def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | Non
 
     path_obj = Path(normalized)
     if path_obj.is_absolute():
-        return path_obj
+        candidate = path_obj
+    elif normalized.startswith(f"{DIR_WORKFLOW}/"):
+        candidate = repo_root / path_obj
+    else:
+        candidate = repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
 
-    if normalized.startswith(f"{DIR_WORKFLOW}/"):
-        return repo_root / path_obj
+    # resolve() collapses `..` and follows symlinks, so a task directory that
+    # links outside the repo is refused too. Both sides are resolved because
+    # repo_root itself may sit behind a symlink (/tmp on macOS does).
+    try:
+        resolved = candidate.resolve()
+        root = repo_root.resolve()
+    except OSError:
+        return None
 
-    return repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+
+    return resolved
 
 
 def get_current_task(

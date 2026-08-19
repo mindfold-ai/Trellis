@@ -71,7 +71,7 @@ def cmd_add_context(args: argparse.Namespace) -> int:
     path = args.path
     reason = args.reason or "Added manually"
 
-    if not target_dir.is_dir():
+    if not target_dir or not target_dir.is_dir():
         print(colored(f"Error: Directory not found: {target_dir}", Colors.RED))
         return 1
 

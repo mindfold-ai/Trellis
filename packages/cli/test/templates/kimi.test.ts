@@ -24,24 +24,34 @@ describe("kimi getAllAgents", () => {
       expect(content).toMatch(/^---\n/);
       expect(content).toContain("name: ");
       expect(content).toContain("description:");
-      // Kimi agents document dispatch through the built-in sub-agents
-      expect(content).toContain("built-in");
+      // Kimi agents document dispatch through `.kimi-code/agents/` sub-agents
+      expect(content).toContain(".kimi-code/agents/");
     }
   });
 
-  it("dispatches research through the writable coder sub-agent", () => {
+  it("documents dispatch via the Agent tool with an Active task: prompt", () => {
+    for (const agent of getAllAgents()) {
+      // Dispatch contract: main session dispatches the custom sub-agent via
+      // the Agent tool, and the prompt starts with the active task path.
+      expect(agent.content).toContain(
+        `dispatches the \`${agent.name}\` sub-agent via the Agent tool`,
+      );
+      expect(agent.content).toContain("Starts with `Active task: <path");
+    }
+  });
+
+  it("dispatches research as a custom sub-agent with write scope limited to research/", () => {
     const research = getAllAgents().find(
       (agent) => agent.name === "trellis-research",
     );
     expect(research).toBeDefined();
     if (!research) return;
 
-    expect(research.content).toContain("built-in `coder` sub-agent");
-    expect(research.content).toContain("`explore` sub-agent is read-only");
-    expect(research.content).toContain("may write only under");
-    expect(research.content).not.toContain(
-      "dispatches the built-in `explore` sub-agent",
+    expect(research.content).toContain(
+      "dispatches the `trellis-research` sub-agent",
     );
+    expect(research.content).toContain("may write only under");
+    expect(research.content).not.toContain("built-in `coder` sub-agent");
   });
 });
 
@@ -80,7 +90,7 @@ describe("kimi collectKimiTemplates", () => {
       true,
     );
 
-    // Trellis agent prompts (Kimi has no custom sub-agent definitions)
+    // Trellis agent prompts (also installed as `.kimi-code/agents/*.md`)
     expect(files.has(".kimi-code/skills/trellis-implement/SKILL.md")).toBe(
       true,
     );
@@ -91,6 +101,25 @@ describe("kimi collectKimiTemplates", () => {
     expect(implement).toContain("Load Trellis Context First");
     const research = files.get(".kimi-code/skills/trellis-research/SKILL.md");
     expect(research).not.toContain("Load Trellis Context First");
+
+    // Custom sub-agent definitions under .kimi-code/agents/ mirror the skill
+    // copies (pull-based prelude included).
+    for (const name of [
+      "trellis-implement",
+      "trellis-check",
+      "trellis-research",
+    ]) {
+      const agent = files.get(`.kimi-code/agents/${name}.md`);
+      expect(agent, `.kimi-code/agents/${name}.md`).toBeDefined();
+      expect(agent).toContain(`name: ${name}`);
+      expect(agent).toContain("tools: ");
+    }
+    expect(files.get(".kimi-code/agents/trellis-implement.md")).toContain(
+      "Load Trellis Context First",
+    );
+    expect(files.get(".kimi-code/agents/trellis-research.md")).not.toContain(
+      "Load Trellis Context First",
+    );
 
     // No hooks/settings/extension files — Kimi has no project-level hook or
     // settings surface Trellis may write.

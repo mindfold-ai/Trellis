@@ -72,7 +72,10 @@ Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za
 3. It calls `common.active_task.resolve_active_task()` to look up the
    per-session active task. If absent → status is the pseudo `no_task`. If
    the pointer is stale (task dir deleted) → status is `stale_<source_type>`.
-4. Otherwise it reads `task.json.status` from the resolved task directory.
+4. Otherwise it reads `task.json.status` from the resolved task directory. If
+   the task directory exists but `task.json` is missing, malformed, or has no
+   usable status, the hook emits the `task_error` pseudo-status and keeps the
+   task directory name in the breadcrumb header.
 5. It opens `.trellis/workflow.md` and parses every `[workflow-state:STATUS]`
    block.
 6. Codex may map `planning` / `in_progress` to `planning-inline` /
@@ -107,6 +110,104 @@ Both regexes MUST use the `\1` backreference variant — `[workflow-state:([A-Za
    selector in `inject-workflow-state.py` (and the OpenCode `.js` plugin if
    the new platform shares its `chat.message`-style envelope). Do NOT
    hardcode `UserPromptSubmit` at any new emission site.
+
+---
+
+## OpenCode persisted-part contract
+
+### 1. Scope / Trigger
+
+This contract applies when an OpenCode `chat.message` plugin adds Trellis
+context after OpenCode has resolved the user's input parts. Unlike the Python
+hook envelope above, these JavaScript-added parts must carry their own complete
+persisted identity.
+
+### 2. Signatures
+
+- `findUserTextPart(parts) -> ordinary text part | undefined`
+- `insertSyntheticTextPart(parts, text, kind) -> persisted synthetic text part`
+- Supported `kind` values: `sessionStart` and `workflowState`
+- Required persisted fields: `id`, `sessionID`, and `messageID`
+
+### 3. Contracts
+
+- Existing user parts are ordinary when `synthetic !== true`; neither plugin
+  may mutate their text, metadata, identity, or relative order.
+- The identity source is the lexicographically earliest ordinary part with a
+  valid OpenCode `prt_...` ID plus string `sessionID` and `messageID`. This also
+  supports attachment-only turns where no ordinary text part exists.
+- Generated IDs are deterministic for the source message and kind. They sort
+  in the same order used in memory: SessionStart, workflow state, then the
+  ordinary input parts. ID-sorted database replay must therefore equal the
+  first model request order.
+- Both injected parts use `type: "text"` and `synthetic: true`. Synthetic marks
+  machine-authored UI ownership; it does not remove the text from model input.
+- Only the SessionStart part receives `metadata.trellis.sessionStart = true`.
+  History dedupe continues to detect that marker after restart or compaction.
+- The workflow-state plugin checks the skip keyword only against an ordinary
+  user text part, never against an earlier synthetic SessionStart part.
+- Plugin error handling leaves the original parts unchanged. SessionStart is
+  marked processed only after a successful insertion.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+|---|---|
+| `parts` is not an array or `text` is not a string | Throw before mutation |
+| `kind` is not `sessionStart` or `workflowState` | Throw before source lookup or mutation |
+| No ordinary part has a complete supported persisted identity | Throw; plugin logs and preserves the input parts |
+| Source ID ordinal cannot reserve both context slots | Throw instead of generating a clamped or colliding ID |
+| Generated ID already exists | Throw; never overwrite or silently reuse the existing part |
+| Plugin order is reversed | Final part order remains SessionStart, workflow state, ordinary parts |
+
+### 5. Good / Base / Bad Cases
+
+- Good: a normal text turn persists two complete synthetic parts before an
+  unchanged user text part, and ID-sorted replay is byte-for-byte equivalent to
+  the first-use order.
+- Base: an attachment-only turn uses the attachment identity, preserves the
+  file part, and still persists both machine-authored text parts.
+- Bad: `parts.unshift({ type: "text", text, synthetic: true })` looks hidden in
+  the UI but lacks the identity OpenCode needs to save and replay the part.
+
+### 6. Tests Required
+
+- Helper tests assert deterministic unique IDs, complete identity fields,
+  supported kinds, duplicate refusal, low-ordinal refusal, missing identity,
+  attachment-only input, no partial mutation, and replay-order equality.
+- Real plugin tests run both plugin orders and deep-compare every ordinary part
+  before and after injection.
+- SessionStart tests cover in-memory and persisted-history dedupe; workflow
+  tests cover default/custom/disabled skip keywords. There is no compaction
+  reset: history dedupe reads the whole session, so clearing the in-memory
+  flag after compaction is undone by the very next check. Re-injecting context
+  after compaction is a known gap, not a design choice.
+- Existing hook-disable, non-interactive, and Trellis sub-agent exclusion tests
+  remain mandatory.
+- Template collection tests assert the helper ships through both fresh init and
+  `trellis update`; dogfood `.opencode/` copies must match template bytes.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```javascript
+parts[0].text = `${breadcrumb}\n\n${parts[0].text}`
+```
+
+This changes user-authored history and makes machine context visible as part of
+the user's message.
+
+#### Correct
+
+```javascript
+const userPart = findUserTextPart(parts)
+if (promptHasSkipKeyword(userPart?.text ?? "", skipKeyword)) return
+insertSyntheticTextPart(parts, breadcrumb, "workflowState")
+```
+
+This keeps user content unchanged while giving the machine-authored context a
+complete, replay-stable persisted identity.
 
 ---
 
@@ -195,6 +296,7 @@ Which breadcrumbs actually fire in normal flow:
 | Status | Reachability | Notes |
 |--------|--------------|-------|
 | `no_task` | ✅ reachable | Pseudo-status; emitted when `resolve_active_task()` returns no pointer. |
+| `task_error` | ✅ reachable | Pseudo-status; emitted when a session task pointer resolves to a directory whose `task.json` cannot be read or has no usable `status`. |
 | `planning` | ✅ reachable | After `cmd_create` (which now auto-sets the session pointer when available) and before `cmd_start`. `planning-inline` is the Codex inline-mode breadcrumb body for the same task status. |
 | `in_progress` | ✅ reachable | After `cmd_start`, until `cmd_archive`. `in_progress-inline` is the Codex inline-mode breadcrumb body for the same task status. |
 | `completed` | ❌ DEAD in normal flow | `cmd_archive` writes `status="completed"` and immediately moves the task dir to `archive/`. The session-pointer cleanup in `clear_task_from_sessions` runs before the move, so the resolver loses the pointer in the same call. The block body in workflow.md is preserved for a future status-transition redesign (e.g. an explicit `in_progress → completed` command) but no current code path produces it. |

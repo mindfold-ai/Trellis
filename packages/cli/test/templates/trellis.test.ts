@@ -323,6 +323,13 @@ describe("trellis template constants", () => {
     }
   });
 
+  it("workflow.md ships a task_error breadcrumb that repairs the existing task", () => {
+    const taskError = workflowStateBreadcrumb("task_error");
+    expect(taskError).toContain("Do not create or activate another task");
+    expect(taskError).toContain("repair its task.json");
+    expect(taskError).toContain("valid JSON object with a non-empty status");
+  });
+
   it("gitignoreTemplate contains ignore patterns", () => {
     expect(gitignoreTemplate).toContain(".developer");
     expect(gitignoreTemplate).toContain("__pycache__");

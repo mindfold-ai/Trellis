@@ -61,6 +61,7 @@ import {
 } from "../configurators/index.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
 import { preserveCodexAgentModelKeys } from "../configurators/codex.js";
+import { printZcodeSetupHint } from "../configurators/zcode.js";
 import { ensureGitattributes } from "../configurators/workflow.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
 import {
@@ -2159,6 +2160,7 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Load template hashes for modification detection
   let hashes = loadHashes(cwd);
+  const zcodeConfigured = getConfiguredPlatforms(cwd).has("zcode");
   const isFirstHashTracking = Object.keys(hashes).length === 0;
 
   // Handle unknown version - skip regular migrations but safe-file-delete still runs
@@ -2449,6 +2451,7 @@ export async function update(options: UpdateOptions): Promise<void> {
         );
       }
     }
+    if (zcodeConfigured) printZcodeSetupHint();
     return;
   }
 
@@ -2865,6 +2868,8 @@ export async function update(options: UpdateOptions): Promise<void> {
       }
     }
   }
+
+  if (zcodeConfigured) printZcodeSetupHint();
 
   // Display breaking change warnings at the very end (so they don't scroll off screen)
   if (cliVsProject > 0 && projectVersion !== "unknown") {
