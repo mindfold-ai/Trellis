@@ -46,12 +46,14 @@ the fallback file is targeted correctly.
 
 | Where | Version | Has fix |
 |---|---|---|
-| upstream `origin/main` (`mindfold-ai/Trellis`) | 0.6.14 | yes |
-| this fork's `main` (`sdelmas/Trellis`) | 0.6.9 | **no** |
-| consumer `platypeeps/sd-github-review` | 0.6.7 | **no** |
+| upstream `origin/main` (`mindfold-ai/Trellis`) | 0.6.15 | yes |
+| this fork's `main` (`sdelmas/Trellis`) | 0.6.14 | yes |
+| this repo (`ai/Trellis` vendored `.trellis/.version`) | 0.6.14 | yes |
+| all 8 fleet consumers | 0.6.7 | **no** |
 
-Other consumers were not checked. `sd-status fleet` reports installed-vs-target
-per consumer and should drive the rollout list rather than a hand-written one.
+Re-verified by live scan 2026-08-19 against every entry in
+`sd-ai-command-pack/docs/fleet/consumers.json`. The fork is no longer affected;
+all 8 consumers still are. Per-consumer detail moved to the rollout task below.
 
 ## Requirements
 
@@ -67,11 +69,13 @@ per consumer and should drive the rollout list rather than a hand-written one.
   `.trellis/scripts/common/active_task.py` is vendored per consumer, so a
   package bump that does not refresh vendored scripts fixes nothing.
 - Clear any orphaned session files left behind by ended sessions as part of the
-  rollout. Known at time of writing: `sd-ai-command-pack` (3),
-  `anomaly-metric-creator` (2), `hoa-manager` (1), `se-ai-command-pack` (1),
-  `ai/Trellis` (1). With >=2 files the fallback refuses to guess, so these
-  present as "no current task" rather than a wrong task — same root cause,
-  different symptom.
+  rollout. The 2026-08-06 inventory in this PRD proved stale: a live scan on
+  2026-08-19 found 3 orphans total — `loadsmith` (1), `rwbp-website` (1),
+  `mezmo_benchmark` (1) — and zero in `sd-ai-command-pack`,
+  `anomaly-metric-creator`, `hoa-manager`, `se-ai-command-pack`, `ai/Trellis`.
+  Re-scan before acting rather than trusting any recorded count. With >=2 files
+  the fallback refuses to guess, so these present as "no current task" rather
+  than a wrong task — same root cause, different symptom.
 
 ## Acceptance Criteria
 
@@ -81,7 +85,9 @@ per consumer and should drive the rollout list rather than a hand-written one.
       (Retired 2026-08-09: 3 patch-equivalent on chore/task-backlog-2026-08, the
       JSONL fix superseded by upstream, task artifacts archived; recorded in the
       2026-08-09 session journal.)
-- [ ] Every consumer identified by `sd-status fleet` runs >= 0.6.10.
+- [~] Every consumer identified by `sd-status fleet` runs >= 0.6.10.
+      (Split 2026-08-19 into `08-19-fleet-rollout-0610`. Live scan that day: all
+      8 consumers still on 0.6.7. Not achievable in this repo — tracked there.)
 - [x] In at least one upgraded consumer, the vendored
       `.trellis/scripts/common/active_task.py` contains
       `_context_path(repo_root, previous.context_key)`. (Verified 2026-08-09 in
@@ -91,9 +97,19 @@ per consumer and should drive the rollout list rather than a hand-written one.
       reports no current task. (Proven 2026-08-09 in a temp repo with the 0.6.14
       scripts: finish from a different session id cleared the fallback file,
       source reported as session-fallback, sessions dir left empty.)
-- [ ] Orphaned session files across the listed repos are cleared. (ai/Trellis:
-      clear as of 2026-08-09. Remaining: sd-ai-command-pack, anomaly-metric-creator,
-      hoa-manager, se-ai-command-pack.)
+- [~] Orphaned session files across the listed repos are cleared. (ai/Trellis:
+      clear, re-confirmed 2026-08-19. The 2026-08-09 remainder list was stale —
+      those 4 repos now hold zero orphans. Actual remaining 3 are in loadsmith,
+      rwbp-website, mezmo_benchmark. Split into `08-19-fleet-rollout-0610`.)
+
+## Disposition (2026-08-19)
+
+In-repo scope is complete: this repo carries `621435d1` at 0.6.14, the vendored
+`active_task.py` is fixed, the fork sync and fork-local commit retirement are
+done, and end-to-end proof is recorded above. The two remaining criteria are
+cross-repo by nature and cannot be closed from `ai/Trellis`; both are delegated
+to `08-19-fleet-rollout-0610`, which carries the live-scanned consumer table.
+Marked `[~]` rather than `[x]` — delegated, not satisfied.
 
 ## Residual defect NOT fixed upstream
 
