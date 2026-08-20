@@ -12,9 +12,12 @@ Provides:
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
+
+from .git import main_worktree_root
 
 
 # =============================================================================
@@ -34,6 +37,17 @@ FILE_DEVELOPER = ".developer"
 FILE_CURRENT_TASK = ".current-task"
 FILE_TASK_JSON = "task.json"
 FILE_JOURNAL_PREFIX = "journal-"
+
+# Environment override for the developer identity, ahead of the .developer file.
+ENV_DEVELOPER = "TRELLIS_DEVELOPER"
+
+# Appended to every "no developer set" error so the two non-obvious sources are
+# discoverable from the failure itself.
+DEVELOPER_HINT = (
+    f"  Or set {ENV_DEVELOPER}=<your-name> in the environment.\n"
+    f"  A linked git worktree inherits {DIR_WORKFLOW}/{FILE_DEVELOPER} from its "
+    f"main checkout — run init_developer.py there to cover every worktree."
+)
 
 
 # =============================================================================
@@ -66,8 +80,61 @@ def get_repo_root(start_path: Path | None = None) -> Path:
 # Developer
 # =============================================================================
 
+def _safe_developer_name(name: str | None) -> str | None:
+    """Return the name only if it is a single, safe directory component.
+
+    The developer name is joined under `.trellis/workspace/`, so a value
+    carrying separators or `..` would redirect journal and index writes
+    outside the workspace tree. Reject those instead of sanitizing: a
+    mangled identity would silently split one developer's history in two.
+    """
+    if not name:
+        return None
+    if name in (".", "..") or "\x00" in name:
+        return None
+    if "/" in name or "\\" in name or os.sep in name:
+        return None
+    # A colon makes the name drive-relative on Windows ("C:" joins outside
+    # the workspace), and it is invalid in Windows filenames anyway.
+    if ":" in name:
+        return None
+    return name
+
+
+def _read_developer_file(dev_file: Path) -> str | None:
+    """Read the `name=` field out of a .developer file, or None."""
+    if not dev_file.is_file():
+        return None
+
+    try:
+        content = dev_file.read_text(encoding="utf-8")
+    except (OSError, IOError):
+        return None
+
+    for line in content.splitlines():
+        if line.startswith("name="):
+            return _safe_developer_name(line.split("=", 1)[1].strip())
+
+    return None
+
+
 def get_developer(repo_root: Path | None = None) -> str | None:
-    """Get developer name from .developer file.
+    """Get the developer name for this checkout.
+
+    Resolution order, first hit wins (a CLI `--assignee` flag overrides all of
+    it, before this function is ever called):
+
+        1. The ``TRELLIS_DEVELOPER`` environment variable.
+        2. ``.trellis/.developer`` in this checkout.
+        3. ``.trellis/.developer`` in the main checkout, when this checkout is a
+           linked git worktree.
+
+    Step 3 exists because `.developer` is gitignored on purpose — it carries a
+    personal identity and no tracked file should. A fresh `git worktree add`
+    therefore starts with no identity file of its own, which used to make every
+    task.py command fail until init_developer.py was re-run per worktree. The
+    main checkout's file is read, never copied: a copy would go stale and shadow
+    later changes made in the main checkout.
 
     Args:
         repo_root: Repository root path. Defaults to auto-detected.
@@ -75,23 +142,22 @@ def get_developer(repo_root: Path | None = None) -> str | None:
     Returns:
         Developer name or None if not initialized.
     """
+    env_name = _safe_developer_name(os.environ.get(ENV_DEVELOPER, "").strip())
+    if env_name:
+        return env_name
+
     if repo_root is None:
         repo_root = get_repo_root()
 
-    dev_file = repo_root / DIR_WORKFLOW / FILE_DEVELOPER
+    local = _read_developer_file(repo_root / DIR_WORKFLOW / FILE_DEVELOPER)
+    if local:
+        return local
 
-    if not dev_file.is_file():
+    main_root = main_worktree_root(repo_root)
+    if main_root is None:
         return None
 
-    try:
-        content = dev_file.read_text(encoding="utf-8")
-        for line in content.splitlines():
-            if line.startswith("name="):
-                return line.split("=", 1)[1].strip()
-    except (OSError, IOError):
-        pass
-
-    return None
+    return _read_developer_file(main_root / DIR_WORKFLOW / FILE_DEVELOPER)
 
 
 def check_developer(repo_root: Path | None = None) -> bool:
@@ -233,7 +299,25 @@ def normalize_task_ref(task_ref: str) -> str:
 
 
 def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | None:
-    """Resolve a task ref to an absolute task directory path."""
+    """Resolve a task ref to an absolute task directory path inside the repo.
+
+    Returns None when the ref resolves outside `repo_root`. Every reader of the
+    active task — `task.py`, the shared hooks, the platform extensions — comes
+    through here, so containment is enforced at this one point rather than at
+    each call site.
+
+    It matters because a ref is not always something the user typed. It round
+    trips through the session pointer under `.trellis/.runtime/sessions/`, and
+    `..` segments used to survive that trip intact: `_canonical_task_ref`
+    compares lexically, and a lexical `relative_to` accepts
+    `<root>/.trellis/tasks/../../../elsewhere` because the string does start
+    with the root. The ref was then stored verbatim and replayed on every later
+    turn, so `task.py start .trellis/tasks/../../../elsewhere` both rewrote that
+    directory's `task.json` and fed its files to the model.
+
+    Resolving here also normalises the path, so callers get a ref without `..`
+    to store.
+    """
     if repo_root is None:
         repo_root = get_repo_root()
 
@@ -243,12 +327,27 @@ def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | Non
 
     path_obj = Path(normalized)
     if path_obj.is_absolute():
-        return path_obj
+        candidate = path_obj
+    elif normalized.startswith(f"{DIR_WORKFLOW}/"):
+        candidate = repo_root / path_obj
+    else:
+        candidate = repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
 
-    if normalized.startswith(f"{DIR_WORKFLOW}/"):
-        return repo_root / path_obj
+    # resolve() collapses `..` and follows symlinks, so a task directory that
+    # links outside the repo is refused too. Both sides are resolved because
+    # repo_root itself may sit behind a symlink (/tmp on macOS does).
+    try:
+        resolved = candidate.resolve()
+        root = repo_root.resolve()
+    except OSError:
+        return None
 
-    return repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+
+    return resolved
 
 
 def get_current_task(

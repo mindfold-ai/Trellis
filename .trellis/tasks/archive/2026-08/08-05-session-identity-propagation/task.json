@@ -1,0 +1,31 @@
+{
+  "id": "session-identity-propagation",
+  "name": "session-identity-propagation",
+  "title": "Investigate session identity propagation gaps (CodeBuddy, OMP #517)",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-08-05",
+  "completedAt": "2026-08-08",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-05-opencode-shell-env",
+    "08-05-session-identity-hardening",
+    "08-05-purge-fake-env-names",
+    "08-05-shell-ticket-bridge"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

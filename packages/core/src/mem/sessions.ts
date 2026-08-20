@@ -26,6 +26,8 @@ import {
   opencodeExtractDialogue,
   opencodeListSessions,
   opencodeSearch,
+  prepareOpencodeSessionStore,
+  releaseOpencodeSessionStore,
 } from "./adapters/opencode.js";
 import {
   collectPiTurnsAndEvents,
@@ -101,7 +103,7 @@ export function listAll(
   if (f.platform === "all" || f.platform === "grok")
     all.push(...grokListSessions(f));
   if (f.platform === "all" || f.platform === "opencode")
-    all.push(...opencodeListSessions(f));
+    all.push(...opencodeListSessions(f, warnings));
   if (f.platform === "all" || f.platform === "pi")
     all.push(...piListSessions(f));
   if (f.platform === "all" || f.platform === "zcode")
@@ -124,7 +126,7 @@ function extractDialogue(
     case "grok":
       return grokExtractDialogue(s, warnings);
     case "opencode":
-      return opencodeExtractDialogue(s);
+      return opencodeExtractDialogue(s, warnings);
     case "pi":
       return piExtractDialogue(s);
     case "zcode":
@@ -145,7 +147,7 @@ function searchSession(
     case "grok":
       return grokSearch(s, kw);
     case "opencode":
-      return opencodeSearch(kw);
+      return opencodeSearch(s, kw, warnings);
     case "pi":
       return piSearch(s, kw);
     case "zcode":
@@ -168,7 +170,7 @@ function collectTurnsAndEvents(
     case "grok":
       return collectGrokTurnsAndEvents(s, warnings);
     case "opencode":
-      return { turns: opencodeExtractDialogue(s), events: [] };
+      return { turns: opencodeExtractDialogue(s, warnings), events: [] };
     case "pi":
       return collectPiTurnsAndEvents(s);
     case "zcode":
@@ -354,6 +356,12 @@ export function searchMemSessions(
     prepareZcodeSessionStore(zcodeCandidate.filePath, warnings);
   }
   try {
+    const opencodeCandidate = candidates.find(
+      (s) => s.platform === "opencode",
+    );
+    if (opencodeCandidate) {
+      prepareOpencodeSessionStore(opencodeCandidate.filePath, warnings);
+    }
     for (const s of candidates) {
       if (isAbsorbedChild(s)) continue;
       const hit = includeChildren
@@ -369,6 +377,7 @@ export function searchMemSessions(
     }
   } finally {
     releaseZcodeSessionStore();
+    releaseOpencodeSessionStore();
   }
   matches.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;

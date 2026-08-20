@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python runtime script conventions for .trellis/scripts changes."}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Error handling expectations for visible failures, fail-open paths, and caller contracts."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Backend quality rules and forbidden patterns for shared runtime helpers."}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Cross-platform path, shell, hook, and Python assumptions for copied runtime scripts."}

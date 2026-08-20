@@ -5,8 +5,8 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, readdirSync, statSync } from "fs"
-import { isAbsolute, join } from "path"
+import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync } from "fs"
+import { isAbsolute, join, relative } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
 import { createHash } from "crypto"
@@ -463,21 +463,43 @@ export class TrellisContext {
     return normalized
   }
 
+  /**
+   * Return `candidate` when it lands inside the project, else null.
+   *
+   * A task ref is not always something the user typed. `task.py` now refuses
+   * to store one that leaves the project, but a session file written before
+   * that fix can still hold one, and `trellis update` does not rewrite session
+   * files — so a poisoned pointer outlives the upgrade that closed the writer.
+   * Both sides are resolved so a task directory symlinked outside is refused
+   * too, but the original `candidate` is returned on success: callers build
+   * paths relative to `this.directory`, and handing them a realpath would break
+   * that whenever the project itself sits behind a symlink.
+   */
+  containInProject(candidate) {
+    try {
+      const rel = relative(realpathSync(this.directory), realpathSync(candidate))
+      if (rel !== "" && (rel.startsWith("..") || isAbsolute(rel))) {
+        return null
+      }
+      return candidate
+    } catch {
+      return null
+    }
+  }
+
   resolveTaskDir(taskRef) {
     const normalized = this.normalizeTaskRef(taskRef)
     if (!normalized) {
       return null
     }
 
-    if (isAbsolute(normalized)) {
-      return normalized
-    }
+    const candidate = isAbsolute(normalized)
+      ? normalized
+      : normalized.startsWith(".trellis/")
+        ? join(this.directory, normalized)
+        : join(this.directory, ".trellis", "tasks", normalized)
 
-    if (normalized.startsWith(".trellis/")) {
-      return join(this.directory, normalized)
-    }
-
-    return join(this.directory, ".trellis", "tasks", normalized)
+    return this.containInProject(candidate)
   }
 
   // ============================================================

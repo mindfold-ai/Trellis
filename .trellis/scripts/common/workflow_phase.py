@@ -141,6 +141,25 @@ def _platform_matches(platform: str, block_names: list[str]) -> bool:
     return False
 
 
+_PLATFORM_MARKER_LABELS: dict[str, str] = {
+    # workflow.md marker blocks label platforms with their product names, but
+    # every caller passes the stable id instead (`--platform {{CLI_FLAG}}` in
+    # the start / continue commands). `_platform_matches` only strips
+    # punctuation, so an id that is not its label-minus-spaces never matches and
+    # `filter_platform` drops the block WITHOUT error — the section just comes
+    # back empty. Four platforms shipped that way before this table existed.
+    #
+    # Add an entry whenever a platform's id is not its marker label with the
+    # separators removed. `test/registry-invariants.test.ts` asserts every
+    # registry id keeps a non-empty routing section, so a missing entry fails
+    # there rather than silently blanking that platform's routing.
+    "claude": "Claude Code",
+    "kimi": "Kimi Code",
+    "omp": "Oh My Pi",
+    "dsh": "DeepSeek Harness",
+}
+
+
 def resolve_effective_platform(platform: str, config: dict) -> str:
     """Map ``codex`` to a dispatch-mode-namespaced virtual platform name.
 
@@ -155,9 +174,17 @@ def resolve_effective_platform(platform: str, config: dict) -> str:
     explicit values fall back to ``inline`` safely; this renderer deliberately
     does not warn because it can run in normal CLI output flows.
 
-    Other platforms are returned unchanged.
+    Platforms whose marker label differs from their id resolve through
+    ``_PLATFORM_MARKER_LABELS``. Everything else is returned unchanged.
     """
-    if platform == "codex":
+    normalized = platform.strip().lower()
+    label = _PLATFORM_MARKER_LABELS.get(normalized)
+    if label:
+        return label
+    # Matched on the normalized name: the lookup above is case-insensitive and
+    # argparse does not fold `--platform`, so a bare `platform == "codex"` let
+    # `--platform Codex` fall through unresolved.
+    if normalized == "codex":
         mode = "auto"
         codex_cfg = config.get("codex") if isinstance(config, dict) else None
         if codex_cfg is not None:

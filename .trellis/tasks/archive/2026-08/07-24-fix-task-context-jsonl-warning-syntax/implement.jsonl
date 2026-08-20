@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python runtime script syntax and compatibility requirements."}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Warning behavior and user-visible failure expectations."}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Python 3.9 and cross-platform script compatibility guidance."}

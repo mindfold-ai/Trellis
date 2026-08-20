@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Design focused regression and integration coverage for metadata validation behavior."}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Verify any implementation reads the required script guidance before touching task lifecycle scripts."}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Check that validation changes do not break task status transitions or archive semantics."}

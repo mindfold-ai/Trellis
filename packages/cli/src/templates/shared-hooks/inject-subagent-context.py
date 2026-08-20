@@ -38,6 +38,8 @@ if callable(_stdin_reconfigure):
     try:
         _stdin_reconfigure(encoding="utf-8", errors="replace")
     except (OSError, ValueError):
+        # Best-effort: a stream that refuses the encoding change still reads.
+        # Failing here would kill the hook before it can fail open.
         pass
 
 # IMPORTANT: Force stdout to use UTF-8 on Windows
@@ -92,9 +94,16 @@ def _detect_platform(input_data: dict) -> str | None:
         return "codex"
     if isinstance(input_data.get("cursor_version"), str):
         return "cursor"
+    # CLAUDE_PROJECT_DIR is a compatibility alias that several hosts set
+    # alongside their own variable — CodeBuddy, ZCode and Trae all do. It must
+    # therefore be checked LAST, or every one of them is detected as claude and
+    # the context key becomes `claude_<their-session-id>`. That key does not
+    # match the session file `task.py start` wrote under the host's real name,
+    # so the sub-agent starts with no task context while the pointer exists on
+    # disk. Same fix as inject-workflow-state.py and session-start.py; this
+    # third copy was missed when those two were corrected.
     env_map = {
         "ZCODE_PROJECT_DIR": "zcode",
-        "CLAUDE_PROJECT_DIR": "claude",
         "CURSOR_PROJECT_DIR": "cursor",
         "CODEBUDDY_PROJECT_DIR": "codebuddy",
         "FACTORY_PROJECT_DIR": "droid",
@@ -102,6 +111,9 @@ def _detect_platform(input_data: dict) -> str | None:
         "QODER_PROJECT_DIR": "qoder",
         "KIRO_PROJECT_DIR": "kiro",
         "COPILOT_PROJECT_DIR": "copilot",
+        "TRAE_PROJECT_DIR": "trae",
+        # Last: the shared alias, only meaningful once no vendor key matched.
+        "CLAUDE_PROJECT_DIR": "claude",
     }
     for env_name, platform in env_map.items():
         if os.environ.get(env_name):
@@ -238,10 +250,25 @@ class _Budget:
         self.used += size
 
 
+def _contained_path(base_path: str, relative_path: str) -> str | None:
+    """Join `relative_path` onto `base_path`, or None if it escapes.
+
+    `os.path.join` discards the base when the right-hand side is absolute, and
+    a `..` hop walks out of it. Entries here come from a repo's JSONL context
+    manifests and are inlined into sub-agent prompts, so a path that leaves the
+    base is refused rather than read.
+    """
+    candidate = os.path.realpath(os.path.join(base_path, relative_path))
+    base = os.path.realpath(base_path)
+    if candidate != base and not candidate.startswith(base + os.sep):
+        return None
+    return candidate
+
+
 def _read_file_bytes(base_path: str, file_path: str) -> bytes | None:
     """Read raw file bytes, return None if file doesn't exist."""
-    full_path = os.path.join(base_path, file_path)
-    if os.path.exists(full_path) and os.path.isfile(full_path):
+    full_path = _contained_path(base_path, file_path)
+    if full_path and os.path.exists(full_path) and os.path.isfile(full_path):
         try:
             with open(full_path, "rb") as f:
                 return f.read()
@@ -336,8 +363,8 @@ def _materialize_directory(
 ) -> list[str]:
     """Read all .md files in a directory, applying the same per-file and
     total caps as a single-file JSONL entry."""
-    full_path = os.path.join(base_path, dir_path)
-    if not os.path.exists(full_path) or not os.path.isdir(full_path):
+    full_path = _contained_path(base_path, dir_path)
+    if not full_path or not os.path.exists(full_path) or not os.path.isdir(full_path):
         return []
 
     blocks: list[str] = []
@@ -353,6 +380,8 @@ def _materialize_directory(
             if block:
                 blocks.append(block)
     except Exception:
+        # Context injection is advisory: an unreadable directory yields no
+        # blocks rather than blocking the child from spawning.
         pass
 
     return blocks
@@ -365,12 +394,12 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict]:
     Schema:
         {"file": "path/to/file.md", "reason": "..."}
         {"file": "path/to/dir/", "type": "directory", "reason": "..."}
-        {"_example": "..."}          # seed row — skipped (no `file` field)
+        {"_example": "..."}          # legacy placeholder — skipped (no `file` field)
 
-    Rows without a ``file`` field (e.g. the self-describing seed line written
-    by ``task.py create`` before the agent has curated entries) are skipped
-    silently. If the resulting entry list is empty, a stderr warning is
-    emitted so the operator can debug missing context.
+    Rows without a ``file`` field (e.g. the placeholder line older Trellis
+    versions wrote at ``task.py create`` time) are skipped silently. If the
+    resulting entry list is empty, a stderr warning is emitted so the operator
+    can debug missing context.
 
     Returns:
         [{"file": path, "type": "file" | "directory", "reason": reason}, ...]
@@ -411,6 +440,8 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict]:
                 except json.JSONDecodeError:
                     continue
     except Exception:
+        # An unreadable manifest leaves entries empty, and the caller below
+        # falls back on saw_real_entry rather than failing the dispatch.
         pass
 
     if not saw_real_entry:
@@ -986,6 +1017,8 @@ def _extract_subagent_type(tool_input: dict) -> str:
         "subagentType",
         "subagent_type_name",
         "subagentTypeName",
+        "subagent_name",
+        "subagentName",
         "agent_type",
         "agentType",
         "name",
@@ -1001,7 +1034,8 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
 
     Returns (subagent_type, original_prompt, tool_input).
     Handles:
-    - Claude Code / Qoder / CodeBuddy / Droid: tool_name=Task|Agent, tool_input.subagent_type
+    - Claude Code / Qoder / Droid: tool_name=Task|Agent, tool_input.subagent_type
+    - CodeBuddy: tool_name=task (IDE) or Task (CLI), tool_input.subagent_name
     - Cursor: tool_name=Task|Subagent, tool_input.subagent_type
     - Copilot CLI: toolName=task (camelCase key, lowercase value)
     - ZCode: toolName=Agent, toolInput/tool_input.subagent_type
@@ -1080,8 +1114,21 @@ def main():
     if subagent_type in AGENTS_REQUIRE_TASK:
         if not task_dir:
             sys.exit(0)
-        # Check if task directory exists
-        task_dir_full = os.path.join(repo_root, task_dir)
+        # Contain the pointer before reading anything through it. `task.py` now
+        # refuses to store a ref that leaves the repo, but a session file
+        # written before that fix can still hold one, and `trellis update`
+        # does not rewrite session files — so a poisoned pointer outlives the
+        # upgrade that closed the writer. This is the last hop before the
+        # task's prd.md/design.md reach the model prompt, so it checks again.
+        try:
+            root_real = os.path.realpath(repo_root)
+            task_dir_full = os.path.realpath(os.path.join(repo_root, task_dir))
+            # ValueError on Windows when the two sit on different drives; that
+            # is outside the repo by definition, so it fails closed below.
+            if os.path.commonpath([root_real, task_dir_full]) != root_real:
+                sys.exit(0)
+        except (OSError, ValueError):
+            sys.exit(0)
         if not os.path.exists(task_dir_full):
             sys.exit(0)
 

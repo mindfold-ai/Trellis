@@ -1,3 +1,5 @@
+import { spawn as spawnChild } from "node:child_process";
+import { once } from "node:events";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,10 +15,13 @@ import {
 import { channelInterrupt } from "../../src/commands/channel/interrupt.js";
 import { channelMessages } from "../../src/commands/channel/messages.js";
 import { channelSend } from "../../src/commands/channel/send.js";
+import { finalizeSupervisorExit } from "../../src/commands/channel/supervisor.js";
 import { runInboxWatcher } from "../../src/commands/channel/supervisor/inbox.js";
 import {
   applyParseResult,
+  createStdoutDrainControl,
   pumpStdout,
+  startStdoutPump,
 } from "../../src/commands/channel/supervisor/stdout.js";
 import { TurnTracker } from "../../src/commands/channel/supervisor/turns.js";
 import {
@@ -603,6 +608,191 @@ describe("channel shared helpers", () => {
 });
 
 describe("channel stdout pump", () => {
+  it("waits for the event-processing gate when stdout is empty", async () => {
+    const stdout = new PassThrough();
+    let releaseLines!: (processLines: boolean) => void;
+    const processLines = new Promise<boolean>((resolve) => {
+      releaseLines = resolve;
+    });
+    const drained = startStdoutPump({
+      channelName: "silent-worker",
+      workerName: "worker",
+      child: { stdout } as never,
+      adapter: { parseLine: vi.fn() } as never,
+      adapterCtx: undefined,
+      log: { write: noop },
+      shutdown: { markTerminalEmitted: noop } as never,
+      processLines,
+    });
+    let settled = false;
+    void drained.then(() => {
+      settled = true;
+    });
+
+    stdout.end();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    releaseLines(false);
+    await drained;
+    expect(settled).toBe(true);
+  });
+
+  it("bounds an inherited stdout handle without bypassing the processing gate", async () => {
+    const control = createStdoutDrainControl();
+    const stdout = new PassThrough();
+    const order: string[] = [];
+    const adapter = {
+      parseLine: vi.fn(() => ({ events: [] })),
+    };
+    const stdoutDrained = startStdoutPump({
+      channelName: "inherited-output",
+      workerName: "worker",
+      child: { stdout } as never,
+      adapter: adapter as never,
+      adapterCtx: undefined,
+      log: { write: (data) => order.push(`line:${data.trimEnd()}`) },
+      shutdown: { markTerminalEmitted: noop } as never,
+      processLines: control.processLines,
+      signal: control.signal,
+    });
+    stdout.write("captured-line\ncaptured-tail");
+
+    let timeoutReached!: () => void;
+    const timedOut = new Promise<void>((resolve) => {
+      timeoutReached = resolve;
+    });
+
+    const finalized = finalizeSupervisorExit({
+      stdoutDrained,
+      drainTimeoutMs: 10,
+      abortStdoutDrain: control.abortReading,
+      onDrainTimeout: () => {
+        order.push("timeout");
+        timeoutReached();
+      },
+      finalizeOnExit: async () => {
+        order.push("finalize");
+      },
+      cleanup: async () => {
+        order.push("cleanup");
+      },
+      exit: () => {
+        order.push("exit");
+      },
+    });
+
+    await timedOut;
+    expect(order).toEqual(["timeout"]);
+
+    // The timeout stops waiting for inherited pipe owners, but line handling
+    // must still wait until the durable `spawned` event releases the gate.
+    control.allowProcessing();
+    await finalized;
+    stdout.destroy();
+
+    expect(order).toEqual([
+      "timeout",
+      "line:captured-line",
+      "line:captured-tail",
+      "finalize",
+      "cleanup",
+      "exit",
+    ]);
+    expect(adapter.parseLine.mock.calls.map(([line]) => line)).toEqual([
+      "captured-line",
+      "captured-tail",
+    ]);
+  });
+
+  it("discards captured stdout when startup never becomes durable", async () => {
+    const control = createStdoutDrainControl();
+    const stdout = new PassThrough();
+    const logged: string[] = [];
+    const adapter = {
+      parseLine: vi.fn(() => ({ events: [] })),
+    };
+    const drained = startStdoutPump({
+      channelName: "failed-startup",
+      workerName: "worker",
+      child: { stdout } as never,
+      adapter: adapter as never,
+      adapterCtx: undefined,
+      log: { write: (data) => logged.push(data) },
+      shutdown: { markTerminalEmitted: noop } as never,
+      processLines: control.processLines,
+      signal: control.signal,
+    });
+    stdout.write("captured-line\ncaptured-tail");
+
+    control.discard();
+    await drained;
+    stdout.destroy();
+
+    expect(logged).toEqual([]);
+    expect(adapter.parseLine).not.toHaveBeenCalled();
+  });
+
+  it("retains a fast child's output while event processing is gated", async () => {
+    const controller = new AbortController();
+    const child = spawnChild(
+      process.execPath,
+      ["-e", 'process.stdout.write("first\\nfinal-without-newline")'],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+    let releaseLines!: (processLines: boolean) => void;
+    const processLines = new Promise<boolean>((resolve) => {
+      releaseLines = resolve;
+    });
+    const logged: string[] = [];
+    const adapter = {
+      parseLine: vi.fn(() => ({ events: [] })),
+    };
+
+    const drained = startStdoutPump({
+      channelName: "fast-output",
+      workerName: "worker",
+      child,
+      adapter: adapter as never,
+      adapterCtx: undefined,
+      log: { write: (data) => logged.push(data) },
+      shutdown: { markTerminalEmitted: noop } as never,
+      processLines,
+      signal: controller.signal,
+    });
+    await once(child, "exit");
+
+    expect(logged).toEqual([]);
+    expect(adapter.parseLine).not.toHaveBeenCalled();
+    const teardown: string[] = [];
+    const finalized = finalizeSupervisorExit({
+      stdoutDrained: drained,
+      drainTimeoutMs: 1_000,
+      abortStdoutDrain: () => controller.abort(),
+      finalizeOnExit: async () => {
+        teardown.push("finalize");
+      },
+      cleanup: async () => {
+        teardown.push("cleanup");
+      },
+      exit: () => {
+        teardown.push("exit");
+      },
+    });
+    await Promise.resolve();
+    expect(teardown).toEqual([]);
+
+    releaseLines(true);
+    await finalized;
+
+    expect(logged).toEqual(["first\n", "final-without-newline\n"]);
+    expect(adapter.parseLine.mock.calls.map(([line]) => line)).toEqual([
+      "first",
+      "final-without-newline",
+    ]);
+    expect(teardown).toEqual(["finalize", "cleanup", "exit"]);
+  });
+
   it("serializes high-frequency line handling in input order", async () => {
     const stream = new PassThrough();
     const lines = Array.from({ length: 800 }, (_, i) => `line-${i}`);

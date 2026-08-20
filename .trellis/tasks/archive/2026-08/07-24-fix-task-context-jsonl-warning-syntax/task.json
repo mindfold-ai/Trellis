@@ -1,0 +1,31 @@
+{
+  "id": "fix-task-context-jsonl-warning-syntax",
+  "name": "fix-task-context-jsonl-warning-syntax",
+  "title": "Fix task context JSONL warning SyntaxError",
+  "description": "Fix the Python SyntaxError in task_context.py JSONL warning messages so task.py validate and task lifecycle commands can import and run.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P1",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-24",
+  "completedAt": "2026-08-06",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/scripts/common/task_context.py",
+    "packages/cli/src/templates/trellis/scripts/common/task_context.py"
+  ],
+  "notes": "Created after applying the local fix. The issue was a Python SyntaxError in nested multi-line f-strings used for JSONL hygiene warning output.",
+  "meta": {
+    "fix_applied_before_task_creation": true
+  }
+}

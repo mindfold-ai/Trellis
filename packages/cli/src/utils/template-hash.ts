@@ -276,7 +276,7 @@ const EXCLUDE_FROM_HASH = [
 /**
  * Check if a path should be excluded from hash tracking
  */
-function shouldExcludeFromHash(relativePath: string): boolean {
+export function shouldExcludeFromHash(relativePath: string): boolean {
   const normalizedPath = toPosix(relativePath);
   for (const pattern of EXCLUDE_FROM_HASH) {
     if (normalizedPath.includes(pattern)) {

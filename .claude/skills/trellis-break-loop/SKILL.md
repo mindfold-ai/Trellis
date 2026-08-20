@@ -9,6 +9,20 @@ When debug is complete, use this for deep analysis to break the "fix bug -> forg
 
 ---
 
+## Before You Start: Verify Referenced Artifacts Exist
+
+This skill names files and directories — spec guides, task artifacts, generated
+platform mirrors. Never read, update, or cite a path without first proving it
+exists (`ls` the path or equivalent).
+
+- If a referenced path is missing, report the absent path explicitly in your
+  output. Do not imply a file was inspected or updated when it does not exist.
+- Then choose an explicit recovery: use the closest existing source of truth
+  (for example the `.trellis/spec/` index), or create a follow-up task to
+  restore the missing artifact. Never fabricate content for an absent path.
+
+---
+
 ## Analysis Framework
 
 Analyze the bug you just fixed from these 5 dimensions:
@@ -175,7 +189,7 @@ Never express binary certainty when evidence is incomplete. Use "most likely", "
 
 **IMPORTANT**: After completing the analysis above, you MUST immediately:
 
-1. **Update spec/guides** - Don't just list TODOs, actually update the relevant files:
+1. **Update spec/guides** - Don't just list TODOs, actually update the relevant files (verify each target exists first; report missing paths instead of inventing them):
    - If it's a cross-platform issue → update `cross-platform-thinking-guide.md`
    - If it's a cross-layer issue → update `cross-layer-thinking-guide.md`
    - If it's a code reuse issue → update `code-reuse-thinking-guide.md`

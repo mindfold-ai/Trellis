@@ -309,6 +309,69 @@ describe("update() integration", () => {
     expect(fs.existsSync(projectFile(".agents/skills"))).toBe(false);
   });
 
+  it("[issue-zcode-plugin-hint] zcode update prints the bilingual plugin hint when already up to date", async () => {
+    await init({ yes: true, force: true, zcode: true });
+
+    const originalVitest = process.env.VITEST;
+    const originalQuiet = process.env.TRELLIS_QUIET;
+    const originalWrite = process.stderr.write.bind(process.stderr);
+    const stderr: string[] = [];
+    process.stderr.write = ((chunk: string) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    delete process.env.VITEST;
+    delete process.env.TRELLIS_QUIET;
+
+    try {
+      await update({});
+    } finally {
+      process.stderr.write = originalWrite;
+      if (originalVitest === undefined) delete process.env.VITEST;
+      else process.env.VITEST = originalVitest;
+      if (originalQuiet === undefined) delete process.env.TRELLIS_QUIET;
+      else process.env.TRELLIS_QUIET = originalQuiet;
+    }
+
+    expect(stderr.join("")).toBe(
+      "ℹ️  ZCode: if project Hooks are disabled, install trellis-bridge, then start a new session.\n" +
+        "   ZCode：若项目 Hooks 被禁用，请安装 trellis-bridge，然后新建会话。\n" +
+        "   请手动在 ZCode 插件市场中添加 https://github.com/CNHLAIA/ZCode-Trellis-Plugin.git，并手动安装 ZCode 补丁插件 trellis-bridge\n",
+    );
+  });
+
+  it("[issue-zcode-plugin-hint] zcode update prints the bilingual plugin hint after applying changes", async () => {
+    await init({ yes: true, force: true, zcode: true });
+    writeProjectFile(MANAGED_FILE, "user modified content");
+
+    const originalVitest = process.env.VITEST;
+    const originalQuiet = process.env.TRELLIS_QUIET;
+    const originalWrite = process.stderr.write.bind(process.stderr);
+    const stderr: string[] = [];
+    process.stderr.write = ((chunk: string) => {
+      stderr.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    delete process.env.VITEST;
+    delete process.env.TRELLIS_QUIET;
+
+    try {
+      await update({ force: true });
+    } finally {
+      process.stderr.write = originalWrite;
+      if (originalVitest === undefined) delete process.env.VITEST;
+      else process.env.VITEST = originalVitest;
+      if (originalQuiet === undefined) delete process.env.TRELLIS_QUIET;
+      else process.env.TRELLIS_QUIET = originalQuiet;
+    }
+
+    expect(stderr.join("")).toBe(
+      "ℹ️  ZCode: if project Hooks are disabled, install trellis-bridge, then start a new session.\n" +
+        "   ZCode：若项目 Hooks 被禁用，请安装 trellis-bridge，然后新建会话。\n" +
+        "   请手动在 ZCode 插件市场中添加 https://github.com/CNHLAIA/ZCode-Trellis-Plugin.git，并手动安装 ZCode 补丁插件 trellis-bridge\n",
+    );
+  });
+
   it("[issue-447] 0.6.8 rename-dir migration moves legacy .pi/skills/ into shared .agents/skills/ even when Codex already installed the shared root", async () => {
     // Simulate a pre-0.6.8 project: Pi + Codex both installed. Pre-fix Pi
     // wrote its own Pi-flavored copy under `.pi/skills/` (via resolveSkills,
@@ -813,8 +876,11 @@ describe("update() integration", () => {
     // auto-updated to the current packaged template.
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(expectedWorkflow);
     expect(readProjectFile(MANAGED_FILE)).toBe(expectedGetContext);
+    // Prefix, not the whole marker: the inline block gains members as
+    // sub-agent-less platforms are added, and this assertion is about the
+    // block surviving the update, not about who is currently in it.
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
-      "[codex-inline, Kilo, Antigravity, Devin]",
+      "[codex-inline, Kilo, Antigravity, Devin",
     );
     expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain("[Codex]");
 
@@ -1507,7 +1573,7 @@ describe("update() integration", () => {
     expect(updated).toContain(
       "[/Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Snow, Oh My Pi]",
     );
-    expect(updated).toContain("[codex-inline, Kilo, Antigravity, Devin]");
+    expect(updated).toContain("[codex-inline, Kilo, Antigravity, Devin");
     expect(updated).not.toContain("[Codex]");
     expect(updated).not.toContain("[Kilo, Antigravity, Windsurf]");
     expect(updated).not.toContain("legacy body");
@@ -1515,5 +1581,129 @@ describe("update() integration", () => {
     expect(readHashesV2(hashFile)[PATHS.WORKFLOW_GUIDE_FILE]).toBe(
       computeHash(updated),
     );
+  });
+
+  describe("receipt repair for files already identical to their template", () => {
+    /**
+     * Paths whose recorded hash is *expected* to drift: the repository appends
+     * its own content after the template is written, so the receipt holds the
+     * template's hash while the file on disk is longer. A fix that makes these
+     * "match" has broken them.
+     */
+    const MIXED_OWNERSHIP = [
+      FILE_NAMES.AGENTS,
+      COPILOT_INSTRUCTIONS_PATH,
+      `${DIR_NAMES.WORKFLOW}/config.yaml`,
+    ];
+
+    /**
+     * Every receipt entry whose recorded hash disagrees with the file at that
+     * path. Enumerated from the receipt itself rather than from a list of
+     * paths this test already knows about — a check built from what we expect
+     * cannot find the entry we did not expect.
+     */
+    function mismatchedEntries(): string[] {
+      const hashes = readHashesV2(hashFilePath());
+      return Object.entries(hashes)
+        .filter(([relativePath, recorded]) => {
+          const full = projectFile(relativePath);
+          if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) {
+            return false;
+          }
+          return computeHash(fs.readFileSync(full, "utf-8")) !== recorded;
+        })
+        .map(([relativePath]) => relativePath)
+        .filter((relativePath) => !MIXED_OWNERSHIP.includes(relativePath));
+    }
+
+    it("records a hash matching the file for every entry, right after init", async () => {
+      await setupProject();
+      expect(mismatchedEntries()).toEqual([]);
+    });
+
+    it("repairs a poisoned entry for a file that matches its template", async () => {
+      await setupProject();
+
+      // Poison one entry with a hash of different content, leaving the file
+      // itself pristine. This is the shape found in the fleet audit: the
+      // recorded value was another platform's template.
+      const hashes = readHashesV2(hashFilePath());
+      const victim = MANAGED_FILE;
+      const correct = hashes[victim];
+      expect(correct).toBeDefined();
+      hashes[victim] = computeHash("not what is on disk");
+      writeHashesV2(hashFilePath(), hashes);
+      expect(mismatchedEntries()).toContain(victim);
+
+      await update({ yes: true });
+
+      // One run is enough. Before this fix the file was classified `unchanged`
+      // on every run and skipped, so the entry could never be repaired.
+      expect(readHashesV2(hashFilePath())[victim]).toBe(correct);
+      expect(mismatchedEntries()).toEqual([]);
+    });
+
+    it("adds an entry that is missing entirely for a pristine file", async () => {
+      await setupProject();
+
+      const hashes = readHashesV2(hashFilePath());
+      const correct = hashes[MANAGED_FILE];
+      writeHashesV2(
+        hashFilePath(),
+        removeHashEntry(hashes, MANAGED_FILE) as Record<string, string>,
+      );
+      expect(readHashesV2(hashFilePath())[MANAGED_FILE]).toBeUndefined();
+
+      await update({ yes: true });
+
+      expect(readHashesV2(hashFilePath())[MANAGED_FILE]).toBe(correct);
+    });
+
+    it("does not re-hash a file the user actually customized", async () => {
+      await setupProject();
+
+      const pristine = readProjectFile(MANAGED_FILE);
+      const recorded = readHashesV2(hashFilePath())[MANAGED_FILE];
+      expect(recorded).toBe(computeHash(pristine));
+
+      // A real local edit. `update` may offer to overwrite it; declining must
+      // leave the receipt describing the template, not the edit — otherwise
+      // the repair path has silently blessed a customization.
+      const customized = `${pristine}\n# local customization\n`;
+      writeProjectFile(MANAGED_FILE, customized);
+      vi.mocked(inquirer.prompt).mockResolvedValue({ proceed: false });
+
+      await update({ yes: false });
+
+      expect(readHashesV2(hashFilePath())[MANAGED_FILE]).not.toBe(
+        computeHash(customized),
+      );
+      expect(readProjectFile(MANAGED_FILE)).toBe(customized);
+    });
+
+    it("leaves the mixed-ownership paths free to differ from their recorded hash", async () => {
+      await setupProject();
+      const before = readHashesV2(hashFilePath());
+
+      // Append repo-owned content, exactly as those files acquire it.
+      for (const relativePath of MIXED_OWNERSHIP) {
+        if (!fs.existsSync(projectFile(relativePath))) continue;
+        writeProjectFile(
+          relativePath,
+          `${readProjectFile(relativePath)}\n# repo-owned addition\n`,
+        );
+      }
+
+      await update({ yes: true });
+
+      const after = readHashesV2(hashFilePath());
+      for (const relativePath of MIXED_OWNERSHIP) {
+        if (before[relativePath] === undefined) continue;
+        // The recorded hash must still describe the template, not the file.
+        expect(after[relativePath]).not.toBe(
+          computeHash(readProjectFile(relativePath)),
+        );
+      }
+    });
   });
 });

@@ -183,8 +183,8 @@ python3 .trellis/scripts/task.py finish
 ### Create Task
 
 ```bash
-python3 .trellis/scripts/task.py create "Task name" --slug task-slug
-python3 .trellis/scripts/task.py create "Child task" --slug child --parent <parent-dir>
+python3 .trellis/scripts/task.py create "Task name" --description "What this task delivers" --slug task-slug
+python3 .trellis/scripts/task.py create "Child task" --description "What this child delivers" --slug child --parent <parent-dir>
 ```
 
 Options: `--assignee <name>`, `--priority P0|P1|P2|P3`, `--description "text"`, `--parent <dir>`

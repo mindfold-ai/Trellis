@@ -176,3 +176,9 @@ dogfood step gets skipped, and it makes every downstream drift worse.
       asserting on a mocked string.
 - [ ] `pnpm build`, `lint`, `typecheck`, `test` pass; `lint:py` reports 0 errors;
       the two script trees stay byte-identical (Fix 1's guard).
+
+## Rescope (2026-08-08, sd-ai-command-pack cross-repo review)
+
+Fix 1 LANDED: `packages/cli/test/regression.test.ts:9528` now asserts
+`.trellis/scripts` stays byte-identical to the templates. Remaining scope is
+the rest of the hardening set only.

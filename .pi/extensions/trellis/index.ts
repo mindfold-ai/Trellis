@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import {
   delimiter,
@@ -1047,6 +1047,28 @@ function contextKey(input?: unknown, ctx?: PiExtensionContext): string | null {
   return null;
 }
 
+/**
+ * Return `candidate` when it lands inside `root`, else null.
+ *
+ * A session pointer is not always something the user typed. `task.py` now
+ * refuses to store a ref that leaves the project, but a session file written
+ * before that fix can still hold one, and `trellis update` does not rewrite
+ * session files — so a poisoned pointer outlives the upgrade that closed the
+ * writer. Both sides are resolved so a task directory symlinked outside is
+ * refused too, but the original `candidate` is returned on success: callers do
+ * `relative(root, dir)`, and handing them a realpath would break that whenever
+ * `root` itself sits behind a symlink (`/tmp` does on macOS).
+ */
+function containInRoot(root: string, candidate: string): string | null {
+  try {
+    const rel = relative(realpathSync(root), realpathSync(candidate));
+    if (rel !== "" && (rel.startsWith("..") || isAbsolute(rel))) return null;
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+
 function readTaskDir(root: string, key: string | null): string | null {
   if (!key) return null;
   try {
@@ -1058,11 +1080,12 @@ function readTaskDir(root: string, key: string | null): string | null {
     ref = ref;
     ref = ref.replace(/\\/g, "/").replace(/^\.\//, "");
     if (ref.startsWith("tasks/")) ref = `.trellis/${ref}`;
-    return ref.startsWith(".trellis/")
+    const candidate = ref.startsWith(".trellis/")
       ? join(root, ref)
       : isAbsolute(ref)
         ? ref
         : join(root, ".trellis", "tasks", ref);
+    return containInRoot(root, candidate);
   } catch {
     return null;
   }

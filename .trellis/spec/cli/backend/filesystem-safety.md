@@ -34,9 +34,18 @@ export function writeFileAtomic(filePath: string, data: string | Uint8Array): vo
 ```python
 # templates/trellis/scripts/common/io.py
 def write_json(path: Path, data: dict) -> bool
+def write_text_atomic(path: Path, text: str) -> bool
 # tempfile.mkstemp(dir=path.parent) -> os.fdopen write -> os.replace(tmp, path);
 # unlinks tmp and re-raises on BaseException (Ctrl-C included).
+# write_json serializes and delegates, so both share one implementation.
 ```
+
+`write_text_atomic` covers the Markdown state files, not just JSON:
+`add_session.py` appends to `journal-*.md` and rewrites `index.md` through it.
+Those two carry the session record that a retry classifies, so a half-written
+one is not a cosmetic defect — it is pending evidence nothing can resume from.
+The append is read-all + write-all rather than `open("a")` for exactly that
+reason.
 
 ### Wrong vs Correct
 

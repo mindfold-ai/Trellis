@@ -9,10 +9,14 @@ Provides:
 
 Note:
     ``cmd_init_context`` was removed in v0.5.0-beta.12. JSONL context files
-    are now seeded at ``task.py create`` time with a self-describing
-    ``_example`` line; the AI agent curates real entries during planning when
-    the task needs sub-agent/spec context. See ``.trellis/workflow.md`` for the
-    current planning artifact contract.
+    are created empty at ``task.py create`` time; the AI agent curates real
+    entries during planning when the task needs sub-agent/spec context. See
+    ``.trellis/workflow.md`` for the current planning artifact contract.
+
+    Older Trellis versions seeded those files with a ``{"_example": ...}``
+    placeholder row. ``cmd_validate`` now rejects that row so a task cannot
+    validate locally and then fail PR preflight, which treats it as
+    unresolved scaffolding.
 """
 
 from __future__ import annotations
@@ -60,13 +64,24 @@ def cmd_add_context(args: argparse.Namespace) -> int:
     """Add entry to JSONL context file."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
 
     jsonl_name = args.file
     path = args.path
     reason = args.reason or "Added manually"
 
-    if not target_dir.is_dir():
+    if not target_dir or not target_dir.is_dir():
         print(colored(f"Error: Directory not found: {target_dir}", Colors.RED))
+        return 1
+
+    # The JSONL name is user input joined onto the task dir — keep it a plain
+    # filename so it cannot create files elsewhere.
+    if "/" in jsonl_name or "\\" in jsonl_name or jsonl_name in (".", ".."):
+        print(colored(
+            f"Error: context file must be a plain name (e.g. implement, check): {jsonl_name}",
+            Colors.RED,
+        ))
         return 1
 
     # Support shorthand
@@ -74,7 +89,21 @@ def cmd_add_context(args: argparse.Namespace) -> int:
         jsonl_name = f"{jsonl_name}.jsonl"
 
     jsonl_file = target_dir / jsonl_name
+
+    # `path` is joined onto the repo root and the entry it produces is later
+    # inlined into sub-agent context. `Path.__truediv__` keeps an absolute
+    # right-hand side, so an entry of `/etc/passwd` -- or one that hops out
+    # with `..` -- would escape the repository entirely. The jsonl name above
+    # is already guarded; this is the same guard for the payload path.
     full_path = repo_root / path
+    try:
+        full_path.resolve().relative_to(repo_root.resolve())
+    except (OSError, ValueError):
+        print(colored(
+            f"Error: path must stay inside the repository: {path}",
+            Colors.RED,
+        ))
+        return 1
 
     entry_type = "file"
     if full_path.is_dir():
@@ -115,7 +144,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir.is_dir():
+    if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 
@@ -226,8 +255,10 @@ def _resolve_context_entry_path(
 def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = None) -> int:
     """Validate a single JSONL file.
 
-    Seed rows (no ``file`` field — typically ``{"_example": "..."}``) are
-    skipped silently; they are self-describing comments, not real entries.
+    ``{"_example": ...}`` placeholder rows written by older Trellis versions
+    are hard errors: PR preflight rejects them as unresolved scaffolding, so
+    accepting them here would pass locally and fail later. Other rows without
+    a ``file`` field are skipped silently, matching what consumers do.
 
     Beyond hard errors (missing file/dir, invalid JSON), this also prints
     non-blocking hygiene warnings (never counted in ``errors``, never change
@@ -265,11 +296,28 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             errors += 1
             continue
 
+        if not isinstance(data, dict):
+            print(
+                f"  {colored(f'{file_name}:{line_num}: Expected a JSON object', Colors.RED)}"
+            )
+            errors += 1
+            continue
+
+        if "_example" in data:
+            error_message = (
+                f"{file_name}:{line_num}: Placeholder `_example` row left by an older "
+                "task.py create — delete this line, or replace it with "
+                '{"file": "<path>", "reason": "<why>"}'
+            )
+            print(f"  {colored(error_message, Colors.RED)}")
+            errors += 1
+            continue
+
         file_path = data.get("file")
         entry_type = data.get("type", "file")
 
         if not file_path:
-            # Seed / comment row — skip silently
+            # Comment / unknown row without a path — skip silently
             continue
 
         real_entries += 1
@@ -297,8 +345,14 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             print(f"  {colored(warning_message, Colors.YELLOW)}")
 
         if max_file_bytes:
-            size = full_path.stat().st_size
-            if size > max_file_bytes:
+            # Advisory hygiene warning, so it must never be what fails
+            # `validate`. `stat()` can still raise after the `is_file()` check
+            # above — a permission change, or the file removed in between.
+            try:
+                size: int | None = full_path.stat().st_size
+            except OSError:
+                size = None
+            if size is not None and size > max_file_bytes:
                 warning_message = (
                     f"{file_name}:{line_num}: Warning: {file_path} is {size} bytes, "
                     f"exceeds context_injection.max_file_bytes ({max_file_bytes}); "
@@ -323,7 +377,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir.is_dir():
+    if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 
@@ -338,7 +392,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
         print(colored(f"[{jsonl_name}]", Colors.CYAN))
 
         count = 0
-        seed_only = True
+        curated = False
         for line in jsonl_file.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -348,11 +402,14 @@ def cmd_list_context(args: argparse.Namespace) -> int:
             except json.JSONDecodeError:
                 continue
 
+            if not isinstance(data, dict):
+                continue
+
             file_path = data.get("file")
             if not file_path:
-                # Seed / comment row — don't count as a real entry
+                # Placeholder / comment row — don't count as a real entry
                 continue
-            seed_only = False
+            curated = True
 
             count += 1
             entry_type = data.get("type", "file")
@@ -364,8 +421,8 @@ def cmd_list_context(args: argparse.Namespace) -> int:
                 print(f"  {colored(f'{count}.', Colors.GREEN)} {file_path}")
             print(f"     {colored('→', Colors.YELLOW)} {reason}")
 
-        if seed_only:
-            print(f"  {colored('(no curated entries yet — only seed row)', Colors.YELLOW)}")
+        if not curated:
+            print(f"  {colored('(no curated entries yet)', Colors.YELLOW)}")
 
         print()
 

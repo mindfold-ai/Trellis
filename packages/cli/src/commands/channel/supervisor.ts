@@ -22,6 +22,7 @@ import {
   type InboxPolicy,
 } from "@mindfoldhq/trellis-core/channel";
 
+import { shouldUseSystemPromptFile } from "./adapters/claude.js";
 import type { CodexSandboxMode } from "./adapters/codex.js";
 import { getAdapter, type Provider } from "./adapters/index.js";
 import { appendEvent } from "./store/events.js";
@@ -29,7 +30,10 @@ import { workerFile } from "./store/paths.js";
 import { scheduleSupervisorIdleTimer } from "./supervisor/idle.js";
 import { runInboxWatcher } from "./supervisor/inbox.js";
 import { createShutdown, type ShutdownReason } from "./supervisor/shutdown.js";
-import { startStdoutPump } from "./supervisor/stdout.js";
+import {
+  createStdoutDrainControl,
+  startStdoutPump,
+} from "./supervisor/stdout.js";
 import { TurnTracker } from "./supervisor/turns.js";
 import { scheduleSupervisorTimeoutWarning } from "./supervisor/warning.js";
 
@@ -37,7 +41,10 @@ export interface SupervisorConfig {
   provider: Provider;
   cwd: string;
   /** Combined worker system prompt: channel protocol prefix + agent body.
-   *  Injected via Claude `--append-system-prompt` or Codex `developerInstructions`.
+   *  Injected via Claude `--append-system-prompt(-file)` or Codex
+   *  `developerInstructions`. The supervisor also persists it to
+   *  `<worker>.system-prompt.md` and exposes the path as
+   *  `view.systemPromptFile` so adapters can avoid OS argv-length limits.
    *  No "initial user prompt" — the worker stays idle until the first
    *  inbox `send --to <worker>` arrives. */
   systemPrompt: string;
@@ -81,6 +88,38 @@ const SHUTDOWN_GRACE_MS = 3000;
 interface ResolvedProviderPath {
   command: string;
   prefixArgs: string[];
+}
+
+/**
+ * Drain worker stdout before synthesising terminal state and removing the
+ * supervisor's runtime files.
+ */
+export async function finalizeSupervisorExit(args: {
+  stdoutDrained: Promise<void>;
+  drainTimeoutMs: number;
+  abortStdoutDrain: () => void;
+  onDrainTimeout?: () => void;
+  finalizeOnExit: () => Promise<void>;
+  cleanup: () => Promise<void>;
+  exit: () => void;
+}): Promise<void> {
+  const timer = setTimeout(() => {
+    try {
+      args.onDrainTimeout?.();
+    } catch {
+      // Logging must not prevent supervisor teardown.
+    }
+    try {
+      args.abortStdoutDrain();
+    } catch {
+      // Continue teardown even if the drain abort hook fails.
+    }
+  }, args.drainTimeoutMs);
+  await args.stdoutDrained.catch(() => undefined);
+  clearTimeout(timer);
+  await args.finalizeOnExit().catch(() => undefined);
+  await args.cleanup().catch(() => undefined);
+  args.exit();
 }
 
 /**
@@ -153,10 +192,29 @@ export async function runSupervisor(
   // ── adapter selection ──
   const adapter = getAdapter(config.provider);
   const adapterCtx = adapter.createCtx();
+  // Persist an oversized system prompt to the worker dir and hand adapters a
+  // file path. Inlining a large prompt (agent body + injected --file/--jsonl
+  // context) on the worker command line breaks spawn(): Windows CreateProcess
+  // caps the command line at 32,767 chars and fails with a silent-to-the-user
+  // ENAMETOOLONG. Prompts within the inline budget stay on the argv flag so
+  // Claude Code installs older than v2.0.34 (no --append-system-prompt-file)
+  // keep working exactly as before; adapters that do support a file-based
+  // prompt flag (claude: --append-system-prompt-file) prefer it.
+  let systemPromptFile: string | undefined;
+  if (shouldUseSystemPromptFile(config.systemPrompt)) {
+    systemPromptFile = workerFile(
+      channelName,
+      workerName,
+      "system-prompt.md",
+      project,
+    );
+    fs.writeFileSync(systemPromptFile, config.systemPrompt);
+  }
   const view = {
     resume: config.resume,
     model: config.model,
     systemPrompt: config.systemPrompt,
+    ...(systemPromptFile ? { systemPromptFile } : {}),
     cwd: config.cwd,
     sandbox: config.sandbox,
   };
@@ -207,6 +265,32 @@ export async function runSupervisor(
       : {}),
   });
 
+  const stdoutDrain = createStdoutDrainControl();
+  const idleTimerRef: {
+    current?: ReturnType<typeof scheduleSupervisorIdleTimer>;
+  } = {};
+  const turnTracker = new TurnTracker({
+    onIdleExit: () => idleTimerRef.current?.pause(),
+    onIdleEnter: () => idleTimerRef.current?.reset(),
+  });
+
+  // Attach before any await. Node drains unread child stdio after `exit`, so
+  // attaching only after the durable `spawned` append can silently discard a
+  // fast worker's final output. Line processing stays gated until `spawned`
+  // is durable, preserving event-log order.
+  const stdoutDrained = startStdoutPump({
+    channelName,
+    workerName,
+    child,
+    adapter,
+    adapterCtx,
+    log,
+    shutdown,
+    turnTracker,
+    processLines: stdoutDrain.processLines,
+    signal: stdoutDrain.signal,
+  });
+
   // Gate the `spawned` event behind whichever child lifecycle event fires
   // first: `spawn` (success) or `error` (launch failure, e.g. ENOENT).
   // Without this gate the post-spawn path writes `spawned` even when the
@@ -241,6 +325,7 @@ export async function runSupervisor(
       // `exit` event that Node won't deliver.
       spawnFailed = true;
       settleSpawn();
+      stdoutDrain.discard();
       void (async () => {
         try {
           await appendEvent(
@@ -293,11 +378,18 @@ export async function runSupervisor(
     // adapter never produced one (otherwise `wait --kind done` hangs),
     // and await any in-flight `killed` append from a concurrent shutdown
     // before exiting so the event doesn't race the process death.
-    void (async () => {
-      await shutdown.finalizeOnExit(code, sig).catch(() => undefined);
-      await cleanup(channelName, workerName).catch(() => undefined);
-      process.exit(0);
-    })();
+    void finalizeSupervisorExit({
+      stdoutDrained,
+      drainTimeoutMs: SHUTDOWN_GRACE_MS,
+      abortStdoutDrain: stdoutDrain.abortReading,
+      onDrainTimeout: () =>
+        log.write(
+          `[supervisor] stdout did not close within ${SHUTDOWN_GRACE_MS}ms; draining buffered lines and exiting\n`,
+        ),
+      finalizeOnExit: () => shutdown.finalizeOnExit(code, sig),
+      cleanup: () => cleanup(channelName, workerName),
+      exit: () => process.exit(0),
+    });
   });
 
   // Signal handlers MUST be registered before any await so a SIGTERM
@@ -321,67 +413,61 @@ export async function runSupervisor(
   // so reaching this point with `spawnFailed=true` means we already kicked
   // off cleanup and can bail cleanly.
   await spawnSettled;
-  if (spawnFailed) return;
+  if (spawnFailed) {
+    stdoutDrain.discard();
+    return;
+  }
   // Codex #3 fix: if a signal/timeout requested shutdown while we were
   // waiting for spawn-settled, don't write a misleading `spawned` event;
   // let the in-flight `killed` append complete and bail.
   if (shutdown.isShuttingDown()) {
+    stdoutDrain.discard();
     await shutdown.awaitFinalize();
     return;
   }
 
-  fs.writeFileSync(
-    workerFile(channelName, workerName, "worker-pid", project),
-    String(child.pid),
-  );
+  try {
+    fs.writeFileSync(
+      workerFile(channelName, workerName, "worker-pid", project),
+      String(child.pid),
+    );
 
-  await appendEvent(
-    channelName,
-    {
-      kind: "spawned",
-      by: config.spawnedBy ?? "main",
-      as: workerName,
-      provider: config.provider,
-      pid: child.pid,
-      inboxPolicy: config.inboxPolicy ?? DEFAULT_INBOX_POLICY,
-      ...(config.agent ? { agent: config.agent } : {}),
-      ...(config.contextFiles && config.contextFiles.length > 0
-        ? { files: config.contextFiles }
-        : {}),
-      ...(config.contextManifests && config.contextManifests.length > 0
-        ? { manifests: config.contextManifests }
-        : {}),
-    },
-    project,
-  );
+    await appendEvent(
+      channelName,
+      {
+        kind: "spawned",
+        by: config.spawnedBy ?? "main",
+        as: workerName,
+        provider: config.provider,
+        pid: child.pid,
+        inboxPolicy: config.inboxPolicy ?? DEFAULT_INBOX_POLICY,
+        ...(config.agent ? { agent: config.agent } : {}),
+        ...(config.contextFiles && config.contextFiles.length > 0
+          ? { files: config.contextFiles }
+          : {}),
+        ...(config.contextManifests && config.contextManifests.length > 0
+          ? { manifests: config.contextManifests }
+          : {}),
+      },
+      project,
+    );
+  } catch (err) {
+    stdoutDrain.discard();
+    throw err;
+  }
 
   // OOM-guard idle timer: start only after `spawned` is durable. Hooks
   // wired through the TurnTracker pause it mid-turn and reset it on
   // turn finish / interrupted (the same transitions that drive durable
   // `idleSince`). `<=0` short-circuits the timer to a no-op.
-  const idleTimer = scheduleSupervisorIdleTimer({
+  idleTimerRef.current = scheduleSupervisorIdleTimer({
     idleTimeoutMs: config.idleTimeoutMs ?? 0,
     shutdown,
     isChildExited: () => child.exitCode !== null || child.signalCode !== null,
     log,
   });
-  const turnTracker = new TurnTracker({
-    onIdleExit: () => idleTimer.pause(),
-    onIdleEnter: () => idleTimer.reset(),
-  });
-  process.on("exit", () => idleTimer.cancel());
-
-  // ── 1. stdout reader ──
-  startStdoutPump({
-    channelName,
-    workerName,
-    child,
-    adapter,
-    adapterCtx,
-    log,
-    shutdown,
-    turnTracker,
-  });
+  process.on("exit", () => idleTimerRef.current?.cancel());
+  stdoutDrain.allowProcessing();
 
   // ── timeout guard (anti-zombie) ──
   if (config.timeoutMs && config.timeoutMs > 0) {
@@ -466,10 +552,14 @@ async function cleanup(channelName: string, workerName: string): Promise<void> {
   // Keep `log` (forensic), `session-id` / `thread-id` (future resume).
   // `inbox-cursor` is kept so a respawn (same worker name without
   // killing the channel) doesn't replay messages.
+  // `system-prompt.md` may carry a large injected context; a respawn rewrites
+  // it from config when needed, so it is removed unconditionally (also when
+  // the current run inlined the prompt and would otherwise leave a stale one).
   for (const suffix of [
     "pid",
     "worker-pid",
     "config",
+    "system-prompt.md",
     "spawnlock",
     "shutdown-reason",
     "reservation",

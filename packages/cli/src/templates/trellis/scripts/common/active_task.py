@@ -9,7 +9,6 @@ session key there is no active task.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 import sys
@@ -18,6 +17,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from .io import read_json as _io_read_json, write_json as _io_write_json
 
 DIR_WORKFLOW = ".trellis"
 DIR_TASKS = "tasks"
@@ -55,6 +56,7 @@ _KNOWN_PLATFORMS = {
     "kimi",
     "zcode",
     "snow",
+    "dsh",
 }
 
 # Every name below records how it was checked. Do NOT add a name by analogy
@@ -64,6 +66,15 @@ _KNOWN_PLATFORMS = {
 # only "evidence" behind them. A platform with no verified name belongs in no
 # table; it resolves through TRELLIS_CONTEXT_ID or its hook/plugin bridge.
 _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # REAL (reported 2026-08-13 against DSH 0.1.0-rc.6 by @SajoLuo, from a live
+    # run: DSH exports DSH_SESSION_ID plus DSH_SHELL=1 into its managed shell).
+    # MUST STAY FIRST. A DSH session can inherit an outer host's identity — a
+    # DSH launched from Codex still carries CODEX_THREAD_ID — and the untargeted
+    # lookup below walks this table in order, so any earlier entry would claim
+    # the session and write a foreign `codex_<thread>` pointer for DSH work.
+    # DSH_SESSION_ID is the only name here no other vendor sets, so first place
+    # is safe: it cannot mis-claim a non-DSH session.
+    ("dsh", ("DSH_SESSION_ID",)),
     # REAL, undocumented (verified 2026-08-05 in a live Claude Code 2.1.221 bash
     # child; absent from code.claude.com/docs/en/env-vars). CLAUDE_SESSION_ID
     # was removed here — verified absent from that same live environment.
@@ -189,19 +200,39 @@ def normalize_task_ref(task_ref: str) -> str:
 
 
 def resolve_task_ref(task_ref: str, repo_root: Path) -> Path | None:
-    """Resolve a task ref to an absolute task directory."""
+    """Resolve a task ref to an absolute task directory inside the repo.
+
+    Mirrors `paths.resolve_task_ref` (same containment check). Duplicated
+    rather than imported because this module is loaded standalone — hooks add
+    it to `sys.path` directly — so it stays zero-relative-import on purpose.
+    """
     normalized = normalize_task_ref(task_ref)
     if not normalized:
         return None
 
     path_obj = Path(normalized)
     if path_obj.is_absolute():
-        return path_obj
+        candidate = path_obj
+    elif normalized.startswith(f"{DIR_WORKFLOW}/"):
+        candidate = repo_root / path_obj
+    else:
+        candidate = repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
 
-    if normalized.startswith(f"{DIR_WORKFLOW}/"):
-        return repo_root / path_obj
+    # Both sides are resolved because repo_root itself may sit behind a
+    # symlink (/tmp on macOS does), and resolve() is what collapses `..`
+    # instead of leaving it for a lexical relative_to() to wave through.
+    try:
+        resolved = candidate.resolve()
+        root = repo_root.resolve()
+    except OSError:
+        return None
 
-    return repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+
+    return resolved
 
 
 def _runtime_sessions_dir(repo_root: Path) -> Path:
@@ -510,23 +541,24 @@ def resolve_context_key(
 
 
 def _read_json(path: Path) -> dict[str, Any] | None:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return None
+    """Tolerant read of a session runtime file, non-objects included."""
+    data = _io_read_json(path)
     return data if isinstance(data, dict) else None
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> bool:
+    """Write a session runtime file atomically, creating the runtime dir.
+
+    Routes through io.write_json so session pointers get the same
+    temp-file-then-rename treatment as task.json (#429). A plain write_text
+    truncates the target first, so a crash mid-write would leave a session
+    file that reads back as no active task.
+    """
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        return True
     except OSError:
         return False
+    return _io_write_json(path, data)
 
 
 def _canonical_task_ref(task_path: str, repo_root: Path) -> str | None:
@@ -537,9 +569,13 @@ def _canonical_task_ref(task_path: str, repo_root: Path) -> str | None:
     if full_path is None or not full_path.is_dir():
         return None
     try:
-        return full_path.relative_to(repo_root).as_posix()
+        return full_path.relative_to(repo_root.resolve()).as_posix()
     except ValueError:
-        return str(full_path)
+        # resolve_task_ref already refused everything outside the repo, so this
+        # is unreachable. Refuse rather than fall back to an absolute path —
+        # that fallback is how an out-of-repo ref used to reach the session
+        # pointer and get replayed on every later turn.
+        return None
 
 
 def _active_from_ref(
@@ -719,6 +755,37 @@ def clear_task_from_sessions(task_path: str, repo_root: Path) -> int:
             cleared += 1
 
     return cleared
+
+
+def repoint_task_in_sessions(old_path: str, new_path: str, repo_root: Path) -> int:
+    """Rewrite session runtime files from one task path to another.
+
+    Used by `task.py rename`: the task stays active, so clearing the pointer
+    would be wrong — the session must follow the task to its new name.
+    """
+    target = _canonical_task_ref(old_path, repo_root) or normalize_task_ref(old_path)
+    replacement = normalize_task_ref(new_path)
+    if not target or not replacement:
+        return 0
+
+    repointed = 0
+    sessions_dir = _runtime_sessions_dir(repo_root)
+    if not sessions_dir.is_dir():
+        return repointed
+
+    for session_path in sessions_dir.glob("*.json"):
+        context = _read_json(session_path) or {}
+        current = _string_value(context.get("current_task"))
+        if not current:
+            continue
+        current_ref = _canonical_task_ref(current, repo_root) or normalize_task_ref(current)
+        if current_ref != target:
+            continue
+        context["current_task"] = replacement
+        if _write_json(session_path, context):
+            repointed += 1
+
+    return repointed
 
 
 def get_current_task_source(

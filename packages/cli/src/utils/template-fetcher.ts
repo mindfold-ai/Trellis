@@ -5,6 +5,7 @@
  * https://github.com/mindfold-ai/marketplace
  */
 
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -909,7 +910,11 @@ export async function downloadWithStrategy(
   // existing spec if the download fails (network timeout, etc.) — the
   // operation they asked for never completed, yet their data is gone.
   if (strategy === "overwrite" && exists) {
-    const tempDir = path.join(os.tmpdir(), `trellis-template-${Date.now()}`);
+    // randomUUID, not Date.now(): both branches below use this same name
+    // and millisecond resolution is not enough to keep two of them apart.
+    // Two runs landing in the same millisecond share a directory, and the
+    // first to finish cleaning up deletes the other's download mid-read.
+    const tempDir = path.join(os.tmpdir(), `trellis-template-${randomUUID()}`);
     try {
       await withTimeout(
         downloadTemplate(gigetSource, {
@@ -938,7 +943,11 @@ export async function downloadWithStrategy(
 
   // append: Download to temp dir, then merge missing files
   if (strategy === "append" && exists) {
-    const tempDir = path.join(os.tmpdir(), `trellis-template-${Date.now()}`);
+    // randomUUID, not Date.now(): both branches below use this same name
+    // and millisecond resolution is not enough to keep two of them apart.
+    // Two runs landing in the same millisecond share a directory, and the
+    // first to finish cleaning up deletes the other's download mid-read.
+    const tempDir = path.join(os.tmpdir(), `trellis-template-${randomUUID()}`);
     try {
       await withTimeout(
         downloadTemplate(gigetSource, {

@@ -229,6 +229,29 @@ export function encodeClaudeInterruptMessage(text: string): string {
 }
 
 /**
+ * Prompts at or below this length stay inline on the worker command line.
+ * Inlining keeps Claude Code installs older than v2.0.34 (which lack
+ * `--append-system-prompt-file`) working exactly as before; larger prompts
+ * must go through a file because Windows CreateProcess caps the whole
+ * command line at 32,767 chars (spawn ENAMETOOLONG). 8,000 leaves ample
+ * headroom for the fixed flags plus Windows quoting/escaping expansion.
+ */
+export const INLINE_SYSTEM_PROMPT_MAX_CHARS = 8_000;
+
+/**
+ * Decide whether a system prompt is large enough that the supervisor must
+ * hand it to the worker via a file instead of letting adapters inline it as
+ * an argv flag. Exported for tests and for the supervisor, which owns
+ * prompt-file persistence.
+ */
+export function shouldUseSystemPromptFile(systemPrompt: string): boolean {
+  return (
+    systemPrompt.trim().length > 0 &&
+    systemPrompt.length > INLINE_SYSTEM_PROMPT_MAX_CHARS
+  );
+}
+
+/**
  * Build the Claude CLI args for `claude -p` in stream-json mode.
  */
 export function buildClaudeArgs(opts: {
@@ -237,6 +260,14 @@ export function buildClaudeArgs(opts: {
   verbose?: boolean;
   /** Appended to Claude's default system prompt (per agent definition body). */
   systemPrompt?: string;
+  /**
+   * Path to a file whose content is appended to Claude's default system
+   * prompt. Takes precedence over `systemPrompt`. Inlining a large prompt
+   * on the command line breaks spawn(): Windows CreateProcess caps the
+   * command line at 32,767 chars (spawn ENAMETOOLONG), and Linux
+   * MAX_ARG_STRLEN caps a single arg at 128KiB.
+   */
+  systemPromptFile?: string;
 }): string[] {
   const args = [
     "-p",
@@ -251,7 +282,9 @@ export function buildClaudeArgs(opts: {
   if (opts.verbose !== false) args.push("--verbose");
   if (opts.resumeSessionId) args.push("--resume", opts.resumeSessionId);
   if (opts.model) args.push("--model", opts.model);
-  if (opts.systemPrompt?.trim()) {
+  if (opts.systemPromptFile) {
+    args.push("--append-system-prompt-file", opts.systemPromptFile);
+  } else if (opts.systemPrompt?.trim()) {
     args.push("--append-system-prompt", opts.systemPrompt);
   }
   return args;

@@ -11,11 +11,13 @@
  *   `/skill:trellis-finish-work`) plus the Trellis agent prompts
  *   (trellis-implement / trellis-check / trellis-research) with the
  *   pull-based prelude on implement/check.
+ * - `.kimi-code/agents/` — the same Trellis agent prompts as project-level
+ *   custom sub-agent definitions (Claude Code-compatible frontmatter), so
+ *   the main session can dispatch `trellis-<name>` sub-agents directly.
  *
- * Kimi has no project-level hooks/settings file (hooks live in user-level
- * `~/.kimi-code/config.toml` only) and no custom sub-agent definitions
- * (built-in coder/explore/plan only), so no hooks, settings, or extension
- * files are written and the agent prompts ship as skills.
+ * Trellis does not generate project-local Kimi settings or hooks.
+ * Project-local Kimi settings go in `.kimi-code/local.toml`; hooks are
+ * configured in `$KIMI_CODE_HOME/config.toml`.
  */
 
 import { AI_TOOLS } from "../types/ai-tools.js";
@@ -49,8 +51,8 @@ function resolveKimiCommandSkills(): ReturnType<typeof resolveAllAsSkills> {
   );
 }
 
-/** Trellis agent prompts as Kimi skills, with the pull-based prelude on
- *  implement/check. */
+/** Trellis agent prompts as Kimi skills (and `.kimi-code/agents/` sub-agent
+ *  definitions), with the pull-based prelude on implement/check. */
 function resolveKimiAgentSkills(): AgentContent[] {
   return applyPullBasedPreludeMarkdown(getAllAgents());
 }
@@ -73,11 +75,20 @@ export function collectKimiTemplates(): Map<string, string> {
   }
 
   // 2. Commands-as-skills + Trellis agent prompts → `.kimi-code/skills/`.
+  const agentPrompts = resolveKimiAgentSkills();
   for (const [filePath, content] of collectSkillTemplates(".kimi-code/skills", [
     ...resolveKimiCommandSkills(),
-    ...resolveKimiAgentSkills(),
+    ...agentPrompts,
   ])) {
     files.set(filePath, content);
+  }
+
+  // 3. Custom sub-agent definitions → `.kimi-code/agents/`. Kimi Code
+  //    discovers project-level agents there (Claude Code-compatible
+  //    frontmatter); content mirrors the skill copies, pull-based prelude
+  //    included, so dispatching `trellis-<name>` directly behaves the same.
+  for (const agent of agentPrompts) {
+    files.set(`.kimi-code/agents/${agent.name}.md`, agent.content);
   }
 
   return files;
