@@ -38,6 +38,8 @@ if callable(_stdin_reconfigure):
     try:
         _stdin_reconfigure(encoding="utf-8", errors="replace")
     except (OSError, ValueError):
+        # Best-effort: a stream that refuses the encoding change still reads.
+        # Failing here would kill the hook before it can fail open.
         pass
 
 # IMPORTANT: Force stdout to use UTF-8 on Windows
@@ -363,6 +365,8 @@ def _materialize_directory(
             if block:
                 blocks.append(block)
     except Exception:
+        # Context injection is advisory: an unreadable directory yields no
+        # blocks rather than blocking the child from spawning.
         pass
 
     return blocks
@@ -421,6 +425,8 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict]:
                 except json.JSONDecodeError:
                     continue
     except Exception:
+        # An unreadable manifest leaves entries empty, and the caller below
+        # falls back on saw_real_entry rather than failing the dispatch.
         pass
 
     if not saw_real_entry:
