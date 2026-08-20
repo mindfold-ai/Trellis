@@ -16,7 +16,7 @@ Full flag reference for the five subcommands. Pin this as the authoritative sour
 
 | Flag                                          | Subcommands       | Meaning                                                                                                                                                    |
 | --------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--platform claude\|codex\|opencode\|pi\|all` | all               | Default `all`. A platform with no session storage on this machine simply contributes nothing.                                                              |
+| `--platform claude\|codex\|grok\|opencode\|pi\|zcode\|all` | all               | Default `all`. A platform with no session storage on this machine simply contributes nothing.                                                              |
 | `--since YYYY-MM-DD`                          | list / search     | Inclusive lower date bound.                                                                                                                                |
 | `--until YYYY-MM-DD`                          | list / search     | Inclusive upper date bound.                                                                                                                                |
 | `--global`                                    | list / search     | Include sessions from every project on this machine. Default is the current project `cwd`.                                                                 |
