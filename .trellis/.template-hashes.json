@@ -243,7 +243,7 @@
     ".trellis/scripts/common/types.py": "9962081cc2608fb9d1deb32c6880e336f62cdca6b338e7ae813304701e155ee9",
     ".trellis/scripts/common/tasks.py": "87aca6b73ec4524450cfff8e2ae561b1f2e53bd62a185f036a7a2d484d90c8a2",
     ".trellis/scripts/common/packages_context.py": "efe158d7c99c2268851d0216fbb08de22836e418a8dbeb73575b8cc249eed7b7",
-    ".trellis/scripts/common/trellis_config.py": "28fa6a500ece32be5dc884e00a6cc1e875ff40acd16515f3e4ebb5126c674ca3",
+    ".trellis/scripts/common/trellis_config.py": "64107e6e40ce13b7c8c34872a7642167347b64b2da7f2940773cdca53ee33f33",
     ".trellis/scripts/get_developer.py": "84c27076323c3e0f2c9c8ed16e8aa865e225d902a187c37e20ee1a46e7142d8f",
     ".trellis/scripts/init_developer.py": "f9e6c0d882406e81c8cd6b1c5abb204b0befc0069ff89cf650cd536a80f8c60e",
     ".trellis/scripts/get_context.py": "ca5bf9e90bdb1d75d3de182b95f820f9d108ab28793d29097b24fd71315adcf5",

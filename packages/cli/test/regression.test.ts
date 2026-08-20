@@ -9594,8 +9594,9 @@ describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
     expect(result).not.toHaveProperty("path");
     expect(result).toEqual({ packages: [] });
     expect(stderr).toContain("mappings inside a list are not supported");
-    expect(stderr).toContain("name: cli");
-    expect(stderr).toContain("path: packages/cli");
+    expect(stderr).toContain("ignoring key: name");
+    expect(stderr).toContain("ignoring key: path");
+    expect(stderr).not.toContain("packages/cli");
   });
 
   it("scalar list items that merely contain a colon are kept", () => {
@@ -9627,6 +9628,21 @@ describe("regression: parse_simple_yaml Python execution (0.3.8)", () => {
     expect(stderr).toContain("YAML aliases are not supported");
     expect(stderr).toContain("flow sequences are not supported");
     expect(stderr).toContain("flow mappings are not supported");
+  });
+
+  it("the dropped setting is named by key, never echoed by value", () => {
+    // `.trellis/config.yaml` is user-editable and this warning goes to stderr,
+    // which in a consumer repo means CI logs. Everything that makes the
+    // warning actionable -- file, line, key, reason -- survives without the
+    // value, so the value is not printed.
+    const { stderr } = runPythonYamlFull(
+      "notes: |\n  s3kr3t-body\nbase: &s3kr3t-anchor\nflow: [s3kr3t-item]\nkeep: ok\n",
+    );
+    expect(stderr).not.toContain("s3kr3t");
+    expect(stderr).toContain("ignoring key: notes");
+    expect(stderr).toContain("ignoring key: base");
+    expect(stderr).toContain("ignoring key: flow");
+    expect(stderr).toContain(":1:");
   });
 
   it("quoted values that look like YAML constructs stay untouched", () => {

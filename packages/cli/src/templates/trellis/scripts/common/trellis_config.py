@@ -63,10 +63,16 @@ def _next_content_line(lines: list[str], start: int) -> tuple[int, str]:
     return i, ""
 
 
-def _warn_unsupported(source: str, lineno: int, line: str, reason: str) -> None:
-    """Report a YAML construct this parser cannot represent, and move on."""
+def _warn_unsupported(source: str, lineno: int, key: str, reason: str) -> None:
+    """Report a YAML construct this parser cannot represent, and move on.
+
+    Names the key rather than echoing the line. The value earns nothing here --
+    file, line, key and reason already say which setting was dropped and why --
+    and `.trellis/config.yaml` is user-editable, so echoing it puts whatever the
+    user typed into stderr and from there into CI logs.
+    """
     print(
-        f"[WARN] {source}:{lineno}: {reason}; ignoring: {line.strip()}",
+        f"[WARN] {source}:{lineno}: {reason}; ignoring key: {key}",
         file=sys.stderr,
     )
 
@@ -143,7 +149,7 @@ def _parse_yaml_block(
                 _warn_unsupported(
                     source,
                     i + 1,
-                    line,
+                    item.partition(":")[0],
                     "mappings inside a list are not supported",
                 )
                 i += 1
@@ -160,7 +166,7 @@ def _parse_yaml_block(
                 _warn_unsupported(
                     source,
                     i + 1,
-                    line,
+                    stripped.partition(":")[0].strip(),
                     "mappings inside a list are not supported",
                 )
                 i += 1
@@ -174,7 +180,7 @@ def _parse_yaml_block(
             if not was_quoted:
                 reason = _unsupported_value(key, value)
                 if reason is not None:
-                    _warn_unsupported(source, i + 1, line, reason)
+                    _warn_unsupported(source, i + 1, key, reason)
                     current_list = None
                     i = _skip_indented_body(lines, i + 1, indent)
                     continue
