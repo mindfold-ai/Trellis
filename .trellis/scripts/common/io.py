@@ -99,7 +99,9 @@ def write_json(path: Path, data: dict) -> bool:
 
     Returns True on success, False on error.
     """
-    return write_text_atomic(path, json.dumps(data, indent=2, ensure_ascii=False))
+    # Trailing newline: every task.json this writes is a reviewed file, and a
+    # missing final byte is a review finding on each PR that touches one.
+    return write_text_atomic(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
 def write_text_atomic(path: Path, text: str) -> bool:
