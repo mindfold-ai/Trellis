@@ -57,3 +57,36 @@ without it, so echoing the value is cost with no diagnostic return.
 
 Redacting anything else, adding a secret-detection heuristic, or changing which
 constructs the parser supports.
+
+## Outcome
+
+`_warn_unsupported` now takes the key instead of the raw line and prints
+`[WARN] {source}:{lineno}: {reason}; ignoring key: {key}`. All three call
+sites supply a key: the list-item site from `item.partition(":")[0]`, the
+nested-key site from `stripped.partition(":")[0].strip()`, and the
+unsupported-value site from the `key` it had already parsed.
+
+Verified against all five rejected constructs, each carrying a distinctive
+value:
+
+```
+[block scalar] leak=NONE
+    [WARN] config.yaml:1: block scalars are not supported; ignoring key: notes
+[anchor] leak=NONE
+    [WARN] config.yaml:1: YAML anchors are not supported; ignoring key: base
+[flow seq] leak=NONE
+    [WARN] config.yaml:1: flow sequences are not supported (use `- ` list items); ignoring key: list
+[list mapping] leak=NONE
+    [WARN] config.yaml:2: mappings inside a list are not supported; ignoring key: name
+    [WARN] config.yaml:3: mappings inside a list are not supported; ignoring key: path
+[merge key] leak=NONE
+    [WARN] config.yaml:1: YAML merge keys are not supported; ignoring key: <<
+```
+
+Tests: one new regression case, and the one existing case that asserted on
+value text (`"name: cli"` / `"path: packages/cli"`) now asserts on keys and
+on the absence of `packages/cli`. Against un-fixed source the new case fails
+with `expected '[WARN] config.yaml:1: block scalars a…' not to contain
+'s3kr3t'`. Suite 1857 passed, parity byte-identical, basedpyright 0 errors.
+
+Shipped as `0.6.16-sd.7`. Consumers stay on sd.6 until rolled.
