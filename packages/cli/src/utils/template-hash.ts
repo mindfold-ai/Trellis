@@ -159,6 +159,30 @@ export function removeHash(cwd: string, relativePath: string): void {
 }
 
 /**
+ * Remove several hash entries at once.
+ *
+ * One load/save pair rather than a `removeHash` per key: the manifest is
+ * rewritten atomically, so N sequential single-key removals would be N
+ * whole-file rewrites for one logical change.
+ */
+export function removeHashes(cwd: string, keys: Iterable<string>): void {
+  const drop = new Set<string>();
+  for (const key of keys) {
+    drop.add(toPosix(key));
+  }
+  if (drop.size === 0) {
+    return;
+  }
+  const hashes = loadHashes(cwd);
+  saveHashes(
+    cwd,
+    Object.fromEntries(
+      Object.entries(hashes).filter(([key]) => !drop.has(toPosix(key))),
+    ),
+  );
+}
+
+/**
  * Rename hash entry (used after file rename)
  */
 export function renameHash(

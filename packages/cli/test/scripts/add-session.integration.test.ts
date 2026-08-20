@@ -584,6 +584,42 @@ function downgradeToLegacyMarker(
   );
 }
 
+/**
+ * Ask the vendored script which marker it would resolve for this payload.
+ * Mirrors `markersFor` so the payload is byte-identical to the one the
+ * journal entry was fingerprinted from.
+ */
+function resolveMarker(
+  repo: string,
+  title: string,
+  summary: string,
+  branch: string,
+): { marker: string; error: string | null } {
+  const harness = [
+    "import sys, json",
+    `sys.path.insert(0, ${JSON.stringify(".trellis/scripts")})`,
+    "import add_session as a",
+    "from pathlib import Path",
+    "payload = a._fingerprint_payload(",
+    `    ${JSON.stringify(DEVELOPER)}, ${JSON.stringify(title)},`,
+    `    ${JSON.stringify(summary)}, None, ${JSON.stringify(branch)},`,
+    "    [], None, None, None, None, None,",
+    ")",
+    "v2 = a.render_marker(a.compute_record_fingerprint(payload))",
+    `dev_dir = Path(".trellis/workspace") / ${JSON.stringify(DEVELOPER)}`,
+    "marker, err = a.resolve_effective_marker(Path('.'), dev_dir, payload, v2)",
+    "print(json.dumps({'marker': marker, 'error': err}))",
+  ].join("\n");
+  const r = spawnSync("python3", ["-c", harness], {
+    cwd: repo,
+    encoding: "utf-8",
+  });
+  if (r.status !== 0) {
+    throw new Error(`resolve harness failed: ${r.stderr}`);
+  }
+  return JSON.parse(r.stdout);
+}
+
 describe.skipIf(!hasPython())("add_session.py fingerprint date rollover", () => {
   let tmp: string;
   const TITLE = "rollover run";
@@ -624,6 +660,44 @@ describe.skipIf(!hasPython())("add_session.py fingerprint date rollover", () => 
     expect(readIndex(tmp)).toContain("**Total Sessions**: 1");
     // Its marker is left as written; an in-flight entry is not rewritten.
     expect(readJournal(tmp)).toContain(v1);
+  });
+
+  it("does not resume a legacy entry that is already committed", () => {
+    // A v1 record that reached HEAD is finished. Resuming it would hand the
+    // legacy marker to the next entry, which then carries a fingerprint
+    // computed from the *committed* entry's date — unfindable by its own
+    // retry, which is the duplicate-entry bug this scheme exists to close.
+    runAddSession(tmp, TITLE, [...ARGS, "--no-commit"]);
+    const { v2, v1 } = markersFor(tmp, TITLE, SUMMARY, BRANCH, "2020-01-01");
+    downgradeToLegacyMarker(tmp, v2, v1, "2020-01-01");
+
+    git(tmp, "add", "-A");
+    git(tmp, "commit", "-q", "-m", "record the legacy session");
+    expect(readJournal(tmp)).toContain(v1);
+
+    const resolved = resolveMarker(tmp, TITLE, SUMMARY, BRANCH);
+
+    expect(resolved.error).toBeNull();
+    expect(resolved.marker).toBe(v2);
+  });
+
+  it("still resumes a pending legacy entry when a committed one also matches", () => {
+    // The committed copy must be skipped without hiding the pending one.
+    runAddSession(tmp, TITLE, [...ARGS, "--no-commit"]);
+    const { v2, v1 } = markersFor(tmp, TITLE, SUMMARY, BRANCH, "2020-01-01");
+    downgradeToLegacyMarker(tmp, v2, v1, "2020-01-01");
+    git(tmp, "add", "-A");
+    git(tmp, "commit", "-q", "-m", "record the legacy session");
+
+    // Append an identical, *uncommitted* legacy entry.
+    const journal = readJournal(tmp);
+    const entry = journal.slice(journal.indexOf("## Session 1:"));
+    fs.writeFileSync(journalPath(tmp), journal + "\n\n" + entry);
+
+    const resolved = resolveMarker(tmp, TITLE, SUMMARY, BRANCH);
+
+    expect(resolved.error).toBeNull();
+    expect(resolved.marker).toBe(v1);
   });
 
   it("resolves a same-day legacy marker too, not just one across a rollover", () => {
@@ -767,6 +841,31 @@ describe.skipIf(!hasPython())("add_session.py retry convergence (R2-R5)", () => 
     expect(sessionNumbers(tmp)).toEqual([1, 2]);
     expect(countMarkers(tmp)).toBe(2);
     expect(readIndex(tmp)).toContain("**Total Sessions**: 2");
+  });
+
+  it("gives a repeat of a committed record its own marker", () => {
+    // The payload has no date in it, so the same title and summary recorded
+    // twice really is one payload. Reusing the finished record's marker would
+    // leave two entries carrying it, and every later resume then fails with
+    // "found 2 journal entries carrying this record's marker".
+    runAddSession(tmp, "same prose", ["--summary", "identical summary"]);
+    runAddSession(tmp, "same prose", ["--summary", "identical summary"]);
+
+    expect(sessionNumbers(tmp)).toEqual([1, 2]);
+    const markers = [
+      ...readJournal(tmp).matchAll(/^<!-- trellis-session:.*-->$/gm),
+    ].map((m) => m[0]);
+    expect(markers).toHaveLength(2);
+    expect(new Set(markers).size).toBe(2);
+
+    // A third identical request still resolves, rather than tripping the
+    // duplicate-marker refusal.
+    const third = tryAddSession(tmp, "same prose", [
+      "--summary",
+      "identical summary",
+    ]);
+    expect(third.status).toBe(0);
+    expect(sessionNumbers(tmp)).toEqual([1, 2, 3]);
   });
 
   it("makes a committed record a no-op when the caller supplies an idempotency key", () => {
@@ -1035,5 +1134,54 @@ describe.skipIf(!hasPython())("add_session.py outside any git repository", () =>
     expect(result.stderr).toContain("Not a git repository");
     expect(result.stderr).not.toContain("[BLOCKED] Checkpoint:");
     expect(sessionNumbers(project)).toEqual([1]);
+  });
+
+});
+
+
+describe("commit evidence for a commit with an empty message", () => {
+  let repo: string;
+
+  beforeEach(() => {
+    repo = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-empty-subj-"));
+    setupRepo(repo);
+  });
+
+  afterEach(() => {
+    fs.rmSync(repo, { recursive: true, force: true });
+  });
+
+  /**
+   * `git commit --allow-empty-message` produces a real, reachable object
+   * whose subject is empty. `resolve_commit_subject` used to return None
+   * for it -- the same value it returns when the object is missing -- so
+   * `build_commit_evidence` refused to write anything and told the reader
+   * to fetch the objects, correct the OID, or supply the subject. None of
+   * that applies to a commit that is already local, and the last option
+   * would mean recording a subject the commit does not have.
+   */
+  it("records it instead of refusing, and says the subject is empty", () => {
+    seedTask(repo);
+    git(repo, "commit", "-q", "--allow-empty", "--allow-empty-message", "-m", "");
+    const oid = git(repo, "rev-parse", "--short", "HEAD");
+
+    const r = tryAddSession(repo, "Empty subject session", [
+      "--summary", "S", "--commit", oid, "--change", "c",
+    ]);
+
+    expect(r.stderr).not.toContain("cannot resolve commit evidence");
+    expect(r.status).toBe(0);
+    expect(readJournal(repo)).toContain(`| \`${oid}\` | (empty subject) |`);
+  });
+
+  it("still refuses an OID that genuinely does not resolve", () => {
+    seedTask(repo);
+
+    const r = tryAddSession(repo, "Bad oid session", [
+      "--summary", "S", "--commit", "deadbee", "--change", "c",
+    ]);
+
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("cannot resolve commit evidence");
   });
 });

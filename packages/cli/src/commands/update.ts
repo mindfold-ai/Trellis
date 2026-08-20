@@ -27,6 +27,7 @@ import {
   updateHashes,
   isTemplateModified,
   removeHash,
+  removeHashes,
   renameHash,
   computeHash,
   shouldExcludeFromHash,
@@ -1090,6 +1091,54 @@ function collectUnchangedFileHashRepairs(
   }
 
   return files;
+}
+
+/**
+ * Receipt entries under `.trellis/` that describe neither a file on disk nor a
+ * file this run would write.
+ *
+ * `pruneOrphanManifestKeys` already drops manifest keys no platform
+ * configurator owns, but it exempts `.trellis/` wholesale. Its two reasons for
+ * that — uninstall removes `.trellis/` via `rm -rf` without consulting the
+ * manifest, and `update` needs those entries to spot user-modified workflow
+ * files — both describe entries whose file still exists. Neither says anything
+ * about an entry with nothing behind it, which is how four
+ * `.trellis/scripts/__pycache__/*.pyc` records outlived their files through
+ * every update run in a consumer repo.
+ *
+ * The exemption cannot simply be narrowed in place: `pruneOrphanManifestKeys`
+ * runs before `collectTemplateFiles` resolves the `.trellis/` template set, so
+ * at that point a `__pycache__` leftover and a template file the user deleted
+ * on purpose look identical.
+ *
+ * Membership in `templates` is what separates them, and it is the condition
+ * that makes this safe. A path trellis still writes is left alone however
+ * absent it is: `analyzeChanges` puts it in `userDeletedFiles`, and dropping
+ * its entry would make the next run classify it `new` and quietly reinstate a
+ * file the user removed deliberately — a worse defect than the stale record.
+ */
+function collectStaleTrellisHashKeys(
+  cwd: string,
+  hashes: TemplateHashes,
+  templates: Map<string, string>,
+): string[] {
+  const written = new Set<string>();
+  for (const relativePath of templates.keys()) {
+    written.add(toPosix(relativePath));
+  }
+
+  const stale: string[] = [];
+  for (const rawKey of Object.keys(hashes)) {
+    const key = toPosix(rawKey);
+    // Everything outside `.trellis/` is already covered by
+    // `pruneOrphanManifestKeys`; widening here would only duplicate it.
+    if (!key.startsWith(`${DIR_NAMES.WORKFLOW}/`)) continue;
+    if (written.has(key)) continue;
+    if (fs.existsSync(path.join(cwd, ...key.split("/")))) continue;
+    stale.push(key);
+  }
+
+  return stale;
 }
 
 /**
@@ -2423,6 +2472,7 @@ export async function update(options: UpdateOptions): Promise<void> {
     changes,
     hashes,
   );
+  const staleHashKeys = collectStaleTrellisHashKeys(cwd, hashes, templates);
 
   // Print summary
   printChangeSummary(changes);
@@ -2472,8 +2522,20 @@ export async function update(options: UpdateOptions): Promise<void> {
     // The "already up to date" exit still has to repair the receipt: this is
     // exactly the clean tree where every file is `unchanged`, so it is the run
     // where a wrong entry would otherwise be skipped again.
-    if (!options.dryRun && unchangedFileHashRepairs.size > 0) {
-      updateHashes(cwd, unchangedFileHashRepairs);
+    if (!options.dryRun) {
+      if (unchangedFileHashRepairs.size > 0) {
+        updateHashes(cwd, unchangedFileHashRepairs);
+      }
+      if (staleHashKeys.length > 0) {
+        removeHashes(cwd, staleHashKeys);
+        console.log(
+          chalk.gray(
+            `  Pruned ${staleHashKeys.length} stale receipt entr${
+              staleHashKeys.length === 1 ? "y" : "ies"
+            }`,
+          ),
+        );
+      }
     }
 
     if (isSameVersion) {
@@ -2763,6 +2825,12 @@ export async function update(options: UpdateOptions): Promise<void> {
   if (filesToHash.size > 0) {
     updateHashes(cwd, filesToHash);
   }
+  // Past the dry-run return above, so this always writes. Order against
+  // `updateHashes` does not matter: a repaired key is in `templates` by
+  // definition and a stale key is not, so the two sets cannot overlap.
+  if (staleHashKeys.length > 0) {
+    removeHashes(cwd, staleHashKeys);
+  }
 
   // Print summary
   console.log(chalk.cyan("\n--- Summary ---\n"));
@@ -2783,6 +2851,11 @@ export async function update(options: UpdateOptions): Promise<void> {
   }
   if (safeDeleted > 0) {
     console.log(`  Cleaned up: ${safeDeleted} deprecated file(s)`);
+  }
+  if (staleHashKeys.length > 0) {
+    console.log(
+      `  Pruned: ${staleHashKeys.length} stale receipt entr${staleHashKeys.length === 1 ? "y" : "ies"}`,
+    );
   }
   if (configSectionsAppended > 0) {
     console.log(`  Config sections added: ${configSectionsAppended}`);

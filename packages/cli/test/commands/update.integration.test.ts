@@ -1706,4 +1706,93 @@ describe("update() integration", () => {
       }
     });
   });
+
+  describe("pruning receipt entries whose file no longer exists", () => {
+    /** A `.trellis/` path trellis never writes — the `__pycache__` shape. */
+    const LEFTOVER = `${PATHS.SCRIPTS}/__pycache__/get_context.cpython-313.pyc`;
+
+    function receiptKeys(): string[] {
+      return Object.keys(readHashesV2(hashFilePath()));
+    }
+
+    it("removes an entry for a file that is gone and is not a template", async () => {
+      await setupProject();
+
+      // Recorded once, file since deleted. Nothing re-adds it and, before this
+      // fix, nothing removed it either: `pruneOrphanManifestKeys` exempts
+      // `.trellis/` wholesale, so it survived every update run.
+      const hashes = readHashesV2(hashFilePath());
+      hashes[LEFTOVER] = computeHash("stale bytes");
+      writeHashesV2(hashFilePath(), hashes);
+      expect(fs.existsSync(projectFile(LEFTOVER))).toBe(false);
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).not.toContain(LEFTOVER);
+    });
+
+    it("removes it on the 'Already up to date!' path too", async () => {
+      await setupProject();
+
+      // The clean tree is the run a user makes to repair a receipt, and it
+      // exits early. A prune wired only into the full update path would skip
+      // exactly the case it exists for.
+      const hashes = readHashesV2(hashFilePath());
+      hashes[LEFTOVER] = computeHash("stale bytes");
+      writeHashesV2(hashFilePath(), hashes);
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).not.toContain(LEFTOVER);
+    });
+
+    it("keeps the entry for a template file the user deleted, and does not reinstate it", async () => {
+      await setupProject();
+
+      // The entry is what makes `analyzeChanges` classify this
+      // `userDeletedFiles` instead of `new`. Prune it and the next run puts
+      // the file back — deleting a managed file would become impossible.
+      const recorded = readHashesV2(hashFilePath())[MANAGED_FILE];
+      expect(recorded).toBeDefined();
+      fs.rmSync(projectFile(MANAGED_FILE));
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).toContain(MANAGED_FILE);
+      expect(fs.existsSync(projectFile(MANAGED_FILE))).toBe(false);
+    });
+
+    it("keeps an entry whose file still exists but is not a template", async () => {
+      await setupProject();
+
+      const present = `${DIR_NAMES.WORKFLOW}/scripts/local-helper.py`;
+      writeProjectFile(present, "# not shipped by trellis\n");
+      const hashes = readHashesV2(hashFilePath());
+      hashes[present] = computeHash(readProjectFile(present));
+      writeHashesV2(hashFilePath(), hashes);
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).toContain(present);
+      expect(fs.existsSync(projectFile(present))).toBe(true);
+    });
+
+    it("leaves entries outside .trellis/ to pruneOrphanManifestKeys", async () => {
+      await setupProject();
+
+      // Any shipped template outside `.trellis/` whose file is missing is a
+      // respected deletion, not a stale record, and widening this prune past
+      // `.trellis/` would silently swallow it. `.opencode/package.json` is a
+      // real instance of that shape in the wild; this test uses a `.claude/`
+      // agent instead only because the fixture is guaranteed to install one.
+      const outside = ".claude/agents/trellis-implement.md";
+      const before = readHashesV2(hashFilePath());
+      if (before[outside] === undefined) return;
+      fs.rmSync(projectFile(outside));
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).toContain(outside);
+    });
+  });
 });
