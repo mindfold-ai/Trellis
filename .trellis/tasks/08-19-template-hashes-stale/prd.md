@@ -76,3 +76,62 @@ leave those alone; a change that makes them "match" has broken them.
       entry for a file that matches its template, runs the real update path, and
       asserts the entry is repaired — plus recorded-vs-actual agreement across
       the whole receipt.
+
+## Outcome
+
+Fixed. Two gaps beyond the one this PRD scoped turned up during the work.
+
+**The early-return path.** `update` returns early when there are no new,
+auto-updated or changed files, writing only the managed-file hashes before it
+exits with "Already up to date!". That is precisely the clean tree where every
+file is `unchanged` — the run most likely to be the one a user makes to repair
+a receipt, and the one that did the least. Both write-back sites now take the
+repair set.
+
+**`EXCLUDE_FROM_HASH`.** The first version of the fix added an entry for
+`.trellis/.gitignore`, which `initializeHashes` deliberately excludes. It was
+caught by the existing "same version update is a true no-op" test, not by
+reading. Missing entries are now only added for paths the receipt is meant to
+carry; an entry that already exists and is *wrong* is repaired regardless,
+since a wrong value reads as a real local modification and is worse than none.
+
+`initializeHashes` itself needed no change: it hashes bytes read from disk for
+the paths a run actually wrote, so it has no `unchanged` classification to skip.
+
+### Verified against the reported repo
+
+A pristine `origin/main` of `anomaly-metric-creator` copied into a scratch
+tree, then one run of the fixed `trellis update`:
+
+    before: 5 mismatched of 182 entries
+      .claude/agents/trellis-implement.md      <- the reported poisoning
+      .claude/agents/trellis-research.md       <- the reported poisoning
+      .trellis/config.yaml                     <- correct to differ
+      AGENTS.md                                <- correct to differ
+      .github/copilot-instructions.md          <- correct to differ
+
+    after:  1 mismatched of 257 entries
+      .trellis/config.yaml
+
+Both poisoned entries repaired in a single run. `.trellis/config.yaml` still
+differs because the run skipped it, which is the correct outcome for a file the
+repository owns. `AGENTS.md` and `.github/copilot-instructions.md` stopped
+differing because their managed blocks were pristine and update auto-updated
+them — ordinary update behaviour, not the repair path.
+
+The entry count rose by 75, all of them `.agents/skills/**`, `.github/**`,
+`.opencode/**` and `.gemini/**` template files that were written but never
+recorded — the silent-omission class this PRD names. Nothing was removed.
+
+Recording a correct hash for a pristine file does not weaken the protection
+against overwriting local edits: a file the user later modifies stops matching
+its stored hash and lands in `changedFiles` either way. Without an entry it
+lands there even when it is pristine, which is the false positive that made the
+receipt useless as a drift signal in the first place.
+
+### Not addressed
+
+The 83 drifted entries in this repository's own `.template-hashes.json` are
+left alone. Trellis is the CLI's source, not a consumer of it, and its receipt
+is not repaired by running `update` against itself. Re-rolling the eight
+consumer repos so they pick up the fix is out of scope here.
