@@ -50,6 +50,7 @@ import hashlib
 import json
 import re
 import sys
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -774,6 +775,7 @@ def _entry_date_at(lines: list[str], marker_index: int) -> str | None:
 
 
 def resolve_effective_marker(
+    repo_root: Path,
     dev_dir: Path,
     payload: dict,
     marker: str,
@@ -793,6 +795,16 @@ def resolve_effective_marker(
     Returning the v1 marker leaves the entry untouched — it is an in-flight
     record about to be committed, and rewriting its marker mid-repair would
     move it to a state the machine does not model.
+
+    Only *pending* v1 entries are candidates. A v1 record that already reached
+    HEAD is finished, and adopting its marker would be worse than not matching
+    at all: `classify_record` reports it committed, the caller treats an
+    identical later request as a legitimately new session, and the new entry is
+    then written carrying the old entry's marker. That marker's fingerprint was
+    computed from the *committed* entry's date, so the new entry cannot be
+    found by its own retry — the duplicate-entry bug this scheme exists to
+    close — and two entries now carry one marker, which fails every subsequent
+    resume outright.
     """
     if find_marker_entries(dev_dir, marker):
         return marker, None
@@ -805,6 +817,11 @@ def resolve_effective_marker(
             lines = journal.read_text(encoding="utf-8").splitlines()
         except OSError:
             continue
+        # Resolved on the first fingerprint hit rather than up front. A
+        # matching legacy entry is rare and a brand-new record matches
+        # nothing, so hoisting this would put a `git show` per journal file on
+        # the common path to buy nothing.
+        counts: tuple[Counter, Counter] | None = None
         for i, line in enumerate(lines):
             legacy = LEGACY_MARKER_RE.match(line.strip())
             if not legacy:
@@ -812,8 +829,26 @@ def resolve_effective_marker(
             date = _entry_date_at(lines, i)
             if date is None:
                 continue
-            if compute_legacy_fingerprint(payload, date) == legacy.group(1):
-                matches.add(line.strip())
+            if compute_legacy_fingerprint(payload, date) != legacy.group(1):
+                continue
+            stripped = line.strip()
+            if counts is None:
+                head_content = content_at_head(repo_root, journal)
+                # An uncommitted file yields an empty HEAD tally, so every
+                # entry in it stays a candidate.
+                counts = (
+                    Counter(l.strip() for l in lines),
+                    Counter(l.strip() for l in (head_content or "").splitlines()),
+                )
+            written_counts, head_counts = counts
+            # One marker line can appear both committed and pending — a resumed
+            # record that was duplicated, say. Only the counts separate them: a
+            # membership test would discard the pending copy along with the
+            # committed one and silently append a new entry instead of
+            # resuming.
+            if written_counts[stripped] <= head_counts[stripped]:
+                continue
+            matches.add(stripped)
 
     if len(matches) > 1:
         return "", (
@@ -1259,7 +1294,9 @@ def add_session(
 
     # `today` is no longer a fingerprint input; a record has to be findable by
     # its own retry after a date rollover. It still dates the rendered entry.
-    marker, resolve_error = resolve_effective_marker(dev_dir, payload, marker)
+    marker, resolve_error = resolve_effective_marker(
+        repo_root, dev_dir, payload, marker
+    )
     if resolve_error:
         print(f"Error: {resolve_error}", file=sys.stderr)
         return 1
@@ -1271,20 +1308,40 @@ def add_session(
         print(f"Error: {classify_error}", file=sys.stderr)
         return 1
 
-    if state == STATE_COMMITTED:
-        if idempotency_key:
-            print(
-                f"[OK] Session {matched_num} with idempotency key "
-                f"'{idempotency_key}' is already recorded and committed in "
-                f"{matched_file.name if matched_file else 'the journal'}; "
-                "nothing to do.",
-                file=sys.stderr,
-            )
-            return 0
-        # A committed record is finished. An identical later request is a
-        # legitimately new session, so fall through and append one.
-        state = STATE_ABSENT
-        matched_file = None
+    if state == STATE_COMMITTED and idempotency_key:
+        print(
+            f"[OK] Session {matched_num} with idempotency key "
+            f"'{idempotency_key}' is already recorded and committed in "
+            f"{matched_file.name if matched_file else 'the journal'}; "
+            "nothing to do.",
+            file=sys.stderr,
+        )
+        return 0
+
+    # A committed record is finished, so an identical later request is a
+    # legitimately new session. It must not reuse the finished record's marker.
+    # The fingerprint no longer mixes in the calendar date, so the same title,
+    # summary and no new commits really do produce one payload on two
+    # different days — and appending under the same marker leaves two entries
+    # carrying it, which fails every later resume outright.
+    #
+    # Walking a repeat counter keeps each copy's marker distinct and still
+    # derivable from the payload alone, so a retry of the second copy resolves
+    # to the second copy rather than to the finished first one. `repeat` is
+    # only mixed in from 1 onward, so a first record's marker is unchanged and
+    # markers already written stay resolvable.
+    repeat = 0
+    while state == STATE_COMMITTED:
+        repeat += 1
+        marker = render_marker(
+            compute_record_fingerprint({**payload, "repeat": repeat})
+        )
+        state, matched_file, matched_num, classify_error = classify_record(
+            repo_root, dev_dir, index_file, marker
+        )
+        if classify_error:
+            print(f"Error: {classify_error}", file=sys.stderr)
+            return 1
 
     print("========================================", file=sys.stderr)
     print("ADD SESSION", file=sys.stderr)
