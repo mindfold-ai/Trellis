@@ -110,7 +110,6 @@
     ".codex/agents/trellis-implement.toml": "388fb8f39797e0ee6cf4db447c859c79b4ac15f531f7e1e3c68c1d1d71a1c188",
     ".pi/agents/trellis-check.md": "f6df0b1ff2ae5dc9634e3a4e327de63d20be8d77ab3f54c374c2a3acf1450d3f",
     ".pi/agents/trellis-implement.md": "75e25a3b2d09dbcd49e37cdac4dc28453f341ab4eab0d0074ac84500e23e0cd2",
-    ".opencode/package.json": "4b155e844fde1467e331e898b378e66820c323110ef1ecae6fce3844358535ea",
     ".trellis/scripts/task.py": "f0daf4f3ed6c63aa434d8c87372ce60f6fc80d876466c5db71381c1ac2b2bffd",
     ".claude/agents/trellis-check.md": "9e48342243f311d55386f8fb42933945e87aba73d5ade547133aa98345a06128",
     ".claude/agents/trellis-implement.md": "563d4103381eae40a2dba1adac4b786857b292d1ed4d6ace786b643e8208d680",
@@ -254,6 +253,7 @@
     ".opencode/lib/context-visibility.js": "3a0b463db4080eb272c1eb3b9199578bcbd640e00455daecb975657264894f5c",
     ".opencode/commands/trellis/finish-work.md": "d6aa570ab684f57e4845de2d84a1ff6d9f0908e04c5a56e14fd70ae739c369fc",
     ".opencode/skills/trellis-update-spec/SKILL.md": "d975db7af166578488958751ae2c56edb827a68bddb569aa27acc3453f64e610",
-    ".pi/agents/trellis-research.md": "ef77555f4c2c4ade36f1c23a076b6f4bb9d180ff24a2f00d7cdc2f8fd5af0b0a"
+    ".pi/agents/trellis-research.md": "ef77555f4c2c4ade36f1c23a076b6f4bb9d180ff24a2f00d7cdc2f8fd5af0b0a",
+    ".opencode/package.json": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
   }
 }
