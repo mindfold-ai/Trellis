@@ -12,6 +12,8 @@ import {
 import {
   findUserTextPart,
   insertSyntheticTextPart,
+  MESSAGES_TRANSFORM_HOOK,
+  prependEphemeralText,
 } from "../../src/templates/opencode/lib/context-visibility.js";
 import {
   buildSessionContext,
@@ -44,6 +46,59 @@ async function createOpenCodeInjectHooks(
     platform,
     env,
   })) as OpenCodeInjectHooks;
+}
+
+interface ChatMessagePart {
+  id?: string;
+  sessionID?: string;
+  messageID?: string;
+  type: string;
+  text?: string;
+  synthetic?: boolean;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface TransformMessage {
+  info: { role: string; sessionID?: string; agent?: string };
+  parts: ChatMessagePart[];
+}
+
+interface TransformHooks {
+  "experimental.chat.messages.transform": (
+    input: object,
+    output: { messages: TransformMessage[] },
+  ) => Promise<void>;
+}
+
+function createUserTextPart(
+  text: string,
+  sessionID = "main-session",
+  messageID = "message-a",
+  ordinal = "000000000010",
+): ChatMessagePart {
+  return {
+    id: `prt_${ordinal}abcdefghijklmn`,
+    sessionID,
+    messageID,
+    type: "text",
+    text,
+  };
+}
+
+function userTurn(
+  text: string,
+  opts: { sessionID?: string; agent?: string; messageID?: string } = {},
+): TransformMessage {
+  const sessionID = opts.sessionID ?? "main-session";
+  return {
+    info: {
+      role: "user",
+      sessionID,
+      agent: opts.agent ?? "build",
+    },
+    parts: [createUserTextPart(text, sessionID, opts.messageID)],
+  };
 }
 
 describe("opencode session context dedupe", () => {
@@ -127,116 +182,46 @@ describe("opencode session-start history detection", () => {
     );
   });
 
-  it("persists startup context and suppresses reinjection from history", async () => {
-    interface ChatOutput {
-      parts: {
-        id: string;
-        sessionID: string;
-        messageID: string;
-        type: string;
-        text: string;
-        synthetic?: boolean;
-        metadata?: { trellis?: { sessionStart?: boolean } };
-      }[];
-    }
-
-    let historyReads = 0;
-    let persistedParts: ChatOutput["parts"] = [];
+  it("injects startup context onto the latest user message without mutating stored parts", async () => {
     const hooks = (await sessionStartPlugin({
       directory: "/tmp/trellis-opencode-test",
-      client: {
-        session: {
-          messages: async () => {
-            historyReads += 1;
-            return {
-              data:
-                persistedParts.length === 0
-                  ? []
-                  : [{ info: { role: "user" }, parts: persistedParts }],
-            };
-          },
-        },
-      },
-    })) as {
-      "chat.message": (
-        input: { sessionID: string; agent: string },
-        output: ChatOutput,
-      ) => Promise<void>;
-    };
+    })) as TransformHooks;
 
-    const firstOutput: ChatOutput = {
-      parts: [
-        {
-          id: "prt_000000000010abcdefghijklmn",
-          sessionID: "session-a",
-          messageID: "message-a",
-          type: "text",
-          text: "First request",
-        },
-      ],
-    };
-    await hooks["chat.message"](
-      { sessionID: "session-a", agent: "build" },
-      firstOutput,
-    );
+    const firstUser = userTurn("First request", { sessionID: "session-a" });
+    const originalFirstParts = firstUser.parts;
+    const firstMessages = [firstUser];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages: firstMessages });
 
-    expect(firstOutput.parts).toHaveLength(2);
-    expect(firstOutput.parts[0]).toMatchObject({
-      sessionID: "session-a",
-      messageID: "message-a",
+    expect(originalFirstParts).toHaveLength(1);
+    expect(originalFirstParts[0].text).toBe("First request");
+    expect(firstMessages[0]).not.toBe(firstUser);
+    expect(firstMessages[0].parts[0]).toMatchObject({
       type: "text",
       synthetic: true,
     });
-    expect(firstOutput.parts[0].text).toMatch(/^<session-context>/);
-    expect(firstOutput.parts[0].text).toContain("<first-reply-notice>");
-    expect(firstOutput.parts[0].text).toContain("Trellis SessionStart ✓");
-    expect(firstOutput.parts[0].metadata).toEqual({
-      trellis: { sessionStart: true },
-    });
-    expect(firstOutput.parts[1]).toEqual({
-      id: "prt_000000000010abcdefghijklmn",
+    expect(firstMessages[0].parts[0].text).toMatch(/^<session-context>/);
+    expect(firstMessages[0].parts[0].text).toContain("<first-reply-notice>");
+    expect(firstMessages[0].parts[0].text).toContain("Trellis SessionStart ✓");
+    expect(firstMessages[0].parts[1]).toEqual(originalFirstParts[0]);
+
+    const laterUser = userTurn("Second request", {
       sessionID: "session-a",
-      messageID: "message-a",
-      type: "text",
-      text: "First request",
+      messageID: "message-b",
     });
+    const originalLaterParts = laterUser.parts;
+    const laterMessages = [
+      firstUser,
+      { info: { role: "assistant", sessionID: "session-a" }, parts: [] },
+      laterUser,
+    ];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages: laterMessages });
 
-    persistedParts = firstOutput.parts;
-    // The plugin's `session.compacted` event handler was removed as dead
-    // code: clearing the in-memory processed flag there was always undone
-    // one line later by hasPersistedInjectedContext finding the
-    // pre-compaction marker still in history, so re-injecting fresh context
-    // after compaction is a known gap, not a design choice. Simulate a
-    // fresh process picking up this session instead, which exercises the
-    // real, still-live persisted-history dedupe path below.
-    contextCollector.clear("session-a");
-
-    const secondOutput: ChatOutput = {
-      parts: [
-        {
-          id: "prt_000000000020abcdefghijklmn",
-          sessionID: "session-a",
-          messageID: "message-b",
-          type: "text",
-          text: "Second request",
-        },
-      ],
-    };
-    await hooks["chat.message"](
-      { sessionID: "session-a", agent: "build" },
-      secondOutput,
-    );
-
-    expect(secondOutput.parts).toEqual([
-      {
-        id: "prt_000000000020abcdefghijklmn",
-        sessionID: "session-a",
-        messageID: "message-b",
-        type: "text",
-        text: "Second request",
-      },
-    ]);
-    expect(historyReads).toBe(2);
+    expect(laterMessages[0]).toBe(firstUser);
+    expect(laterMessages[0].parts).toBe(originalFirstParts);
+    expect(originalLaterParts).toHaveLength(1);
+    expect(laterMessages[2].parts[0].text).toMatch(/^<session-context>/);
+    expect(laterMessages[2].parts[0].text).not.toContain("<first-reply-notice>");
+    expect(laterMessages[2].parts[1]).toEqual(originalLaterParts[0]);
   });
 
   it("detects persisted Trellis context from metadata", () => {
@@ -510,7 +495,7 @@ describe("opencode bash session context", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Issue #264 — sub-agent context injection + chat.message skip
+// Issue #264 — sub-agent context injection + transform skip
 // ---------------------------------------------------------------------------
 
 interface TaskToolOutput {
@@ -525,39 +510,6 @@ interface TaskToolHooks {
     input: { tool: string; sessionID?: string; agent?: string },
     output: TaskToolOutput,
   ) => Promise<void>;
-}
-
-interface ChatMessagePart {
-  id?: string;
-  sessionID?: string;
-  messageID?: string;
-  type: string;
-  text?: string;
-  synthetic?: boolean;
-  metadata?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-interface ChatMessageHooks {
-  "chat.message": (
-    input: { sessionID: string; agent?: string },
-    output: { parts: ChatMessagePart[] },
-  ) => Promise<void>;
-}
-
-function createUserTextPart(
-  text: string,
-  sessionID = "main-session",
-  messageID = "message-a",
-  ordinal = "000000000010",
-): ChatMessagePart {
-  return {
-    id: `prt_${ordinal}abcdefghijklmn`,
-    sessionID,
-    messageID,
-    type: "text",
-    text,
-  };
 }
 
 describe("opencode persisted synthetic context parts", () => {
@@ -1021,7 +973,7 @@ describe("opencode inject-subagent-context (issue #264)", () => {
   });
 });
 
-describe("opencode chat.message subagent skip (issue #264)", () => {
+describe("opencode messages.transform injection (issue #553)", () => {
   let dir: string;
 
   beforeEach(() => {
@@ -1030,161 +982,141 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
-    contextCollector.clear("subagent-session");
-    contextCollector.clear("main-session");
   });
 
-  it("persists separate context parts in replay order for both plugin execution orders", async () => {
-    for (const [index, order] of [
+  async function loadSessionHooks(): Promise<TransformHooks> {
+    return (await sessionStartPlugin({ directory: dir })) as TransformHooks;
+  }
+
+  async function loadWorkflowHooks(): Promise<TransformHooks> {
+    return (await injectWorkflowStatePlugin({
+      directory: dir,
+    })) as TransformHooks;
+  }
+
+  function ephemeralTexts(message: TransformMessage): string[] {
+    return message.parts
+      .filter(part => part.synthetic === true && typeof part.text === "string")
+      .map(part => part.text as string);
+  }
+
+  it("injects both plugins onto the latest user message without mutating history", async () => {
+    for (const order of [
       ["sessionStart", "workflowState"],
       ["workflowState", "sessionStart"],
-    ].entries()) {
-      const sessionID = `plugin-order-${index}`;
+    ]) {
+      const earlier = userTurn("old prompt", {
+        sessionID: "main-session",
+        messageID: "message-old",
+      });
       const ordinary = createUserTextPart(
         "ordinary user prompt",
-        sessionID,
-        `message-order-${index}`,
+        "main-session",
+        "message-new",
       );
       ordinary.metadata = { user: { preserved: true } };
-      const parts = [structuredClone(ordinary)];
-      const sessionHooks = (await sessionStartPlugin({
-        directory: dir,
-        client: {
-          session: { messages: async () => ({ data: [] }) },
-        },
-      })) as ChatMessageHooks;
-      const workflowHooks = (await injectWorkflowStatePlugin({
-        directory: dir,
-      })) as ChatMessageHooks;
+      const latest: TransformMessage = {
+        info: { role: "user", sessionID: "main-session", agent: "build" },
+        parts: [structuredClone(ordinary)],
+      };
+      const originalEarlierParts = earlier.parts;
+      const originalLatestParts = latest.parts;
+      const messages: TransformMessage[] = [
+        earlier,
+        { info: { role: "assistant", sessionID: "main-session" }, parts: [] },
+        latest,
+      ];
+      const sessionHooks = await loadSessionHooks();
+      const workflowHooks = await loadWorkflowHooks();
 
       for (const kind of order) {
         const hooks = kind === "sessionStart" ? sessionHooks : workflowHooks;
-        await hooks["chat.message"](
-          { sessionID, agent: "build" },
-          { parts },
-        );
+        await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
       }
 
-      expect(parts).toHaveLength(3);
-      expect(parts[0]).toMatchObject({
-        sessionID,
-        messageID: `message-order-${index}`,
-        type: "text",
-        synthetic: true,
-        metadata: { trellis: { sessionStart: true } },
-      });
-      expect(parts[0].text).toMatch(/^<session-context>/);
-      expect(parts[1]).toMatchObject({
-        sessionID,
-        messageID: `message-order-${index}`,
-        type: "text",
-        synthetic: true,
-      });
-      expect(parts[1].text).toMatch(/^<workflow-state>/);
-      expect(parts[1].metadata).toBeUndefined();
-      expect(parts[2]).toEqual(ordinary);
-      expect(parts.map(part => part.id)).toEqual(
-        [...parts]
-          .sort((left, right) => {
-            if (typeof left.id !== "string" || typeof right.id !== "string") {
-              throw new TypeError("expected persisted part identities");
-            }
-            return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
-          })
-          .map(part => part.id),
+      expect(messages[0]).toBe(earlier);
+      expect(messages[0].parts).toBe(originalEarlierParts);
+      expect(originalLatestParts).toEqual([ordinary]);
+      expect(messages[2]).not.toBe(latest);
+      const texts = ephemeralTexts(messages[2]);
+      expect(texts.some(text => text.startsWith("<session-context>"))).toBe(
+        true,
       );
-      contextCollector.clear(sessionID);
+      expect(texts.some(text => text.startsWith("<workflow-state>"))).toBe(
+        true,
+      );
+      expect(messages[2].parts.at(-1)).toEqual(ordinary);
     }
   });
 
-  it("uses attachment identity for both real plugins", async () => {
-    const sessionID = "attachment-only-session";
+  it("prepends ephemeral text onto attachment-only latest user messages", async () => {
     const attachment: ChatMessagePart = {
       id: "prt_000000000010abcdefghijklmn",
-      sessionID,
+      sessionID: "main-session",
       messageID: "attachment-only-message",
       type: "file",
       mime: "application/pdf",
       filename: "report.pdf",
     };
-    const parts = [structuredClone(attachment)];
-    const sessionHooks = (await sessionStartPlugin({
-      directory: dir,
-      client: { session: { messages: async () => ({ data: [] }) } },
-    })) as ChatMessageHooks;
-    const workflowHooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
+    const latest: TransformMessage = {
+      info: { role: "user", sessionID: "main-session", agent: "build" },
+      parts: [structuredClone(attachment)],
+    };
+    const originalParts = latest.parts;
+    const messages = [latest];
+    const sessionHooks = await loadSessionHooks();
+    const workflowHooks = await loadWorkflowHooks();
+    await workflowHooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    await sessionHooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
 
-    await workflowHooks["chat.message"](
-      { sessionID, agent: "build" },
-      { parts },
-    );
-    await sessionHooks["chat.message"](
-      { sessionID, agent: "build" },
-      { parts },
-    );
-
-    expect(parts).toHaveLength(3);
-    expect(parts[0].text).toMatch(/^<session-context>/);
-    expect(parts[1].text).toMatch(/^<workflow-state>/);
-    expect(parts[2]).toEqual(attachment);
-    contextCollector.clear(sessionID);
+    expect(originalParts).toEqual([attachment]);
+    const texts = ephemeralTexts(messages[0]);
+    expect(texts.some(text => text.startsWith("<session-context>"))).toBe(true);
+    expect(texts.some(text => text.startsWith("<workflow-state>"))).toBe(true);
+    expect(messages[0].parts.at(-1)).toEqual(attachment);
   });
 
-  it("preserves the user message when persisted identity is unavailable", async () => {
-    const sessionHooks = (await sessionStartPlugin({
-      directory: dir,
-      client: { session: { messages: async () => ({ data: [] }) } },
-    })) as ChatMessageHooks;
-    const workflowHooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
-
-    for (const [sessionID, hooks] of [
-      ["missing-session-identity", sessionHooks],
-      ["missing-workflow-identity", workflowHooks],
-    ] as const) {
-      const parts: ChatMessagePart[] = [{ type: "text", text: "original" }];
-      await hooks["chat.message"](
-        { sessionID, agent: "build" },
-        { parts },
-      );
-      expect(parts).toEqual([{ type: "text", text: "original" }]);
-      contextCollector.clear(sessionID);
-    }
+  it("injects without a persisted part identity", async () => {
+    const sessionHooks = await loadSessionHooks();
+    const workflowHooks = await loadWorkflowHooks();
+    const latest: TransformMessage = {
+      info: { role: "user", sessionID: "main-session", agent: "build" },
+      parts: [{ type: "text", text: "original" }],
+    };
+    const originalParts = latest.parts;
+    const messages = [latest];
+    await sessionHooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    await workflowHooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(originalParts).toEqual([{ type: "text", text: "original" }]);
+    expect(ephemeralTexts(messages[0]).length).toBe(2);
+    expect(messages[0].parts.at(-1)).toEqual({ type: "text", text: "original" });
   });
 
   it("checks the skip keyword only in ordinary user text", async () => {
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
+    const hooks = await loadWorkflowHooks();
     const ordinary = createUserTextPart("ordinary prompt");
-    const parts = [structuredClone(ordinary)];
-    insertSyntheticTextPart(
-      parts,
-      "machine context containing no-trellis",
-      "sessionStart",
-    );
-
-    await hooks["chat.message"](
-      { sessionID: "main-session", agent: "build" },
-      { parts },
-    );
-
-    expect(parts).toHaveLength(3);
-    expect(parts[1].text).toMatch(/^<workflow-state>/);
-    expect(parts[2]).toEqual(ordinary);
+    const latest: TransformMessage = {
+      info: { role: "user", sessionID: "main-session", agent: "build" },
+      parts: [
+        {
+          type: "text",
+          text: "machine context containing no-trellis",
+          synthetic: true,
+        },
+        structuredClone(ordinary),
+      ],
+    };
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(ephemeralTexts(messages[0]).some(text =>
+      text.startsWith("<workflow-state>"),
+    )).toBe(true);
+    expect(messages[0].parts.at(-1)).toEqual(ordinary);
   });
 
   it("keeps both plugins disabled by their existing environment gates", async () => {
-    const sessionHooks = (await sessionStartPlugin({
-      directory: dir,
-      client: { session: { messages: async () => ({ data: [] }) } },
-    })) as ChatMessageHooks;
-    const workflowHooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
+    const sessionHooks = await loadSessionHooks();
+    const workflowHooks = await loadWorkflowHooks();
     const cases = [
       ["TRELLIS_HOOKS", "0"],
       ["TRELLIS_DISABLE_HOOKS", "1"],
@@ -1195,19 +1127,13 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       const previous = process.env[key];
       process.env[key] = value;
       try {
-        for (const [suffix, hooks] of [
-          ["session", sessionHooks],
-          ["workflow", workflowHooks],
-        ] as const) {
-          const sessionID = `${key}-${suffix}`;
-          const ordinary = createUserTextPart("original", sessionID);
-          const parts = [structuredClone(ordinary)];
-          await hooks["chat.message"](
-            { sessionID, agent: "build" },
-            { parts },
-          );
-          expect(parts).toEqual([ordinary]);
-          contextCollector.clear(sessionID);
+        for (const hooks of [sessionHooks, workflowHooks]) {
+          const latest = userTurn("original");
+          const original = latest.parts;
+          const messages = [latest];
+          await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+          expect(messages[0]).toBe(latest);
+          expect(messages[0].parts).toBe(original);
         }
       } finally {
         if (previous === undefined) Reflect.deleteProperty(process.env, key);
@@ -1216,103 +1142,63 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     }
   });
 
-  it("session-start.js early-returns when input.agent is a trellis sub-agent", async () => {
-    const hooks = (await sessionStartPlugin({
-      directory: dir,
-      client: undefined,
-    })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [createUserTextPart("original")];
-
-    await hooks["chat.message"](
-      { sessionID: "subagent-session", agent: "trellis-implement" },
-      { parts },
-    );
-
-    expect(parts).toHaveLength(1);
-    expect(parts[0].text).toBe("original");
-    expect(parts[0].metadata).toBeUndefined();
+  it("session-start.js early-returns when the latest user agent is a trellis sub-agent", async () => {
+    const hooks = await loadSessionHooks();
+    const latest = userTurn("original", { agent: "trellis-implement" });
+    const original = latest.parts;
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(messages[0]).toBe(latest);
+    expect(messages[0].parts).toBe(original);
   });
 
   it("session-start.js skips trellis-check and trellis-research", async () => {
-    const hooks = (await sessionStartPlugin({
-      directory: dir,
-      client: undefined,
-    })) as ChatMessageHooks;
-
+    const hooks = await loadSessionHooks();
     for (const agent of ["trellis-check", "trellis-research"]) {
-      const parts: ChatMessagePart[] = [createUserTextPart("untouched")];
-      await hooks["chat.message"](
-        { sessionID: "subagent-session", agent },
-        { parts },
-      );
-      expect(parts[0].text).toBe("untouched");
+      const latest = userTurn("untouched", { agent });
+      const messages = [latest];
+      await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+      expect(messages[0].parts[0].text).toBe("untouched");
     }
   });
 
-  it("inject-workflow-state.js early-returns when input.agent is a trellis sub-agent", async () => {
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [createUserTextPart("original")];
-
-    await hooks["chat.message"](
-      { sessionID: "subagent-session", agent: "trellis-implement" },
-      { parts },
-    );
-
-    expect(parts).toHaveLength(1);
-    expect(parts[0].text).toBe("original");
+  it("inject-workflow-state.js early-returns when the latest user agent is a trellis sub-agent", async () => {
+    const hooks = await loadWorkflowHooks();
+    const latest = userTurn("original", { agent: "trellis-implement" });
+    const original = latest.parts;
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(messages[0]).toBe(latest);
+    expect(messages[0].parts).toBe(original);
   });
 
   it("inject-workflow-state.js still injects breadcrumb for main-session turns", async () => {
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
-    const ordinary = createUserTextPart("user prompt");
-    const parts: ChatMessagePart[] = [structuredClone(ordinary)];
-
-    await hooks["chat.message"](
-      { sessionID: "main-session", agent: "build" },
-      { parts },
-    );
-
-    expect(parts).toHaveLength(2);
-    expect(parts[0].text).toContain("<workflow-state>");
-    expect(parts[0].synthetic).toBe(true);
-    expect(parts[1]).toEqual(ordinary);
+    const hooks = await loadWorkflowHooks();
+    const latest = userTurn("user prompt");
+    const original = latest.parts[0];
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(messages[0].parts[0].text).toContain("<workflow-state>");
+    expect(messages[0].parts[0].synthetic).toBe(true);
+    expect(messages[0].parts[1]).toEqual(original);
   });
 
   it("inject-workflow-state.js skips injection when the prompt contains the default skip keyword", async () => {
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [
-      createUserTextPart("no-trellis what does this regex do"),
-    ];
-
-    await hooks["chat.message"](
-      { sessionID: "main-session", agent: "build" },
-      { parts },
-    );
-
-    expect(parts).toHaveLength(1);
-    expect(parts[0].text).toBe("no-trellis what does this regex do");
+    const hooks = await loadWorkflowHooks();
+    const latest = userTurn("no-trellis what does this regex do");
+    const original = latest.parts;
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(messages[0]).toBe(latest);
+    expect(messages[0].parts).toBe(original);
   });
 
   it("inject-workflow-state.js does not skip on 'no-trellisfoo' (word-boundary negative)", async () => {
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [
-      createUserTextPart("no-trellisfoo is a strange word"),
-    ];
-
-    await hooks["chat.message"](
-      { sessionID: "main-session", agent: "build" },
-      { parts },
-    );
-
-    expect(parts[0].text).toContain("<workflow-state>");
+    const hooks = await loadWorkflowHooks();
+    const latest = userTurn("no-trellisfoo is a strange word");
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(messages[0].parts[0].text).toContain("<workflow-state>");
   });
 
   it("inject-workflow-state.js honors a custom prompt_injection.skip_keyword", async () => {
@@ -1320,31 +1206,20 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       join(dir, ".trellis", "config.yaml"),
       ["prompt_injection:", '  skip_keyword: "off-topic"'].join("\n"),
     );
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
+    const hooks = await loadWorkflowHooks();
 
-    const skipped: ChatMessagePart[] = [
-      createUserTextPart("off-topic question"),
-    ];
-    await hooks["chat.message"](
-      { sessionID: "main-session", agent: "build" },
-      { parts: skipped },
-    );
-    expect(skipped[0].text).toBe("off-topic question");
+    const skipped = userTurn("off-topic question");
+    const skippedMessages = [skipped];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages: skippedMessages });
+    expect(skippedMessages[0]).toBe(skipped);
 
-    const notSkipped: ChatMessagePart[] = [
-      createUserTextPart(
-        "no-trellis question",
-        "main-session-2",
-        "message-custom-keyword",
-      ),
-    ];
-    await hooks["chat.message"](
-      { sessionID: "main-session-2", agent: "build" },
-      { parts: notSkipped },
-    );
-    expect(notSkipped[0].text).toContain("<workflow-state>");
+    const notSkipped = userTurn("no-trellis question", {
+      sessionID: "main-session-2",
+      messageID: "message-custom-keyword",
+    });
+    const notSkippedMessages = [notSkipped];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages: notSkippedMessages });
+    expect(notSkippedMessages[0].parts[0].text).toContain("<workflow-state>");
   });
 
   it("inject-workflow-state.js disables the escape hatch with skip_keyword: \"\"", async () => {
@@ -1352,19 +1227,33 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       join(dir, ".trellis", "config.yaml"),
       ["prompt_injection:", '  skip_keyword: ""'].join("\n"),
     );
-    const hooks = (await injectWorkflowStatePlugin({
-      directory: dir,
-    })) as ChatMessageHooks;
-    const parts: ChatMessagePart[] = [
-      createUserTextPart("no-trellis question"),
+    const hooks = await loadWorkflowHooks();
+    const latest = userTurn("no-trellis question");
+    const messages = [latest];
+    await hooks[MESSAGES_TRANSFORM_HOOK]({}, { messages });
+    expect(messages[0].parts[0].text).toContain("<workflow-state>");
+  });
+});
+
+describe("opencode ephemeral transform helpers", () => {
+  it("clones only the latest user message when prepending text", () => {
+    const earlier = userTurn("old");
+    const latest = userTurn("new", { messageID: "message-b" });
+    const messages = [
+      earlier,
+      { info: { role: "assistant" }, parts: [] },
+      latest,
     ];
-
-    await hooks["chat.message"](
-      { sessionID: "main-session", agent: "build" },
-      { parts },
-    );
-
-    expect(parts[0].text).toContain("<workflow-state>");
+    expect(prependEphemeralText(messages, "ephemeral")).toBe(true);
+    expect(messages[0]).toBe(earlier);
+    expect(messages[2]).not.toBe(latest);
+    expect(latest.parts).toHaveLength(1);
+    expect(messages[2].parts[0]).toEqual({
+      type: "text",
+      text: "ephemeral",
+      synthetic: true,
+    });
+    expect(messages[2].parts[1]).toBe(latest.parts[0]);
   });
 });
 

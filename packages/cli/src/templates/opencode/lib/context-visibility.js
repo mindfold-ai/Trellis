@@ -84,3 +84,65 @@ export function insertSyntheticTextPart(parts, text, kind) {
   else parts.splice(insertionIndex, 0, part)
   return part
 }
+
+/** OpenCode hook that mutates the in-memory model payload, not stored history. */
+export const MESSAGES_TRANSFORM_HOOK = "experimental.chat.messages.transform"
+
+/**
+ * Index of the last user message in an OpenCode `{info, parts}[]` transcript.
+ * Compaction and prompt both pass that shape to messages.transform.
+ */
+export function findLatestUserMessageIndex(messages) {
+  if (!Array.isArray(messages)) return -1
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.info?.role === "user") return i
+  }
+  return -1
+}
+
+export function platformInputFromMessages(messages) {
+  const index = findLatestUserMessageIndex(messages)
+  if (index < 0) return null
+  const info = messages[index].info
+  if (!info || typeof info !== "object") return null
+  return {
+    sessionID: info.sessionID,
+    agent: info.agent,
+  }
+}
+
+export function latestUserPromptText(messages) {
+  const index = findLatestUserMessageIndex(messages)
+  if (index < 0) return ""
+  const part = findUserTextPart(messages[index].parts)
+  return typeof part?.text === "string" ? part.text : ""
+}
+
+export function transcriptHasAssistantMessage(messages) {
+  if (!Array.isArray(messages)) return false
+  return messages.some(message => message?.info?.role === "assistant")
+}
+
+/**
+ * Clone the latest user message and prepend an ephemeral synthetic text
+ * part. The original message object and its `parts` array are left
+ * untouched so a transform cannot leak into OpenCode's stored history.
+ */
+export function prependEphemeralText(messages, text) {
+  if (!Array.isArray(messages)) return false
+  if (typeof text !== "string") return false
+  const index = findLatestUserMessageIndex(messages)
+  if (index < 0) return false
+  const original = messages[index]
+  const parts = Array.isArray(original.parts) ? original.parts.slice() : []
+  parts.unshift({
+    type: "text",
+    text,
+    synthetic: true,
+  })
+  messages[index] = {
+    ...original,
+    parts,
+  }
+  return true
+}
