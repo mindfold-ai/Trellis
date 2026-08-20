@@ -63,15 +63,32 @@ async function waitForWarning(
 
 describe("channelWait kind union (CLI)", () => {
   let env: TmpEnv;
+  let pendingAppends: Promise<unknown>[];
+
+  function appendSoon(
+    name: string,
+    partial: Parameters<typeof appendEvent>[1],
+    delayMs = 20,
+  ): void {
+    const p = new Promise<unknown>((resolve, reject) => {
+      setTimeout(() => {
+        void appendEvent(name, partial).then(resolve, reject);
+      }, delayMs);
+    });
+    pendingAppends.push(p);
+  }
 
   beforeEach(() => {
     env = setup();
+    pendingAppends = [];
     vi.spyOn(process, "cwd").mockReturnValue(env.projectDir);
     vi.spyOn(console, "log").mockImplementation(noop);
     vi.spyOn(console, "error").mockImplementation(noop);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await Promise.allSettled(pendingAppends);
+    pendingAppends = [];
     vi.restoreAllMocks();
     teardown(env);
   });
@@ -86,14 +103,12 @@ describe("channelWait kind union (CLI)", () => {
       timeoutMs: 5000,
     });
 
-    setTimeout(() => {
-      void appendEvent("wait-union", {
-        kind: "killed",
-        by: "worker",
-        reason: "explicit-kill",
-        signal: "SIGTERM",
-      });
-    }, 20);
+    appendSoon("wait-union", {
+      kind: "killed",
+      by: "worker",
+      reason: "explicit-kill",
+      signal: "SIGTERM",
+    });
 
     await waiter;
     expect(process.exitCode).not.toBe(124);
@@ -109,13 +124,11 @@ describe("channelWait kind union (CLI)", () => {
       timeoutMs: 5000,
     });
 
-    setTimeout(() => {
-      void appendEvent("wait-single", {
-        kind: "done",
-        by: "worker",
-        duration_ms: 5,
-      });
-    }, 20);
+    appendSoon("wait-single", {
+      kind: "done",
+      by: "worker",
+      duration_ms: 5,
+    });
 
     await waiter;
     expect(process.exitCode).not.toBe(124);
@@ -144,21 +157,21 @@ describe("channelWait kind union (CLI)", () => {
       timeoutMs: 5000,
     });
 
-    setTimeout(() => {
-      void appendEvent("wait-all-union", {
-        kind: "killed",
-        by: "worker-a",
-        reason: "explicit-kill",
-        signal: "SIGTERM",
-      });
-    }, 20);
-    setTimeout(() => {
-      void appendEvent("wait-all-union", {
+    appendSoon("wait-all-union", {
+      kind: "killed",
+      by: "worker-a",
+      reason: "explicit-kill",
+      signal: "SIGTERM",
+    });
+    appendSoon(
+      "wait-all-union",
+      {
         kind: "done",
         by: "worker-b",
         duration_ms: 5,
-      });
-    }, 40);
+      },
+      40,
+    );
 
     await waiter;
     expect(process.exitCode).not.toBe(124);
@@ -181,16 +194,14 @@ describe("channelWait kind union (CLI)", () => {
       timeoutMs: 150, // short — we expect timeout
     });
 
-    setTimeout(() => {
-      void appendEvent("wait-warn-default", {
-        kind: "supervisor_warning",
-        by: "supervisor:worker",
-        worker: "worker",
-        reason: "approaching_timeout",
-        timeout_ms: 60_000,
-        remaining_ms: 30_000,
-      });
-    }, 20);
+    appendSoon("wait-warn-default", {
+      kind: "supervisor_warning",
+      by: "supervisor:worker",
+      worker: "worker",
+      reason: "approaching_timeout",
+      timeout_ms: 60_000,
+      remaining_ms: 30_000,
+    });
 
     await waiter;
     expect(process.exitCode).toBe(124);
@@ -207,16 +218,14 @@ describe("channelWait kind union (CLI)", () => {
       timeoutMs: 5000,
     });
 
-    setTimeout(() => {
-      void appendEvent("wait-warn-explicit", {
-        kind: "supervisor_warning",
-        by: "supervisor:worker",
-        worker: "worker",
-        reason: "approaching_timeout",
-        timeout_ms: 60_000,
-        remaining_ms: 30_000,
-      });
-    }, 20);
+    appendSoon("wait-warn-explicit", {
+      kind: "supervisor_warning",
+      by: "supervisor:worker",
+      worker: "worker",
+      reason: "approaching_timeout",
+      timeout_ms: 60_000,
+      remaining_ms: 30_000,
+    });
 
     await waiter;
     expect(process.exitCode).not.toBe(124);
