@@ -111,6 +111,41 @@ describe("appendEvent + .seq sidecar", () => {
     expect(fs.readFileSync(sidecar, "utf-8").trim()).toBe("3");
   });
 
+  it("continues seq after a torn JSONL tail", async () => {
+    await createChannel({ channel: "torn", by: "main" });
+    await sendMessage({ channel: "torn", by: "main", text: "one" });
+    const file = eventsPath(
+      "torn",
+      process.env.TRELLIS_CHANNEL_PROJECT ?? "",
+    );
+    const prefix = fs.readFileSync(file);
+    fs.appendFileSync(file, '{"seq":99,"kind":"progress","by":"w","text":"cut');
+    await sendMessage({ channel: "torn", by: "main", text: "two" });
+    const events = await readChannelEvents({ channel: "torn" });
+    expect(events.map((e) => e.seq)).toEqual([1, 2, 3]);
+    expect(events.at(-1)).toMatchObject({ kind: "message", text: "two" });
+    const after = fs.readFileSync(file);
+    expect(after.subarray(0, prefix.length).equals(prefix)).toBe(true);
+    expect(after.includes(Buffer.from('"seq":99'))).toBe(false);
+  });
+
+  it("continues seq after a tail cut mid-multibyte character", async () => {
+    await createChannel({ channel: "utf8-torn", by: "main" });
+    await sendMessage({ channel: "utf8-torn", by: "main", text: "one" });
+    const file = eventsPath(
+      "utf8-torn",
+      process.env.TRELLIS_CHANNEL_PROJECT ?? "",
+    );
+    const prefix = fs.readFileSync(file);
+    // Incomplete UTF-8 for U+4E2D (中): first two bytes only.
+    fs.appendFileSync(file, Buffer.from([0xe4, 0xb8]));
+    await sendMessage({ channel: "utf8-torn", by: "main", text: "two" });
+    const events = await readChannelEvents({ channel: "utf8-torn" });
+    expect(events.map((e) => e.seq)).toEqual([1, 2, 3]);
+    const after = fs.readFileSync(file);
+    expect(after.subarray(0, prefix.length).equals(prefix)).toBe(true);
+  });
+
   it("fails seq recovery when JSONL has no recoverable seq", async () => {
     await createChannel({ channel: "bad-jsonl", by: "main" });
     const file = eventsPath("bad-jsonl");

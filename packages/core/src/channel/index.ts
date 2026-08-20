@@ -58,6 +58,7 @@ export type {
   InterruptOutcome,
   UndeliverableReason,
   ReadChannelEventsPagination,
+  AppendablePartial,
 } from "./internal/store/events.js";
 
 export {
@@ -69,6 +70,8 @@ export {
   isThreadEvent,
   isContextEvent,
   isChannelMetadataEvent,
+  appendEvent,
+  readLastSeq,
 } from "./internal/store/events.js";
 
 export type {

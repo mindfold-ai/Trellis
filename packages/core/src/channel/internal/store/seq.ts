@@ -3,6 +3,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 
 const READ_TAIL_BYTES = 4096;
+const TAIL_SCAN_CHUNK = 64 * 1024;
 
 /** Parse the sidecar file content. Returns null on missing / non-integer. */
 function parseSidecar(text: string): number | null {
@@ -91,6 +92,45 @@ async function readLastJsonlSeq(jsonlPath: string): Promise<number> {
     throw new Error(`Unable to recover channel seq from ${jsonlPath}`);
   }
   return 0;
+}
+
+/**
+ * If `events.jsonl` ends mid-record (no trailing newline — ENOSPC or
+ * SIGKILL during append), truncate to the last complete line. A complete
+ * JSONL record is written as stringify(event) plus a trailing newline, so
+ * a missing final newline is the torn-tail signal. Complete but
+ * unparseable lines are left intact — that is mid-file damage, not a
+ * torn tail.
+ *
+ * Caller must hold the channel lock.
+ */
+export async function truncateIncompleteTail(jsonlPath: string): Promise<void> {
+  if (!fs.existsSync(jsonlPath)) return;
+  const fh = await fsp.open(jsonlPath, "r+");
+  try {
+    const stat = await fh.stat();
+    if (stat.size === 0) return;
+    const lastByte = Buffer.alloc(1);
+    await fh.read(lastByte, 0, 1, stat.size - 1);
+    if (lastByte[0] === 0x0a) return;
+
+    let offset = stat.size;
+    while (offset > 0) {
+      const start = Math.max(0, offset - TAIL_SCAN_CHUNK);
+      const length = offset - start;
+      const buf = Buffer.alloc(length);
+      await fh.read(buf, 0, length, start);
+      const newline = buf.lastIndexOf(0x0a);
+      if (newline >= 0) {
+        await fh.truncate(start + newline + 1);
+        return;
+      }
+      offset = start;
+    }
+    await fh.truncate(0);
+  } finally {
+    await fh.close();
+  }
 }
 
 /**

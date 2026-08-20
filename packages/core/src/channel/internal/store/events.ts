@@ -8,7 +8,7 @@ import {
   lockPath,
   seqSidecarPath,
 } from "./paths.js";
-import { reconcileSeq, writeSidecar } from "./seq.js";
+import { reconcileSeq, truncateIncompleteTail, writeSidecar } from "./seq.js";
 import type {
   ChannelType,
   ContextEntry,
@@ -399,9 +399,11 @@ export interface AppendablePartial {
 /**
  * Append a channel event atomically under the channel lock.
  *
- * Internally reconciles the `.seq` sidecar with the JSONL tail to avoid
- * the legacy full-scan path. Sidecar repair happens automatically on
- * corruption, missing file, or sidecar drift in either direction.
+ * Internally truncates a torn JSONL tail (missing final newline), then
+ * reconciles the `.seq` sidecar with the JSONL tail. Sidecar repair
+ * happens automatically on corruption, missing file, or sidecar drift
+ * in either direction. A torn tail must never reset `seq` to 1 or glue
+ * the next record onto the incomplete line.
  *
  * @internal Trellis CLI-internal write primitive — downstream consumers
  *   must go through the typed mutation APIs (`createChannel`,
@@ -417,6 +419,7 @@ export async function appendEvent(
   const jsonl = eventsPath(name, project);
   const sidecar = seqSidecarPath(name, project);
   return withLock(lockPath(name, project), async () => {
+    await truncateIncompleteTail(jsonl);
     const existing = findIdempotentEvent(jsonl, partial);
     if (existing !== undefined) return existing;
 
