@@ -345,8 +345,14 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             print(f"  {colored(warning_message, Colors.YELLOW)}")
 
         if max_file_bytes:
-            size = full_path.stat().st_size
-            if size > max_file_bytes:
+            # Advisory hygiene warning, so it must never be what fails
+            # `validate`. `stat()` can still raise after the `is_file()` check
+            # above — a permission change, or the file removed in between.
+            try:
+                size: int | None = full_path.stat().st_size
+            except OSError:
+                size = None
+            if size is not None and size > max_file_bytes:
                 warning_message = (
                     f"{file_name}:{line_num}: Warning: {file_path} is {size} bytes, "
                     f"exceeds context_injection.max_file_bytes ({max_file_bytes}); "

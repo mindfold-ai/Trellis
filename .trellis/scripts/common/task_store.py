@@ -162,6 +162,30 @@ def _report_read_failure(path: Path, reason: str | None) -> None:
     print(hint, file=sys.stderr)
 
 
+def _ensure_children_list(data: dict) -> list:
+    """The task's `children` as a list, repaired in place if it is not one.
+
+    `.get(key, default)` returns the default only when the key is *absent*. A
+    task.json carrying `"children": null` — older format, or hand-edited —
+    yields None, and every caller below goes on to use the result as a list.
+    In `cmd_create` that raise lands *after* the new task.json is written,
+    leaving a task on disk its parent does not reference.
+
+    The repair is written into `data` rather than only returned, because the
+    unlink path removes a name it may not find and would otherwise persist the
+    malformed value untouched — no crash, but the next caller inherits it.
+
+    Anything that is not a list is discarded rather than coerced: a string
+    would iterate per character and a dict per key, each producing a plausible
+    child set that is not one.
+    """
+    children = data.get("children")
+    if not isinstance(children, list):
+        children = []
+        data["children"] = children
+    return children
+
+
 def _report_write_failure(path: Path) -> None:
     """Print that a JSON write failed. Writes are atomic, so nothing changed."""
     print(colored(f"Error: Failed to write {path}", Colors.RED), file=sys.stderr)
@@ -538,7 +562,7 @@ def cmd_create(args: argparse.Namespace) -> int:
         parent_json_path = parent_dir / FILE_TASK_JSON
 
         # Add child to parent's children list
-        parent_children = parent_data.get("children", [])
+        parent_children = _ensure_children_list(parent_data)
         if dir_name not in parent_children:
             parent_children.append(dir_name)
             parent_data["children"] = parent_children
@@ -1546,7 +1570,7 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
         return 1
 
     # Add child to parent's children list
-    parent_children = parent_data.get("children", [])
+    parent_children = _ensure_children_list(parent_data)
     child_dir_name = child_dir.name
     if child_dir_name not in parent_children:
         parent_children.append(child_dir_name)
@@ -1610,7 +1634,7 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
         return 1
 
     # Remove child from parent's children list
-    parent_children = parent_data.get("children", [])
+    parent_children = _ensure_children_list(parent_data)
     child_dir_name = child_dir.name
     if child_dir_name in parent_children:
         parent_children.remove(child_dir_name)
