@@ -91,6 +91,11 @@ COMMIT_TOKEN_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 MAX_SUBJECT_LEN = 500
 
+# Rendered for a commit that exists but carries no subject line. `git commit
+# --allow-empty-message` makes one, and it is a perfectly resolvable object --
+# it just has nothing to quote.
+EMPTY_SUBJECT = "(empty subject)"
+
 # Machine-readable record identity. An HTML comment renders as nothing, so the
 # human evidence in the entry is unchanged by its presence.
 MARKER_PREFIX = "<!-- trellis-session:"
@@ -375,7 +380,15 @@ def resolve_commit_subject(repo_root: Path, oid: str) -> str | None:
 
     Passed as argv (never interpolated into a shell) and peeled with
     ``^{commit}`` so a hex-looking ref name cannot resolve to a tree or tag.
-    Returns None when the object is missing, ambiguous, or has no subject.
+
+    Returns None only when git cannot resolve the object at all -- missing or
+    ambiguous. A commit whose message is empty is NOT that case: git resolves
+    it fine and simply prints nothing, so it reports EMPTY_SUBJECT instead.
+    Folding the two together made `add_session.py` refuse to record a real,
+    local, reachable commit, under an error advising the reader to fetch the
+    objects, correct the OID, or supply the subject -- none of which apply,
+    and the last of which would mean inventing a subject the commit does not
+    have.
     """
     rc, out, _ = run_git(
         ["show", "-s", "--format=%s", f"{oid}^{{commit}}", "--"], cwd=repo_root
@@ -386,7 +399,7 @@ def resolve_commit_subject(repo_root: Path, oid: str) -> str | None:
         subject = line.strip()
         if subject:
             return subject[:MAX_SUBJECT_LEN]
-    return None
+    return EMPTY_SUBJECT
 
 
 def build_commit_evidence(

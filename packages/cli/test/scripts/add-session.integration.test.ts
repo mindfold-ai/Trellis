@@ -1135,4 +1135,53 @@ describe.skipIf(!hasPython())("add_session.py outside any git repository", () =>
     expect(result.stderr).not.toContain("[BLOCKED] Checkpoint:");
     expect(sessionNumbers(project)).toEqual([1]);
   });
+
+});
+
+
+describe("commit evidence for a commit with an empty message", () => {
+  let repo: string;
+
+  beforeEach(() => {
+    repo = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-empty-subj-"));
+    setupRepo(repo);
+  });
+
+  afterEach(() => {
+    fs.rmSync(repo, { recursive: true, force: true });
+  });
+
+  /**
+   * `git commit --allow-empty-message` produces a real, reachable object
+   * whose subject is empty. `resolve_commit_subject` used to return None
+   * for it -- the same value it returns when the object is missing -- so
+   * `build_commit_evidence` refused to write anything and told the reader
+   * to fetch the objects, correct the OID, or supply the subject. None of
+   * that applies to a commit that is already local, and the last option
+   * would mean recording a subject the commit does not have.
+   */
+  it("records it instead of refusing, and says the subject is empty", () => {
+    seedTask(repo);
+    git(repo, "commit", "-q", "--allow-empty", "--allow-empty-message", "-m", "");
+    const oid = git(repo, "rev-parse", "--short", "HEAD");
+
+    const r = tryAddSession(repo, "Empty subject session", [
+      "--summary", "S", "--commit", oid, "--change", "c",
+    ]);
+
+    expect(r.stderr).not.toContain("cannot resolve commit evidence");
+    expect(r.status).toBe(0);
+    expect(readJournal(repo)).toContain(`| \`${oid}\` | (empty subject) |`);
+  });
+
+  it("still refuses an OID that genuinely does not resolve", () => {
+    seedTask(repo);
+
+    const r = tryAddSession(repo, "Bad oid session", [
+      "--summary", "S", "--commit", "deadbee", "--change", "c",
+    ]);
+
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("cannot resolve commit evidence");
+  });
 });

@@ -126,7 +126,7 @@
     ".trellis/scripts/common/config.py": "9a042d6f0e25a33a567510760e87c1e389af14a41faf1daeb1190a00f3df7f5e",
     ".trellis/scripts/common/task_store.py": "f9a1569b42820690c40e6516cf52d478ad62856a6fccfc3a150efab4892536a5",
     ".trellis/scripts/common/session_context.py": "3379ef1766e4e5ca77cbb7c040dbba3883fcca2548580299e3b38dbf22f4f7d5",
-    ".trellis/scripts/add_session.py": "b8db5727dfac5d4b8c4f9c15c0b9b3c1bbbee1b67f08902ad08ed26d40966bd3",
+    ".trellis/scripts/add_session.py": "c360a1971f1633728e5f2f3b2c2505c478fca52fde34b7e0cf4036f584c5c68e",
     ".claude/commands/trellis/continue.md": "4ed3a1ca2fe58fe28e54ed3b5518649e01636cee482860a807337d75811f8ecb",
     ".claude/skills/trellis-brainstorm/SKILL.md": "17d9bf209730c14f584eb97f38198d0683ad3f8da982d9a6e6d4e84c853f9a94",
     ".claude/settings.json": "d13cd05659281a287d7f50c7e25eb6a89c2a6597773511bd6885538acced2855",
