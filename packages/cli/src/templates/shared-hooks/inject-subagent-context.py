@@ -250,10 +250,25 @@ class _Budget:
         self.used += size
 
 
+def _contained_path(base_path: str, relative_path: str) -> str | None:
+    """Join `relative_path` onto `base_path`, or None if it escapes.
+
+    `os.path.join` discards the base when the right-hand side is absolute, and
+    a `..` hop walks out of it. Entries here come from a repo's JSONL context
+    manifests and are inlined into sub-agent prompts, so a path that leaves the
+    base is refused rather than read.
+    """
+    candidate = os.path.realpath(os.path.join(base_path, relative_path))
+    base = os.path.realpath(base_path)
+    if candidate != base and not candidate.startswith(base + os.sep):
+        return None
+    return candidate
+
+
 def _read_file_bytes(base_path: str, file_path: str) -> bytes | None:
     """Read raw file bytes, return None if file doesn't exist."""
-    full_path = os.path.join(base_path, file_path)
-    if os.path.exists(full_path) and os.path.isfile(full_path):
+    full_path = _contained_path(base_path, file_path)
+    if full_path and os.path.exists(full_path) and os.path.isfile(full_path):
         try:
             with open(full_path, "rb") as f:
                 return f.read()
@@ -348,8 +363,8 @@ def _materialize_directory(
 ) -> list[str]:
     """Read all .md files in a directory, applying the same per-file and
     total caps as a single-file JSONL entry."""
-    full_path = os.path.join(base_path, dir_path)
-    if not os.path.exists(full_path) or not os.path.isdir(full_path):
+    full_path = _contained_path(base_path, dir_path)
+    if not full_path or not os.path.exists(full_path) or not os.path.isdir(full_path):
         return []
 
     blocks: list[str] = []

@@ -1171,7 +1171,6 @@ def add_session(
         # legitimately new session, so fall through and append one.
         state = STATE_ABSENT
         matched_file = None
-        matched_num = None
 
     print("========================================", file=sys.stderr)
     print("ADD SESSION", file=sys.stderr)
@@ -1286,7 +1285,6 @@ def add_session(
                 file=sys.stderr,
             )
             return 1
-        state = STATE_INDEX_RECORDED
     else:
         print(f"[OK] index.md already records session {new_session}.", file=sys.stderr)
 

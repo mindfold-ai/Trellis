@@ -314,11 +314,14 @@ def _kill_hook_tree(proc: subprocess.Popen[str]) -> None:
                 capture_output=True,
             )
         except (OSError, ValueError):
+            # taskkill is a best-effort tree kill; proc.kill() below is the
+            # fallback that actually has to land.
             pass
 
     try:
         proc.kill()
     except OSError:
+        # Already dead or unreachable, which is the outcome this wanted.
         pass
 
 
@@ -416,6 +419,8 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
                         stdout = rest_out or stdout
                         stderr = rest_err or stderr
                     except (subprocess.TimeoutExpired, OSError, ValueError):
+                        # Draining the last output is a courtesy; the timeout
+                        # warning below is printed either way.
                         pass
                     print(
                         colored(

@@ -1518,13 +1518,6 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
     if parent_dir is None or child_dir is None:
         return 1
 
-    if not parent_dir:
-        print(colored(f"Error: Parent task.json not found: {args.parent_dir}", Colors.RED), file=sys.stderr)
-        return 1
-
-    if not child_dir:
-        print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
-        return 1
 
     parent_json_path = parent_dir / FILE_TASK_JSON
     child_json_path = child_dir / FILE_TASK_JSON
@@ -1595,13 +1588,6 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
     if parent_dir is None or child_dir is None:
         return 1
 
-    if not parent_dir:
-        print(colored(f"Error: Parent task.json not found: {args.parent_dir}", Colors.RED), file=sys.stderr)
-        return 1
-
-    if not child_dir:
-        print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
-        return 1
 
     parent_json_path = parent_dir / FILE_TASK_JSON
     child_json_path = child_dir / FILE_TASK_JSON

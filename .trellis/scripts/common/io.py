@@ -136,6 +136,8 @@ def write_text_atomic(path: Path, text: str) -> bool:
         try:
             os.unlink(tmp)
         except OSError:
+            # The temp file is already gone or unreachable; the write failed
+            # either way and the caller learns that from the False below.
             pass
         return False
     except BaseException:
@@ -143,5 +145,7 @@ def write_text_atomic(path: Path, text: str) -> bool:
         try:
             os.unlink(tmp)
         except OSError:
+            # Best-effort cleanup. Losing a temp file must not mask the
+            # interrupt that is about to be re-raised.
             pass
         raise

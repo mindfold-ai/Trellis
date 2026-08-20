@@ -505,7 +505,7 @@ Usage:
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
   python3 task.py start <dir>                        Set active task; records the checked-out branch when unset
-  python3 task.py current [--source]                 Show active task
+  python3 task.py current [--source] [--json]        Show active task
   python3 task.py finish                             Clear active task
   python3 task.py set-branch <dir> <branch>          Set git branch
   python3 task.py set-base-branch <dir> <branch>     Set PR target branch

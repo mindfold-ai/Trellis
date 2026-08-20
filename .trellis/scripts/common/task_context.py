@@ -89,7 +89,21 @@ def cmd_add_context(args: argparse.Namespace) -> int:
         jsonl_name = f"{jsonl_name}.jsonl"
 
     jsonl_file = target_dir / jsonl_name
+
+    # `path` is joined onto the repo root and the entry it produces is later
+    # inlined into sub-agent context. `Path.__truediv__` keeps an absolute
+    # right-hand side, so an entry of `/etc/passwd` -- or one that hops out
+    # with `..` -- would escape the repository entirely. The jsonl name above
+    # is already guarded; this is the same guard for the payload path.
     full_path = repo_root / path
+    try:
+        full_path.resolve().relative_to(repo_root.resolve())
+    except (OSError, ValueError):
+        print(colored(
+            f"Error: path must stay inside the repository: {path}",
+            Colors.RED,
+        ))
+        return 1
 
     entry_type = "file"
     if full_path.is_dir():
