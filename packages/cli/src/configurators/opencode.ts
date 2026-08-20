@@ -14,8 +14,7 @@ import {
 /**
  * Files under packages/cli/src/templates/opencode/ that are NOT user-facing
  * assets (build artifacts, runtime caches, etc.). The template dir has a
- * real package.json that declares the @opencode-ai/plugin dep — that one
- * IS user-facing and must be shipped.
+ * real package.json — that one IS user-facing and must be shipped.
  */
 const EXCLUDE_PATTERNS = [
   ".d.ts",
