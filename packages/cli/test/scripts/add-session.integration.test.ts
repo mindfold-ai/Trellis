@@ -630,9 +630,13 @@ describe.skipIf(!hasPython())("add_session.py fingerprint date rollover", () => 
     breakCommits(tmp);
     expect(tryAddSession(tmp, TITLE, ARGS).status).toBe(1);
 
-    const today = readJournal(tmp).match(/^\*\*Date\*\*: (\d{4}-\d{2}-\d{2})$/m);
-    expect(today).not.toBeNull();
-    const date = today![1];
+    const dateMatch = readJournal(tmp).match(
+      /^\*\*Date\*\*: (\d{4}-\d{2}-\d{2})$/m,
+    );
+    if (!dateMatch) {
+      throw new Error("pending entry has no **Date**: line to read back");
+    }
+    const date = dateMatch[1];
     const { v2, v1 } = markersFor(tmp, TITLE, SUMMARY, BRANCH, date);
     downgradeToLegacyMarker(tmp, v2, v1, date);
 
