@@ -36,10 +36,19 @@ The key has lost its platform segment, so the last platform walked wins.
 
 ## Scope
 
-In scope: the write path that populates `hashes` during init and update, for
-every collector that contributes files — the `.claude/agents/**` collector is
-the confirmed offender, but the audit must enumerate collectors rather than
-assume it is the only one.
+The receipt write-back in `trellis update`. `analyzeChanges` classifies a file
+whose content already equals its template as `unchanged`, and the write-back
+draws only from `newFiles`, `autoUpdateFiles`, and overwritten `changedFiles`.
+`unchangedFiles` is never written back, so a wrong or absent entry beside an
+already-correct file can never be repaired. See `research/root-cause.md`.
+
+Note: an earlier reading of this blamed the key-construction path for dropping
+a platform segment. That was disproved — the current collector emits the correct
+hash, and 0.6.7 hashed bytes read from disk. The keys were always right; the
+repair path was always missing.
+
+Also in scope: the equivalent gap in `initializeHashes` at init time, if it
+classifies already-matching files the same way.
 
 Out of scope: files with legitimate mixed ownership, where a recorded hash is
 expected to drift from the working tree after the repository edits its own
@@ -57,5 +66,13 @@ leave those alone; a change that makes them "match" has broken them.
       silent omissions of the `rwbp-website` kind.
 - [ ] The three mixed-ownership paths above are still permitted to differ, and
       a test pins that so a future fix cannot quietly start hashing them whole.
-- [ ] A regression test stamps templates into a temp repo, runs the real write
-      path, and asserts recorded-vs-actual agreement across the whole receipt.
+- [ ] A receipt entry that is wrong or missing for a file already byte-identical
+      to its template is corrected by one `trellis update` run. This is the
+      regression that matters: it fails today no matter how many times update is
+      run.
+- [ ] A genuinely customized file is still NOT re-hashed by that same path, so
+      the repair cannot silently bless local edits.
+- [ ] A regression test stamps templates into a temp repo, poisons one receipt
+      entry for a file that matches its template, runs the real update path, and
+      asserts the entry is repaired — plus recorded-vs-actual agreement across
+      the whole receipt.

@@ -54,3 +54,64 @@ surfaced this. The same basename appears under ~17 platform template roots
 gemini, cursor, grok, omp, pi, reasonix, snow, kimi, zcode, droid, opencode…),
 so any other collector keying below a platform root can collide the same way.
 Enumerate collectors; do not spot-check `.claude/agents/**`.
+
+---
+
+## Correction: the write path is already correct; the receipt has no repair path
+
+The section above pointed at "whatever builds the `relativePath` key for agent
+templates". That was wrong, and the evidence says so directly.
+
+`collectClaudeTemplates()` in the current build yields the **correct** hash:
+
+    .claude/agents/trellis-implement.md  563d4103381e   (= templates/claude/agents/*)
+    .claude/agents/trellis-research.md   ca9b81549ca8
+
+and 0.6.7's `initializeHashes` hashed `fs.readFileSync(fullPath)` — the bytes on
+disk — so it could not have written a CodeBuddy hash under a `.claude/` key
+either. Neither the current collector nor the 0.6.7 initializer can produce the
+observed entry. The key never lost its platform segment.
+
+### The actual defect
+
+`analyzeChanges` (update.ts ~line 999):
+
+    const existingContent = fs.readFileSync(fullPath, "utf-8");
+    if (existingContent === newContent) {
+      change.status = "unchanged";
+      result.unchangedFiles.push(change);
+    }
+
+and the write-back (~line 2701) draws from exactly three buckets — `newFiles`,
+`autoUpdateFiles`, and the subset of `changedFiles` that were actually
+overwritten. **`unchangedFiles` is never written back.**
+
+So once a file is byte-identical to its template, the receipt entry beside it is
+frozen. Whatever it says — a hash from another platform's tree, a value from a
+pre-0.6.7 version, or nothing at all — no subsequent `trellis update` can
+correct it, because the file never leaves the `unchanged` bucket.
+
+That is self-perpetuating by construction, and it explains both symptoms:
+
+- **Wrong value** (`.claude/agents/*` holding CodeBuddy hashes): written long
+  ago by some version, then frozen. The 0.6.7-vs-current content being identical
+  is what *guarantees* it stays frozen, rather than being evidence against
+  staleness as originally argued.
+- **Missing entry** (rwbp-website): a file that already matched its template the
+  first time it was seen was classified `unchanged` and so never recorded at all.
+
+### Why the fix is small and provably safe
+
+For `unchangedFiles`, `existingContent === newContent` holds by definition of the
+branch. Recording `computeHash(newContent)` for those paths is therefore always
+correct — it cannot overwrite a genuine local customization, because a
+customized file would not be in this bucket.
+
+The `filesToHash` asymmetry noted earlier (in-memory `newContent` vs disk bytes)
+remains cosmetic here and is not the cause.
+
+### What still needs checking
+
+Whether `initializeHashes` at init time has the same gap for files that already
+exist and already match — and whether any *other* consumer of `unchangedFiles`
+assumes the receipt is authoritative.
