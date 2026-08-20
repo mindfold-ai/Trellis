@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -74,17 +73,6 @@ from common.task_context import (
     cmd_validate,
     cmd_list_context,
 )
-
-
-# Repo-owned Python script run before a task is started. Optional: an absent
-# file means no gate. Kept as a path rather than inline logic so this
-# template-managed runtime stays generic and the repository owns the policy.
-#
-# Contract: invoked as `<python> <gate> <absolute-task-dir>`. Exit 0 permits the
-# start; any nonzero exit refuses it, and the gate is responsible for explaining
-# why on stderr. See scripts/trellis-task-start-gate.py for this repository's
-# implementation and its exit codes.
-PRE_START_GATE = "scripts/trellis-task-start-gate.py"
 
 
 # =============================================================================
@@ -195,23 +183,6 @@ def cmd_start(args: argparse.Namespace) -> int:
         print(colored(f"Error: Task not found: {task_input}", Colors.RED))
         print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.trellis/tasks/01-31-my-task')")
         return 1
-
-    # Pre-start gate: if the repository defines one, a nonzero exit refuses the
-    # start. This runs before any state is written, unlike after_start hooks,
-    # which run_task_hooks only warns about.
-    gate = repo_root / PRE_START_GATE
-    if gate.is_file():
-        try:
-            refused = subprocess.run(
-                [sys.executable, str(gate), str(full_path)], cwd=repo_root
-            ).returncode != 0
-        except OSError as exc:
-            # A gate that cannot be launched has not cleared anything.
-            print(colored(f"Error: pre-start gate could not run ({PRE_START_GATE}): {exc}", Colors.RED))
-            return 1
-        if refused:
-            print(colored(f"Error: pre-start gate refused this task ({PRE_START_GATE})", Colors.RED))
-            return 1
 
     # Convert to relative path for storage. repo_root is resolved because
     # full_path already is (resolve_task_dir only returns paths inside the

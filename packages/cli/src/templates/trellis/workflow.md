@@ -435,8 +435,6 @@ Tasks created by older Trellis versions may still carry a `{"_example": "..."}` 
 
 Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. An empty manifest is not ready.
 
-The ready gate is advisory unless the repository opts in. If `scripts/trellis-task-start-gate.py` exists, `task.py start` runs it before it writes any state, and a nonzero exit refuses the start. Trellis supplies only the hook: the gate itself decides what to check, explains its refusal on stderr, and documents its own policy. With no such file present, nothing runs and the start proceeds.
-
 Skip this step only when both files already have real curated entries.
 
 [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]

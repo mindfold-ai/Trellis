@@ -1,14 +1,12 @@
 /**
- * Integration tests for the `task.py start` pre-start gate and for the
- * trailing newline `write_json` now emits.
+ * Integration test for the trailing newline `write_json` emits.
  *
  * The python scripts live under `src/templates/trellis/scripts`; this test
  * stamps them into a fresh git repo and exercises the real
  * `python3 task.py start` path.
  *
- * The gate exists so a repository can refuse a start BEFORE any state is
- * written. `after_start` hooks cannot do this — they run once the status
- * flip has already landed, and run_task_hooks only warns on failure.
+ * Every task.json this writes is a reviewed file, and a missing final byte is
+ * a review finding on each PR that touches one.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -54,7 +52,7 @@ function setupRepo(tmp: string): void {
   );
 }
 
-const TASK = "01-01-gated-task";
+const TASK = "01-01-newline-task";
 
 function makeTask(repo: string): void {
   const dir = path.join(repo, ".trellis", "tasks", TASK);
@@ -79,16 +77,6 @@ function makeTask(repo: string): void {
   );
 }
 
-/** Write a gate that always exits with `code`. */
-function writeGate(repo: string, code: number): void {
-  const dest = path.join(repo, "scripts", "trellis-task-start-gate.py");
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(
-    dest,
-    `import sys\nsys.stderr.write("gate saw " + sys.argv[1] + "\\n")\nsys.exit(${code})\n`,
-  );
-}
-
 function runStart(repo: string) {
   return spawnSync("python3", [".trellis/scripts/task.py", "start", TASK], {
     cwd: repo,
@@ -96,19 +84,11 @@ function runStart(repo: string) {
   });
 }
 
-function statusOf(repo: string): string {
-  const raw = fs.readFileSync(
-    path.join(repo, ".trellis", "tasks", TASK, "task.json"),
-    "utf-8",
-  );
-  return JSON.parse(raw).status;
-}
-
-describe.skipIf(!hasPython())("task.py start pre-start gate", () => {
+describe.skipIf(!hasPython())("task.py start writes task.json", () => {
   let tmp: string;
 
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-start-gate-test-"));
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-task-json-test-"));
     setupRepo(tmp);
     makeTask(tmp);
   });
@@ -117,33 +97,14 @@ describe.skipIf(!hasPython())("task.py start pre-start gate", () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("starts normally when the repository defines no gate", () => {
+  it("flips status to in_progress", () => {
     const r = runStart(tmp);
     expect(r.status).toBe(0);
-    expect(statusOf(tmp)).toBe("in_progress");
-  });
-
-  it("starts when the gate exits 0", () => {
-    writeGate(tmp, 0);
-    const r = runStart(tmp);
-    expect(r.status).toBe(0);
-    expect(statusOf(tmp)).toBe("in_progress");
-  });
-
-  it("refuses the start, and writes no state, when the gate exits nonzero", () => {
-    writeGate(tmp, 3);
-    const r = runStart(tmp);
-    expect(r.status).not.toBe(0);
-    expect(r.stdout).toContain("pre-start gate refused this task");
-    // The whole point of a PRE-start gate: status is untouched.
-    expect(statusOf(tmp)).toBe("planning");
-  });
-
-  it("passes the absolute task directory to the gate", () => {
-    writeGate(tmp, 1);
-    const r = runStart(tmp);
-    expect(r.stderr).toContain(path.join(".trellis", "tasks", TASK));
-    expect(r.stderr).toContain("gate saw ");
+    const raw = fs.readFileSync(
+      path.join(tmp, ".trellis", "tasks", TASK, "task.json"),
+      "utf-8",
+    );
+    expect(JSON.parse(raw).status).toBe("in_progress");
   });
 
   it("writes task.json with a trailing newline", () => {
