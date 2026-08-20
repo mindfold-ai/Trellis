@@ -1780,9 +1780,11 @@ describe("update() integration", () => {
     it("leaves entries outside .trellis/ to pruneOrphanManifestKeys", async () => {
       await setupProject();
 
-      // `.opencode/package.json` is a real shipped template that is absent
-      // from some trees. It is a respected deletion, not a stale record, and
-      // widening this prune past `.trellis/` would silently swallow it.
+      // Any shipped template outside `.trellis/` whose file is missing is a
+      // respected deletion, not a stale record, and widening this prune past
+      // `.trellis/` would silently swallow it. `.opencode/package.json` is a
+      // real instance of that shape in the wild; this test uses a `.claude/`
+      // agent instead only because the fixture is guaranteed to install one.
       const outside = ".claude/agents/trellis-implement.md";
       const before = readHashesV2(hashFilePath());
       if (before[outside] === undefined) return;
