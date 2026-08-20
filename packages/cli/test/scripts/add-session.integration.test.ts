@@ -526,6 +526,159 @@ describe.skipIf(!hasPython())("add_session.py commit evidence (R1)", () => {
   });
 });
 
+/**
+ * Marker as the two schemes render it, for the same record inputs.
+ *
+ * Reconstructs the fingerprint payload the way `cmd_add_session` builds it,
+ * by importing the real module — so the v1 form is produced by the shipped
+ * `compute_legacy_fingerprint`, not by a copy of it here. The caller asserts
+ * that `v2` matches what is actually in the journal before trusting `v1`; if
+ * this reconstruction ever drifts from the command, that check fails loudly
+ * instead of the test quietly passing on a marker nothing would have written.
+ */
+function markersFor(
+  repo: string,
+  title: string,
+  summary: string,
+  branch: string,
+  legacyDate: string,
+): { v2: string; v1: string } {
+  const harness = [
+    "import sys, json",
+    `sys.path.insert(0, ${JSON.stringify(".trellis/scripts")})`,
+    "import add_session as a",
+    "payload = a._fingerprint_payload(",
+    `    ${JSON.stringify(DEVELOPER)}, ${JSON.stringify(title)},`,
+    `    ${JSON.stringify(summary)}, None, ${JSON.stringify(branch)},`,
+    "    [], None, None, None, None, None,",
+    ")",
+    "print(json.dumps({",
+    "  'v2': a.render_marker(a.compute_record_fingerprint(payload)),",
+    `  'v1': a.render_legacy_marker(a.compute_legacy_fingerprint(payload, ${JSON.stringify(legacyDate)})),`,
+    "}))",
+  ].join("\n");
+  const r = spawnSync("python3", ["-c", harness], {
+    cwd: repo,
+    encoding: "utf-8",
+  });
+  if (r.status !== 0) {
+    throw new Error(`marker harness failed: ${r.stderr}`);
+  }
+  return JSON.parse(r.stdout);
+}
+
+/** Rewrite the pending entry into the pre-versioning marker scheme. */
+function downgradeToLegacyMarker(
+  repo: string,
+  v2Marker: string,
+  v1Marker: string,
+  legacyDate: string,
+): void {
+  const before = readJournal(repo);
+  expect(before).toContain(v2Marker);
+  fs.writeFileSync(
+    journalPath(repo),
+    before
+      .replace(v2Marker, v1Marker)
+      .replace(/^\*\*Date\*\*: \d{4}-\d{2}-\d{2}$/m, `**Date**: ${legacyDate}`),
+  );
+}
+
+describe.skipIf(!hasPython())("add_session.py fingerprint date rollover", () => {
+  let tmp: string;
+  const TITLE = "rollover run";
+  const SUMMARY = "interrupted before the commit";
+  const BRANCH = "main";
+  const ARGS = ["--summary", SUMMARY, "--branch", BRANCH];
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-session-rollover-"));
+    setupRepo(tmp);
+    seedTask(tmp);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("resumes a record written yesterday under the pre-versioning scheme", () => {
+    // Interrupt after the journal and index writes, before the commit.
+    breakCommits(tmp);
+    const first = tryAddSession(tmp, TITLE, ARGS);
+    expect(first.status).toBe(1);
+    expect(first.stderr).toContain("Auto-commit failed");
+    expect(sessionNumbers(tmp)).toEqual([1]);
+
+    // Stage what a pre-change run would have left behind on an earlier day.
+    const { v2, v1 } = markersFor(tmp, TITLE, SUMMARY, BRANCH, "2020-01-01");
+    downgradeToLegacyMarker(tmp, v2, v1, "2020-01-01");
+
+    repairCommits(tmp);
+    const second = tryAddSession(tmp, TITLE, ARGS);
+
+    expect(second.status).toBe(0);
+    expect(second.stderr).toContain("[RESUME]");
+    // The record was found and finished — not appended a second time.
+    expect(sessionNumbers(tmp)).toEqual([1]);
+    expect(countMarkers(tmp)).toBe(1);
+    expect(readIndex(tmp)).toContain("**Total Sessions**: 1");
+    // Its marker is left as written; an in-flight entry is not rewritten.
+    expect(readJournal(tmp)).toContain(v1);
+  });
+
+  it("resolves a same-day legacy marker too, not just one across a rollover", () => {
+    breakCommits(tmp);
+    expect(tryAddSession(tmp, TITLE, ARGS).status).toBe(1);
+
+    const today = readJournal(tmp).match(/^\*\*Date\*\*: (\d{4}-\d{2}-\d{2})$/m);
+    expect(today).not.toBeNull();
+    const date = today![1];
+    const { v2, v1 } = markersFor(tmp, TITLE, SUMMARY, BRANCH, date);
+    downgradeToLegacyMarker(tmp, v2, v1, date);
+
+    repairCommits(tmp);
+    const second = tryAddSession(tmp, TITLE, ARGS);
+    expect(second.status).toBe(0);
+    expect(second.stderr).toContain("[RESUME]");
+    expect(sessionNumbers(tmp)).toEqual([1]);
+    expect(countMarkers(tmp)).toBe(1);
+  });
+
+  it("does not adopt a legacy entry whose inputs differ", () => {
+    breakCommits(tmp);
+    expect(tryAddSession(tmp, TITLE, ARGS).status).toBe(1);
+    const { v2, v1 } = markersFor(tmp, TITLE, SUMMARY, BRANCH, "2020-01-01");
+    downgradeToLegacyMarker(tmp, v2, v1, "2020-01-01");
+    repairCommits(tmp);
+
+    // A different summary is a different record; resuming it would be wrong.
+    const other = tryAddSession(tmp, TITLE, [
+      "--summary",
+      "a genuinely different session",
+      "--branch",
+      BRANCH,
+    ]);
+    expect(other.status).toBe(0);
+    expect(sessionNumbers(tmp)).toEqual([1, 2]);
+    expect(countMarkers(tmp)).toBe(2);
+  });
+
+  it("keeps two same-day sessions distinct now that the date is not an input", () => {
+    runAddSession(tmp, "first session", ["--summary", "one", "--branch", BRANCH]);
+    runAddSession(tmp, "second session", ["--summary", "two", "--branch", BRANCH]);
+    expect(sessionNumbers(tmp)).toEqual([1, 2]);
+    expect(countMarkers(tmp)).toBe(2);
+    expect(readIndex(tmp)).toContain("**Total Sessions**: 2");
+  });
+
+  it("writes the versioned marker form", () => {
+    runAddSession(tmp, TITLE, ARGS);
+    expect(readJournal(tmp)).toMatch(
+      /^<!-- trellis-session: v=2 fp=[0-9a-f]{16} -->$/m,
+    );
+  });
+});
+
 describe.skipIf(!hasPython())("add_session.py retry convergence (R2-R5)", () => {
   let tmp: string;
 
