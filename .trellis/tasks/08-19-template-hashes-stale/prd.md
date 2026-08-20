@@ -15,17 +15,24 @@ comparison against `packages/cli/dist/templates` instead.
 
 ## Evidence
 
-`.claude/agents/trellis-implement.md` is byte-identical (LF-normalized SHA256
-`563d4103381e…`) in anomaly-metric-creator, rwbp-website and sd-github-review.
-Two of those three repos record `73b56b3047c0…` for it. The third records no
-entry at all, though the file exists.
+Root cause is confirmed: the receipt records another platform's template under
+a `.claude/` key. Full detail in `research/root-cause.md`.
 
-`.claude/agents/trellis-research.md` shows the same shape: actual
-`ca9b81549ca8…` everywhere, recorded `add4aa4259de…`.
+| receipt key | recorded | actually hashes to |
+|---|---|---|
+| `.claude/agents/trellis-implement.md` | `73b56b3047c0…` | `templates/codebuddy/agents/trellis-implement.md` |
+| `.claude/agents/trellis-research.md` | `add4aa4259de…` | `templates/codebuddy/agents/trellis-research.md` |
 
-The check is a plain LF-normalized SHA256 of file content, matching the
-recorded schema (`{__version: 2, hashes: {<posix path>: <sha256>}}`), so the
-mismatch is not a normalization or key-encoding artifact.
+Disk holds `563d4103381e…` / `ca9b81549ca8…`, matching `templates/claude/agents/*`
+exactly, byte-identical across anomaly-metric-creator, rwbp-website and
+sd-github-review. rwbp-website records no entry at all for a file that exists.
+
+Not a stale entry: the 0.6.7 and 0.6.16-sd.1 content of
+`.claude/agents/trellis-implement.md` hash the same, so the file never changed,
+yet the recorded value matches neither. CodeBuddy is not installed in any of
+these repos — no `.codebuddy` directory, no `codebuddy` key in the receipt.
+
+The key has lost its platform segment, so the last platform walked wins.
 
 ## Scope
 
