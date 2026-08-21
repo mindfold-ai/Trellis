@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { StringDecoder } from "node:string_decoder";
 
 import { eventsPath, channelDir } from "./paths.js";
 import type { ChannelEvent } from "./events.js";
@@ -9,6 +10,7 @@ export type WatchFilter = ChannelEventFilter;
 interface ReadProgress {
   byteOffset: number;
   carry: string;
+  decoder: StringDecoder;
 }
 
 async function readNewEvents(
@@ -20,6 +22,7 @@ async function readNewEvents(
     // the file reappears we'll re-scan it from byte 0.
     state.byteOffset = 0;
     state.carry = "";
+    state.decoder = new StringDecoder("utf8");
     return [];
   }
   const stat = await fs.promises.stat(filePath);
@@ -28,6 +31,7 @@ async function readNewEvents(
     // post-truncate events aren't lost forever.
     state.byteOffset = 0;
     state.carry = "";
+    state.decoder = new StringDecoder("utf8");
   }
   if (stat.size <= state.byteOffset) return [];
 
@@ -37,7 +41,7 @@ async function readNewEvents(
     const buf = Buffer.alloc(length);
     await fh.read(buf, 0, length, state.byteOffset);
     state.byteOffset = stat.size;
-    const text = state.carry + buf.toString("utf-8");
+    const text = state.carry + state.decoder.write(buf);
     const lines = text.split("\n");
     state.carry = lines.pop() ?? "";
     const events: ChannelEvent[] = [];
@@ -102,7 +106,11 @@ export async function* watchEvents(
       initialOffset = 0;
     }
   }
-  const state: ReadProgress = { byteOffset: initialOffset, carry: "" };
+  const state: ReadProgress = {
+    byteOffset: initialOffset,
+    carry: "",
+    decoder: new StringDecoder("utf8"),
+  };
   const sinceSeq = opts.sinceSeq;
 
   let resolveNext: (() => void) | null = null;
