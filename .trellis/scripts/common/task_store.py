@@ -31,6 +31,7 @@ from .config import (
     resolve_package,
     validate_package,
 )
+from .entry_points import declared_entry_point
 from .git import branch_exists_locally, resolve_default_branch, run_git
 from .io import read_json, write_json
 from .log import Colors, colored
@@ -497,7 +498,8 @@ def cmd_create(args: argparse.Namespace) -> int:
             "  - Curate implement.jsonl / check.jsonl as spec/research manifests when sub-agents need context",
             file=sys.stderr,
         )
-    print("  - Use /trellis:continue or phase context to decide the next step", file=sys.stderr)
+    continue_entry = declared_entry_point("continue", "/trellis:continue")
+    print(f"  - Use {continue_entry} or phase context to decide the next step", file=sys.stderr)
     print("", file=sys.stderr)
 
     # Output relative path for script chaining

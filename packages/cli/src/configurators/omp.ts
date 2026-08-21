@@ -2,6 +2,7 @@ import { AI_TOOLS } from "../types/ai-tools.js";
 import {
   collectSkillTemplates,
   replacePythonCommandLiterals,
+  applyDeclaredEntryPoints,
   resolveCommands,
   resolveBundledSkills,
   resolveSkills,
@@ -43,7 +44,9 @@ export function collectOmpTemplates(): Map<string, string> {
   // Extension
   files.set(
     ".omp/extensions/trellis/index.ts",
-    replacePythonCommandLiterals(getExtensionTemplate()),
+    applyDeclaredEntryPoints(
+      replacePythonCommandLiterals(getExtensionTemplate()),
+    ),
   );
 
   return files;

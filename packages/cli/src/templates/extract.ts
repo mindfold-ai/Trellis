@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureDir, writeFile } from "../utils/file-writer.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
+import { applyDeclaredEntryPoints } from "../utils/entry-points.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -134,9 +135,13 @@ async function copyDirRecursive(
       const content = fs.readFileSync(srcPath, "utf-8");
       const isExecutable =
         options?.executable && (entry.endsWith(".sh") || entry.endsWith(".py"));
-      await writeFile(destPath, replacePythonCommandLiterals(content), {
-        executable: isExecutable,
-      });
+      await writeFile(
+        destPath,
+        applyDeclaredEntryPoints(replacePythonCommandLiterals(content)),
+        {
+          executable: isExecutable,
+        },
+      );
     }
   }
 }

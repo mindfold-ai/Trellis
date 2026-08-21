@@ -7,6 +7,34 @@ import { debugLog } from "./trellis-context.js"
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 
+// Bounded keys and value grammar for `.trellis/entry-points.json`, the
+// declaration an installed wrapper pack uses to point routing text at its own
+// canonical entry surfaces. Trellis never writes the file; any invalid
+// shape, key, or value disables the whole declaration and routing falls back
+// to the Trellis literals.
+const ENTRY_POINT_KEYS = new Set(["start", "continue", "finish-work", "update-spec"])
+const ENTRY_POINT_VALUE_RE = /^\/?[A-Za-z0-9][A-Za-z0-9/:._-]{0,63}$/
+const ENTRY_POINT_MAX_BYTES = 16 * 1024
+
+function declaredEntryPoint(directory, key, fallback) {
+  try {
+    const filePath = join(directory, ".trellis", "entry-points.json")
+    if (!existsSync(filePath) || statSync(filePath).size > ENTRY_POINT_MAX_BYTES) return fallback
+    const data = JSON.parse(readFileSync(filePath, "utf-8"))
+    if (data === null || typeof data !== "object" || Array.isArray(data)) return fallback
+    if (data.schemaVersion !== 1) return fallback
+    if (Object.keys(data).some(k => k !== "schemaVersion" && k !== "entryPoints")) return fallback
+    const points = data.entryPoints
+    if (points === null || typeof points !== "object" || Array.isArray(points)) return fallback
+    if (Object.keys(points).some(k => !ENTRY_POINT_KEYS.has(k))) return fallback
+    const value = points[key]
+    if (typeof value !== "string" || !ENTRY_POINT_VALUE_RE.test(value)) return fallback
+    return value
+  } catch {
+    return fallback
+  }
+}
+
 const FIRST_REPLY_NOTICE = `<first-reply-notice>
 On the first visible assistant reply in this session, briefly acknowledge that Trellis SessionStart context loaded.
 Choose the acknowledgment language in this order:
@@ -71,7 +99,8 @@ function getTaskStatus(ctx, platformInput = null) {
   const taskStatus = taskData.status || "unknown"
 
   if (taskStatus === "completed") {
-    return `Status: COMPLETED\nTask: ${taskTitle}\nNext-Action: Run /trellis:finish-work. If the working tree is dirty, return to Phase 3.4 first.`
+    const finishEntry = declaredEntryPoint(ctx.directory, "finish-work", "/trellis:finish-work")
+    return `Status: COMPLETED\nTask: ${taskTitle}\nNext-Action: Run ${finishEntry}. If the working tree is dirty, return to Phase 3.4 first.`
   }
 
   const hasPrd = existsSync(join(taskDir, "prd.md"))

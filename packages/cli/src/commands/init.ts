@@ -17,6 +17,11 @@ import {
   getPythonCommandForPlatform,
   setResolvedPythonCommand,
 } from "../configurators/shared.js";
+import {
+  applyDeclaredEntryPoints,
+  loadDeclaredEntryPoints,
+  setDeclaredEntryPoints,
+} from "../utils/entry-points.js";
 import { AI_TOOLS, type CliFlag } from "../types/ai-tools.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
 import { VERSION } from "../constants/version.js";
@@ -1118,6 +1123,9 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   const cwd = process.cwd();
+  // A wrapper pack may already have declared preferred entry points (e.g. a
+  // re-init over an installed pack); consult them for every template write.
+  setDeclaredEntryPoints(loadDeclaredEntryPoints(cwd));
   const isFirstInit = !fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW));
   // Captured here (before createWorkflowStructure + init_developer run) so
   // the three-branch dispatch at the bottom can tell "fresh clone joiner"
@@ -2072,7 +2080,10 @@ async function createRootFiles(cwd: string): Promise<void> {
   const agentsPath = path.join(cwd, FILE_NAMES.AGENTS);
 
   // Write AGENTS.md from template
-  const agentsWritten = await writeFile(agentsPath, agentsMdContent);
+  const agentsWritten = await writeFile(
+    agentsPath,
+    applyDeclaredEntryPoints(agentsMdContent),
+  );
   if (agentsWritten) {
     console.log(chalk.blue("📄 Created AGENTS.md"));
   }

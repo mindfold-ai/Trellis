@@ -421,6 +421,38 @@ def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
     return trellis_dir / "tasks" / path_obj
 
 
+# Bounded keys and value grammar for `.trellis/entry-points.json`, the
+# declaration an installed wrapper pack uses to point routing text at its own
+# canonical entry surfaces. Trellis never writes the file; any invalid shape,
+# key, or value disables the whole declaration and routing falls back to the
+# Trellis literals.
+_ENTRY_POINT_KEYS = {"start", "continue", "finish-work", "update-spec"}
+_ENTRY_POINT_VALUE_RE = re.compile(r"/?[A-Za-z0-9][A-Za-z0-9/:._-]{0,63}\Z")
+_ENTRY_POINT_MAX_BYTES = 16 * 1024
+
+
+def _declared_entry_point(trellis_dir: Path, key: str, fallback: str) -> str:
+    """Return the wrapper pack's declared entry point for `key`, or `fallback`."""
+    try:
+        path = trellis_dir / "entry-points.json"
+        if not path.is_file() or path.stat().st_size > _ENTRY_POINT_MAX_BYTES:
+            return fallback
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("schemaVersion") != 1:
+            return fallback
+        if set(data) - {"schemaVersion", "entryPoints"}:
+            return fallback
+        points = data.get("entryPoints")
+        if not isinstance(points, dict) or set(points) - _ENTRY_POINT_KEYS:
+            return fallback
+        value = points.get(key)
+        if not isinstance(value, str) or not _ENTRY_POINT_VALUE_RE.fullmatch(value):
+            return fallback
+        return value
+    except (OSError, ValueError):
+        return fallback
+
+
 def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
     """Return compact active-task status, artifact presence, and next action."""
     active = _resolve_active_task(trellis_dir, input_data)
@@ -462,7 +494,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
         return (
             f"Status: COMPLETED\nTask: {task_title}\n"
             f"Present: {present_line}\n"
-            "Next-Action: Run `/trellis:finish-work`. If the working tree is dirty, return to Phase 3.4 first."
+            f"Next-Action: Run `{_declared_entry_point(trellis_dir, 'finish-work', '/trellis:finish-work')}`. If the working tree is dirty, return to Phase 3.4 first."
         )
 
     has_prd = (task_dir / "prd.md").is_file()

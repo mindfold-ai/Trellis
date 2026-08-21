@@ -27,6 +27,11 @@ import { DIR_NAMES, PATHS } from "../constants/paths.js";
 import { collectMissingAgents } from "../utils/agent-refs.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
 import {
+  applyDeclaredEntryPoints,
+  loadDeclaredEntryPoints,
+  setDeclaredEntryPoints,
+} from "../utils/entry-points.js";
+import {
   computeHash,
   loadHashes,
   removeHash,
@@ -167,7 +172,9 @@ async function writeWorkflow(
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
   }
-  const finalContent = replacePythonCommandLiterals(template.content);
+  const finalContent = applyDeclaredEntryPoints(
+    replacePythonCommandLiterals(template.content),
+  );
 
   // `--create-new` always writes the `.new` sibling, regardless of disk state.
   if (options.createNew) {
@@ -242,6 +249,7 @@ export async function runWorkflowCommand(
   options: WorkflowCommandOptions,
 ): Promise<void> {
   const cwd = process.cwd();
+  setDeclaredEntryPoints(loadDeclaredEntryPoints(cwd));
   if (!fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
     throw new WorkflowCommandError(
       "No .trellis/ directory found. Run `trellis init` first.",

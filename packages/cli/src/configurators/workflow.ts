@@ -39,6 +39,7 @@ import {
 
 import { writeFile, ensureDir } from "../utils/file-writer.js";
 import { replacePythonCommandLiterals } from "./shared.js";
+import { applyDeclaredEntryPoints } from "../utils/entry-points.js";
 import {
   sanitizePkgName,
   type ProjectType,
@@ -143,7 +144,7 @@ export async function createWorkflowStructure(
   // Copy workflow.md (native bundled template or selected marketplace variant)
   await writeFile(
     path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE),
-    replacePythonCommandLiterals(workflowMd),
+    applyDeclaredEntryPoints(replacePythonCommandLiterals(workflowMd)),
   );
 
   // Copy .gitignore from templates
@@ -177,7 +178,9 @@ export async function createWorkflowStructure(
   ensureDir(path.join(cwd, PATHS.WORKSPACE));
   await writeFile(
     path.join(cwd, PATHS.WORKSPACE, "index.md"),
-    replacePythonCommandLiterals(agentProgressIndexContent),
+    applyDeclaredEntryPoints(
+      replacePythonCommandLiterals(agentProgressIndexContent),
+    ),
   );
 
   // Create tasks/ directory

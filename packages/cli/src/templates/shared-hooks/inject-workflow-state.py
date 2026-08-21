@@ -76,9 +76,58 @@ If you have not already loaded Trellis context this session, read the `trellis-s
 </trellis-bootstrap>"""
 
 
+def _codex_bootstrap_notice(trellis_dir: Path) -> str:
+    """Render the bootstrap notice, honoring a declared start entry point.
+
+    The declared value may be a slash command or a skill name, so the
+    declared form uses a load-neutral phrasing; the undeclared form keeps
+    the exact historical wording.
+    """
+    entry = _declared_entry_point(trellis_dir, "start", "trellis-start")
+    if entry == "trellis-start":
+        return CODEX_NO_TASK_BOOTSTRAP_NOTICE
+    return (
+        "<trellis-bootstrap>\n"
+        f"If you have not already loaded Trellis context this session, load `{entry}` once.\n"
+        "</trellis-bootstrap>"
+    )
+
+
 # ---------------------------------------------------------------------------
 # CWD-robust Trellis root discovery (fixes hook-path-robustness for this hook)
 # ---------------------------------------------------------------------------
+
+# Bounded keys and value grammar for `.trellis/entry-points.json`, the
+# declaration an installed wrapper pack uses to point routing text at its own
+# canonical entry surfaces. Trellis never writes the file; any invalid shape,
+# key, or value disables the whole declaration and routing falls back to the
+# Trellis literals.
+_ENTRY_POINT_KEYS = {"start", "continue", "finish-work", "update-spec"}
+_ENTRY_POINT_VALUE_RE = re.compile(r"/?[A-Za-z0-9][A-Za-z0-9/:._-]{0,63}\Z")
+_ENTRY_POINT_MAX_BYTES = 16 * 1024
+
+
+def _declared_entry_point(trellis_dir: Path, key: str, fallback: str) -> str:
+    """Return the wrapper pack's declared entry point for `key`, or `fallback`."""
+    try:
+        path = trellis_dir / "entry-points.json"
+        if not path.is_file() or path.stat().st_size > _ENTRY_POINT_MAX_BYTES:
+            return fallback
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("schemaVersion") != 1:
+            return fallback
+        if set(data) - {"schemaVersion", "entryPoints"}:
+            return fallback
+        points = data.get("entryPoints")
+        if not isinstance(points, dict) or set(points) - _ENTRY_POINT_KEYS:
+            return fallback
+        value = points.get(key)
+        if not isinstance(value, str) or not _ENTRY_POINT_VALUE_RE.fullmatch(value):
+            return fallback
+        return value
+    except (OSError, ValueError):
+        return fallback
+
 
 def find_trellis_root(start: Path) -> Optional[Path]:
     """Walk up from start to find directory containing .trellis/.
@@ -454,7 +503,7 @@ def main() -> int:
     if platform == "codex":
         parts: list[str] = []
         if task is None:
-            parts.append(CODEX_NO_TASK_BOOTSTRAP_NOTICE)
+            parts.append(_codex_bootstrap_notice(root / ".trellis"))
         parts.append(_codex_mode_banner(config))
         parts.append(breadcrumb)
         breadcrumb = "\n\n".join(parts)

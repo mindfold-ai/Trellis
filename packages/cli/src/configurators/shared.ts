@@ -6,6 +6,9 @@
  */
 
 import type { TemplateContext } from "../types/ai-tools.js";
+import { applyDeclaredEntryPoints } from "../utils/entry-points.js";
+
+export { applyDeclaredEntryPoints } from "../utils/entry-points.js";
 
 /**
  * Per-platform configure options threaded from `trellis init` flags.
@@ -131,8 +134,10 @@ export function resolvePlaceholders(
   content: string,
   context?: TemplateContext,
 ): string {
-  let result = replacePythonCommandLiterals(
-    content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform()),
+  let result = applyDeclaredEntryPoints(
+    replacePythonCommandLiterals(
+      content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform()),
+    ),
   );
 
   if (!context) return result;
@@ -195,8 +200,10 @@ export function resolvePlaceholdersNeutral(
   content: string,
   context?: TemplateContext,
 ): string {
-  let result = replacePythonCommandLiterals(
-    content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform()),
+  let result = applyDeclaredEntryPoints(
+    replacePythonCommandLiterals(
+      content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform()),
+    ),
   );
 
   if (!context) return result;
@@ -540,7 +547,10 @@ export function renderTemplateMap(
 ): Map<string, string> {
   const rendered = new Map<string, string>();
   for (const [relPath, content] of files) {
-    rendered.set(relPath, replacePythonCommandLiterals(content));
+    rendered.set(
+      relPath,
+      applyDeclaredEntryPoints(replacePythonCommandLiterals(content)),
+    );
   }
   return rendered;
 }
@@ -620,7 +630,8 @@ export function buildPullBasedPrelude(agentType: SubAgentType): string {
   // context buckets keyed by role (not by platform-visible agent name).
   const jsonl = agentType === "check" ? "check.jsonl" : "implement.jsonl";
 
-  return replacePythonCommandLiterals(`## Required: Load Trellis Context First
+  return applyDeclaredEntryPoints(
+    replacePythonCommandLiterals(`## Required: Load Trellis Context First
 
 This platform does NOT auto-inject task context via hook. Before doing anything else, you MUST load context yourself.
 
@@ -645,7 +656,8 @@ If the resolved task path has no \`prd.md\`, ask the user what to work on; do NO
 
 ---
 
-`);
+`),
+  );
 }
 
 /** Insert prelude into a markdown agent definition (after YAML frontmatter). */

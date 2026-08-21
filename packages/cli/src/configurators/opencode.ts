@@ -6,6 +6,7 @@ import { toPosix } from "../utils/posix.js";
 import {
   collectSkillTemplates,
   replacePythonCommandLiterals,
+  applyDeclaredEntryPoints,
   resolveBundledSkills,
   resolveCommands,
   resolveSkills,
@@ -65,7 +66,7 @@ function walkOpenCodeTemplateDir(): Map<string, string> {
         // keys downstream. Always POSIX, regardless of host OS.
         files.set(
           toPosix(path.join(".opencode", relEntry)),
-          replacePythonCommandLiterals(content),
+          applyDeclaredEntryPoints(replacePythonCommandLiterals(content)),
         );
       }
     }

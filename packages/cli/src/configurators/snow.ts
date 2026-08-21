@@ -31,6 +31,7 @@ import {
   resolveBundledSkills,
   resolveCommands,
   replacePythonCommandLiterals,
+  applyDeclaredEntryPoints,
 } from "./shared.js";
 
 function buildSnowCommandJson(name: string, content: string): string {
@@ -82,7 +83,9 @@ export function collectSnowTemplates(): Map<string, string> {
   }
 
   for (const cmd of resolveCommands(ctx)) {
-    const body = replacePythonCommandLiterals(cmd.content);
+    const body = applyDeclaredEntryPoints(
+      replacePythonCommandLiterals(cmd.content),
+    );
     files.set(
       `.snow/commands/trellis-${cmd.name}.json`,
       buildSnowCommandJson(cmd.name, body),
