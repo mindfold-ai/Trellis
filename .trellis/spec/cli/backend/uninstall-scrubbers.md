@@ -2,7 +2,7 @@
 
 How `trellis uninstall` performs **paragraph-level deletion** on structured config files (`settings.json`, `hooks.json`, `config.toml`, `package.json`) so that Trellis-emitted fields are removed while user-added neighbors stay intact.
 
-The scrubbers live in `utils/uninstall-scrubbers.ts`. They are pure functions — they do no I/O, take a file's content as input, and return new content plus a `fullyEmpty` flag. The orchestration that decides which scrubber to call, reads files, writes files, and deletes empty ones lives in `commands/uninstall.ts:uninstall` (specifically in `buildPlan` and `executePlan`; see `commands-uninstall.md`).
+The scrubbers live in `utils/uninstall-scrubbers.ts`. They are pure functions — they do no I/O, take a file's content as input, and return new content plus a `fullyEmpty` flag. Shared dispatch/planning lives in `utils/managed-removal.ts`; `commands/uninstall.ts:uninstall` retains permanent-removal UX and execution policy (see `commands-uninstall.md`).
 
 ---
 
@@ -14,11 +14,11 @@ Most files Trellis writes are opaque (`.py`, `.md`, `.ts`) — `trellis uninstal
 
 | File | What's shared |
 |------|----------------|
-| `.claude/settings.json` | Trellis writes the `hooks` block; user may have set `env`, `model`, `permissions`, `version` |
+| `.claude/settings.json` | Trellis writes the `hooks` block and may opt in its status-line command; user may have set `env`, `model`, `permissions`, `version`, or another status line |
 | `.cursor/hooks.json` | Same idea, but a flat schema |
 | `.opencode/package.json` | Trellis adds `dependencies["@opencode-ai/plugin"]`; user may have other deps |
 | `.pi/settings.json` | Trellis adds `enableSkillCommands` plus entries in `extensions`/`skills`/`prompts` arrays; user may have entries of their own |
-| `.codex/config.toml` | Trellis writes a documented `project_doc_fallback_filenames` line + a comment block; user may have added more TOML directives |
+| `.codex/config.toml` | Trellis writes documented fallback/hook settings, template comments, and `[agents].max_depth = 1`; user may have added more TOML directives or other `[agents]` keys |
 | `.codex/hooks.json`, `.gemini/settings.json`, `.factory/settings.json`, `.codebuddy/settings.json`, `.qoder/settings.json`, `.github/copilot/hooks.json` | Same hooks-block pattern as `.claude/settings.json` (sometimes flat, sometimes nested) |
 
 If `uninstall` simply `rm`-ed these files, the user would lose their own config. If it **left** them alone, the dangling Trellis hook entries would point at deleted scripts and the platform would error on the next session.
@@ -27,7 +27,7 @@ The scrubbers walk each file's structure, drop only the Trellis-known parts, and
 
 ### Contract with the caller
 
-The caller (`commands/uninstall.ts:buildPlan`) is responsible for:
+The caller (`utils/managed-removal.ts:buildManagedRemovalPlan`) is responsible for:
 
 - Reading the file off disk and passing its raw text to the scrubber.
 - Comparing `fullyEmpty` from the result: if `true`, the file is queued for deletion; if `false`, the new content is written back.
@@ -83,11 +83,12 @@ Scrubs `hooks`-shaped settings JSON for **eight** platforms. The schema differs 
 
 Algorithm:
 
-1. Walk `root.hooks.{eventName}`. For each event array, drop entries whose command matches a deleted path; for nested mode, drill one level deeper through the matcher block's inner `hooks` array first.
-2. If a matcher block's inner `hooks` becomes empty → drop the whole block.
-3. If an event array becomes empty → `delete root.hooks[eventName]`.
-4. If `root.hooks` becomes an empty object → `delete root.hooks`.
-5. `fullyEmpty` is true iff `Object.keys(root).length === 0`.
+1. If the top-level `statusLine` command ends in the exact Trellis-owned `.claude/hooks/statusline.py` path, remove it. Preserve every other status-line command.
+2. Walk `root.hooks.{eventName}`. For each event array, drop entries whose command matches a deleted path; for nested mode, drill one level deeper through the matcher block's inner `hooks` array first.
+3. If a matcher block's inner `hooks` becomes empty → drop the whole block.
+4. If an event array becomes empty → `delete root.hooks[eventName]`.
+5. If `root.hooks` becomes an empty object → `delete root.hooks`.
+6. `fullyEmpty` is true iff `Object.keys(root).length === 0`.
 
 User-defined keys outside `hooks` (`env`, `model`, `permissions`, `version`) are preserved verbatim — only the Trellis-claimed `hooks` subtree is touched.
 
@@ -143,17 +144,20 @@ Constants `PI_TRELLIS_EXTENSION`, `PI_TRELLIS_SKILLS`, `PI_TRELLIS_PROMPTS` in `
 
 Scrubs `.codex/config.toml`. Unlike the JSON scrubbers, this one is **line-based**: TOML is harder to round-trip without a real parser, and the Trellis-emitted file is small + flat enough that a marker-line approach is safer than a structural one.
 
-Trellis writes two distinct content classes into this file:
+Trellis writes three distinct content classes into this file:
 
 1. The single assignment `project_doc_fallback_filenames = ["AGENTS.md"]`.
-2. A block of leading comments (header + `# NOTE: …` opt-in note).
+2. Comment lines from the shipped Codex config template, plus legacy template comments retained for uninstall compatibility.
+3. The exact `[agents]` assignment `max_depth = 1`.
 
 Algorithm:
 
+- Derive the current Trellis comment allowlist directly from `templates/codex/index.ts:getConfigTemplate`; merge it with the legacy allowlist.
 - Walk lines. Drop any line that:
   - Matches the assignment regex `/^\s*project_doc_fallback_filenames\s*=/`.
-  - Is a comment line whose inner text (after stripping `#` and spaces) **exactly** matches one of the strings in `trellisCommentMarkers` (a hard-coded array inside `utils/uninstall-scrubbers.ts:scrubCodexConfigToml`).
+  - Is a comment line whose inner text (after stripping `#` and spaces) **exactly** matches a current-template or legacy marker.
   - Is a bare `#` comment line — these are inside the Trellis comment block.
+- Inside an `[agents]` table, remove only `max_depth = 1` (optionally followed by a comment). Keep the table header when another non-comment user key remains; otherwise remove the now-empty table.
 - Collapse consecutive blank lines created by removals.
 - Trim trailing blanks.
 - `fullyEmpty` iff the result has no non-whitespace characters.
@@ -170,7 +174,7 @@ Scrubbers identify Trellis content via three distinct mechanisms — there is no
 |-----------|---------|---------|
 | **Last-token path match** against `deletedPaths` | `scrubHooksJson` | Hook entry with `command = "python3 .claude/hooks/session-start.py"` matches because the trailing token is in the delete-set |
 | **Exact string match** against hard-coded constants | `scrubOpencodePackageJson`, `scrubPiSettings` | `"./skills"` in a Pi `skills` array, `"@opencode-ai/plugin"` as a dep key |
-| **Hard-coded comment-line allowlist** + assignment regex | `scrubCodexConfigToml` | Lines whose stripped text matches any of `trellisCommentMarkers` |
+| **Current-template-derived + legacy comment allowlists**, exact table assignment, and fallback assignment regex | `scrubCodexConfigToml` | Current/legacy Trellis comment lines, `[agents].max_depth = 1`, and `project_doc_fallback_filenames` |
 
 ### Why no "BEGIN TRELLIS / END TRELLIS" comment markers?
 
@@ -191,7 +195,7 @@ If a future Trellis version starts emitting a *new* hook script path or a differ
 
 Scrubbers themselves are **not hash-gated**. Decisions about whether a file may be touched at all are upstream:
 
-- `commands/uninstall.ts:buildPlan` reads `.trellis/.template-hashes.json` and only considers manifest-listed files. Files outside the manifest are never seen by any scrubber.
+- `utils/managed-removal.ts:buildManagedRemovalPlan` only considers manifest-listed files. Files outside the manifest are never seen by any scrubber.
 - The PRD policy is "全删" — uninstall removes manifest-listed files whether or not the user has modified them. There is no per-file "user-modified, skip" branch like `update.ts` has.
 - `--force` does not exist on `uninstall`; the only flags are `--yes` (skip prompt) and `--dry-run` (plan only).
 
@@ -224,7 +228,7 @@ Scrubbers ARE allowed to:
 
 **Symptom**: `trellis uninstall` leaves stale Trellis fields in a platform config file because the scrubber's hard-coded matcher (`PI_TRELLIS_EXTENSION`, `trellisCommentMarkers`) doesn't recognize the new emission.
 
-**Cause**: configurator and scrubber maintain parallel hard-coded tables of "what Trellis writes". When the configurator changes (e.g. moves the Pi extension to a new path), the scrubber's table goes stale.
+**Cause**: some configurator and scrubber values remain parallel hard-coded tables of "what Trellis writes". When the configurator changes (e.g. moves the Pi extension to a new path), the scrubber's table goes stale. Codex comment markers avoid this for the current template by deriving from the template source, while still retaining explicit legacy markers.
 
 **Fix**: any PR that changes a configurator's emitted path / field name / comment phrasing in a scrubber-targeted file MUST update the matching scrubber in the same commit. Add a regression test that round-trips configure → scrub → assert empty.
 
@@ -258,11 +262,11 @@ Scrubbers ARE allowed to:
 
 **Symptom**: Hooks-JSON scrubber preserves all hook entries because the `deletedPaths` argument is empty.
 
-**Mitigation**: TypeScript catches this — `scrubHooksJson` requires the argument. The plumbing in `commands/uninstall.ts:buildPlan` constructs `deletedPaths` from `Object.keys(hashes)` so every manifest entry is in the list. If a hook command refers to a script that is NOT in the manifest, we deliberately leave the entry alone (it might be user-added, even if it points at a Trellis-shaped path).
+**Mitigation**: TypeScript catches this — `scrubHooksJson` requires the argument. The plumbing in `utils/managed-removal.ts:buildManagedRemovalPlan` constructs `deletedPaths` from `Object.keys(hashes)` so every manifest entry is in the list. If a hook command refers to a script that is NOT in the manifest, we deliberately leave the entry alone (it might be user-added, even if it points at a Trellis-shaped path).
 
 ### Scrubber called on a file outside the manifest
 
-**Symptom**: not a real symptom — `commands/uninstall.ts:buildPlan` only dispatches to scrubbers for paths that appear both in `.template-hashes.json` AND in `buildStructuredFileSpecs`. Files outside the manifest are never scrubbed.
+**Symptom**: not a real symptom — `utils/managed-removal.ts:buildManagedRemovalPlan` only dispatches to scrubbers for paths that appear both in `.template-hashes.json` AND in `buildStructuredFileSpecs`. Files outside the manifest are never scrubbed.
 
 **Rule**: do not bypass this gate. Adding "scrub any file with this shape" logic outside the manifest gate would risk modifying user files Trellis never wrote.
 
@@ -294,7 +298,10 @@ Tests for scrubbers live alongside the implementation as pure-function tests —
   - Hook entry with `bash` field instead of `command` (Copilot flat schema) → still matched.
   - Multiple deleted paths in `deletedPaths` → all matching entries dropped in one pass.
   - Both modes (`"nested"`, `"flat"`) covered separately.
+  - Exact Trellis Claude `statusLine` command → removed; user-owned status-line command → preserved.
 - `scrubCodexConfigToml`:
+  - Complete current template → fully empty, including `[agents].max_depth = 1`.
+  - Another user key in `[agents]` → table and user key preserved while Trellis depth is removed.
   - User added their own TOML keys above/below the Trellis block → preserved.
   - User edited a Trellis comment line (typo) → that single line preserved as user content; rest of Trellis block removed.
 - `scrubPiSettings`:
@@ -312,7 +319,7 @@ Tests for scrubbers live alongside the implementation as pure-function tests —
 
 Source: `packages/cli/src/utils/uninstall-scrubbers.ts`
 
-Caller: `packages/cli/src/commands/uninstall.ts` (`buildStructuredFileSpecs`, `buildPlan`)
+Caller: `packages/cli/src/utils/managed-removal.ts` (`buildStructuredFileSpecs`, `buildManagedRemovalPlan`)
 
 Related specs:
 - `commands-uninstall.md` — orchestration, plan-render-execute flow, prompts
@@ -325,6 +332,6 @@ Related specs:
 
 - `commandMatchesDeletedPath` assumes the Trellis-emitted command has the exact shape `<python-cmd> <script-path>`. If we ever add launcher flags or wrappers, the helper needs a richer parser (full token scan, possibly drop known shell prefixes like `env VAR=val`).
 - The Pi exact-string constants (`PI_TRELLIS_EXTENSION`, `PI_TRELLIS_SKILLS`, `PI_TRELLIS_PROMPTS`) duplicate values that live in the Pi configurator. A shared module exporting these would prevent drift; today they are independently hard-coded in two places.
-- `scrubCodexConfigToml`'s comment-line allowlist (`trellisCommentMarkers`) is a hand-maintained list mirroring the configurator's emitted comment block. Same drift risk as Pi. Consider deriving the list from the same template file the configurator uses.
-- No legacy-marker compatibility layer exists yet. As soon as one configurator changes its emission, the scrubber will need a "match old OR new" branch and a deprecation window. Document the rule in this spec when the first migration lands.
+- `scrubCodexConfigToml` derives current comment markers from the shipped template and keeps an explicit legacy allowlist. Other exact assignments such as `[agents].max_depth = 1` still require lockstep regression coverage when template behavior changes.
+- Codex comments now have a legacy-marker compatibility layer. Other platform constants still need an "old OR new" branch and deprecation window when their first emission change lands.
 - All hooks-JSON scrubbers re-pretty-print with 2-space indent on every call, even when no change was made. This silently rewrites user formatting (e.g. tab-indented JSON). Acceptable today; flag if users complain.

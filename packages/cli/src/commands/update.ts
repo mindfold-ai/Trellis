@@ -56,8 +56,6 @@ import {
   ALL_MANAGED_DIRS,
   getConfiguredPlatforms,
   collectPlatformTemplates,
-  isManagedPath,
-  isManagedRootDir,
 } from "../configurators/index.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
 import { preserveCodexAgentModelKeys } from "../configurators/codex.js";
@@ -74,6 +72,17 @@ import {
   type RegistrySource,
 } from "../utils/template-fetcher.js";
 import { loadSpecRegistryConfig } from "../utils/registry-config.js";
+import {
+  cleanupEmptyDirs,
+  TRELLIS_BLOCK_END,
+  TRELLIS_BLOCK_START,
+} from "../utils/managed-paths.js";
+
+export {
+  cleanupEmptyDirs,
+  TRELLIS_BLOCK_END,
+  TRELLIS_BLOCK_START,
+} from "../utils/managed-paths.js";
 
 export interface UpdateOptions {
   dryRun?: boolean;
@@ -103,8 +112,6 @@ interface ChangeAnalysis {
 type ConflictAction = "overwrite" | "skip" | "create-new";
 
 const CLAUDE_SETTINGS_PATH = ".claude/settings.json";
-export const TRELLIS_BLOCK_START = "<!-- TRELLIS:START -->";
-export const TRELLIS_BLOCK_END = "<!-- TRELLIS:END -->";
 const LEGACY_UNTRACKED_AGENTS_MD_BLOCK_HASHES = new Set<string>([
   // v0.5.0-beta.17 and earlier wrote AGENTS.md but did not hash-track it.
   // This hash is the pristine Trellis-managed block before the Subagents
@@ -1759,45 +1766,6 @@ async function promptMigrationAction(
   ]);
 
   return choice;
-}
-
-/**
- * Clean up empty directories after file migration
- * Recursively removes empty parent directories up to .trellis root
- */
-/** @internal Exported for testing only */
-export function cleanupEmptyDirs(cwd: string, dirPath: string): void {
-  const fullPath = path.join(cwd, dirPath);
-
-  // Safety: don't delete outside of managed directories
-  if (!isManagedPath(dirPath)) {
-    return;
-  }
-
-  // Safety: never delete managed root directories themselves (e.g., .claude, .trellis)
-  if (isManagedRootDir(dirPath)) {
-    return;
-  }
-
-  // Check if directory exists and is empty
-  if (!fs.existsSync(fullPath)) return;
-
-  try {
-    const stat = fs.statSync(fullPath);
-    if (!stat.isDirectory()) return;
-
-    const contents = fs.readdirSync(fullPath);
-    if (contents.length === 0) {
-      fs.rmdirSync(fullPath);
-      // Recursively check parent (but stop at root directories)
-      const parent = path.dirname(dirPath);
-      if (parent !== "." && parent !== dirPath && !isManagedRootDir(parent)) {
-        cleanupEmptyDirs(cwd, parent);
-      }
-    }
-  } catch {
-    // Ignore errors (permission issues, etc.)
-  }
 }
 
 /**

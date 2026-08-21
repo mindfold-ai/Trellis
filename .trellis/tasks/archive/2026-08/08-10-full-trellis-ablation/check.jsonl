@@ -1,0 +1,6 @@
+{"file":".trellis/spec/cli/backend/quality-guidelines.md","reason":"Independent CLI quality, security, packaging, and consistency review."}
+{"file":".trellis/spec/cli/backend/commands-uninstall.md","reason":"Verify uninstall observable behavior remains unchanged after extraction."}
+{"file":".trellis/spec/cli/backend/uninstall-scrubbers.md","reason":"Verify every mixed-ownership surface is scrubbed without user-content loss."}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"Audit atomicity, path containment, backup completeness, symlinks, permissions, and destructive guards."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Review test level, failure-before-fix value, coverage, and regression completeness."}
+{"file":".trellis/tasks/archive/2026-08/08-10-full-trellis-ablation/research/implementation-evidence.md","reason":"Check implementation against the researched architecture and GitNexus risk boundary."}

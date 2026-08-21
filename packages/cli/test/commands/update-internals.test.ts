@@ -79,13 +79,9 @@ describe("cleanupEmptyDirs", () => {
 
     // multi_agent and scripts should be removed (both empty)
     expect(
-      fs.existsSync(
-        path.join(tmpDir, ".trellis", "scripts", "multi_agent"),
-      ),
+      fs.existsSync(path.join(tmpDir, ".trellis", "scripts", "multi_agent")),
     ).toBe(false);
-    expect(
-      fs.existsSync(path.join(tmpDir, ".trellis", "scripts")),
-    ).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".trellis", "scripts"))).toBe(false);
     // .trellis root must survive
     expect(fs.existsSync(path.join(tmpDir, ".trellis"))).toBe(true);
   });
@@ -94,6 +90,36 @@ describe("cleanupEmptyDirs", () => {
     // Should not throw
     expect(() => cleanupEmptyDirs(tmpDir, ".claude/nonexistent")).not.toThrow();
   });
+
+  it("rejects traversal and dot segments before managed cleanup", () => {
+    const userDir = path.join(tmpDir, "user-empty-dir");
+    fs.mkdirSync(userDir);
+
+    cleanupEmptyDirs(tmpDir, ".trellis/../user-empty-dir");
+    cleanupEmptyDirs(tmpDir, ".trellis/./../user-empty-dir");
+
+    expect(fs.existsSync(userDir)).toBe(true);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "does not follow a managed parent symlink outside the project",
+    () => {
+      const external = fs.mkdtempSync(
+        path.join(os.tmpdir(), "trellis-cleanup-external-"),
+      );
+      const externalEmpty = path.join(external, "empty");
+      fs.mkdirSync(externalEmpty);
+      fs.mkdirSync(path.join(tmpDir, ".trellis"));
+      fs.symlinkSync(external, path.join(tmpDir, ".trellis", "linked"), "dir");
+
+      try {
+        cleanupEmptyDirs(tmpDir, ".trellis/linked/empty");
+        expect(fs.existsSync(externalEmpty)).toBe(true);
+      } finally {
+        fs.rmSync(external, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 // =============================================================================
@@ -375,9 +401,9 @@ describe("dirHasManifestEntries", () => {
 
   it("does not match a sibling dir that shares a prefix string", () => {
     // ".devin" must not match ".devinX/..."
-    expect(
-      dirHasManifestEntries(".devin", { ".devinX/a.md": "h" }),
-    ).toBe(false);
+    expect(dirHasManifestEntries(".devin", { ".devinX/a.md": "h" })).toBe(
+      false,
+    );
   });
 });
 

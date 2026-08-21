@@ -53,7 +53,7 @@ The command builds a plan first, prints it, optionally prompts, then executes. P
 1. **`.trellis/` must exist.** If missing, print a gray "not installed" message and return cleanly (exit 0). This is the idempotent re-run path.
 2. **Manifest must exist and be non-empty.** `loadHashes(cwd)` returns `{}` when `.trellis/.template-hashes.json` is missing or unreadable. Without the manifest there is no way to distinguish trellis-owned platform files from user-owned ones, so the command refuses to proceed and exits with a red error message + `process.exit(1)`. Users in this state are told they may delete `.trellis/` manually.
 
-### Planner — `commands/uninstall.ts:buildPlan`
+### Planner — `utils/managed-removal.ts:buildManagedRemovalPlan`
 
 Inputs: `cwd`, `hashes` (manifest record).
 
@@ -67,9 +67,15 @@ For every POSIX path in `hashes`:
    - If the scrubber returns `fullyEmpty: true`, record as `PlannedDeletion { missing: false }`. The file will be unlinked just like any other manifest entry.
    - Otherwise, record as `PlannedModification` carrying the pre-computed `ScrubResult` (the post-scrub content) plus the `reason` string for the human-readable plan output.
 
-`removeTrellisDir` is set to `true` unconditionally — by the time `buildPlan` runs, we have already verified `.trellis/` exists.
+`removeTrellisDir` is set to `true` unconditionally — by the time
+`buildManagedRemovalPlan` runs, we have already verified `.trellis/` exists.
 
-### Structured-file dispatch table — `commands/uninstall.ts:buildStructuredFileSpecs`
+The shared planner also supports `strictPaths: true` for reversible ablation.
+`uninstall` deliberately uses the default compatibility mode so this extraction
+does not change its established best-effort behavior; strict containment,
+leaf-symlink, and malformed-mixed-file refusal belong to `trellis ablate`.
+
+### Structured-file dispatch table — `utils/managed-removal.ts:buildStructuredFileSpecs`
 
 A `Map<posixPath, StructuredFileSpec>` built once per command invocation. Each entry pairs a manifest-listed config file with the scrubber that knows how to surgically edit it. Current entries:
 
@@ -122,7 +128,7 @@ If the user answers "no" at the prompt, print a yellow "Uninstall cancelled. No 
 
 ---
 
-## Plan Execution — `commands/uninstall.ts:executePlan`
+## Plan Execution — `utils/managed-removal.ts:executeManagedRemovalPlan`
 
 Five ordered phases. The order matters for partial-failure recovery (an interrupted uninstall leaves the project in a more-recoverable state):
 
@@ -138,7 +144,7 @@ While deleting, the parent directory of each deleted file is added to a `Set<str
 
 ### Phase 3 — Drop `.trellis/` recursively
 
-`fs.rmSync(trellisDir, { recursive: true, force: true })`. Whole directory tree gone in one call. This is unconditional within `executePlan`; the gates all live earlier in `uninstall()` — the pre-checks that the directory exists and a manifest is present, the confirmation prompt (or `--yes`), and the *Dirty-Data Guard* below.
+`fs.rmSync(trellisDir, { recursive: true, force: true })`. Whole directory tree gone in one call. This is unconditional within `executeManagedRemovalPlan`; the gates all live earlier in `uninstall()` — the pre-checks that the directory exists and a manifest is present, the confirmation prompt (or `--yes`), and the *Dirty-Data Guard* below.
 
 ### Phase 4 — Prune empty managed sub-directories
 
@@ -184,7 +190,7 @@ This is **deliberately destructive** for user data inside `.trellis/`. Users are
 - **Any hits** print a red warning (up to 20 paths, then a "`… and N more`" tail) before the prompt/dry-run message.
 - **Interactive runs** (no `--yes`) only see the warning; the existing `Continue? [Y/n]` prompt is the abort point.
 - **`--dry-run`** shows the warning too (for visibility) but returns before any fail-closed check, since dry-run never mutates anything.
-- **Scripted `--yes` runs fail closed**: if uncommitted data was found and `--dry-run` was not passed, the command prints an error and `process.exit(1)`s *before* `executePlan` runs any write/unlink/rm — unless the environment variable `TRELLIS_ALLOW_DIRTY_UNINSTALL=1` is set, which mirrors the existing homedir-guard bypass pattern (`utils/cwd-guard.ts`).
+- **Scripted `--yes` runs fail closed**: if uncommitted data was found and `--dry-run` was not passed, the command prints an error and `process.exit(1)`s *before* `executeManagedRemovalPlan` runs any write/unlink/rm — unless the environment variable `TRELLIS_ALLOW_DIRTY_UNINSTALL=1` is set, which mirrors the existing homedir-guard bypass pattern (`utils/cwd-guard.ts`).
 
 See [Filesystem Safety § Destructive-op ownership / backup gate](./filesystem-safety.md) for the cross-cutting contract this guard implements.
 
@@ -243,7 +249,7 @@ If a user wants to remove just one platform's files, the path is `trellis update
 
 **Symptom**: After uninstall, `.cursor/` is empty but still present.
 
-**Cause**: `cleanupEmptyDirs` (shared with `update.ts`) refuses to remove anything in `ALL_MANAGED_DIRS` because during `update` those dirs must persist. Phase 5 of `executePlan` is the uninstall-specific fixup that goes back and prunes them.
+**Cause**: `cleanupEmptyDirs` (shared with `update.ts`) refuses to remove anything in `ALL_MANAGED_DIRS` because during `update` those dirs must persist. Phase 5 of `executeManagedRemovalPlan` is the uninstall-specific fixup that goes back and prunes them.
 
 **Fix**: This is already handled correctly. If you ever modify Phase 5 (e.g. to add an exception), make sure the deepest-first sort is preserved — otherwise nested managed dirs (`.agents/skills`) will leak.
 
@@ -308,13 +314,13 @@ Do **not** mock `fs` for these tests; they all use real tmpdirs. The pattern is:
 |---|---|
 | `uninstall` | `commands/uninstall.ts:uninstall` |
 | `UninstallOptions` | `commands/uninstall.ts:UninstallOptions` |
-| `buildStructuredFileSpecs` | `commands/uninstall.ts:buildStructuredFileSpecs` |
-| `buildPlan` | `commands/uninstall.ts:buildPlan` |
+| `buildStructuredFileSpecs` | `utils/managed-removal.ts:buildStructuredFileSpecs` |
+| `buildManagedRemovalPlan` | `utils/managed-removal.ts:buildManagedRemovalPlan` |
 | `renderPlan` | `commands/uninstall.ts:renderPlan` |
 | `promptContinue` | `commands/uninstall.ts:promptContinue` |
-| `executePlan` | `commands/uninstall.ts:executePlan` |
-| `StructuredFileSpec` | `commands/uninstall.ts:StructuredFileSpec` |
-| `PlannedDeletion` / `PlannedModification` / `UninstallPlan` | `commands/uninstall.ts` |
+| `executeManagedRemovalPlan` | `utils/managed-removal.ts:executeManagedRemovalPlan` |
+| `StructuredFileSpec` | `utils/managed-removal.ts:StructuredFileSpec` |
+| `PlannedDeletion` / `PlannedModification` / `ManagedRemovalPlan` | `utils/managed-removal.ts` |
 | `loadHashes` | `utils/template-hash.ts:loadHashes` |
 | `cleanupEmptyDirs` | `commands/update.ts:cleanupEmptyDirs` (re-exported) |
 | `ALL_MANAGED_DIRS` / `isManagedRootDir` | `configurators/index.ts` |

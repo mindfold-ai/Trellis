@@ -1,0 +1,7 @@
+{"file":".trellis/spec/cli/backend/index.md","reason":"CLI backend routing, pre-development checklist, and quality gate."}
+{"file":".trellis/spec/cli/backend/commands-uninstall.md","reason":"Existing managed-removal orchestration and public behavior that shared planning must preserve."}
+{"file":".trellis/spec/cli/backend/uninstall-scrubbers.md","reason":"Pure structured scrubber ownership contract and regression requirements."}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"Atomic writes, containment, destructive-operation ownership, backups, and symlink safety."}
+{"file":".trellis/spec/cli/unit-test/index.md","reason":"CLI testing entry point and required validation commands."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Unit/integration test selection, mocking, regressions, and non-tautological assertions."}
+{"file":".trellis/tasks/archive/2026-08/08-10-full-trellis-ablation/research/implementation-evidence.md","reason":"Current source primitives, deferred scope, and GitNexus blast-radius evidence."}

@@ -12,6 +12,8 @@
  * does not matter — we just look for the manifest-relative file path.
  */
 
+import { getConfigTemplate as getCodexConfigTemplate } from "../templates/codex/index.js";
+
 export interface ScrubResult {
   content: string;
   fullyEmpty: boolean;
@@ -66,6 +68,23 @@ function getEntryCommand(entry: unknown): string | null {
   return null;
 }
 
+const CLAUDE_TRELLIS_STATUSLINE = ".claude/hooks/statusline.py";
+
+function isTrellisClaudeStatusLine(
+  value: unknown,
+  deletedPaths: readonly string[],
+): boolean {
+  if (!deletedPaths.includes(CLAUDE_TRELLIS_STATUSLINE)) return false;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const command = getEntryCommand(value);
+  return (
+    command !== null &&
+    commandMatchesDeletedPath(command, [CLAUDE_TRELLIS_STATUSLINE])
+  );
+}
+
 /**
  * Scrub a hooks-shaped settings JSON file.
  *
@@ -74,8 +93,9 @@ function getEntryCommand(entry: unknown): string | null {
  *
  * Strips every entry whose command references a path in `deletedPaths`,
  * then bottom-up cleans empty containers (matcher block, event array, hooks
- * object). Any user-defined keys outside `hooks` (e.g. `env`, `model`,
- * `permissions`, `version`) are preserved verbatim.
+ * object). The exact opt-in Trellis Claude statusLine command is also removed;
+ * other keys outside `hooks` (e.g. `env`, `model`, `permissions`, `version`)
+ * are preserved.
  */
 export function scrubHooksJson(
   content: string,
@@ -95,6 +115,9 @@ export function scrubHooksJson(
   }
 
   const root = parsed as Record<string, unknown>;
+  if (isTrellisClaudeStatusLine(root.statusLine, deletedPaths)) {
+    delete root.statusLine;
+  }
   const hooks = root.hooks;
 
   if (hooks === undefined) {
@@ -305,25 +328,23 @@ export function scrubPiSettings(content: string): ScrubResult {
 /**
  * Scrub `.codex/config.toml`.
  *
- * The current trellis-emitted file has two distinct chunks:
- * 1. The line `project_doc_fallback_filenames = ["AGENTS.md"]`
- * 2. A multi-line comment block that begins with the marker
- *    `# NOTE: Trellis's SessionStart + UserPromptSubmit hooks require opt-in.`
- *    and continues through `# be injected into Codex sessions.`
- *
- * Plus the leading "Project-scoped Codex defaults" header comments.
+ * The current Trellis-emitted file has three owned chunks:
+ * 1. The line `project_doc_fallback_filenames = ["AGENTS.md"]`.
+ * 2. Comment lines derived from the current shipped Codex config template,
+ *    plus an allowlist of legacy template comments.
+ * 3. The exact `[agents].max_depth = 1` setting.
  *
  * Strategy: line-based removal. We strip:
  *  - the `project_doc_fallback_filenames = ...` line
- *  - any line that is *only* a comment introduced by trellis (the entire file
- *    as shipped is comments + that one assignment)
+ *  - any line that is *only* a known Trellis template comment
+ *  - Trellis's exact `max_depth = 1`, retaining `[agents]` when user keys remain
  *  - blank lines that surrounded those removals
  *
  * If the user added their own non-trellis lines, they are preserved as-is.
  * "Fully empty" = post-scrub content has no non-whitespace characters.
  */
 export function scrubCodexConfigToml(content: string): ScrubResult {
-  const trellisCommentMarkers = [
+  const legacyCommentMarkers = [
     "Project-scoped Codex defaults for Trellis workflows.",
     "Codex loads this after ~/.codex/config.toml when you work in this project.",
     "Keep AGENTS.md as the primary project instruction file.",
@@ -337,6 +358,17 @@ export function scrubCodexConfigToml(content: string): ScrubResult {
     "be injected into Codex sessions.",
   ];
 
+  const currentTemplateCommentMarkers = getCodexConfigTemplate()
+    .content.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("#"))
+    .map((line) => line.replace(/^#+\s?/, "").trim())
+    .filter((line) => line.length > 0);
+  const trellisCommentMarkers = new Set([
+    ...legacyCommentMarkers,
+    ...currentTemplateCommentMarkers,
+  ]);
+
   // A comment line is "trellis-known" if its content (after `#` and spaces)
   // matches one of the known marker strings exactly OR is an empty `#` line.
   function isTrellisCommentLine(line: string): boolean {
@@ -344,20 +376,60 @@ export function scrubCodexConfigToml(content: string): ScrubResult {
     if (!trimmed.startsWith("#")) return false;
     const inner = trimmed.replace(/^#+\s?/, "").trim();
     if (inner.length === 0) return true; // bare `#` line inside trellis block
-    return trellisCommentMarkers.some((m) => inner === m);
+    return trellisCommentMarkers.has(inner);
   }
 
   function isTrellisAssignment(line: string): boolean {
     return /^\s*project_doc_fallback_filenames\s*=/.test(line);
   }
 
+  const filteredLines = content
+    .split(/\r?\n/)
+    .filter(
+      (line) => !isTrellisAssignment(line) && !isTrellisCommentLine(line),
+    );
+
+  // Trellis currently owns `[agents].max_depth = 1`. Remove the assignment,
+  // but retain the table header if user-owned keys remain in that table.
+  const withoutAgentDepth: string[] = [];
+  for (let index = 0; index < filteredLines.length; index += 1) {
+    const line = filteredLines[index] ?? "";
+    if (!/^\s*\[agents\]\s*$/.test(line)) {
+      withoutAgentDepth.push(line);
+      continue;
+    }
+
+    const tableLines: string[] = [];
+    let cursor = index + 1;
+    const tableHeader = /^\s*\[\[?[^\]]+\]\]?\s*$/;
+    while (
+      cursor < filteredLines.length &&
+      !tableHeader.test(filteredLines[cursor] ?? "")
+    ) {
+      const candidate = filteredLines[cursor] ?? "";
+      if (!/^\s*max_depth\s*=\s*1\s*(?:#.*)?$/.test(candidate)) {
+        tableLines.push(candidate);
+      }
+      cursor += 1;
+    }
+    const hasUserTableContent = tableLines.some((candidate) => {
+      const trimmed = candidate.trim();
+      return trimmed.length > 0 && !trimmed.startsWith("#");
+    });
+    if (hasUserTableContent) {
+      withoutAgentDepth.push(line, ...tableLines);
+    } else {
+      withoutAgentDepth.push(
+        ...tableLines.filter((candidate) => candidate.trim().length > 0),
+      );
+    }
+    index = cursor - 1;
+  }
+
   const out: string[] = [];
   let prevWasBlank = true; // start-of-file counts as blank for collapsing
 
-  for (const rawLine of content.split(/\r?\n/)) {
-    if (isTrellisAssignment(rawLine) || isTrellisCommentLine(rawLine)) {
-      continue; // drop
-    }
+  for (const rawLine of withoutAgentDepth) {
     const isBlank = rawLine.trim().length === 0;
     if (isBlank && prevWasBlank) {
       continue; // collapse runs of blanks created by removals
