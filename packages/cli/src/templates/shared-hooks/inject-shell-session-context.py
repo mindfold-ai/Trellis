@@ -29,6 +29,8 @@ if callable(_stdin_reconfigure):
     try:
         _stdin_reconfigure(encoding="utf-8", errors="replace")
     except (OSError, ValueError):
+        # Best-effort: a stream that refuses the encoding change still reads.
+        # Failing here would kill the hook before it can fail open.
         pass
 
 
@@ -87,6 +89,8 @@ def _resolve_trellis_root(hook_input: dict[str, Any]) -> Path | None:
     try:
         candidates.append(Path(os.getcwd()))
     except OSError:
+        # A deleted or unreadable cwd is just one fewer candidate; the payload
+        # cwd appended above can still resolve.
         pass
 
     for candidate in candidates:
@@ -196,6 +200,8 @@ def _cleanup_expired_tickets(ticket_dir: Path, now: float) -> None:
             try:
                 ticket_path.unlink()
             except OSError:
+                # Opportunistic cleanup: a ticket that cannot be removed is
+                # still expired and gets retried on the next pass.
                 pass
 
 

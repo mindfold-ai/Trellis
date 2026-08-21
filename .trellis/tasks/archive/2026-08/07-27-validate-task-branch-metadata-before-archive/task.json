@@ -1,0 +1,37 @@
+{
+  "id": "validate-task-branch-metadata-before-archive",
+  "name": "validate-task-branch-metadata-before-archive",
+  "title": "Validate task branch metadata before archive",
+  "description": "Ensure Trellis task branch and base_branch metadata are populated, validated, and recoverable before archive/preflight flows so downstream lifecycle gates do not fail late on missing or self-referential branch fields.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-27",
+  "completedAt": "2026-08-09",
+  "branch": "chore/task-backlog-2026-08",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "packages/cli/src/templates/trellis/scripts/common/task_store.py",
+    "packages/cli/src/templates/trellis/scripts/common/task_context.py",
+    "packages/cli/src/templates/trellis/scripts/task.py",
+    ".trellis/scripts/common/task_store.py",
+    ".trellis/scripts/common/task_context.py",
+    ".trellis/scripts/task.py"
+  ],
+  "notes": "Created from active-session review on 2026-07-27. The sd-ai-command-pack standing-permission task required recovery because branch was null and base_branch was stamped to the feature branch instead of main; generated _example JSONL scope is already covered by 07-23-align-task-validation-preflight.",
+  "meta": {
+    "source_thread_id": "019f864c-a5bc-7492-b508-2f2a7a356d7b",
+    "source_repo": "/Users/sven/repos/platypeeps/sd-ai-command-pack",
+    "dedupe_existing_task": "07-23-align-task-validation-preflight"
+  }
+}

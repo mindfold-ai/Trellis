@@ -1376,20 +1376,14 @@ Lightweight tasks may be PRD-only. Complex tasks must have `prd.md`, `design.md`
 
 ### Lifecycle
 
-1. **Create** — `task.py create` writes `task.json` with `status = planning`, creates the default `prd.md`, and seeds `implement.jsonl` / `check.jsonl` when a sub-agent-capable platform is detected.
+1. **Create** — `task.py create` writes `task.json` with `status = planning`, creates the default `prd.md`, and creates empty `implement.jsonl` / `check.jsonl` when a sub-agent-capable platform is detected. Curation instructions are printed to the console, never written into the files.
 2. **Plan** — AI updates `prd.md`. If the task is complex, AI also writes `design.md` and `implement.md`; if sub-agent/spec context is needed, AI curates jsonl entries.
 3. **Review / start** — the user reviews the planning artifacts. `task.py start` is valid when the task's artifact gate is satisfied.
 4. **Consume** — hook, prelude, Pi extension, and OpenCode plugin read context in the same order: jsonl entries, `prd.md`, `design.md` if present, `implement.md` if present.
 
 ### Signatures
 
-**Seed row schema** (one line, written by `_write_seed_jsonl` in `task_store.py`):
-
-```json
-{
-  "_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line when done."
-}
-```
+**Placeholder row schema** (`{"_example": "..."}`) — written by Trellis versions before this contract change. `task.py validate` rejects it, matching PR preflight, which treats it as unresolved scaffolding. Remediation: delete the line, or replace it with a curated row.
 
 **Curated row schema** (written by AI):
 
@@ -1406,8 +1400,8 @@ Optional `type: "directory"` is supported for directory entries. Consumers ignor
 | Task creation             | `task_store.py`                                 | Always creates default `prd.md`; never auto-creates `design.md` or `implement.md`. |
 | Lightweight planning gate | workflow-state / SessionStart / continue        | PRD-only is valid when the task is clearly small.                                  |
 | Complex planning gate     | workflow-state / SessionStart / continue        | Requires `prd.md`, `design.md`, and `implement.md` before `task.py start`.         |
-| Seed detection            | Every jsonl consumer                            | Row without a `file` key is treated as non-entry and skipped.                      |
-| Empty-file tolerance      | hook / prelude / plugin readers                 | Missing or seed-only jsonl is tolerated; task artifacts still load.                |
+| Non-entry detection       | Every jsonl consumer                            | Row without a `file` key is treated as non-entry and skipped.                      |
+| Empty-file tolerance      | hook / prelude / plugin readers                 | Missing or empty jsonl is tolerated; task artifacts still load.                    |
 | Context order             | hook / prelude / Pi extension / OpenCode plugin | jsonl entries → `prd.md` → `design.md` if present → `implement.md` if present.     |
 | Archived self-references  | `task_context.py` validation                    | Preserve JSONL bytes. For an archived task, remap only exact `.trellis/tasks/<same-task-name>/...` references into that archive copy. Other paths retain repo-root resolution. |
 
@@ -1415,14 +1409,15 @@ Optional `type: "directory"` is supported for directory entries. Consumers ignor
 
 | Condition                                              | Behavior                                                                                              | Exit / Surface          |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------- |
-| `implement.jsonl` has only seed row                    | `cmd_validate` reports 0 errors; `cmd_list_context` prints "(no curated entries yet — only seed row)" | Exit 0                  |
+| `implement.jsonl` is empty (freshly created)           | `cmd_validate` reports 0 errors; `cmd_list_context` prints "(no curated entries yet)"                 | Exit 0                  |
+| `implement.jsonl` holds a legacy `{"_example": …}` row | `cmd_validate` prints "Placeholder \`_example\` row …" with file, line, and remediation                | Exit 1                  |
 | `implement.jsonl` entry points at non-existent file    | `cmd_validate` prints "File not found: …" per row                                                     | Exit 1                  |
 | Archived self-reference exists in the archive copy     | Resolve inside `.trellis/tasks/archive/<year-month>/<same-task-name>/`; do not rewrite the manifest        | Exit 0                  |
 | Archived self-reference is absent from the archive copy | Report it missing even if an active task with the same name has recreated the path                         | Exit 1                  |
 | Archived self-reference traverses or follows a symlink outside the archive | Reject it as missing; never fall back to the historical active-task path                    | Exit 1                  |
 | Lightweight task has only `prd.md`                     | Valid planning state; SessionStart / continue can ask for start review                                | No error                |
 | Complex task is missing `design.md` or `implement.md`  | Stay in planning; ask user to complete missing planning artifacts                                     | Hook / command guidance |
-| Sub-agent platform detected, but jsonl seed is missing | Context readers fall back to task artifacts and warn where applicable                                 | No create failure       |
+| Sub-agent platform detected, but jsonl is missing      | Context readers fall back to task artifacts and warn where applicable                                 | No create failure       |
 
 ### Good / Base / Bad Cases
 
@@ -1469,11 +1464,11 @@ leave every unrelated path on normal repository-root resolution.
 
 ### Tests Required
 
-- **Create behavior**: `task.py create` creates default `prd.md` and seeds jsonl only on sub-agent-capable platforms.
-- **Consumer tolerance**: `inject-subagent-context.py` skips seed rows and still injects task artifacts.
-- **Validate seed**: `task.py validate` treats seed-only jsonl as 0 errors.
+- **Create behavior**: `task.py create` creates default `prd.md` and empty jsonl only on sub-agent-capable platforms, and prints the curation instructions to the console.
+- **Consumer tolerance**: `inject-subagent-context.py` skips rows without a `file` key and still injects task artifacts.
+- **Validate placeholder**: `task.py validate` passes for empty jsonl and fails with a remediation message for a legacy `{"_example": …}` row, in both active and archived tasks.
 - **Validate archive binding**: cover archived self files and directories, unrelated paths, a missing archive copy with a recreated active task, traversal, symlink escape, and unchanged active-task behavior.
-- **List-context seed**: `task.py list-context` prints "no curated entries yet" for seed-only jsonl.
+- **List-context empty**: `task.py list-context` prints "no curated entries yet" for an uncurated jsonl.
 - **Artifact gates**: workflow-state, SessionStart, and continue distinguish PRD-only lightweight tasks from complex tasks that still need `design.md` / `implement.md`.
 
 ## Context Injection Limits Contract (`context_injection`)
@@ -1585,7 +1580,7 @@ Use parent/child task trees when a request contains multiple deliverables that c
 ### Signatures
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<title>" --slug <name> --parent <parent-dir>
+python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <name> --parent <parent-dir>
 python3 ./.trellis/scripts/task.py add-subtask <parent-dir> <child-dir>
 python3 ./.trellis/scripts/task.py remove-subtask <parent-dir> <child-dir>
 ```

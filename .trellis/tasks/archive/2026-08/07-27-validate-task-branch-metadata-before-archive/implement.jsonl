@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Use the backend guide index to route task lifecycle script requirements before implementation."}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Preserve task status and lifecycle-event semantics while tightening branch metadata validation."}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Use durable task.json write and recovery behavior when changing task metadata flows."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Trace metadata fields across create, validate, archive, preflight, and downstream workflow consumers."}

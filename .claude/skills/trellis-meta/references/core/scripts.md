@@ -101,7 +101,7 @@ Task management CLI.
 #### Create Task
 
 ```bash
-python3 .trellis/scripts/task.py create "Task name" --slug task-slug
+python3 .trellis/scripts/task.py create "Task name" --description "What this task delivers" --slug task-slug
 ```
 
 **Options:**
@@ -250,7 +250,7 @@ python3 .trellis/scripts/init_developer.py john-doe
 
 ```bash
 # Create task
-python3 .trellis/scripts/task.py create "Add user login" --slug add-login
+python3 .trellis/scripts/task.py create "Add user login" --description "Email + password sign-in" --slug add-login
 
 # Initialize context for fullstack work
 python3 .trellis/scripts/task.py init-context \

@@ -1,0 +1,32 @@
+{
+  "id": "enforce-bundled-skill-whitespace-parity",
+  "name": "enforce-bundled-skill-whitespace-parity",
+  "title": "Enforce bundled skill whitespace parity",
+  "description": "Clean current trailing whitespace in shipped bundled skill markdown and add validation so source templates and generated platform mirrors stay whitespace-clean and parity-safe.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P3",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-27",
+  "completedAt": "2026-08-09",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "packages/cli/src/templates/common/bundled-skills/trellis-meta/references/local-architecture/workspace-memory.md",
+    ".agents/skills/trellis-meta/references/local-architecture/workspace-memory.md",
+    ".claude/skills/trellis-meta/references/local-architecture/workspace-memory.md",
+    "packages/cli/test/regression.test.ts",
+    "packages/cli/test/configurators/platforms.test.ts"
+  ],
+  "notes": "Created from expanded active-session review. people-profiles surfaced whitespace defects in newly versioned Trellis skill copies, and the same trailing whitespace is present in the authoritative bundled-skill template plus dogfood mirrors.",
+  "meta": {}
+}

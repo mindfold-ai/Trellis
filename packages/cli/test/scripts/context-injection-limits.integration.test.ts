@@ -693,6 +693,64 @@ print("all-valid")
         );
       });
 
+      it("survives a file that disappears between is_file() and stat()", () => {
+        // The size check is advisory, so it must never be what fails
+        // `validate`. Its `stat()` sits after an `is_file()` check, and the
+        // gap between them is a real window: the file can be removed, or the
+        // directory can lose traversal permission, in between.
+        //
+        // The race cannot be won from outside the process, so it is staged
+        // in-process: `is_file()` is forced True for a path that is really
+        // gone, which is exactly the state the loser of that race observes.
+        const taskDir = makeTask(tmp, "task-size-race");
+        fs.writeFileSync(path.join(tmp, "present.md"), "X".repeat(200), "utf-8");
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: "present.md", reason: "big" }) +
+            "\n" +
+            JSON.stringify({ file: "vanished.md", reason: "raced" }) +
+            "\n",
+          "utf-8",
+        );
+        writeConfig(
+          tmp,
+          ["context_injection:", "  max_file_bytes: 100"].join("\n"),
+        );
+
+        const harness = [
+          "import sys",
+          "from pathlib import Path",
+          `sys.path.insert(0, ${JSON.stringify(
+            path.join(tmp, ".trellis", "scripts"),
+          )})`,
+          "from common import task_context",
+          "_real = Path.is_file",
+          "Path.is_file = lambda self: True if self.name == 'vanished.md' else _real(self)",
+          `task_dir = Path(${JSON.stringify(taskDir)})`,
+          `repo = Path(${JSON.stringify(tmp)})`,
+          "errors = task_context._validate_jsonl(task_dir / 'implement.jsonl', repo, task_dir)",
+          "print('ERRORS=%d' % errors)",
+        ].join("\n");
+
+        const r = spawnSync("python3", ["-c", harness], {
+          cwd: tmp,
+          encoding: "utf-8",
+        });
+
+        // No traceback, and the advisory check contributed no errors.
+        expect(r.stderr).not.toContain("Traceback");
+        expect(r.status).toBe(0);
+        expect(r.stdout).toContain("ERRORS=0");
+        // The readable file is still measured and still warned about.
+        expect(r.stdout).toContain(
+          "implement.jsonl:1: Warning: present.md is 200 bytes, " +
+            "exceeds context_injection.max_file_bytes (100); " +
+            "injection will truncate it",
+        );
+        // The vanished one produces no size warning at all.
+        expect(r.stdout).not.toContain("vanished.md is");
+      });
+
       it("stays warning-free for a clean, under-cap, spec-only manifest", () => {
         const taskDir = makeTask(tmp, "task-clean");
         fs.mkdirSync(path.join(tmp, ".trellis", "spec"), { recursive: true });

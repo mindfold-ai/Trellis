@@ -177,10 +177,14 @@ def resolve_effective_platform(platform: str, config: dict) -> str:
     Platforms whose marker label differs from their id resolve through
     ``_PLATFORM_MARKER_LABELS``. Everything else is returned unchanged.
     """
-    label = _PLATFORM_MARKER_LABELS.get(platform.strip().lower())
+    normalized = platform.strip().lower()
+    label = _PLATFORM_MARKER_LABELS.get(normalized)
     if label:
         return label
-    if platform == "codex":
+    # Matched on the normalized name: the lookup above is case-insensitive and
+    # argparse does not fold `--platform`, so a bare `platform == "codex"` let
+    # `--platform Codex` fall through unresolved.
+    if normalized == "codex":
         mode = "auto"
         codex_cfg = config.get("codex") if isinstance(config, dict) else None
         if codex_cfg is not None:

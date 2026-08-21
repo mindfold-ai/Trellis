@@ -38,6 +38,8 @@ if callable(_stdin_reconfigure):
     try:
         _stdin_reconfigure(encoding="utf-8", errors="replace")
     except (OSError, ValueError):
+        # Best-effort: a stream that refuses the encoding change still reads.
+        # Failing here would kill the hook before it can fail open.
         pass
 
 # IMPORTANT: Force stdout to use UTF-8 on Windows
@@ -248,10 +250,25 @@ class _Budget:
         self.used += size
 
 
+def _contained_path(base_path: str, relative_path: str) -> str | None:
+    """Join `relative_path` onto `base_path`, or None if it escapes.
+
+    `os.path.join` discards the base when the right-hand side is absolute, and
+    a `..` hop walks out of it. Entries here come from a repo's JSONL context
+    manifests and are inlined into sub-agent prompts, so a path that leaves the
+    base is refused rather than read.
+    """
+    candidate = os.path.realpath(os.path.join(base_path, relative_path))
+    base = os.path.realpath(base_path)
+    if candidate != base and not candidate.startswith(base + os.sep):
+        return None
+    return candidate
+
+
 def _read_file_bytes(base_path: str, file_path: str) -> bytes | None:
     """Read raw file bytes, return None if file doesn't exist."""
-    full_path = os.path.join(base_path, file_path)
-    if os.path.exists(full_path) and os.path.isfile(full_path):
+    full_path = _contained_path(base_path, file_path)
+    if full_path and os.path.exists(full_path) and os.path.isfile(full_path):
         try:
             with open(full_path, "rb") as f:
                 return f.read()
@@ -346,8 +363,8 @@ def _materialize_directory(
 ) -> list[str]:
     """Read all .md files in a directory, applying the same per-file and
     total caps as a single-file JSONL entry."""
-    full_path = os.path.join(base_path, dir_path)
-    if not os.path.exists(full_path) or not os.path.isdir(full_path):
+    full_path = _contained_path(base_path, dir_path)
+    if not full_path or not os.path.exists(full_path) or not os.path.isdir(full_path):
         return []
 
     blocks: list[str] = []
@@ -363,6 +380,8 @@ def _materialize_directory(
             if block:
                 blocks.append(block)
     except Exception:
+        # Context injection is advisory: an unreadable directory yields no
+        # blocks rather than blocking the child from spawning.
         pass
 
     return blocks
@@ -375,12 +394,12 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict]:
     Schema:
         {"file": "path/to/file.md", "reason": "..."}
         {"file": "path/to/dir/", "type": "directory", "reason": "..."}
-        {"_example": "..."}          # seed row — skipped (no `file` field)
+        {"_example": "..."}          # legacy placeholder — skipped (no `file` field)
 
-    Rows without a ``file`` field (e.g. the self-describing seed line written
-    by ``task.py create`` before the agent has curated entries) are skipped
-    silently. If the resulting entry list is empty, a stderr warning is
-    emitted so the operator can debug missing context.
+    Rows without a ``file`` field (e.g. the placeholder line older Trellis
+    versions wrote at ``task.py create`` time) are skipped silently. If the
+    resulting entry list is empty, a stderr warning is emitted so the operator
+    can debug missing context.
 
     Returns:
         [{"file": path, "type": "file" | "directory", "reason": reason}, ...]
@@ -421,6 +440,8 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict]:
                 except json.JSONDecodeError:
                     continue
     except Exception:
+        # An unreadable manifest leaves entries empty, and the caller below
+        # falls back on saw_real_entry rather than failing the dispatch.
         pass
 
     if not saw_real_entry:

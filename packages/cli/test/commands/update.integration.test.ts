@@ -1582,4 +1582,217 @@ describe("update() integration", () => {
       computeHash(updated),
     );
   });
+
+  describe("receipt repair for files already identical to their template", () => {
+    /**
+     * Paths whose recorded hash is *expected* to drift: the repository appends
+     * its own content after the template is written, so the receipt holds the
+     * template's hash while the file on disk is longer. A fix that makes these
+     * "match" has broken them.
+     */
+    const MIXED_OWNERSHIP = [
+      FILE_NAMES.AGENTS,
+      COPILOT_INSTRUCTIONS_PATH,
+      `${DIR_NAMES.WORKFLOW}/config.yaml`,
+    ];
+
+    /**
+     * Every receipt entry whose recorded hash disagrees with the file at that
+     * path. Enumerated from the receipt itself rather than from a list of
+     * paths this test already knows about — a check built from what we expect
+     * cannot find the entry we did not expect.
+     */
+    function mismatchedEntries(): string[] {
+      const hashes = readHashesV2(hashFilePath());
+      return Object.entries(hashes)
+        .filter(([relativePath, recorded]) => {
+          const full = projectFile(relativePath);
+          if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) {
+            return false;
+          }
+          return computeHash(fs.readFileSync(full, "utf-8")) !== recorded;
+        })
+        .map(([relativePath]) => relativePath)
+        .filter((relativePath) => !MIXED_OWNERSHIP.includes(relativePath));
+    }
+
+    it("records a hash matching the file for every entry, right after init", async () => {
+      await setupProject();
+      expect(mismatchedEntries()).toEqual([]);
+    });
+
+    it("repairs a poisoned entry for a file that matches its template", async () => {
+      await setupProject();
+
+      // Poison one entry with a hash of different content, leaving the file
+      // itself pristine. This is the shape found in the fleet audit: the
+      // recorded value was another platform's template.
+      const hashes = readHashesV2(hashFilePath());
+      const victim = MANAGED_FILE;
+      const correct = hashes[victim];
+      expect(correct).toBeDefined();
+      hashes[victim] = computeHash("not what is on disk");
+      writeHashesV2(hashFilePath(), hashes);
+      expect(mismatchedEntries()).toContain(victim);
+
+      await update({ yes: true });
+
+      // One run is enough. Before this fix the file was classified `unchanged`
+      // on every run and skipped, so the entry could never be repaired.
+      expect(readHashesV2(hashFilePath())[victim]).toBe(correct);
+      expect(mismatchedEntries()).toEqual([]);
+    });
+
+    it("adds an entry that is missing entirely for a pristine file", async () => {
+      await setupProject();
+
+      const hashes = readHashesV2(hashFilePath());
+      const correct = hashes[MANAGED_FILE];
+      writeHashesV2(
+        hashFilePath(),
+        removeHashEntry(hashes, MANAGED_FILE) as Record<string, string>,
+      );
+      expect(readHashesV2(hashFilePath())[MANAGED_FILE]).toBeUndefined();
+
+      await update({ yes: true });
+
+      expect(readHashesV2(hashFilePath())[MANAGED_FILE]).toBe(correct);
+    });
+
+    it("does not re-hash a file the user actually customized", async () => {
+      await setupProject();
+
+      const pristine = readProjectFile(MANAGED_FILE);
+      const recorded = readHashesV2(hashFilePath())[MANAGED_FILE];
+      expect(recorded).toBe(computeHash(pristine));
+
+      // A real local edit. `update` may offer to overwrite it; declining must
+      // leave the receipt describing the template, not the edit — otherwise
+      // the repair path has silently blessed a customization.
+      const customized = `${pristine}\n# local customization\n`;
+      writeProjectFile(MANAGED_FILE, customized);
+      vi.mocked(inquirer.prompt).mockResolvedValue({ proceed: false });
+
+      await update({ yes: false });
+
+      expect(readHashesV2(hashFilePath())[MANAGED_FILE]).not.toBe(
+        computeHash(customized),
+      );
+      expect(readProjectFile(MANAGED_FILE)).toBe(customized);
+    });
+
+    it("leaves the mixed-ownership paths free to differ from their recorded hash", async () => {
+      await setupProject();
+      const before = readHashesV2(hashFilePath());
+
+      // Append repo-owned content, exactly as those files acquire it.
+      for (const relativePath of MIXED_OWNERSHIP) {
+        if (!fs.existsSync(projectFile(relativePath))) continue;
+        writeProjectFile(
+          relativePath,
+          `${readProjectFile(relativePath)}\n# repo-owned addition\n`,
+        );
+      }
+
+      await update({ yes: true });
+
+      const after = readHashesV2(hashFilePath());
+      for (const relativePath of MIXED_OWNERSHIP) {
+        if (before[relativePath] === undefined) continue;
+        // The recorded hash must still describe the template, not the file.
+        expect(after[relativePath]).not.toBe(
+          computeHash(readProjectFile(relativePath)),
+        );
+      }
+    });
+  });
+
+  describe("pruning receipt entries whose file no longer exists", () => {
+    /** A `.trellis/` path trellis never writes — the `__pycache__` shape. */
+    const LEFTOVER = `${PATHS.SCRIPTS}/__pycache__/get_context.cpython-313.pyc`;
+
+    function receiptKeys(): string[] {
+      return Object.keys(readHashesV2(hashFilePath()));
+    }
+
+    it("removes an entry for a file that is gone and is not a template", async () => {
+      await setupProject();
+
+      // Recorded once, file since deleted. Nothing re-adds it and, before this
+      // fix, nothing removed it either: `pruneOrphanManifestKeys` exempts
+      // `.trellis/` wholesale, so it survived every update run.
+      const hashes = readHashesV2(hashFilePath());
+      hashes[LEFTOVER] = computeHash("stale bytes");
+      writeHashesV2(hashFilePath(), hashes);
+      expect(fs.existsSync(projectFile(LEFTOVER))).toBe(false);
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).not.toContain(LEFTOVER);
+    });
+
+    it("removes it on the 'Already up to date!' path too", async () => {
+      await setupProject();
+
+      // The clean tree is the run a user makes to repair a receipt, and it
+      // exits early. A prune wired only into the full update path would skip
+      // exactly the case it exists for.
+      const hashes = readHashesV2(hashFilePath());
+      hashes[LEFTOVER] = computeHash("stale bytes");
+      writeHashesV2(hashFilePath(), hashes);
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).not.toContain(LEFTOVER);
+    });
+
+    it("keeps the entry for a template file the user deleted, and does not reinstate it", async () => {
+      await setupProject();
+
+      // The entry is what makes `analyzeChanges` classify this
+      // `userDeletedFiles` instead of `new`. Prune it and the next run puts
+      // the file back — deleting a managed file would become impossible.
+      const recorded = readHashesV2(hashFilePath())[MANAGED_FILE];
+      expect(recorded).toBeDefined();
+      fs.rmSync(projectFile(MANAGED_FILE));
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).toContain(MANAGED_FILE);
+      expect(fs.existsSync(projectFile(MANAGED_FILE))).toBe(false);
+    });
+
+    it("keeps an entry whose file still exists but is not a template", async () => {
+      await setupProject();
+
+      const present = `${DIR_NAMES.WORKFLOW}/scripts/local-helper.py`;
+      writeProjectFile(present, "# not shipped by trellis\n");
+      const hashes = readHashesV2(hashFilePath());
+      hashes[present] = computeHash(readProjectFile(present));
+      writeHashesV2(hashFilePath(), hashes);
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).toContain(present);
+      expect(fs.existsSync(projectFile(present))).toBe(true);
+    });
+
+    it("leaves entries outside .trellis/ to pruneOrphanManifestKeys", async () => {
+      await setupProject();
+
+      // Any shipped template outside `.trellis/` whose file is missing is a
+      // respected deletion, not a stale record, and widening this prune past
+      // `.trellis/` would silently swallow it. `.opencode/package.json` is a
+      // real instance of that shape in the wild; this test uses a `.claude/`
+      // agent instead only because the fixture is guaranteed to install one.
+      const outside = ".claude/agents/trellis-implement.md";
+      const before = readHashesV2(hashFilePath());
+      if (before[outside] === undefined) return;
+      fs.rmSync(projectFile(outside));
+
+      await update({ yes: true });
+
+      expect(receiptKeys()).toContain(outside);
+    });
+  });
 });

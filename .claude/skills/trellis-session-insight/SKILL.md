@@ -11,7 +11,7 @@ It is intentionally a **capability skill, not a workflow**. There is no fixed ou
 
 ## What `trellis mem` is
 
-A local CLI that indexes the user's past Claude Code, Codex, Pi Agent, and ZCode conversation logs and lets you list, search, slice by Trellis task boundaries, and dump cleaned dialogue from them. Claude and Codex use `~/.claude/projects/` and `~/.codex/sessions/`. Pi uses its default or environment-configured session root, global `~/.pi/agent/settings.json`, and the scoped project's `.pi/settings.json`; relative `sessionDir` values resolve from the settings file directory. Project-local Pi settings require project-scoped lookup through the current cwd or `--cwd`. ZCode uses `~/.zcode/cli/db/db.sqlite`. OpenCode logs are not yet indexable (provider adapter pending) — when an OpenCode session is the obvious target, surface that limitation rather than guessing.
+A local CLI that indexes the user's past Claude Code, Codex, Grok, OpenCode, Pi Agent, and ZCode conversation logs and lets you list, search, slice by Trellis task boundaries, and dump cleaned dialogue from them. Claude and Codex use `~/.claude/projects/` and `~/.codex/sessions/`. Pi uses its default or environment-configured session root, global `~/.pi/agent/settings.json`, and the scoped project's `.pi/settings.json`; relative `sessionDir` values resolve from the settings file directory. Project-local Pi settings require project-scoped lookup through the current cwd or `--cwd`. ZCode uses `~/.zcode/cli/db/db.sqlite`. Grok uses `~/.grok/sessions/`. OpenCode uses `$XDG_DATA_HOME/opencode/opencode.db` (default `~/.local/share/opencode/`) on every platform, Windows included.
 
 Nothing in `mem` is uploaded. All reads are local.
 

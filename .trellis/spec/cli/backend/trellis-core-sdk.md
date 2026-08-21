@@ -33,7 +33,7 @@ CLI owns:
 - command definitions and option parsing (including `tl mem` argv parsing)
 - help text and terminal output (including `tl mem` row formatting and `--json` shaping)
 - prompts, confirmations, exit codes, and `process.exit`
-- the OpenCode-unavailable stderr notice for `tl mem` (a presentation concern, not a core one)
+- rendering core's structured `tl mem` warnings to stderr (a presentation concern, not a core one)
 - template copying, dogfooding paths, migration manifest application, and update UX
 - release scripts and CI-specific package orchestration
 
@@ -183,7 +183,7 @@ Core behavior should be tested in `packages/core` when the behavior can run with
 
 If a CLI test duplicates a pure core test, move the pure assertion to core and keep only the CLI-specific behavior in the CLI test.
 
-`mem` is the worked example of this rule: the pure retrieval/search/phase/adapter tests live in `packages/core/test/mem/**`, while `packages/cli/test/commands/mem-*.test.ts` keeps only CLI-wrapper coverage — argv parsing, `--json` output shape, exit behavior, and the OpenCode warning.
+`mem` is the worked example of this rule: the pure retrieval/search/phase/adapter tests live in `packages/core/test/mem/**`, while `packages/cli/test/commands/mem-*.test.ts` keeps only CLI-wrapper coverage — argv parsing, `--json` output shape, exit behavior, and warning rendering.
 
 ## Boundary: core task schema vs .trellis Python scripts
 

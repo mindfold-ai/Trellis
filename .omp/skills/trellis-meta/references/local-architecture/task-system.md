@@ -72,12 +72,12 @@ Rules:
 - Include spec and research files.
 - Do not include code files that are about to be modified.
 - Do not treat temporary conclusions in chat as the only context.
-- Seed rows have no `file` field; they only prompt the AI to fill in real entries.
+- Rows without a `file` field are skipped by readers. Legacy `{"_example": ...}` placeholder rows are rejected by `task.py validate` — delete them.
 
 ## Common Commands
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<title>" --slug <slug>
+python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <slug>
 python3 ./.trellis/scripts/task.py start <task>
 python3 ./.trellis/scripts/task.py current --source
 python3 ./.trellis/scripts/task.py add-context <task> implement <file> <reason>

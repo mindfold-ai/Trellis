@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Hook trust boundary, fail-open contract, and warning-format conventions run_task_hooks must preserve"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Python script quality bar for the timeout/kill rework"}
