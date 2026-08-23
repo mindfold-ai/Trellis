@@ -205,3 +205,136 @@ describe("resolveSupportedPython", () => {
     expect(result.version).toMatch(/sandbox-restricted/);
   });
 });
+
+// =============================================================================
+// resolveSupportedPython — slow interpreter warning
+//
+// A version-manager shim (pyenv-win, asdf, mise) reports the same version as
+// the interpreter behind it, so the version probe can't tell them apart. What
+// separates them is startup cost: ~40ms for a real interpreter vs ~550ms
+// through a shim. Since the resolved command runs on every prompt, every edit
+// and every subagent dispatch, that gap is worth surfacing at init time.
+//
+// Probe latency is driven by advancing fake timers inside the execSync mock,
+// which moves the Date.now() readings the implementation takes. No sleeping.
+// =============================================================================
+
+describe("resolveSupportedPython — slow interpreter warning", () => {
+  /** Makes each probe report `durations[n]` ms, reusing the last value. */
+  const probeTaking = (...durations: number[]): void => {
+    let call = 0;
+    vi.mocked(execSync).mockImplementation((() => {
+      const ms = durations[Math.min(call, durations.length - 1)] ?? 0;
+      call += 1;
+      vi.advanceTimersByTime(ms);
+      return "Python 3.11.12";
+    }) as typeof execSync);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.mocked(execSync).mockReset();
+    resetResolvedPythonCommand();
+    delete process.env.TRELLIS_PYTHON_CMD;
+    delete process.env.TRELLIS_SKIP_PYTHON_CHECK;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    resetResolvedPythonCommand();
+    delete process.env.TRELLIS_PYTHON_CMD;
+    delete process.env.TRELLIS_SKIP_PYTHON_CHECK;
+    vi.restoreAllMocks();
+  });
+
+  it("warns but still resolves when the interpreter is slow to start", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    probeTaking(600);
+
+    const result = resolveSupportedPython();
+
+    // Selection is unchanged — this is a diagnostic, not a fallback.
+    expect(result.version).toBe("Python 3.11.12");
+    expect(getPythonCommandForPlatform()).toBe(result.command);
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/took 600ms to start/);
+  });
+
+  it("stays quiet when the interpreter starts fast", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    probeTaking(40);
+
+    expect(resolveSupportedPython().version).toBe("Python 3.11.12");
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("re-probes before warning, so one cold spawn is not enough", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    // First spawn pays a cold filesystem / antivirus first-touch cost; the
+    // second shows what the command actually costs.
+    probeTaking(600, 40);
+
+    expect(resolveSupportedPython().version).toBe("Python 3.11.12");
+    expect(execSync).toHaveBeenCalledTimes(2);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("tells the user how to find the real interpreter and apply it", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    probeTaking(600);
+
+    resolveSupportedPython();
+
+    const message = warnSpy.mock.calls[0]?.[0] as string;
+    expect(message).toMatch(/print\(sys\.executable\)/);
+    // PATH is the portable remedy and must be the recommended one: whatever
+    // command init resolves is written literally into generated config that
+    // gets committed and shared (#503). TRELLIS_PYTHON_CMD pins an absolute
+    // machine path, so it may only appear as the local-only alternative,
+    // carrying that caveat.
+    expect(message).toMatch(
+      /Recommended: put that directory ahead of the shim/,
+    );
+    expect(message.indexOf("Recommended:")).toBeLessThan(
+      message.indexOf("TRELLIS_PYTHON_CMD"),
+    );
+    expect(message).toMatch(/absolute machine path/);
+    // The audience for this warning is overwhelmingly Windows (pyenv-win), so
+    // the copy must not hand out `VAR=value cmd`, which only works in POSIX
+    // shells. Match the existing TRELLIS_SKIP_PYTHON_CHECK wording instead.
+    expect(message).not.toMatch(/TRELLIS_PYTHON_CMD=/);
+  });
+
+  it("stays quiet when TRELLIS_PYTHON_CMD pins the command", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    process.env.TRELLIS_PYTHON_CMD = "py -3.12";
+    probeTaking(600);
+
+    expect(resolveSupportedPython().command).toBe("py -3.12");
+    expect(execSync).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when TRELLIS_SKIP_PYTHON_CHECK=1 opts out of probing", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    process.env.TRELLIS_SKIP_PYTHON_CHECK = "1";
+    probeTaking(600);
+
+    resolveSupportedPython();
+    expect(execSync).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+});

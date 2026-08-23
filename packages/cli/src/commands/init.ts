@@ -71,6 +71,14 @@ const MIN_PYTHON_MAJOR = 3;
 const MIN_PYTHON_MINOR = 9;
 const PYTHON_VERSION_RE = /Python (\d+)\.(\d+)/;
 
+// Above this, `<cmd> --version` is answering too slowly to be a bare
+// interpreter. Measured on Windows 11 + pyenv-win 3.11.9: the real interpreter
+// answers in 30-80ms, while the pyenv shim costs 654ms cold and still 330ms
+// warm. Since we compare against the warm figure (see warnIfSlowPythonCommand),
+// the number that matters is 330ms, and the threshold must stay well under it —
+// raising this past ~300ms silently stops detecting the case this exists for.
+const SLOW_PYTHON_PROBE_MS = 250;
+
 function collectSpecPaths(cwd: string): Set<string> {
   const specRoot = path.join(cwd, PATHS.SPEC);
   const paths = new Set<string>();
@@ -120,6 +128,68 @@ function detectPythonVersion(command: string): PythonProbe {
       return "sandbox-restricted";
     }
     return null;
+  }
+}
+
+/** `detectPythonVersion` plus how long the spawn took. */
+function timedPythonProbe(command: string): {
+  probe: PythonProbe;
+  elapsedMs: number;
+} {
+  const started = Date.now();
+  const probe = detectPythonVersion(command);
+  return { probe, elapsedMs: Date.now() - started };
+}
+
+/**
+ * Warn when the chosen Python command is slow to start.
+ *
+ * The command we resolve here is written into every generated hook, and those
+ * hooks run on every prompt, every file edit and every subagent dispatch. A
+ * command that costs ~0.5s per spawn — the usual signature of a version-manager
+ * shim (pyenv-win, asdf, mise) — therefore adds tens of seconds per session,
+ * spread across as many separate stalls. The version probe alone can't see this
+ * because a shim reports the same version as the interpreter behind it.
+ *
+ * We deliberately warn instead of substituting the absolute interpreter path.
+ * Whatever command we resolve is written literally into generated config such
+ * as `.claude/settings.json`, and those files are routinely committed and
+ * shared — see #503, where a plain `python3` vs `python` mismatch already
+ * breaks collaborators on another OS. An absolute machine path is a strictly
+ * worse offender, so we point at PATH first and mention TRELLIS_PYTHON_CMD only
+ * as the local-only alternative, rather than deciding the tradeoff for them.
+ *
+ * Never throws — a diagnostic must not be able to fail `init`.
+ */
+function warnIfSlowPythonCommand(command: string, elapsedMs: number): void {
+  if (elapsedMs <= SLOW_PYTHON_PROBE_MS) return;
+
+  try {
+    // Re-probe once and keep the better reading, so a cold filesystem cache or
+    // an antivirus first-touch can't trigger the warning on its own.
+    const { elapsedMs: second } = timedPythonProbe(command);
+    const best = Math.min(elapsedMs, second);
+    if (best <= SLOW_PYTHON_PROBE_MS) return;
+
+    console.warn(
+      chalk.yellow(
+        `⚠ "${command}" took ${best}ms to start (expected < ${SLOW_PYTHON_PROBE_MS}ms).\n` +
+          `  Trellis hooks spawn it on every prompt, every file edit and every\n` +
+          `  subagent dispatch, so this cost is paid tens of times per session.\n\n` +
+          `  A version manager shim (pyenv, asdf, mise) is the usual cause. See\n` +
+          `  which interpreter is behind it:\n\n` +
+          `      ${command} -c "import sys; print(sys.executable)"\n\n` +
+          `  Recommended: put that directory ahead of the shim directory on\n` +
+          `  PATH, then re-run init. The generated config keeps working for\n` +
+          `  everyone who shares this repo.\n\n` +
+          `  Local-only projects can instead set TRELLIS_PYTHON_CMD to that\n` +
+          `  path and re-run init. That writes an absolute machine path into\n` +
+          `  the generated hook config, so avoid it if you commit that config\n` +
+          `  or work across machines.`,
+      ),
+    );
+  } catch {
+    // Diagnostics are best-effort.
   }
 }
 
@@ -217,7 +287,7 @@ export function resolveSupportedPython(): {
 
   const probeFailures: string[] = [];
   for (const candidate of candidates) {
-    const probe = detectPythonVersion(candidate);
+    const { probe, elapsedMs } = timedPythonProbe(candidate);
     if (probe === "sandbox-restricted") {
       console.warn(
         chalk.yellow(
@@ -241,6 +311,7 @@ export function resolveSupportedPython(): {
       probeFailures.push(`${candidate}: ${probe} (< 3.9)`);
       continue;
     }
+    warnIfSlowPythonCommand(candidate, elapsedMs);
     setResolvedPythonCommand(candidate);
     return { command: candidate, version: probe };
   }
