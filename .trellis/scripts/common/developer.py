@@ -83,7 +83,6 @@ def init_developer(name: str, repo_root: Path | None = None) -> bool:
 > Started: {today}
 
 ---
-
 """
         try:
             journal_file.write_text(journal_content, encoding="utf-8")
