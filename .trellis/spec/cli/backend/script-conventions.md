@@ -1570,16 +1570,29 @@ an error. Generic prose (`(see git log)`, `not recorded`, `(Add details)`) is
 never substituted — that is the whole point of the requirement.
 
 **Record identity is a retry key, not a dedupe key.** The fingerprint is a
-SHA-256 over the normalized semantic inputs (developer, date, title, summary,
+SHA-256 over the normalized semantic inputs (developer, title, summary,
 package, branch, resolved commits *and their subjects*, changes, extra
 content, tests, next steps, idempotency key), truncated to 16 hex chars, and
-persisted as `<!-- trellis-session: fp=<hash> -->` on the line directly under
-the `## Session N:` heading. An HTML comment renders as nothing, so the human
-evidence is unchanged by its presence. The marker only matches a record that
-is **still uncommitted in this worktree**: once the entry is present in
-`git show HEAD:<journal>`, an identical later request is a legitimately new
-session and gets a new number. `--idempotency-key` is the one way to say
-otherwise — with a key, an already-committed match is reported and exits 0.
+persisted as `<!-- trellis-session: v=2 fp=<hash> -->` on the line directly
+under the `## Session N:` heading. An HTML comment renders as nothing, so the
+human evidence is unchanged by its presence.
+
+The calendar date is **not** an input. v1 mixed it in and wrote the marker
+unversioned as `<!-- trellis-session: fp=<hash> -->`; a retry resumed after a
+midnight rollover then recomputed a fingerprint that no longer matched the
+marker already sitting in the journal, and appended a second entry for one
+session. v1 markers are still read — the entry's own `**Date**:` line supplies
+the date to recompute with — but never written.
+
+The marker only matches a record that is **still uncommitted in this
+worktree**: once the entry is present in `git show HEAD:<journal>`, an
+identical later request is a legitimately new session and gets a new number.
+That new session cannot carry the committed marker, or two entries would share
+one and every later run would be ambiguous, so the run steps to the next
+`generation` of the payload and fingerprints that instead. Generation 0 omits
+the field, so a first-time marker is unaffected. `--idempotency-key` is the one
+way to say otherwise — with a key, an already-committed match is reported and
+exits 0.
 
 **Five states, one direction.** `classify_record` returns `absent`,
 `journal-recorded`, `index-recorded`, or `committed`, and the run walks them
@@ -1638,12 +1651,12 @@ could classify. See
 | `--commit` token is not 7-40 hex chars | Exit 1, names the token; nothing written |
 | `--commit` OID does not resolve locally | Exit 1, names the OID and the `--commit-subject` remedy; nothing written |
 | `--commit-subject` for an OID not in `--commit`, duplicated, or empty | Exit 1; nothing written |
-| `--commit-subject` subject contains `|` or newlines | Accepted; escaped for the Markdown cell |
+| `--commit-subject` subject contains `\|` or newlines | Accepted; escaped for the Markdown cell |
 | `--commit -` (default) | `(No commits - planning session)`; no git resolution at all |
 | `--idempotency-key` outside `[A-Za-z0-9._-]{1,64}` | Exit 1; nothing written |
 | Retry after a failed index update | Index row repaired, journal entry count unchanged |
 | Retry after a failed auto-commit | Only the commit is retried; journal and index unchanged |
-| Retry of an already-committed record, no idempotency key | New session, new number |
+| Retry of an already-committed record, no idempotency key | New session, new number, and a next-generation marker so neither entry is ambiguous |
 | Retry of an already-committed record, with idempotency key | Exit 0, reports "already recorded"; nothing written |
 | Marker found in two entries | Exit 1, names the files; nothing written |
 | Marker with no `## Session N:` heading above it | Exit 1, "malformed"; nothing written |

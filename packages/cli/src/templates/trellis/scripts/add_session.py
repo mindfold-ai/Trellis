@@ -496,7 +496,8 @@ def compute_record_fingerprint(payload: dict) -> str:
     date was equal for both of them anyway. Across days it only ever separated
     records with byte-identical prose, commits, branch and package — and a
     *committed* record of that shape is already refused for reuse by
-    cmd_add_session, which maps STATE_COMMITTED to STATE_ABSENT. What is left
+    cmd_add_session, which steps to the next `generation` of the payload
+    rather than reusing the committed marker. What is left
     is exactly the question this key should answer: is there an uncommitted
     record in this worktree matching these inputs?
     """
@@ -1257,21 +1258,36 @@ def add_session(
         print(f"Error: {classify_error}", file=sys.stderr)
         return 1
 
-    if state == STATE_COMMITTED:
-        if idempotency_key:
-            print(
-                f"[OK] Session {matched_num} with idempotency key "
-                f"'{idempotency_key}' is already recorded and committed in "
-                f"{matched_file.name if matched_file else 'the journal'}; "
-                "nothing to do.",
-                file=sys.stderr,
-            )
-            return 0
-        # A committed record is finished. An identical later request is a
-        # legitimately new session, so fall through and append one.
-        state = STATE_ABSENT
-        matched_file = None
-        matched_num = None
+    if state == STATE_COMMITTED and idempotency_key:
+        print(
+            f"[OK] Session {matched_num} with idempotency key "
+            f"'{idempotency_key}' is already recorded and committed in "
+            f"{matched_file.name if matched_file else 'the journal'}; "
+            "nothing to do.",
+            file=sys.stderr,
+        )
+        return 0
+
+    # A committed record is finished, so an identical later request is a
+    # legitimately new session. It must not reuse the committed marker: two
+    # entries carrying one marker make every later run ambiguous, and
+    # classify_record refuses to guess between them. Step to the next
+    # generation of this record instead. The marker stays a pure function of
+    # (payload, generation), so a retry of the new entry recomputes the same
+    # marker and still resumes; generation 0 omits the field entirely, leaving
+    # first-time markers byte-identical to what this scheme already writes.
+    generation = 0
+    while state == STATE_COMMITTED:
+        generation += 1
+        marker = render_marker(
+            compute_record_fingerprint({**payload, "generation": generation})
+        )
+        state, matched_file, matched_num, classify_error = classify_record(
+            repo_root, dev_dir, index_file, marker
+        )
+        if classify_error:
+            print(f"Error: {classify_error}", file=sys.stderr)
+            return 1
 
     print("========================================", file=sys.stderr)
     print("ADD SESSION", file=sys.stderr)

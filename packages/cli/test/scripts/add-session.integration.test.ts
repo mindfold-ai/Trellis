@@ -188,6 +188,12 @@ function countMarkers(repo: string, num = 1): number {
   return readJournal(repo, num).split("<!-- trellis-session:").length - 1;
 }
 
+/** Every distinct record marker present in a journal, in order of appearance. */
+function distinctMarkers(repo: string, num = 1): string[] {
+  const seen = readJournal(repo, num).match(/<!-- trellis-session:[^>]*-->/g) ?? [];
+  return [...new Set(seen)];
+}
+
 /** Seed a task + initial commit so HEAD and a current task both exist. */
 function seedTask(repo: string, name = "task-a"): void {
   makeTask(repo, name, `${name} prd\n`);
@@ -759,10 +765,17 @@ describe.skipIf(!hasPython())("add_session.py retry convergence (R2-R5)", () => 
   it("treats an identical request as a new session once the earlier one is committed", () => {
     runAddSession(tmp, "same prose", ["--summary", "identical summary"]);
     runAddSession(tmp, "same prose", ["--summary", "identical summary"]);
+    // A third identical run has to keep working. It would not if the new
+    // entries reused the committed record's marker: classify_record refuses
+    // to resume once a marker matches more than one entry.
+    runAddSession(tmp, "same prose", ["--summary", "identical summary"]);
 
-    expect(sessionNumbers(tmp)).toEqual([1, 2]);
-    expect(countMarkers(tmp)).toBe(2);
-    expect(readIndex(tmp)).toContain("**Total Sessions**: 2");
+    expect(sessionNumbers(tmp)).toEqual([1, 2, 3]);
+    expect(countMarkers(tmp)).toBe(3);
+    expect(readIndex(tmp)).toContain("**Total Sessions**: 3");
+    // Each generation carries its own marker; duplicates would make every
+    // later run ambiguous.
+    expect(distinctMarkers(tmp).length).toBe(3);
   });
 
   it("makes a committed record a no-op when the caller supplies an idempotency key", () => {
