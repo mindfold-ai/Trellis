@@ -29,6 +29,7 @@ import {
   removeHash,
   renameHash,
   computeHash,
+  shouldExcludeFromHash,
 } from "../utils/template-hash.js";
 import { compareVersions } from "../utils/compare-versions.js";
 import { toPosix } from "../utils/posix.js";
@@ -1035,16 +1036,56 @@ function analyzeChanges(
   return result;
 }
 
-function collectMissingManagedFileHashes(
+/**
+ * Receipt entries that are wrong or missing for a file that is already
+ * byte-identical to its template.
+ *
+ * Nothing else repairs these. `analyzeChanges` classifies such a file
+ * `unchanged`, and the write-back draws only from `newFiles`,
+ * `autoUpdateFiles` and overwritten `changedFiles` — so a poisoned or absent
+ * entry beside a pristine file survives every subsequent `trellis update`,
+ * however many times it is run. Identical template content across versions is
+ * not what saves such an entry from going stale; it is precisely what freezes
+ * it, because the file never leaves the `unchanged` bucket.
+ *
+ * Recording the template's hash here cannot bless a local edit. Membership in
+ * `unchangedFiles` means the file on disk already *is* the template, byte for
+ * byte, so the value written is the one a correct receipt would already hold.
+ * A genuinely customized file differs from its template, lands in
+ * `changedFiles`, and is never seen by this function.
+ *
+ * That also leaves the mixed-ownership paths — `AGENTS.md`,
+ * `.github/copilot-instructions.md`, `.trellis/config.yaml` — free to differ
+ * from their recorded hash, which for them is the correct state: once the
+ * repository has appended its own content they are no longer `unchanged`.
+ */
+function collectUnchangedFileHashRepairs(
   changes: ChangeAnalysis,
   hashes: TemplateHashes,
 ): Map<string, string> {
   const files = new Map<string, string>();
-  const managedFiles = new Set([FILE_NAMES.AGENTS, COPILOT_INSTRUCTIONS_PATH]);
 
   for (const file of changes.unchangedFiles) {
-    if (managedFiles.has(file.relativePath) && !hashes[file.relativePath]) {
-      files.set(file.relativePath, file.newContent);
+    const key = toPosix(file.relativePath);
+    const recorded = hashes[key];
+
+    if (recorded === undefined) {
+      // A missing entry is only an omission for a path the receipt is meant
+      // to carry. `EXCLUDE_FROM_HASH` holds paths deliberately left out —
+      // `.trellis/.gitignore` among them — and adding those here would put
+      // this path in disagreement with `initializeHashes` about what the
+      // receipt tracks at all.
+      if (!shouldExcludeFromHash(key)) {
+        files.set(key, file.newContent);
+      }
+      continue;
+    }
+
+    // An entry that already exists and disagrees with the file is repaired
+    // whatever the path: a wrong value is strictly worse than an absent one,
+    // because it reads as a real local modification.
+    if (recorded !== computeHash(file.newContent)) {
+      files.set(key, file.newContent);
     }
   }
 
@@ -2378,7 +2419,7 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Analyze changes (pass hashes for modification detection)
   const changes = analyzeChanges(cwd, hashes, templates);
-  const missingManagedFileHashes = collectMissingManagedFileHashes(
+  const unchangedFileHashRepairs = collectUnchangedFileHashRepairs(
     changes,
     hashes,
   );
@@ -2428,8 +2469,11 @@ export async function update(options: UpdateOptions): Promise<void> {
     !hasPendingMigrations &&
     !hasSafeDeletes
   ) {
-    if (!options.dryRun && missingManagedFileHashes.size > 0) {
-      updateHashes(cwd, missingManagedFileHashes);
+    // The "already up to date" exit still has to repair the receipt: this is
+    // exactly the clean tree where every file is `unchanged`, so it is the run
+    // where a wrong entry would otherwise be skipped again.
+    if (!options.dryRun && unchangedFileHashRepairs.size > 0) {
+      updateHashes(cwd, unchangedFileHashRepairs);
     }
 
     if (isSameVersion) {
@@ -2698,7 +2742,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   updateVersionFile(cwd);
 
   // Update template hashes for new, auto-updated, and overwritten files
-  const filesToHash = new Map<string, string>(missingManagedFileHashes);
+  const filesToHash = new Map<string, string>(unchangedFileHashRepairs);
   for (const file of changes.newFiles) {
     filesToHash.set(file.relativePath, file.newContent);
   }
