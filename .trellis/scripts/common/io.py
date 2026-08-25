@@ -1,8 +1,9 @@
 """
-JSON file I/O utilities.
+File I/O utilities.
 
-Provides read_json and write_json as the single source of truth
-for JSON file operations across all Trellis scripts.
+Provides read_json / write_json as the single source of truth for JSON file
+operations, plus write_text_atomic for the Markdown state files (journal,
+index.md) that carry durable session state.
 """
 
 from __future__ import annotations
@@ -34,7 +35,19 @@ def write_json(path: Path, data: dict) -> bool:
 
     Returns True on success, False on error.
     """
-    payload = json.dumps(data, indent=2, ensure_ascii=False)
+    return write_text_atomic(path, json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def write_text_atomic(path: Path, text: str) -> bool:
+    """Write text to a file atomically (temp in same dir, then replace).
+
+    The same never-truncate-in-place guarantee as :func:`write_json`, for the
+    Markdown state files that hold durable session state (journal files,
+    index.md). A crash or Ctrl-C mid-write leaves the previous content intact
+    instead of a half-written record that no retry can classify.
+
+    Returns True on success, False on error.
+    """
     try:
         fd, tmp = tempfile.mkstemp(
             dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"
@@ -50,7 +63,7 @@ def write_json(path: Path, data: dict) -> bool:
             os.close(fd)
             raise
         with f:
-            f.write(payload)
+            f.write(text)
         os.replace(tmp, path)
         return True
     except OSError:
@@ -59,3 +72,10 @@ def write_json(path: Path, data: dict) -> bool:
         except OSError:
             pass
         return False
+    except BaseException:
+        # Ctrl-C mid-write: drop the temp file, then let the interrupt through.
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
