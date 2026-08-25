@@ -357,7 +357,7 @@ The single source of truth for all JSON file operations. Replaces 8 duplicated `
 | Function | Signature | Returns | Error Behavior |
 |----------|-----------|---------|----------------|
 | `read_json` | `(path: Path) -> dict \| None` | Parsed dict, or `None` | Returns `None` on `FileNotFoundError`, `JSONDecodeError`, `OSError` |
-| `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of `JSON_READ_MISSING` / `INVALID` / `UNREADABLE` / `NOT_OBJECT` / `EMPTY` |
+| `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of `JSON_READ_MISSING` / `INVALID` / `UNREADABLE` / `UNDECODABLE` / `NOT_OBJECT` / `EMPTY` |
 | `describe_json_read_failure` | `(path: Path, reason: str \| None) -> tuple[str, str]` | `(what happened, what to do)` | Never raises; unknown reasons get a generic pair |
 | `write_json` | `(path: Path, data: dict) -> bool` | `True` on success | Returns `False` on `OSError`, `IOError` |
 
@@ -663,6 +663,8 @@ a `.current-task` fallback or a Python hook directory.
 | `archive` for a task referenced by runtime sessions | Deletes those session files even when `finish` was skipped |
 | `archive` on a name that is not a task under `.trellis/tasks/` (e.g. `archive src`) | Refuses with "refusing to archive ..." and exit 1; source directory is left untouched |
 | Any task-dir argument that traverses out, is an outside absolute path, or is a symlink to outside the tasks dir | `resolve_task_dir` prints "refusing to use ..." naming the resolved path and returns `None`; the command exits 1 without reading or writing anything |
+| A command whose task-dir argument `resolve_task_dir` refused | Exactly one message, on stderr, from `resolve_task_dir`; no second generic "Task not found" line on stdout |
+| `task.json` that is not valid UTF-8 | `JSON_READ_UNDECODABLE`; reported as "not valid UTF-8 text" with a re-save remedy, never as a parse error or a traceback |
 | A bare task name matching two or more `-<name>` suffixes | Every match is listed, the command exits 1; no task is picked |
 | `create --slug` or `add-context <file>` containing `/`, `\`, or `..` | Rejected with exit 1 before any file is created |
 

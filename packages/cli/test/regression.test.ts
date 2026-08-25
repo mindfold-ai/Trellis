@@ -641,6 +641,17 @@ describe("regression: resolve_task_dir containment chokepoint", () => {
     }
   });
 
+  it("[audit] start reports a refused path once, on stderr only", () => {
+    // resolve_task_dir names the exact reason on stderr. cmd_start used to add
+    // a generic "Task not found" on stdout, so one refusal arrived as two
+    // messages split across two streams and the specific one was the easier to
+    // miss.
+    const r = runTask("start", "../escape");
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain("refusing to use");
+    expect(r.stdout).not.toContain("Task not found");
+  });
+
   it("[audit] set-meta through a symlinked task dir fails and leaves the link target untouched", () => {
     const outsideDir = path.join(tmpDir, "outside-target");
     fs.mkdirSync(outsideDir, { recursive: true });
@@ -1204,6 +1215,30 @@ describe("regression: JSON read/write failure reporting", () => {
     expect(r.stderr).toContain("not valid JSON");
     expect(r.stderr).toContain("json.tool");
     expect(fs.readFileSync(taskJsonPath(name), "utf-8")).toBe("{ not json");
+  });
+
+  it("[audit] set-meta on a non-UTF-8 task.json names the encoding, not a parse error", () => {
+    // read_json_checked caught FileNotFoundError and OSError. UnicodeDecodeError
+    // is neither, so a task.json that is not UTF-8 escaped both handlers and
+    // surfaced as a traceback.
+    expect(
+      runTask([
+        "create",
+        "Latin",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "latin",
+        "--no-start",
+      ]).status,
+    ).toBe(0);
+    const name = `${datePrefix}-latin`;
+    fs.writeFileSync(taskJsonPath(name), Buffer.from([0x7b, 0x22, 0xff, 0x22, 0x7d]));
+
+    const r = runTask(["set-meta", name, "k", "v"]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).not.toContain("Traceback");
+    expect(r.stderr).toContain("not valid UTF-8 text");
   });
 
   it.skipIf(!canProvokePermissionFailure)(

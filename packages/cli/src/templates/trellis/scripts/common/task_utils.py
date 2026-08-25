@@ -320,6 +320,31 @@ def _kill_hook_tree(proc: subprocess.Popen[str]) -> None:
         pass
 
 
+def _release_hook_process(proc: subprocess.Popen[str]) -> None:
+    """Close our pipe ends and reap a finished hook under a bound.
+
+    ``Popen`` used as a context manager calls ``wait()`` with no timeout when
+    the block exits. That is the one place the liveness guarantee could still
+    be lost: if ``_kill_hook_tree`` failed outright — both the process-group
+    kill and the direct kill raising — the lifecycle command would block there
+    forever, which is the exact hang the timeout exists to prevent.
+    """
+    import subprocess
+
+    for stream in (proc.stdout, proc.stderr, proc.stdin):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+    try:
+        proc.wait(timeout=HOOK_KILL_GRACE_SECONDS)
+    except (subprocess.TimeoutExpired, OSError, ValueError):
+        # Leaves a zombie until this process exits. Fail-open and bounded beats
+        # a task command that never returns.
+        pass
+
+
 def _decode_hook_output(raw: object) -> str:
     """TimeoutExpired carries bytes or str depending on the platform."""
     if raw is None:
@@ -359,7 +384,8 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
     user sees a task command that never returns and prints nothing. On timeout
     the hook's entire process tree is killed (see ``_kill_hook_tree``) and
     output is collected under a bounded grace, so a surviving grandchild
-    holding the pipes cannot re-create that same hang.
+    holding the pipes cannot re-create that same hang. Cleanup is bounded for
+    the same reason — see ``_release_hook_process``.
 
     Args:
         event: Event name (e.g. "after_create").
@@ -385,8 +411,9 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
         popen_kwargs["start_new_session"] = True
 
     for cmd in commands:
+        proc = None
         try:
-            with subprocess.Popen(
+            proc = subprocess.Popen(
                 cmd,
                 shell=True,
                 cwd=repo_root,
@@ -397,48 +424,48 @@ def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
                 encoding="utf-8",
                 errors="replace",
                 **popen_kwargs,
-            ) as proc:
+            )
+            try:
+                stdout, stderr = proc.communicate(timeout=HOOK_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired as e:
+                _kill_hook_tree(proc)
+                stdout = _decode_hook_output(e.stdout)
+                stderr = _decode_hook_output(e.stderr)
                 try:
-                    stdout, stderr = proc.communicate(timeout=HOOK_TIMEOUT_SECONDS)
-                except subprocess.TimeoutExpired as e:
-                    _kill_hook_tree(proc)
-                    stdout = _decode_hook_output(e.stdout)
-                    stderr = _decode_hook_output(e.stderr)
-                    try:
-                        # Bounded: an orphan that escaped the kill still holds
-                        # the pipes, and waiting on it forever here would be
-                        # the very hang the timeout prevents.
-                        rest_out, rest_err = proc.communicate(
-                            timeout=HOOK_KILL_GRACE_SECONDS
-                        )
-                        stdout = rest_out or stdout
-                        stderr = rest_err or stderr
-                    except (subprocess.TimeoutExpired, OSError, ValueError):
-                        pass
-                    print(
-                        colored(
-                            f"[WARN] Hook timed out ({event}) after "
-                            f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
-                            Colors.YELLOW,
-                        ),
-                        file=sys.stderr,
+                    # Bounded: an orphan that escaped the kill still holds
+                    # the pipes, and waiting on it forever here would be
+                    # the very hang the timeout prevents.
+                    rest_out, rest_err = proc.communicate(
+                        timeout=HOOK_KILL_GRACE_SECONDS
                     )
-                    print(f"  cwd: {repo_root}", file=sys.stderr)
-                    _print_hook_stream("stdout", stdout)
-                    _print_hook_stream("stderr", stderr)
-                    continue
+                    stdout = rest_out or stdout
+                    stderr = rest_err or stderr
+                except (subprocess.TimeoutExpired, OSError, ValueError):
+                    pass
+                print(
+                    colored(
+                        f"[WARN] Hook timed out ({event}) after "
+                        f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
+                        Colors.YELLOW,
+                    ),
+                    file=sys.stderr,
+                )
+                print(f"  cwd: {repo_root}", file=sys.stderr)
+                _print_hook_stream("stdout", stdout)
+                _print_hook_stream("stderr", stderr)
+                continue
 
-                if proc.returncode != 0:
-                    print(
-                        colored(
-                            f"[WARN] Hook failed ({event}): exit {proc.returncode}: {cmd}",
-                            Colors.YELLOW,
-                        ),
-                        file=sys.stderr,
-                    )
-                    print(f"  cwd: {repo_root}", file=sys.stderr)
-                    _print_hook_stream("stdout", stdout or "")
-                    _print_hook_stream("stderr", stderr or "")
+            if proc.returncode != 0:
+                print(
+                    colored(
+                        f"[WARN] Hook failed ({event}): exit {proc.returncode}: {cmd}",
+                        Colors.YELLOW,
+                    ),
+                    file=sys.stderr,
+                )
+                print(f"  cwd: {repo_root}", file=sys.stderr)
+                _print_hook_stream("stdout", stdout or "")
+                _print_hook_stream("stderr", stderr or "")
         except Exception as e:
             print(
                 colored(
