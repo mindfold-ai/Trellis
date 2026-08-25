@@ -77,7 +77,7 @@ Rules:
 ## Common Commands
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<title>" --slug <slug>
+python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <slug>
 python3 ./.trellis/scripts/task.py start <task>
 python3 ./.trellis/scripts/task.py current --source
 python3 ./.trellis/scripts/task.py add-context <task> implement <file> <reason>

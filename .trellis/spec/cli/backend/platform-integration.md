@@ -1585,7 +1585,7 @@ Use parent/child task trees when a request contains multiple deliverables that c
 ### Signatures
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<title>" --slug <name> --parent <parent-dir>
+python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <name> --parent <parent-dir>
 python3 ./.trellis/scripts/task.py add-subtask <parent-dir> <child-dir>
 python3 ./.trellis/scripts/task.py remove-subtask <parent-dir> <child-dir>
 ```

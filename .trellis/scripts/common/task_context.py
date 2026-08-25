@@ -60,6 +60,8 @@ def cmd_add_context(args: argparse.Namespace) -> int:
     """Add entry to JSONL context file."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
+    if target_dir is None:
+        return 1
 
     jsonl_name = args.file
     path = args.path
@@ -67,6 +69,15 @@ def cmd_add_context(args: argparse.Namespace) -> int:
 
     if not target_dir or not target_dir.is_dir():
         print(colored(f"Error: Directory not found: {target_dir}", Colors.RED))
+        return 1
+
+    # The JSONL name is user input joined onto the task dir — keep it a plain
+    # filename so it cannot create files elsewhere.
+    if "/" in jsonl_name or "\\" in jsonl_name or jsonl_name in (".", ".."):
+        print(colored(
+            f"Error: context file must be a plain name (e.g. implement, check): {jsonl_name}",
+            Colors.RED,
+        ))
         return 1
 
     # Support shorthand
@@ -115,7 +126,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir or not target_dir.is_dir():
+    if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 
@@ -297,8 +308,14 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             print(f"  {colored(warning_message, Colors.YELLOW)}")
 
         if max_file_bytes:
-            size = full_path.stat().st_size
-            if size > max_file_bytes:
+            # Advisory hygiene warning, so it must never be what fails
+            # `validate`. `stat()` can still raise after the `is_file()` check
+            # above — a permission change, or the file removed in between.
+            try:
+                size: int | None = full_path.stat().st_size
+            except OSError:
+                size = None
+            if size is not None and size > max_file_bytes:
                 warning_message = (
                     f"{file_name}:{line_num}: Warning: {file_path} is {size} bytes, "
                     f"exceeds context_injection.max_file_bytes ({max_file_bytes}); "
@@ -323,7 +340,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir or not target_dir.is_dir():
+    if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 

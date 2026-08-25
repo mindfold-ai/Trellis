@@ -357,12 +357,35 @@ The single source of truth for all JSON file operations. Replaces 8 duplicated `
 | Function | Signature | Returns | Error Behavior |
 |----------|-----------|---------|----------------|
 | `read_json` | `(path: Path) -> dict \| None` | Parsed dict, or `None` | Returns `None` on `FileNotFoundError`, `JSONDecodeError`, `OSError` |
+| `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of `JSON_READ_MISSING` / `INVALID` / `UNREADABLE` / `NOT_OBJECT` / `EMPTY` |
+| `describe_json_read_failure` | `(path: Path, reason: str \| None) -> tuple[str, str]` | `(what happened, what to do)` | Never raises; unknown reasons get a generic pair |
 | `write_json` | `(path: Path, data: dict) -> bool` | `True` on success | Returns `False` on `OSError`, `IOError` |
 
 **Contracts**:
 - Always uses `encoding="utf-8"` and `ensure_ascii=False`
 - `write_json` outputs with `indent=2` (pretty-printed)
 - Callers must check return value — no exceptions are raised
+- **Tolerant vs safety-sensitive reads.** `read_json` is for *optional* reads
+  only: it collapses missing, invalid and unreadable into one `None`, so a
+  caller cannot report which happened. Any caller that is about to overwrite
+  the file it just read, or whose failure the user must act on, uses
+  `read_json_checked` + `describe_json_read_failure` and prints both the file
+  and the failure class. Exiting non-zero with empty output — the pre-0.6.14
+  behavior of `task.py set-branch` / `set-base-branch` / `set-scope` /
+  `set-meta` on a corrupt `task.json` — is not an acceptable failure mode.
+- **Every `write_json` return is checked.** A success message printed after an
+  unchecked write is a false report: writes are atomic, so a failed write left
+  the old content in place and the user believes the new value landed.
+  Safety-sensitive writes fail the command (non-zero exit, naming the file and
+  which side of a two-file change did land); genuinely optional writes warn on
+  stderr. `task.py list` staying silent about a task it skipped counts as a
+  safety failure too — the task disappears from every listing with no
+  diagnostic, so `tasks.py:load_task` warns on stderr for a `task.json` that
+  exists but cannot be loaded (a directory with no `task.json` stays silent).
+- Session runtime files go through `write_json` as well: `active_task.py`'s
+  private `_write_json` only adds the `mkdir(parents=True)` the runtime
+  directory needs and then delegates, so session pointers get the same
+  never-truncate-in-place guarantee as `task.json`.
 - `write_json` is atomic: it writes to a temp file in `path.parent`
   (`tempfile.mkstemp`) then `os.replace(tmp, path)`. It never
   `path.write_text()`s over the target in place. A crash or Ctrl-C mid-write
@@ -563,20 +586,36 @@ a `.current-task` fallback or a Python hook directory.
   bulk-clear other sessions.
 - `task.py archive <task>` deletes every runtime session file whose
   `current_task` points at the archived task before moving the task directory.
-- Before moving anything, `cmd_archive` (`task_store.py`) calls
+- `resolve_task_dir(target_dir, repo_root)` (`task_utils.py`) is the
+  containment chokepoint for every command taking a task-directory argument.
+  It resolves the candidate (following symlinks) and returns `None`, after
+  printing an error naming the path, unless the result lands strictly under
+  `.trellis/tasks/` — archived tasks under `archive/<YYYY-MM>/` included.
+  Traversal (`../victim`), an absolute path outside the repo, a task dir
+  symlinked elsewhere, an unknown name, and an ambiguous suffix (two tasks
+  ending in `-<name>`; every match is printed) all resolve to nothing.
+  Callers must handle `None`; they must not add their own containment checks.
+- Before moving anything, `cmd_archive` (`task_store.py`) additionally calls
   `is_within_tasks_dir(task_dir_abs, repo_root)` (`task_utils.py`) and refuses
   with "refusing to archive ..." (exit 1) unless the resolved dir is a direct
-  child of `.trellis/tasks/`. `resolve_task_dir` falls back to
-  `repo_root / <name>` for a name it can't find, so a mistyped
-  `task.py archive src` would otherwise resolve to and `shutil.move` the
-  repo's real `src/` directory. See
+  child of `.trellis/tasks/`, so an already-archived task is not archived
+  twice. A mistyped `task.py archive src` is stopped one step earlier, by
+  `resolve_task_dir`, with the same refusal wording. See
   [Filesystem Safety](./filesystem-safety.md#2-path--name-safety--validate-at-the-chokepoint-before-pathjoin).
+- `task.py create --slug` is user input joined into the task directory name:
+  a slug containing `/`, `\`, or `..` is rejected (exit 1) rather than
+  sanitized. `task.py add-context <dir> <file>` applies the same rule to the
+  JSONL filename, which is otherwise joined onto the task dir unvalidated.
 - `task.py current --json` prints `{current_task, source, stale}` on one
   line (`ensure_ascii=False`); `current_task` is `null` when there is no
   active task, otherwise `{dir, id, title, status, parent, children, branch,
   base_branch}` read from that task's `task.json`. Exit 0 when a task is
   active, exit 1 when `current_task` is `null`. Human output (no `--json`)
-  is unchanged.
+  is unchanged. When that `task.json` cannot be read, the fields are still
+  emitted as `null` and a fourth key `error` — `{file, reason, message}`,
+  with `reason` from `read_json_checked` — is added so all-null output is
+  distinguishable from a task whose fields genuinely are null. The key is
+  absent on the healthy path, and the exit code is unchanged.
 - `task.py list --json` prints `{tasks: [...]}` on one line, one object per
   task after `--mine`/`--status` filtering: `{dir, id, title, status,
   display_status, priority, assignee, parent, children, package}`. With
@@ -606,6 +645,13 @@ a `.current-task` fallback or a Python hook directory.
 | `current --source` without context | Prints `(none)` and `Source: none` |
 | `current --json` with active task | `{current_task: {...}, source, stale}`; exit 0 |
 | `current --json` with no active task | `{current_task: null, source, stale}`; exit 1 |
+| `current --json` with an active task whose `task.json` is corrupt/unreadable | `{current_task: {... nulls}, source, stale, error: {file, reason, message}}`; exit 0 |
+| `set-branch` / `set-base-branch` / `set-scope` / `set-meta` on a corrupt or unreadable `task.json` | Names the file and the failure class on stderr; exit 1; file untouched |
+| Any of those four when the write fails | Reports the failed write instead of the `✓` line; exit 1 |
+| `create` when the `task.json` write fails | No "Created task", nothing on stdout, exit 1; a directory it created is removed |
+| `archive` when the status write or a child re-parent write fails | Nothing is moved; the failure and the affected child are named; exit 1 |
+| `list` with one corrupt `task.json` | Other tasks still list; the skipped task is named on stderr with the reason; exit 0 |
+| `start` on a task whose `task.json` is corrupt, or whose status write fails | Session pointer is still set and `after_start` hooks still run; the skipped status flip is named on stderr; exit 0 |
 | `list --json --mine` with no developer configured | `{"error": "No developer set"}` on stderr; exit 1 |
 | `list --json` / `list` with a parent whose stored status is `planning` and a child past `planning` | `display_status` (and human list label) shows `"active"`; `task.json.status` on disk stays `planning` |
 | `archive` / `validate` when `task.json.branch` no longer exists locally | Prints a yellow warning; does not block archive or fail validation |
@@ -615,7 +661,10 @@ a `.current-task` fallback or a Python hook directory.
 | `finish` with a missing exact match and multiple session files | Returns no current task and deletes nothing |
 | `finish` without context key | Returns no current task; does not delete `.current-task` |
 | `archive` for a task referenced by runtime sessions | Deletes those session files even when `finish` was skipped |
-| `archive` on a name that resolves outside `.trellis/tasks/` (e.g. `archive src` falling back to `repo_root/src`) | Refuses with "refusing to archive ..." and exit 1; source directory is left untouched |
+| `archive` on a name that is not a task under `.trellis/tasks/` (e.g. `archive src`) | Refuses with "refusing to archive ..." and exit 1; source directory is left untouched |
+| Any task-dir argument that traverses out, is an outside absolute path, or is a symlink to outside the tasks dir | `resolve_task_dir` prints "refusing to use ..." naming the resolved path and returns `None`; the command exits 1 without reading or writing anything |
+| A bare task name matching two or more `-<name>` suffixes | Every match is listed, the command exits 1; no task is picked |
+| `create --slug` or `add-context <file>` containing `/`, `\`, or `..` | Rejected with exit 1 before any file is created |
 
 ##### 5. Good/Base/Bad Cases
 
@@ -1232,8 +1281,8 @@ Windows; that drift causes misleading bootstrap instructions.
 # In docstrings
 """
 Usage:
-    python task.py create "My Task"      # Windows
-    python3 task.py create "My Task"     # macOS/Linux
+    python task.py create "My Task" -d "What it delivers"      # Windows
+    python3 task.py create "My Task" -d "What it delivers"     # macOS/Linux
 """
 
 # In error messages
@@ -1271,9 +1320,38 @@ Task lifecycle events (`after_create`, `after_start`, `after_finish`, `after_arc
 # config.py — read hook commands from config
 def get_hooks(event: str, repo_root: Path | None = None) -> list[str]
 
-# task.py — execute hooks (never blocks main operation)
-def _run_hooks(event: str, task_json_path: Path, repo_root: Path) -> None
+# task_utils.py — execute hooks (never blocks main operation)
+HOOK_TIMEOUT_SECONDS = 60
+HOOK_KILL_GRACE_SECONDS = 5
+def run_task_hooks(event: str, task_json_path: Path, repo_root: Path) -> None
+def _kill_hook_tree(proc: subprocess.Popen[str]) -> None
 ```
+
+### Trust boundary
+
+**`.trellis/config.yaml` is a repo-committed file whose `hooks:` entries are
+shell commands, executed with `shell=True` from the repo root with the caller's
+full environment.** Cloning a repository and running `task.py create` in it runs
+whatever that repository's `config.yaml` declares for `after_create` — no
+prompt, no allow-list. This is inherent to the feature (a hook is a shell
+command by definition), and it is stated here because it was not stated
+anywhere before: reviewers of a pull request that touches `config.yaml` are
+reviewing executable code, and `config.yaml` deserves the same scrutiny as a
+CI workflow file.
+
+Consequences for implementers:
+
+- Never widen the hook surface to a file that is *not* already reviewed like
+  code (a fetched template, a cache, a `.local` override sourced from a remote).
+- Never add a hook event that fires from a *read-only* command. Today every
+  event follows an explicit mutation the user asked for (`create`, `start`,
+  `finish`, `archive`); a hook on `list` or `current` would turn inspecting a
+  cloned repo into executing it.
+- The bounded timeout below is a liveness guarantee, not a security boundary.
+  It does not contain what a hook can do. The tree-kill on timeout is part of
+  that same liveness guarantee: a hook that calls `setsid` itself leaves the
+  process group and survives the kill. That is accepted and out of scope —
+  arbitrary code cannot be contained by the code that launches it.
 
 ### Contracts
 
@@ -1305,27 +1383,101 @@ import subprocess
 
 env = {**os.environ, "TASK_JSON_PATH": str(task_json_path)}
 
-result = subprocess.run(
+# POSIX: a fresh session puts the shell and every descendant in one process
+# group, which is what makes the timeout able to kill the whole tree.
+popen_kwargs: dict = {}
+if os.name == "posix":
+    popen_kwargs["start_new_session"] = True
+
+with subprocess.Popen(
     cmd,
     shell=True,
     cwd=repo_root,
     env=env,
-    capture_output=True,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
     text=True,
-    encoding="utf-8",    # REQUIRED: cross-platform
-    errors="replace",    # REQUIRED: cross-platform
-)
+    encoding="utf-8",              # REQUIRED: cross-platform
+    errors="replace",              # REQUIRED: cross-platform
+    **popen_kwargs,
+) as proc:
+    try:
+        stdout, stderr = proc.communicate(  # REQUIRED: output is captured, so
+            timeout=HOOK_TIMEOUT_SECONDS,   # an unbounded hook wedges the
+        )                                   # lifecycle command silently
+    except subprocess.TimeoutExpired:
+        _kill_hook_tree(proc)               # whole tree, not just the shell
+        ...
 ```
+
+`capture_output` (here, explicit `PIPE`s) is what makes a missing `timeout=`
+unacceptable rather than merely untidy: a hook waiting on stdin, a network call,
+or an auth prompt produces *no output at all* while it blocks, so the user sees
+`task.py create` hang with an empty terminal and no way to tell what it is
+waiting for. The timeout is a module constant, not a config key — a hook slow
+enough to need more than a minute belongs in a background job, not on a
+lifecycle event.
+
+#### Timeout kills the process tree, not the direct child
+
+`shell=True` means the direct child is the shell; the hook's actual work runs in
+its children. `subprocess.run(..., timeout=...)` kills only that shell, which
+leaves two defects:
+
+1. Grandchildren survive the timeout and keep running after the lifecycle
+   command has returned — they also still hold the inherited stdout/stderr
+   pipes.
+2. Anything that collects output after the kill blocks until those orphans
+   release the pipes. That is the "command that never returns" the timeout
+   exists to prevent, reintroduced by the timeout handler itself.
+
+So hooks run through `Popen` + `communicate(timeout=...)`, and the timeout path
+kills the tree via `_kill_hook_tree(proc)`:
+
+| Platform | Mechanism | Fallback |
+|----------|-----------|----------|
+| POSIX | `start_new_session=True` at spawn, then `os.killpg(os.getpgid(proc.pid), SIGKILL)`, guarded against `ProcessLookupError` / `PermissionError` | `proc.kill()` |
+| Windows | `taskkill /F /T /PID <pid>` (best effort) | `proc.kill()` |
+
+Output is then collected under a **bounded** grace —
+`proc.communicate(timeout=HOOK_KILL_GRACE_SECONDS)`. If that also times out, the
+partial output already carried on the `TimeoutExpired` is printed and the pipes
+are abandoned. Never collect post-kill output unbounded: an orphan that escaped
+the kill would hang the lifecycle command forever.
+
+**Known limitation:** a hook that calls `setsid` itself (or otherwise leaves the
+group) escapes the kill and survives. Accepted and out of scope — see the trust
+boundary above.
+
+### Diagnostics
+
+A hook whose only symptom is "nothing happened" is undebuggable. Every failure
+path names, at minimum, the **event**, the **command**, and **why it failed**:
+
+| Failure | Must report |
+|---------|-------------|
+| Non-zero exit | event, command, exit status, cwd, captured stdout **and** stderr |
+| Timeout | event, command, the timeout value, cwd, whatever was captured before the kill |
+| Exception | event, command, exception **type** and message |
+
+Captured streams are truncated (`HOOK_OUTPUT_LIMIT`) so a chatty hook cannot
+bury the lifecycle command's own output. Discarding stdout is not acceptable:
+a script that reports its errors on stdout is common, and a hook that prints
+its diagnosis and exits 1 would otherwise show the exit code with no reason.
 
 ### Validation & Error Matrix
 
 | Condition | Behavior |
 |-----------|----------|
 | No `hooks` key in config | No-op (empty list) |
-| `hooks` is not a dict | No-op (empty list) |
+| `hooks` is present but not a mapping | `[WARN]` naming the value, no-op |
 | Event key missing | No-op (empty list) |
-| Hook command exits non-zero | `[WARN]` to stderr, continues to next hook |
-| Hook command throws exception | `[WARN]` to stderr, continues to next hook |
+| Event value is a scalar, not a list (`after_create: echo hi`) | `[WARN]` naming the event and showing the list form — it parses fine and would otherwise register nothing |
+| Hook command exits non-zero | `[WARN]` with exit status + both streams, continues to next hook |
+| Hook command exceeds `HOOK_TIMEOUT_SECONDS` | Whole process tree killed; `[WARN]` naming the timeout, continues to next hook |
+| Hook spawned a grandchild that outlives the shell | Killed with the group (POSIX) / tree (Windows); a `setsid`-escaping hook survives |
+| Post-kill output collection still blocked | Abandoned after `HOOK_KILL_GRACE_SECONDS`; whatever partial output exists is printed |
+| Hook command throws exception | `[WARN]` with exception type, continues to next hook |
 | `linearis` not installed | Hook fails with warning, task operation succeeds |
 
 ### Wrong vs Correct
@@ -1335,14 +1487,61 @@ result = subprocess.run(
 result = subprocess.run(cmd, shell=True, check=True)  # Raises on failure!
 ```
 
-#### Correct — warn and continue
+#### Wrong — unbounded, and silent about why it failed
+```python
+result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+if result.returncode != 0:
+    print(f"[WARN] Hook failed: {cmd}", file=sys.stderr)  # which exit code?
+    if result.stderr.strip():                             # stdout dropped
+        print(f"  {result.stderr.strip()}", file=sys.stderr)
+```
+
+#### Wrong — timeout that kills only the shell
+```python
+# The shell dies; `sleep 300 &` does not. The orphan keeps the captured pipes
+# open, so any post-kill collect blocks on it.
+result = subprocess.run(cmd, shell=True, capture_output=True,
+                        timeout=HOOK_TIMEOUT_SECONDS)
+```
+
+#### Correct — warn and continue, bounded, diagnosable
 ```python
 try:
-    result = subprocess.run(cmd, shell=True, ...)
-    if result.returncode != 0:
-        print(f"[WARN] Hook failed: {cmd}", file=sys.stderr)
+    with subprocess.Popen(cmd, shell=True, ..., **popen_kwargs) as proc:
+        try:
+            stdout, stderr = proc.communicate(timeout=HOOK_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired as e:
+            _kill_hook_tree(proc)                  # process group / tree
+            stdout = _decode_hook_output(e.stdout)  # bytes on some paths
+            stderr = _decode_hook_output(e.stderr)
+            try:
+                rest_out, rest_err = proc.communicate(
+                    timeout=HOOK_KILL_GRACE_SECONDS  # bounded, never unbounded
+                )
+                stdout = rest_out or stdout
+                stderr = rest_err or stderr
+            except (subprocess.TimeoutExpired, OSError, ValueError):
+                pass
+            print(
+                f"[WARN] Hook timed out ({event}) after "
+                f"{HOOK_TIMEOUT_SECONDS}s: {cmd}",
+                file=sys.stderr,
+            )
+            ...
+            continue
+        if proc.returncode != 0:
+            print(
+                f"[WARN] Hook failed ({event}): exit {proc.returncode}: {cmd}",
+                file=sys.stderr,
+            )
+            print(f"  cwd: {repo_root}", file=sys.stderr)
+            _print_hook_stream("stdout", stdout or "")
+            _print_hook_stream("stderr", stderr or "")
 except Exception as e:
-    print(f"[WARN] Hook error: {cmd} — {e}", file=sys.stderr)
+    print(
+        f"[WARN] Hook error ({event}): {cmd} — {type(e).__name__}: {e}",
+        file=sys.stderr,
+    )
 ```
 
 ### Hook Script Pattern
@@ -1791,18 +1990,52 @@ commit_hash = rest.split()[0]
 ## Config helpers
 
 All keys in `.trellis/config.yaml` MUST be read through `common/config.py`
-(or its hook-side mirror `common/trellis_config.py` for hooks that cannot
-import the full task helpers). Both modules share the same parser chain:
+(or `common/trellis_config.py` for hooks that cannot import the full task
+helpers). Both go through one parser chain:
 
 ```
-_load_config(repo_root)
-  -> parse_simple_yaml(content)
+_load_config(repo_root)                      # config.py
+read_trellis_config(repo_root)               # trellis_config.py
+  -> parse_simple_yaml(content, source)      # trellis_config.py — the only copy
     -> _strip_inline_comment(value)
     -> _unquote(value)
 ```
 
 This is a load-bearing chain. Any new key added to `.trellis/config.yaml`
 must flow through it — do not write a custom reader, even a "small" one.
+
+**`parse_simple_yaml` lives in `trellis_config.py` and nowhere else.**
+`config.py` imports it. The direction is forced: `trellis_config.py` imports
+nothing from the package, because hooks copy it out as a single standalone
+file, while `config.py` depends on `paths.py`. The two modules previously
+carried byte-equivalent copies of all five parser functions with only
+`config.py`'s under test — a drift hazard with no upside. A second copy is a
+regression, and `regression.test.ts` asserts `config.py` has none.
+
+### Supported YAML subset, and what happens outside it
+
+Every parsed value is a **string** — the parser does no type coercion, so
+`false` arrives as `"false"` and `2000` as `"2000"`. Accessors coerce (see
+below). Supported: `key: value`, nested mappings by indentation, `- ` lists of
+scalars, whole-line and inline `#` comments, one layer of matching quotes.
+
+Anything outside that subset is **named on stderr against the file and line,
+and skipped** — it is never parsed into a plausible-looking wrong value:
+
+| Construct | Was | Is |
+|-----------|-----|-----|
+| Mapping inside a list (`- name: cli` / `  path: x`) | `path` hoisted to a **top-level** key — a nested key silently becoming a root key | Warned, skipped; the parent dict is untouched |
+| Block scalar (`notes: \|`) | `{"notes": "\|"}` — marker stored as the value, body dropped | Warned, key and body skipped |
+| Anchor / alias / merge key / flow collection | stored as the literal string `&b`, `*b`, `[a, b]` … | Warned, skipped |
+
+Only **unquoted** scalars are inspected, so `cmd: "a | b"` is still the string
+the user wrote. A well-formed config produces no output at all.
+
+`_load_config` is fail-open in both modules: an unreadable file returns `{}`
+silently, and a parse *exception* (e.g. `RecursionError` from a pathologically
+nested file) warns once and returns `{}`. A malformed config must never take
+down `task.py create` — that asymmetry existed until 0.6.x, where `config.py`
+caught only `(OSError, IOError)` around a call that could raise anything.
 
 ### Anti-pattern: custom YAML reader that bypasses `_strip_inline_comment`
 
@@ -1837,18 +2070,9 @@ DEFAULT_SESSION_AUTO_COMMIT = True
 def get_session_auto_commit(repo_root: Path | None = None) -> bool:
     config = _load_config(repo_root)
     raw = config.get("session_auto_commit", DEFAULT_SESSION_AUTO_COMMIT)
-    if isinstance(raw, bool):
-        return raw
-    s = str(raw).strip().lower()
-    if s in ("true", "yes", "1", "on"):
-        return True
-    if s in ("false", "no", "0", "off"):
-        return False
-    print(
-        f"[WARN] invalid session_auto_commit value: {raw!r}; using true (default)",
-        file=sys.stderr,
+    return coerce_config_bool(
+        raw, DEFAULT_SESSION_AUTO_COMMIT, "session_auto_commit"
     )
-    return DEFAULT_SESSION_AUTO_COMMIT
 ```
 
 Each new key gets its own `get_<key>` accessor. The accessor owns:
@@ -1861,14 +2085,23 @@ Each new key gets its own `get_<key>` accessor. The accessor owns:
 
 ### Pattern: boolean tolerance
 
-Boolean accessors must accept native YAML `true` / `false` plus the
-case-insensitive string aliases `true / false / yes / no / 1 / 0 / on / off`.
-Anything else falls back to the default with a stderr warning.
+**Every boolean config value goes through `coerce_config_bool(value, default,
+label)`.** It accepts native YAML `true` / `false` plus the case-insensitive
+string aliases `true / false / yes / no / 1 / 0 / on / off`; anything else
+falls back to `default` with a stderr warning naming `label`.
 
 This breadth matters because the simple YAML parser does not coerce
 `true`/`false` to native bool — values arrive as strings. A reader that only
 checks `raw is True` misses every quoted-or-unquoted string variant the user
 naturally writes.
+
+One helper, not one per key. The failure mode is not a missing alias, it is
+two accessors disagreeing about the same word: `_is_true_config_value`
+(reading `packages.*.git`) accepted only the literal `"true"` while
+`get_session_auto_commit` accepted the full set, so `git: yes` silently meant
+**false** — the opposite branch, no warning, in the accessor that decides
+whether a package is its own git repository. An accepted-here/rejected-there
+split is worse than a narrow set applied consistently.
 
 ### Pattern: document every key in `templates/trellis/config.yaml`
 
@@ -2106,7 +2339,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 task.py create "Add login" --slug add-login
+  python3 task.py create "Add login" --description "Email + password sign-in" --slug add-login
   python3 task.py list --mine --status in_progress
 """
     )
