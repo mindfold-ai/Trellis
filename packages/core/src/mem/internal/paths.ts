@@ -21,6 +21,71 @@ export const ZCODE_DB = path.join(HOME, ".zcode", "cli", "db", "db.sqlite");
  * this adapter needs no database and adds no dependency. */
 export const GROK_SESSIONS = path.join(HOME, ".grok", "sessions");
 
+/**
+ * OpenCode's data root: `$XDG_DATA_HOME/opencode`, falling back to
+ * `~/.local/share/opencode`.
+ *
+ * OpenCode applies this XDG rule on every platform — it has no Windows
+ * `%LOCALAPPDATA%` or macOS `Application Support` branch — so a Windows install
+ * stores its database under `%USERPROFILE%\.local\share\opencode` unless
+ * `XDG_DATA_HOME` is set. Verified against the shipped 1.18 bundle:
+ * `XDG_DATA_HOME || join(homedir, ".local", "share")` then `join(that,
+ * "opencode")`.
+ *
+ * Read per call rather than at module load so a caller (or test) that sets
+ * `XDG_DATA_HOME` sees its own value.
+ */
+export function opencodeDataDir(): string {
+  const xdg = process.env.XDG_DATA_HOME?.trim();
+  if (xdg) return path.join(xdg, "opencode");
+  return path.join(HOME, ".local", "share", "opencode");
+}
+
+/**
+ * Resolve the OpenCode session database, or `undefined` when this machine has
+ * none (a normal empty result, not an error).
+ *
+ * Mirrors OpenCode's own resolution order:
+ *   1. `OPENCODE_DB` — absolute path used as-is, relative name joined to the
+ *      data dir, and `:memory:` meaning there is no file to read at all.
+ *   2. `<data>/opencode.db` — the release channels (`latest` / `beta` /
+ *      `prod`) and anyone setting `OPENCODE_DISABLE_CHANNEL_DB`.
+ *   3. `<data>/opencode-<channel>.db` — other channels write a suffixed file.
+ *      The channel is baked into the user's binary and is not discoverable
+ *      from here, so the most recently written one wins.
+ */
+export function opencodeDbPath(): string | undefined {
+  const dir = opencodeDataDir();
+  const override = process.env.OPENCODE_DB?.trim();
+  if (override) {
+    if (override === ":memory:") return undefined;
+    const expanded = expandHome(override);
+    return path.isAbsolute(expanded) ? expanded : path.join(dir, expanded);
+  }
+
+  const primary = path.join(dir, "opencode.db");
+  if (fs.existsSync(primary)) return primary;
+
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return undefined;
+  }
+  let newest: { file: string; mtimeMs: number } | undefined;
+  for (const entry of entries) {
+    if (!entry.isFile() || !/^opencode-.+\.db$/.test(entry.name)) continue;
+    const file = path.join(dir, entry.name);
+    try {
+      const { mtimeMs } = fs.statSync(file);
+      if (!newest || mtimeMs > newest.mtimeMs) newest = { file, mtimeMs };
+    } catch {
+      /* raced away between readdir and stat — skip it */
+    }
+  }
+  return newest?.file;
+}
+
 function expandHome(p: string): string {
   if (p === "~") return HOME;
   if (p.startsWith(`~${path.sep}`)) return path.join(HOME, p.slice(2));
