@@ -220,7 +220,7 @@ def read_json(path: Path) -> dict | None:
     """Read JSON file, return None on error."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError, OSError, UnicodeDecodeError):
         return None
 
 
