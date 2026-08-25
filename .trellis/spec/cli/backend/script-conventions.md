@@ -356,10 +356,21 @@ The single source of truth for all JSON file operations. Replaces 8 duplicated `
 
 | Function | Signature | Returns | Error Behavior |
 |----------|-----------|---------|----------------|
-| `read_json` | `(path: Path) -> dict \| None` | Parsed dict, or `None` | Returns `None` on `FileNotFoundError`, `JSONDecodeError`, `OSError` |
-| `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of `JSON_READ_MISSING` / `INVALID` / `UNREADABLE` / `UNDECODABLE` / `NOT_OBJECT` / `EMPTY` |
+| `read_json` | `(path: Path) -> dict \| None` | Parsed dict, or `None` | Returns `None` on `FileNotFoundError`, `JSONDecodeError`, `OSError`, `UnicodeDecodeError` |
+| `read_json_checked` | `(path: Path) -> tuple[dict \| None, str \| None]` | `(data, None)`, or `(None, reason)` | `reason` is one of the `JSON_READ_*` constants; compare against the constant, never the literal (see the value table below) |
 | `describe_json_read_failure` | `(path: Path, reason: str \| None) -> tuple[str, str]` | `(what happened, what to do)` | Never raises; unknown reasons get a generic pair |
 | `write_json` | `(path: Path, data: dict) -> bool` | `True` on success | Returns `False` on `OSError`, `IOError` |
+
+`read_json_checked` reason constants and the values they carry:
+
+| Constant | Value | Raised by |
+|----------|-------|-----------|
+| `JSON_READ_MISSING` | `"missing"` | `FileNotFoundError` |
+| `JSON_READ_UNDECODABLE` | `"undecodable"` | `UnicodeDecodeError` — the bytes are not UTF-8 |
+| `JSON_READ_UNREADABLE` | `"unreadable"` | any other `OSError` (permissions, I/O) |
+| `JSON_READ_INVALID` | `"invalid"` | `json.JSONDecodeError` |
+| `JSON_READ_NOT_OBJECT` | `"not-object"` | parsed, but the top level is not a dict |
+| `JSON_READ_EMPTY` | `"empty"` | parsed to `{}` — carries none of the fields callers read |
 
 **Contracts**:
 - Always uses `encoding="utf-8"` and `ensure_ascii=False`

@@ -6263,6 +6263,31 @@ print(json.dumps({
     );
   });
 
+  it("[audit] a non-UTF-8 session file degrades to no active task", () => {
+    // The tolerant `read_json` caught FileNotFoundError / JSONDecodeError /
+    // OSError. UnicodeDecodeError is none of those, so a session file that is
+    // not UTF-8 raised straight out of a read whose whole contract is to
+    // return None, and the hook path failed instead of degrading.
+    setupTaskRepo();
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(sessionsDir, "codex_binary.json"),
+      Buffer.from([0x7b, 0x22, 0xff, 0x22, 0x7d]),
+    );
+    const taskScriptPath = path.join(tmpDir, ".trellis", "scripts", "task.py");
+
+    const proc = spawnSync(pythonCmd, [taskScriptPath, "finish"], {
+      cwd: tmpDir,
+      encoding: "utf-8",
+      env: sessionEnv({ CODEX_THREAD_ID: "binary" }),
+    });
+
+    expect(proc.stderr ?? "").not.toContain("UnicodeDecodeError");
+    expect(proc.status).toBe(0);
+    expect(proc.stdout).toContain("No current task set");
+  });
+
   // ------------------------------------------------------------
   // inject-workflow-state.py hook (workflow-enforcement-v2)
   // ------------------------------------------------------------

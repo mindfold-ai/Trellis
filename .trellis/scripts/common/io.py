@@ -31,7 +31,10 @@ def read_json(path: Path) -> dict | None:
     """
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
+    except (FileNotFoundError, json.JSONDecodeError, OSError, UnicodeDecodeError):
+        # UnicodeDecodeError is not an OSError. Without it here a non-UTF-8
+        # session file raises out of a tolerant read, so the hook path fails
+        # instead of degrading to "no active task".
         return None
 
 
