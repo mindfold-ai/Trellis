@@ -18,6 +18,7 @@ JSON_READ_INVALID = "invalid"
 JSON_READ_UNREADABLE = "unreadable"
 JSON_READ_NOT_OBJECT = "not-object"
 JSON_READ_EMPTY = "empty"
+JSON_READ_UNDECODABLE = "undecodable"
 
 
 def read_json(path: Path) -> dict | None:
@@ -46,6 +47,12 @@ def read_json_checked(path: Path) -> tuple[dict | None, str | None]:
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, JSON_READ_MISSING
+    except UnicodeDecodeError:
+        # Not an OSError, so it escaped both handlers and surfaced as a
+        # traceback. The point of this reader is that every failure mode stays
+        # nameable, and "not valid UTF-8" is a different repair from
+        # "not valid JSON".
+        return None, JSON_READ_UNDECODABLE
     except OSError:
         return None, JSON_READ_UNREADABLE
 
@@ -84,6 +91,11 @@ def describe_json_read_failure(path: Path, reason: str | None) -> tuple[str, str
         return (
             f"{path}: contains an empty JSON object",
             "Restore the task fields (or recreate the task), then retry.",
+        )
+    if reason == JSON_READ_UNDECODABLE:
+        return (
+            f"{path}: not valid UTF-8 text",
+            "Re-save the file as UTF-8 (or restore it from git), then retry.",
         )
     return (f"{path}: could not be loaded", "Inspect the file, then retry.")
 

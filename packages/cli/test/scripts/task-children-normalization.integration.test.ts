@@ -42,8 +42,8 @@ function setupRepo(tmp: string): void {
     "session_auto_commit: false\n",
   );
   // `task.py create` refuses to run without a developer identity. Write the
-  // `.developer` file rather than relying on TRELLIS_DEVELOPER, which this
-  // branch does not implement.
+  // `.developer` file rather than exporting an env var, so this fixture does
+  // not depend on which identity sources the runtime happens to support.
   fs.writeFileSync(path.join(tmp, ".trellis", ".developer"), "name=tester\n");
 }
 
