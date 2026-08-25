@@ -306,6 +306,16 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             # Comment / unknown row without a path — skip silently
             continue
 
+        if not isinstance(file_path, str):
+            # A truthy non-string (e.g. {"file": 1}) reached path joining and
+            # raised TypeError, so validation crashed on the row it exists to
+            # report.
+            print(
+                f"  {colored(f'{file_name}:{line_num}: `file` must be a string path', Colors.RED)}"
+            )
+            errors += 1
+            continue
+
         real_entries += 1
         full_path = _resolve_context_entry_path(file_path, repo_root, task_dir)
         if entry_type == "directory":

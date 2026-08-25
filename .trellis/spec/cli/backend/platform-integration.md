@@ -1468,7 +1468,7 @@ leave every unrelated path on normal repository-root resolution.
 - **Consumer tolerance**: `inject-subagent-context.py` skips rows without a `file` key and still injects task artifacts.
 - **Validate placeholder**: `task.py validate` passes for empty jsonl and fails with a remediation message for a legacy `{"_example": …}` row, in both active and archived tasks.
 - **Validate archive binding**: cover archived self files and directories, unrelated paths, a missing archive copy with a recreated active task, traversal, symlink escape, and unchanged active-task behavior.
-- **List-context empty**: `task.py list-context` prints "no curated entries yet" for an uncurated jsonl.
+- **List-context empty**: `task.py list-context` prints "(no curated entries yet)" for an uncurated jsonl.
 - **Artifact gates**: workflow-state, SessionStart, and continue distinguish PRD-only lightweight tasks from complex tasks that still need `design.md` / `implement.md`.
 
 ## Context Injection Limits Contract (`context_injection`)

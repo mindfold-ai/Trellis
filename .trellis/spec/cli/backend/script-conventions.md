@@ -2440,6 +2440,7 @@ Examples:
     # create command
     create_parser = subparsers.add_parser("create", help="Create new task")
     create_parser.add_argument("title", help="Task title")
+    create_parser.add_argument("--description", help="One-line summary")
     create_parser.add_argument("--slug", help="URL-friendly name")
 
     # list command

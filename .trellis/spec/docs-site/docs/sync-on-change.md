@@ -177,7 +177,10 @@ Scope: any edit to `implement.jsonl` / `check.jsonl` seed format, `task.json` sc
 
 ### Contract to keep in sync
 
-- **Created state**: `task.py create` writes empty `implement.jsonl` / `check.jsonl` — no placeholder row
+- **Created state**: on sub-agent-capable platforms `task.py create` writes empty
+  `implement.jsonl` / `check.jsonl` — no placeholder row. Platforms that load specs
+  through skills instead of JSONL (Codex inline mode, Kilo, Antigravity, Devin) get
+  neither file
 - **Curated row schema**: `{"file": "<path>", "reason": "<why>"}`
 - **Consumer behavior**: row without `file` is skipped by every consumer (hook, prelude, list-context)
 - **Legacy placeholder row** `{"_example": "..."}`: rejected by `task.py validate` and by PR preflight — delete it

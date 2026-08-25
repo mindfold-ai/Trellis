@@ -859,16 +859,24 @@ def _plan_reported_refs(
 ) -> list[tuple[Path, int]]:
     """Find remaining mentions of the old task name elsewhere under .trellis/.
 
-    These are reported, never rewritten: journal entries, session pointers and
-    workflow prose cite tasks in free text, and a blind substitution there is
-    how a rename turns into a diff nobody asked for. The boundary-anchored
-    pattern keeps a longer task name that merely contains this one out.
+    These are reported, never rewritten: journal entries and workflow prose
+    cite tasks in free text, and a blind substitution there is how a rename
+    turns into a diff nobody asked for. The boundary-anchored pattern keeps a
+    longer task name that merely contains this one out.
+
+    Runtime session pointers are excluded because they are not prose and they
+    *are* rewritten — see ``repoint_task_in_sessions``. Listing them here as
+    "not rewritten" would be a false statement about the one file whose
+    staleness actually breaks the next command.
     """
+    from .active_task import _runtime_sessions_dir
+
     pattern = re.compile(
         r"(?<![0-9A-Za-z_-])" + re.escape(old_name) + r"(?![0-9A-Za-z_-])"
     )
     hits: list[tuple[Path, int]] = []
     trellis_dir = repo_root / DIR_WORKFLOW
+    sessions_dir = _runtime_sessions_dir(repo_root)
     if not trellis_dir.is_dir():
         return hits
 
@@ -876,6 +884,8 @@ def _plan_reported_refs(
         if not path.is_file() or path in rewritten:
             continue
         if path == task_dir or task_dir in path.parents:
+            continue
+        if path.parent == sessions_dir:
             continue
         if any(
             part == "__pycache__" or part.startswith(".backup-")
@@ -917,6 +927,9 @@ def _render_rename_plan(plan: _RenamePlan, repo_root: Path) -> list[str]:
         lines.append(
             f"  reported (not rewritten): {_repo_relative_path(path, repo_root)}:{lineno}"
         )
+    lines.append(
+        f"  sessions: any active-task pointer at {plan.old_rel} is repointed to {plan.new_rel}"
+    )
     return lines
 
 
@@ -974,6 +987,15 @@ def _apply_rename(plan: _RenamePlan, repo_root: Path) -> int:
         )
         _rename_interrupted(plan)
         return 1
+
+    # Last, and after the move: a session pointing at the old path would now
+    # resolve to a missing directory, so `current` would report the task stale
+    # and the context hook would inject nothing until the user ran `start`
+    # again. Archive clears these pointers because the task is leaving; rename
+    # moves them, because the task is still the one being worked on.
+    from .active_task import repoint_task_in_sessions
+
+    repoint_task_in_sessions(str(plan.task_dir), str(plan.new_dir), repo_root)
 
     return 0
 

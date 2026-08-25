@@ -1241,6 +1241,33 @@ describe("regression: JSON read/write failure reporting", () => {
     expect(r.stderr).toContain("not valid UTF-8 text");
   });
 
+  it("[audit] validate reports a non-string `file` instead of crashing on it", () => {
+    // A truthy non-string (e.g. {"file": 1}) reached path joining and raised
+    // TypeError, so validation crashed on the very row it exists to report.
+    expect(
+      runTask([
+        "create",
+        "Typed",
+        "--description",
+        "regression fixture",
+        "--slug",
+        "typed",
+        "--no-start",
+      ]).status,
+    ).toBe(0);
+    const name = `${datePrefix}-typed`;
+    fs.writeFileSync(
+      path.join(path.dirname(taskJsonPath(name)), "implement.jsonl"),
+      `${JSON.stringify({ file: 1, reason: "numeric path" })}\n`,
+      "utf-8",
+    );
+
+    const r = runTask(["validate", name]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).not.toContain("Traceback");
+    expect(r.stdout).toContain("`file` must be a string path");
+  });
+
   it.skipIf(!canProvokePermissionFailure)(
     "[audit] set-meta on an unreadable task.json reports permissions, not a parse error",
     () => {
@@ -11851,6 +11878,40 @@ describe("regression: task.py rename rewrites every reference in one pass", () =
     expect(ownDate.status, ownDate.stderr).toBe(0);
     expect(ownDate.stderr).toContain("should not include the MM-DD prefix");
     expect(fs.existsSync(taskDir(`${datePrefix}-renamed`))).toBe(true);
+  });
+
+  it("[task-rename] moves an active-task session pointer to the new name", () => {
+    // Rename is the one lifecycle step where the task survives under a new
+    // name. Session pointers used to keep naming the old directory, so the
+    // very next turn resolved the active task as stale/missing.
+    const target = create("target");
+    const other = create("bystander");
+    const sessionsDir = path.join(tmpDir, ".trellis", ".runtime", "sessions");
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    const sessionFile = path.join(sessionsDir, "sess-a.json");
+    const bystanderFile = path.join(sessionsDir, "sess-b.json");
+    fs.writeFileSync(
+      sessionFile,
+      JSON.stringify({ current_task: `.trellis/tasks/${target}` }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      bystanderFile,
+      JSON.stringify({ current_task: `.trellis/tasks/${other}` }),
+      "utf-8",
+    );
+
+    const r = runTask("rename", target, "renamed");
+    expect(r.status, r.stderr).toBe(0);
+
+    const renamed = `${datePrefix}-renamed`;
+    expect(
+      JSON.parse(fs.readFileSync(sessionFile, "utf-8")).current_task,
+    ).toBe(`.trellis/tasks/${renamed}`);
+    // A session on a different task is left exactly as it was.
+    expect(
+      JSON.parse(fs.readFileSync(bystanderFile, "utf-8")).current_task,
+    ).toBe(`.trellis/tasks/${other}`);
   });
 
   it("[task-rename] refuses to rename an archived task", () => {

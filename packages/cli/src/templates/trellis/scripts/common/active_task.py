@@ -578,6 +578,26 @@ def _canonical_task_ref(task_path: str, repo_root: Path) -> str | None:
         return None
 
 
+def _relative_task_ref(task_path: str, repo_root: Path) -> str:
+    """Repo-relative posix ref for a task path that need not exist.
+
+    `_canonical_task_ref` resolves through the filesystem and so refuses a task
+    directory that has been moved away. Rename needs to name both sides of the
+    move, one of which is always absent.
+    """
+    normalized = normalize_task_ref(task_path)
+    if not normalized:
+        return ""
+    candidate = Path(normalized)
+    if not candidate.is_absolute():
+        return normalized
+    try:
+        return candidate.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        # Outside the repo — refuse rather than store an absolute pointer.
+        return ""
+
+
 def _active_from_ref(
     task_ref: str | None,
     repo_root: Path,
@@ -755,6 +775,48 @@ def clear_task_from_sessions(task_path: str, repo_root: Path) -> int:
             cleared += 1
 
     return cleared
+
+
+def repoint_task_in_sessions(old_path: str, new_path: str, repo_root: Path) -> int:
+    """Move every session pointer from `old_path` to `new_path`.
+
+    Rename is the one lifecycle step where the task survives under a different
+    name, so clearing the pointers (what archive does) would be wrong: the user
+    would silently lose their active task and have to run `task.py start`
+    again to get context injection back. Repointing keeps the session valid
+    across the rename.
+    """
+    # Not `_canonical_task_ref`: the caller repoints *after* moving the
+    # directory, so `old_path` no longer exists and canonicalization — which
+    # requires an existing directory — would return None for exactly the ref we
+    # need to match.
+    target = _relative_task_ref(old_path, repo_root)
+    replacement = _relative_task_ref(new_path, repo_root)
+    if not target or not replacement:
+        return 0
+
+    moved = 0
+    sessions_dir = _runtime_sessions_dir(repo_root)
+    if not sessions_dir.is_dir():
+        return moved
+
+    for session_path in sorted(sessions_dir.glob("*.json")):
+        context = _read_json(session_path)
+        if not context:
+            continue
+        current = _string_value(context.get("current_task"))
+        if not current:
+            continue
+        current_ref = _canonical_task_ref(current, repo_root) or _relative_task_ref(
+            current, repo_root
+        )
+        if current_ref != target:
+            continue
+        context["current_task"] = replacement
+        if _write_json(session_path, context):
+            moved += 1
+
+    return moved
 
 
 def get_current_task_source(
