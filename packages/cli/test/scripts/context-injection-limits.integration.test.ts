@@ -623,6 +623,76 @@ print("all-valid")
       });
     });
 
+    describe("inject-subagent-context.py: jsonl file reference containment (#580)", () => {
+      it("does not read a file outside base_path via an absolute jsonl reference", () => {
+        const taskDir = makeTask(tmp, "task-absolute-escape");
+        const secretDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), "trellis-580-secret-"),
+        );
+        const secretPath = path.join(secretDir, "secret.txt");
+        fs.writeFileSync(secretPath, "TOP SECRET CONTENT", "utf-8");
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: secretPath, reason: "escape" }) + "\n",
+          "utf-8",
+        );
+        const relTask = path.relative(tmp, taskDir).split(path.sep).join("/");
+        const out = runHookProbe(
+          tmp,
+          `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
+        );
+        expect(out).not.toContain("TOP SECRET CONTENT");
+        fs.rmSync(secretDir, { recursive: true, force: true });
+      });
+
+      it("does not read a file outside base_path via a ../ traversal jsonl reference", () => {
+        const taskDir = makeTask(tmp, "task-traversal-escape");
+        const secretDir = fs.mkdtempSync(
+          path.join(os.tmpdir(), "trellis-580-secret-"),
+        );
+        fs.writeFileSync(
+          path.join(secretDir, "secret.txt"),
+          "TOP SECRET CONTENT",
+          "utf-8",
+        );
+        const traversal =
+          path.relative(tmp, secretDir).split(path.sep).join("/") +
+          "/secret.txt";
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: traversal, reason: "escape" }) + "\n",
+          "utf-8",
+        );
+        const relTask = path.relative(tmp, taskDir).split(path.sep).join("/");
+        const out = runHookProbe(
+          tmp,
+          `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
+        );
+        expect(out).not.toContain("TOP SECRET CONTENT");
+        fs.rmSync(secretDir, { recursive: true, force: true });
+      });
+
+      it("still reads a legitimate jsonl reference inside base_path (control)", () => {
+        const taskDir = makeTask(tmp, "task-contained-control");
+        fs.writeFileSync(
+          path.join(tmp, "inside.md"),
+          "not secret",
+          "utf-8",
+        );
+        fs.writeFileSync(
+          path.join(taskDir, "implement.jsonl"),
+          JSON.stringify({ file: "inside.md", reason: "control" }) + "\n",
+          "utf-8",
+        );
+        const relTask = path.relative(tmp, taskDir).split(path.sep).join("/");
+        const out = runHookProbe(
+          tmp,
+          `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
+        );
+        expect(out).toContain("=== inside.md ===\nnot secret");
+      });
+    });
+
     describe("task.py validate: JSONL hygiene warnings", () => {
       it("warns (does not error) on a jsonl entry that looks like a code file", () => {
         const taskDir = makeTask(tmp, "task-code-warn");
