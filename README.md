@@ -131,6 +131,25 @@ Yes. Personal workspace journals stay separate per developer, while shared specs
 
 </details>
 
+<details>
+<summary><strong>Can I temporarily compare a project with and without Trellis?</strong></summary>
+
+Yes. `trellis ablate` temporarily removes all supported project-owned Trellis
+surfaces after creating a verified recovery transaction outside the project.
+Start a fresh agent session for the comparison, then run `trellis restore` to
+recover the exact prior state. Use `--dry-run` to preview either operation.
+The private recovery transaction includes exact `.trellis` task, spec, and
+workspace bytes, which may contain user-authored sensitive text, and is kept
+until restore verifies successfully.
+
+This is different from `trellis uninstall` (permanent removal) and
+`TRELLIS_HOOKS=0` (hooks only). Ablation does not launch agents, manage
+worktrees, hide Git changes, or remove the global CLI, channel logs, or host
+transcripts. If a managed path changes while ablated, restore refuses all
+writes until the conflict is resolved.
+
+</details>
+
 ## Star History
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=mindfold-ai/Trellis&type=Date)](https://star-history.dera.page/#mindfold-ai/Trellis&Date)

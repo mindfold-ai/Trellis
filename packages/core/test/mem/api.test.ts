@@ -208,6 +208,162 @@ afterAll(() => {
   nodeFs.rmSync(fakeHome, { recursive: true, force: true });
 });
 
+// ---------- OpenCode sub-agent fixture ----------
+//
+// OpenCode is the only platform with a native `parent_id`, so the
+// `--include-children` merge can only be exercised end-to-end here. The
+// fixture is built with the system python's sqlite3 stdlib module and the
+// block skips when no interpreter is present.
+
+function findPythonForSqlite(): string | null {
+  const { execFileSync } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("node:child_process") as typeof import("node:child_process");
+  for (const cmd of process.platform === "win32"
+    ? ["py", "python"]
+    : ["python3", "python"]) {
+    try {
+      execFileSync(cmd, ["-c", "import sqlite3"], { stdio: "ignore" });
+      return cmd;
+    } catch {
+      /* next */
+    }
+  }
+  return null;
+}
+
+const SQLITE_PY = findPythonForSqlite();
+const OPENCODE_DB = nodePath.join(
+  fakeHome,
+  ".local",
+  "share",
+  "opencode",
+  "opencode.db",
+);
+
+/** One parent session plus one sub-agent child, each with a single user turn. */
+function seedOpencodeParentChild(): void {
+  if (!SQLITE_PY) throw new Error("python unavailable");
+  const { execFileSync } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("node:child_process") as typeof import("node:child_process");
+  nodeFs.mkdirSync(nodePath.dirname(OPENCODE_DB), { recursive: true });
+  const script = `
+import sqlite3, json, os
+db_path = ${JSON.stringify(OPENCODE_DB)}
+if os.path.exists(db_path):
+    os.remove(db_path)
+db = sqlite3.connect(db_path)
+db.execute("CREATE TABLE session (id TEXT PRIMARY KEY, parent_id TEXT, title TEXT, directory TEXT, time_created INTEGER, time_updated INTEGER)")
+db.execute("CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, time_created INTEGER, data TEXT)")
+db.execute("CREATE TABLE part (id TEXT PRIMARY KEY, message_id TEXT, session_id TEXT, time_created INTEGER, data TEXT)")
+cwd = json.loads(${JSON.stringify(JSON.stringify(projectCwd))})
+db.execute("INSERT INTO session VALUES ('ses_parent', NULL, 'parent', ?, 1000, 2000)", (cwd,))
+db.execute("INSERT INTO session VALUES ('ses_child', 'ses_parent', 'sub-agent', ?, 1100, 1900)", (cwd,))
+db.execute("INSERT INTO message VALUES ('m_parent', 'ses_parent', 1000, ?)", (json.dumps({"role": "user"}),))
+db.execute("INSERT INTO message VALUES ('m_child', 'ses_child', 1100, ?)", (json.dumps({"role": "user"}),))
+db.execute("INSERT INTO part VALUES ('p1', 'm_parent', 'ses_parent', 1000, ?)", (json.dumps({"type": "text", "text": "parent mentions orchards"}),))
+db.execute("INSERT INTO part VALUES ('p2', 'm_child', 'ses_child', 1100, ?)", (json.dumps({"type": "text", "text": "child found the marmalade recipe"}),))
+db.commit()
+db.close()
+`;
+  const pyDir = nodeFs.mkdtempSync(nodePath.join(fakeHome, "py-api-"));
+  const pyFile = nodePath.join(pyDir, "fixture.py");
+  nodeFs.writeFileSync(pyFile, script);
+  try {
+    execFileSync(SQLITE_PY, [pyFile], { stdio: "ignore" });
+  } finally {
+    nodeFs.rmSync(pyDir, { recursive: true, force: true });
+  }
+}
+
+describe.skipIf(!SQLITE_PY)("OpenCode sub-agent merging", () => {
+  const savedXdg = process.env.XDG_DATA_HOME;
+  const savedDb = process.env.OPENCODE_DB;
+
+  beforeEach(() => {
+    delete process.env.XDG_DATA_HOME;
+    delete process.env.OPENCODE_DB;
+    seedOpencodeParentChild();
+  });
+
+  afterEach(() => {
+    nodeFs.rmSync(nodePath.join(fakeHome, ".local"), {
+      recursive: true,
+      force: true,
+    });
+    if (savedXdg === undefined) delete process.env.XDG_DATA_HOME;
+    else process.env.XDG_DATA_HOME = savedXdg;
+    if (savedDb === undefined) delete process.env.OPENCODE_DB;
+    else process.env.OPENCODE_DB = savedDb;
+  });
+
+  it("lists both sessions and exposes the parent link", () => {
+    const rows = listMemSessions({
+      filter: { platform: "opencode", cwd: projectCwd, limit: 50 },
+    });
+    expect(rows.map((s) => s.id).sort()).toEqual(["ses_child", "ses_parent"]);
+    expect(rows.find((s) => s.id === "ses_child")?.parent_id).toBe(
+      "ses_parent",
+    );
+  });
+
+  it("without --include-children, a child-only keyword matches the child alone", () => {
+    const result = searchMemSessions({
+      keyword: "marmalade",
+      filter: { platform: "opencode", cwd: projectCwd, limit: 50 },
+    });
+    expect(result.matches.map((m) => m.session.id)).toEqual(["ses_child"]);
+  });
+
+  it("with --include-children, the child's text is absorbed into the parent", () => {
+    const result = searchMemSessions({
+      keyword: "marmalade",
+      filter: { platform: "opencode", cwd: projectCwd, limit: 50 },
+      includeChildren: true,
+    });
+    expect(result.matches.map((m) => m.session.id)).toEqual(["ses_parent"]);
+    expect(result.matches[0]?.descendantsMerged).toBe(1);
+  });
+
+  it("readMemContext merges the child's turns when asked", () => {
+    const merged = readMemContext({
+      sessionId: "ses_parent",
+      filter: { platform: "opencode", cwd: projectCwd },
+      includeChildren: true,
+      turns: 10,
+    });
+    expect(merged.mergedChildren).toBe(1);
+    expect(merged.turns.map((t) => t.text)).toEqual([
+      "parent mentions orchards",
+      "child found the marmalade recipe",
+    ]);
+
+    const alone = readMemContext({
+      sessionId: "ses_parent",
+      filter: { platform: "opencode", cwd: projectCwd },
+      turns: 10,
+    });
+    expect(alone.turns.map((t) => t.text)).toEqual([
+      "parent mentions orchards",
+    ]);
+  });
+
+  it("extractMemDialogue warns but returns the full dialogue for --phase", () => {
+    const result = extractMemDialogue({
+      sessionId: "ses_parent",
+      filter: { platform: "opencode", cwd: projectCwd },
+      phase: "brainstorm",
+    });
+    expect(result.warnings.map((w) => w.code)).toEqual([
+      "opencode-phase-unsupported",
+    ]);
+    expect(result.turns.map((t) => t.text)).toEqual([
+      "parent mentions orchards",
+    ]);
+  });
+});
+
 describe("listMemSessions", () => {
   it("reports a structured warning when the ZCode database is corrupt", () => {
     nodeFs.mkdirSync(nodePath.dirname(ZCODE_DB), { recursive: true });

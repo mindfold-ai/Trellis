@@ -251,6 +251,15 @@ class _Budget:
 def _read_file_bytes(base_path: str, file_path: str) -> bytes | None:
     """Read raw file bytes, return None if file doesn't exist."""
     full_path = os.path.join(base_path, file_path)
+    try:
+        root_real = os.path.realpath(base_path)
+        full_real = os.path.realpath(full_path)
+        # ValueError on Windows when the two sit on different drives; that is
+        # outside base_path by definition, so it fails closed below.
+        if os.path.commonpath([root_real, full_real]) != root_real:
+            return None
+    except (OSError, ValueError):
+        return None
     if os.path.exists(full_path) and os.path.isfile(full_path):
         try:
             with open(full_path, "rb") as f:

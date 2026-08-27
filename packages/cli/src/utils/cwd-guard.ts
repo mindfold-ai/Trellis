@@ -44,10 +44,12 @@ export function isCwdHomedir(): boolean {
 }
 
 /**
- * Error message printed by both `trellis init` and `trellis uninstall` when
- * the homedir guard trips.
+ * Error message printed by destructive project-state commands when the
+ * homedir guard trips.
  */
-export function homedirGuardMessage(commandName: "init" | "uninstall"): string {
+export function homedirGuardMessage(
+  commandName: "init" | "uninstall" | "ablate" | "restore",
+): string {
   return (
     `✗ Refusing to run \`trellis ${commandName}\` in your home directory.\n\n` +
     `Trellis manages platform config dirs like .claude/, .codex/, .opencode/, which\n` +

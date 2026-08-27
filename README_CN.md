@@ -131,6 +131,23 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 
 </details>
 
+<details>
+<summary><strong>可以临时对比启用与关闭 Trellis 的项目表现吗？</strong></summary>
+
+可以。`trellis ablate` 会先在项目外创建并验证恢复事务，然后临时移除
+Trellis 管理的全部项目级表面。请新开一个 agent 会话进行对比；完成后运行
+`trellis restore`，即可精确恢复到消融前的状态。两个命令都支持
+`--dry-run` 预览。
+私有恢复事务会包含 `.trellis` 中 task、spec 和 workspace 的精确字节，
+其中可能有用户编写的敏感文本；事务会保留到恢复完成验证为止。
+
+它不同于永久删除的 `trellis uninstall`，也不同于只关闭 hooks 的
+`TRELLIS_HOOKS=0`。消融不会启动 agent、管理 worktree、隐藏 Git 变更，
+也不会删除全局 CLI、channel 日志或宿主会话记录。如果消融期间某个受管理
+路径被修改，恢复会拒绝全部写入，直到冲突被处理。
+
+</details>
+
 ## Star 历史
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=mindfold-ai/Trellis&type=Date)](https://star-history.dera.page/#mindfold-ai/Trellis&Date)

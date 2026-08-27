@@ -6,6 +6,7 @@ import { init } from "../commands/init.js";
 import { update } from "../commands/update.js";
 import { upgrade } from "../commands/upgrade.js";
 import { uninstall } from "../commands/uninstall.js";
+import { ablate, restore } from "../commands/ablate.js";
 import { runMem } from "../commands/mem.js";
 import {
   runWorkflowCommand,
@@ -219,6 +220,54 @@ program
   .action(async (options: Record<string, unknown>) => {
     try {
       await uninstall({
+        yes: options.yes as boolean,
+        dryRun: options.dryRun as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
+        console.error(error instanceof Error ? error.stack : error);
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command("ablate")
+  .description(
+    "Temporarily remove all project Trellis surfaces with an external recovery transaction",
+  )
+  .option("-y, --yes", "Skip confirmation prompt")
+  .option("--dry-run", "Preview full ablation without changing files or state")
+  .action(async (options: Record<string, unknown>) => {
+    try {
+      await ablate({
+        yes: options.yes as boolean,
+        dryRun: options.dryRun as boolean,
+      });
+    } catch (error) {
+      console.error(
+        chalk.red("Error:"),
+        error instanceof Error ? error.message : error,
+      );
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
+        console.error(error instanceof Error ? error.stack : error);
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command("restore")
+  .description("Restore the exact project state saved by `trellis ablate`")
+  .option("-y, --yes", "Skip confirmation prompt")
+  .option("--dry-run", "Preview restoration and check conflicts")
+  .action(async (options: Record<string, unknown>) => {
+    try {
+      await restore({
         yes: options.yes as boolean,
         dryRun: options.dryRun as boolean,
       });
