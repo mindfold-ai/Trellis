@@ -11,10 +11,12 @@ warnings.filterwarnings("ignore")
 
 import json
 import os
+import queue
 import re
 import shlex
 import subprocess
 import sys
+import threading
 from io import StringIO
 from pathlib import Path
 
@@ -819,16 +821,46 @@ def _build_workflow_overview(workflow_path: Path) -> str:
     return "\n".join(out_lines).rstrip()
 
 
+def _load_hook_input() -> dict:
+    """Read hook JSON without trusting host runners to close stdin.
+
+    Kiro IDE `runCommand` and similar hook runners can leave stdin open while
+    sending no payload. A plain `json.load(sys.stdin)` then blocks forever.
+    Normal hook runners write the complete JSON payload and close stdin, so the
+    short daemon read preserves that path while failing closed to `{}` for
+    non-piping hosts. The abandoned daemon thread is safe: interpreter
+    shutdown discards daemon threads outright (threading docs), so the
+    process exits without waiting for the pipe.
+    """
+    result_queue: "queue.Queue[str | Exception]" = queue.Queue(maxsize=1)
+
+    def _read() -> None:
+        try:
+            result_queue.put(sys.stdin.read())
+        except Exception as exc:
+            result_queue.put(exc)
+
+    reader = threading.Thread(target=_read, daemon=True)
+    reader.start()
+    try:
+        raw = result_queue.get(timeout=0.2)
+    except queue.Empty:
+        return {}
+
+    if isinstance(raw, Exception):
+        return {}
+    try:
+        data = json.loads(raw) if raw.strip() else {}
+    except (json.JSONDecodeError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def main():
     if should_skip_injection():
         sys.exit(0)
 
-    try:
-        hook_input = json.loads(sys.stdin.read())
-        if not isinstance(hook_input, dict):
-            hook_input = {}
-    except (json.JSONDecodeError, ValueError):
-        hook_input = {}
+    hook_input = _load_hook_input()
 
     # Try platform-specific env vars, hook cwd, fallback to cwd
     project_dir_env_vars = [
