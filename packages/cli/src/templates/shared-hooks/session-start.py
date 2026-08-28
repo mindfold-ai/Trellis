@@ -835,6 +835,7 @@ def _load_hook_input() -> dict:
     result_queue: "queue.Queue[str | Exception]" = queue.Queue(maxsize=1)
 
     def _read() -> None:
+        """Read all of stdin onto the queue; never raises."""
         try:
             result_queue.put(sys.stdin.read())
         except Exception as exc:
@@ -857,6 +858,7 @@ def _load_hook_input() -> dict:
 
 
 def main():
+    """Assemble and print the SessionStart additionalContext payload."""
     if should_skip_injection():
         sys.exit(0)
 

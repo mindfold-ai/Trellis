@@ -265,6 +265,7 @@ def _load_hook_input() -> dict:
     result_queue: "queue.Queue[str | Exception]" = queue.Queue(maxsize=1)
 
     def _read() -> None:
+        """Read all of stdin onto the queue; never raises."""
         try:
             result_queue.put(sys.stdin.read())
         except Exception as exc:
@@ -287,6 +288,7 @@ def _load_hook_input() -> dict:
 
 
 def main() -> int:
+    """Write a shell-session identity ticket for pending task.py commands."""
     if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
         return 0
 
