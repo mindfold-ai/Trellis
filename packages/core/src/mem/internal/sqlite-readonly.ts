@@ -230,7 +230,8 @@ interface FileStamp {
 }
 
 interface SqliteSnapshot {
-  mainBytes: Uint8Array;
+  mainFd: number;
+  mainStamp: FileStamp;
   walBytes: Uint8Array | null;
   walIndex: WalIndexHeader | null;
 }
@@ -272,21 +273,28 @@ function equalBytes(a: Uint8Array | null, b: Uint8Array | null): boolean {
   return true;
 }
 
+function stampFromStat(stat: fs.Stats): FileStamp {
+  return {
+    size: stat.size,
+    mtimeMs: stat.mtimeMs,
+    ctimeMs: stat.ctimeMs,
+    dev: stat.dev,
+    ino: stat.ino,
+  };
+}
+
 function fileStamp(path: string): FileStamp | null {
   try {
-    const stat = fs.statSync(path);
-    return {
-      size: stat.size,
-      mtimeMs: stat.mtimeMs,
-      ctimeMs: stat.ctimeMs,
-      dev: stat.dev,
-      ino: stat.ino,
-    };
+    return stampFromStat(fs.statSync(path));
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT") return null;
     throw error;
   }
+}
+
+function fileDescriptorStamp(fd: number): FileStamp {
+  return stampFromStat(fs.fstatSync(fd));
 }
 
 function sameStamp(a: FileStamp | null, b: FileStamp | null): boolean {
@@ -384,6 +392,7 @@ function captureSnapshot(mainPath: string): SqliteSnapshot {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < SNAPSHOT_ATTEMPTS; attempt++) {
+    let mainFd: number | null = null;
     try {
       const shmBefore = readWalIndexPrefix(shmPath);
       const mainBefore = fileStamp(mainPath);
@@ -392,7 +401,7 @@ function captureSnapshot(mainPath: string): SqliteSnapshot {
         throw new SqliteParseError(`cannot read db file: ${mainPath}`);
       }
 
-      const mainBytes = fs.readFileSync(mainPath);
+      mainFd = fs.openSync(mainPath, "r");
       const walBytes = readOptionalFile(walPath);
 
       const mainAfter = fileStamp(mainPath);
@@ -403,13 +412,21 @@ function captureSnapshot(mainPath: string): SqliteSnapshot {
         !sameStamp(walBefore, walAfter) ||
         !equalBytes(shmBefore, shmAfter)
       ) {
+        fs.closeSync(mainFd);
+        mainFd = null;
         lastError = new SqliteSnapshotUnstableError(mainPath);
         continue;
       }
 
       const walIndex = walBytes === null ? null : parseWalIndexHeader(shmAfter);
-      return { mainBytes, walBytes, walIndex };
+      return {
+        mainFd,
+        mainStamp: mainAfter ?? mainBefore,
+        walBytes,
+        walIndex,
+      };
     } catch (error) {
+      if (mainFd !== null) fs.closeSync(mainFd);
       lastError = error;
     }
   }
@@ -565,12 +582,12 @@ function loadWal(
 interface PageSource {
   pageSize: number;
   /** Read a page by 1-based number. Falls back to main db file when WAL has no
-   * override. Returns a fresh Uint8Array view (WAL) or a buffer slice (main). */
+   * override. Returns a WAL view or a page-sized buffer read on demand. */
   getPage(pgno: number): Uint8Array;
 }
 
 function makePageSource(
-  mainBytes: Uint8Array,
+  snapshot: SqliteSnapshot,
   header: DbHeader,
   wal: WalState | null,
 ): PageSource {
@@ -584,13 +601,57 @@ function makePageSource(
       }
       const start = (pgno - 1) * header.pageSize;
       const end = start + header.pageSize;
-      if (end > mainBytes.length) {
+      if (end > snapshot.mainStamp.size) {
         // Page lives beyond the main file and has no WAL copy — treat as empty.
         return new Uint8Array(header.pageSize);
       }
-      return mainBytes.subarray(start, end);
+      const page = new Uint8Array(header.pageSize);
+      const bytesRead = readExactly(snapshot.mainFd, page, start);
+      if (bytesRead !== header.pageSize) {
+        throw new SqliteParseError(`short read for SQLite page ${pgno}`);
+      }
+      return page;
     },
   };
+}
+
+function readExactly(fd: number, target: Uint8Array, position: number): number {
+  let offset = 0;
+  while (offset < target.length) {
+    const bytesRead = fs.readSync(
+      fd,
+      target,
+      offset,
+      target.length - offset,
+      position + offset,
+    );
+    if (bytesRead === 0) break;
+    offset += bytesRead;
+  }
+  return offset;
+}
+
+function readMainHeader(snapshot: SqliteSnapshot): Uint8Array {
+  const bytes = new Uint8Array(DB_HEADER_SIZE);
+  const bytesRead = readExactly(snapshot.mainFd, bytes, 0);
+  if (bytesRead !== DB_HEADER_SIZE) {
+    throw new SqliteParseError("SQLite database header is truncated");
+  }
+  return bytes;
+}
+
+function isMainSnapshotStable(
+  mainPath: string,
+  snapshot: SqliteSnapshot,
+): boolean {
+  try {
+    return (
+      sameStamp(snapshot.mainStamp, fileStamp(mainPath)) &&
+      sameStamp(snapshot.mainStamp, fileDescriptorStamp(snapshot.mainFd))
+    );
+  } catch {
+    return false;
+  }
 }
 
 // ---------- record decode ----------
@@ -887,13 +948,56 @@ function isConstraintKeyword(id: string): boolean {
  */
 export function openSqliteReadOnly(mainPath: string): SqliteReadOnly {
   const snapshot = captureSnapshot(mainPath);
-  const { mainBytes } = snapshot;
-  if (mainBytes.length < DB_HEADER_SIZE) {
-    throw new SqliteParseError(`db file too small: ${mainPath}`);
+  let closed = false;
+  let header: DbHeader;
+  let src: PageSource;
+
+  try {
+    if (snapshot.mainStamp.size < DB_HEADER_SIZE) {
+      throw new SqliteParseError(`db file too small: ${mainPath}`);
+    }
+    header = parseDbHeader(readMainHeader(snapshot));
+    const wal = loadWal(snapshot.walBytes, header.pageSize, snapshot.walIndex);
+    src = makePageSource(snapshot, header, wal);
+    if (!isMainSnapshotStable(mainPath, snapshot)) {
+      throw new SqliteSnapshotUnstableError(mainPath);
+    }
+  } catch (error) {
+    fs.closeSync(snapshot.mainFd);
+    throw error instanceof SqliteParseError
+      ? error
+      : new SqliteParseError(`cannot read db file: ${mainPath}`, error);
   }
-  const header = parseDbHeader(mainBytes);
-  const wal = loadWal(snapshot.walBytes, header.pageSize, snapshot.walIndex);
-  const src = makePageSource(mainBytes, header, wal);
+
+  function assertOpen(): void {
+    if (closed) throw new SqliteParseError("SQLite reader is closed");
+  }
+
+  function assertMainSnapshotStable(): void {
+    if (!isMainSnapshotStable(mainPath, snapshot)) {
+      throw new SqliteSnapshotUnstableError(mainPath);
+    }
+  }
+
+  function readStable<T>(read: () => T): T {
+    assertOpen();
+    try {
+      const value = read();
+      assertMainSnapshotStable();
+      return value;
+    } catch (error) {
+      if (error instanceof SqliteSnapshotUnstableError) throw error;
+      if (!isMainSnapshotStable(mainPath, snapshot)) {
+        throw new SqliteSnapshotUnstableError(mainPath);
+      }
+      throw error instanceof SqliteParseError
+        ? error
+        : new SqliteParseError(
+            `failed reading SQLite snapshot: ${mainPath}`,
+            error,
+          );
+    }
+  }
 
   // Column-name cache: tableName → column list (or null).
   const columnCache = new Map<string, string[] | null>();
@@ -961,51 +1065,58 @@ export function openSqliteReadOnly(mainPath: string): SqliteReadOnly {
   return {
     dbPath: mainPath,
     listTables(): SqliteTableInfo[] {
-      return readSqliteMaster();
+      return readStable(readSqliteMaster);
     },
     scanTable(
       tableName: string,
       predicate?: (row: SqliteRow) => boolean,
     ): SqliteRow[] {
-      let table: SqliteTableInfo | undefined;
-      try {
-        table = readSqliteMaster().find((t) => t.name === tableName);
-        if (!table || table.rootPgno <= 0) return [];
-        const columns = columnsFor(table);
-        const aliasIdx = rowidAliasIndex(table, columns);
-        const rows: SqliteRow[] = [];
-        visitTableBtree(
-          src,
-          table.rootPgno,
-          header.textEncoding,
-          header,
-          ({ rowid, values }) => {
-            const row: SqliteRow = {};
-            for (let i = 0; i < values.length; i++) {
-              const key = columns?.[i] ?? `col${i}`;
-              // INTEGER PRIMARY KEY columns store NULL in the record; the real
-              // value is the cell rowid. Splice it in so callers see the integer.
-              if (i === aliasIdx && values[i] === null) {
-                row[key] = rowid;
-              } else {
-                row[key] = values[i];
+      return readStable(() => {
+        let table: SqliteTableInfo | undefined;
+        try {
+          table = readSqliteMaster().find((t) => t.name === tableName);
+          if (!table || table.rootPgno <= 0) return [];
+          const columns = columnsFor(table);
+          const aliasIdx = rowidAliasIndex(table, columns);
+          const rows: SqliteRow[] = [];
+          visitTableBtree(
+            src,
+            table.rootPgno,
+            header.textEncoding,
+            header,
+            ({ rowid, values }) => {
+              const row: SqliteRow = {};
+              for (let i = 0; i < values.length; i++) {
+                const key = columns?.[i] ?? `col${i}`;
+                // INTEGER PRIMARY KEY columns store NULL in the record; the real
+                // value is the cell rowid. Splice it in so callers see the integer.
+                if (i === aliasIdx && values[i] === null) {
+                  row[key] = rowid;
+                } else {
+                  row[key] = values[i];
+                }
               }
-            }
-            if (!predicate || predicate(row)) rows.push(row);
-          },
-        );
-        return rows;
-      } catch (e) {
-        // Wrap any non-SqliteParseError (e.g. RangeError from a truncated
-        // float64, TypeError from a bad cell pointer) so the adapter's single
-        // catch on SqliteParseError degrades cleanly instead of crashing CLI.
-        throw e instanceof SqliteParseError
-          ? e
-          : new SqliteParseError(`failed reading table "${tableName}"`, e);
-      }
+              if (!predicate || predicate(row)) rows.push(row);
+            },
+          );
+          return rows;
+        } catch (error) {
+          // Wrap any non-SqliteParseError (e.g. RangeError from a truncated
+          // float64, TypeError from a bad cell pointer) so the adapter's single
+          // catch on SqliteParseError degrades cleanly instead of crashing CLI.
+          throw error instanceof SqliteParseError
+            ? error
+            : new SqliteParseError(
+                `failed reading table "${tableName}"`,
+                error,
+              );
+        }
+      });
     },
     close(): void {
-      // Nothing to release — we read the whole file into memory at open time.
+      if (closed) return;
+      closed = true;
+      fs.closeSync(snapshot.mainFd);
     },
   };
 }
