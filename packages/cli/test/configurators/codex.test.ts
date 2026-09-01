@@ -3,8 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  collectCodexTemplates,
   extractCodexAgentModelKeys,
   applyCodexAgentModelKeys,
+  filterCodexProjectHooks,
+  parseCodexHookMode,
   preserveCodexAgentModelKeys,
 } from "../../src/configurators/codex.js";
 import { getAllAgents } from "../../src/templates/codex/index.js";
@@ -220,9 +223,9 @@ describe("preserveCodexAgentModelKeys", () => {
     );
     files = freshAgentFiles();
     preserveCodexAgentModelKeys(tmpDir, files);
-    expect(
-      files.get(`.codex/agents/${firstAgent.name}.toml`),
-    ).not.toMatch(/^model = "/m);
+    expect(files.get(`.codex/agents/${firstAgent.name}.toml`)).not.toMatch(
+      /^model = "/m,
+    );
   });
 
   it("does not touch files outside .codex/agents/trellis-*.toml", () => {
@@ -232,6 +235,78 @@ describe("preserveCodexAgentModelKeys", () => {
     const before = new Map(files);
     preserveCodexAgentModelKeys(tmpDir, files);
     expect(files).toEqual(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Codex hook ownership
+// ---------------------------------------------------------------------------
+
+describe("Codex hook mode", () => {
+  it("defaults invalid or absent values to project hooks", () => {
+    expect(parseCodexHookMode("codex:\n  dispatch_mode: inline\n")).toBe(
+      "project",
+    );
+    expect(parseCodexHookMode("codex:\n  hook_mode: invalid\n")).toBe(
+      "project",
+    );
+  });
+
+  it("accepts a quoted plugin value with an inline comment", () => {
+    expect(
+      parseCodexHookMode('codex:\r\n  hook_mode: "plugin" # reviewed once\r\n'),
+    ).toBe("plugin");
+  });
+
+  it("accepts arbitrary direct-child indentation and comments on codex", () => {
+    expect(
+      parseCodexHookMode("codex: # hook ownership\n    hook_mode: plugin\n"),
+    ).toBe("plugin");
+  });
+
+  it("removes only project-local hooks in plugin mode", () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "trellis-codex-mode-"),
+    );
+    try {
+      fs.mkdirSync(path.join(tmpDir, ".trellis"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".trellis", "config.yaml"),
+        "codex:\n  hook_mode: plugin\n",
+      );
+      const files = collectCodexTemplates();
+
+      filterCodexProjectHooks(tmpDir, files);
+
+      expect(files.has(".codex/hooks.json")).toBe(false);
+      expect(
+        [...files.keys()].some((key) => key.startsWith(".codex/hooks/")),
+      ).toBe(false);
+      expect(files.has(".codex/config.toml")).toBe(true);
+      expect(
+        [...files.keys()].some((key) => key.startsWith(".codex/agents/")),
+      ).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps project-local hooks when the config is absent", () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "trellis-codex-mode-default-"),
+    );
+    try {
+      const files = collectCodexTemplates();
+
+      filterCodexProjectHooks(tmpDir, files);
+
+      expect(files.has(".codex/hooks.json")).toBe(true);
+      expect(
+        [...files.keys()].some((key) => key.startsWith(".codex/hooks/")),
+      ).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
 

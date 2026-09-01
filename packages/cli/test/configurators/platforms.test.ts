@@ -408,10 +408,8 @@ describe("configurePlatform", () => {
     // Codex writes shared skills under `.agents/skills/` using the neutral
     // placeholder resolver so the rendered files are byte-identical to
     // Gemini's writes for the same skill names — see issue #224 fix.
-    // `trellis-start` is included via `resolveAllAsSkillsNeutral` directly —
-    // it's the user-invocable fallback referenced by the <trellis-bootstrap>
-    // notice in inject-workflow-state.py (the SessionStart hook was removed
-    // for de-recursion).
+    // Codex's SessionStart hook injects the opening workflow context, so the
+    // user-invocable start skill is filtered from the shared skill set.
     const expected = resolveAllAsSkillsNeutral(AI_TOOLS.codex.templateContext);
     const skillsRoot = path.join(tmpDir, ".agents", "skills");
     const actualNames = fs
@@ -432,7 +430,7 @@ describe("configurePlatform", () => {
     expect(fs.existsSync(path.join(skillsRoot, BUNDLED_REFERENCE))).toBe(true);
     expect(
       fs.existsSync(path.join(skillsRoot, "trellis-start", "SKILL.md")),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("configurePlatform('codex') writes custom agents and config", async () => {

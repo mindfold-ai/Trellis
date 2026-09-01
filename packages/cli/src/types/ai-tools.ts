@@ -246,7 +246,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Skills",
       agentCapable: true,
-      hasHooks: false,
+      hasHooks: true,
       cliFlag: "codex",
     },
   },
