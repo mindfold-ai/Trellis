@@ -217,6 +217,31 @@ describe("getConfiguredPlatforms", () => {
     }
   });
 
+  it("does not report a platform whose tracked directory was deleted", async () => {
+    // Regression: the hash manifest alone is not proof of installation. When
+    // the platform directory is gone (fresh clone without committed platform
+    // files, gitignored dir, manual cleanup), the platform must read as
+    // unconfigured so `init --<platform>` rewrites it instead of printing
+    // "already configured, skipping".
+    const platformRoot = path.join(tmpDir, "stale-hash");
+    fs.mkdirSync(platformRoot, { recursive: true });
+    const written = startRecordingWrites(platformRoot);
+    try {
+      await configurePlatform("opencode", platformRoot);
+    } finally {
+      stopRecordingWrites();
+    }
+    fs.mkdirSync(path.join(platformRoot, ".trellis"), { recursive: true });
+    initializeHashes(platformRoot, { trackedPaths: written });
+    expect(getConfiguredPlatforms(platformRoot).has("opencode")).toBe(true);
+
+    fs.rmSync(path.join(platformRoot, AI_TOOLS.opencode.configDir), {
+      recursive: true,
+      force: true,
+    });
+    expect(getConfiguredPlatforms(platformRoot).has("opencode")).toBe(false);
+  });
+
   it("ignores unrelated directories", () => {
     fs.mkdirSync(path.join(tmpDir, ".vscode"));
     fs.mkdirSync(path.join(tmpDir, ".git"));
