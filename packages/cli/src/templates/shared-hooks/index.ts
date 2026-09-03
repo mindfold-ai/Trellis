@@ -41,7 +41,8 @@ export type SharedHookPlatform =
   | "droid"
   | "kiro"
   | "trae"
-  | "zcode";
+  | "zcode"
+  | "antigravity";
 
 /**
  * Which shared hooks each platform actually invokes. Single source of truth
@@ -146,6 +147,7 @@ export const SHARED_HOOKS_BY_PLATFORM: Record<
     "inject-workflow-state.py",
     "inject-subagent-context.py",
   ],
+  antigravity: ["inject-shell-session-context.py", "inject-workflow-state.py"],
 };
 
 /**

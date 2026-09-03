@@ -146,6 +146,10 @@ def _detect_platform(input_data: dict) -> str | None:
         return "trae"
     if ".zcode" in script_parts:
         return "zcode"
+    if ".agent" in script_parts or ".agents" in script_parts:
+        return "antigravity"
+    if "artifactDirectoryPath" in input_data:
+        return "antigravity"
     return None
 
 
@@ -465,6 +469,18 @@ def main() -> int:
     # hookSpecificOutput JSON path below unchanged.
     if platform == "kiro":
         print(breadcrumb)
+        return 0
+
+    # Antigravity PreInvocation hooks expect {"injectSteps": [{"ephemeralMessage": ...}]}
+    if platform == "antigravity":
+        output = {
+            "injectSteps": [
+                {
+                    "ephemeralMessage": breadcrumb,
+                }
+            ]
+        }
+        print(json.dumps(output))
         return 0
 
     # Gemini CLI 0.40.x rejects "UserPromptSubmit" — its per-turn event is
