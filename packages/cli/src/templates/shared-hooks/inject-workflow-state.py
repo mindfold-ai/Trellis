@@ -125,7 +125,7 @@ def _detect_platform(input_data: dict) -> str | None:
     for env_name, platform in env_map.items():
         if os.environ.get(env_name):
             return platform
-    script_parts = set(Path(sys.argv[0]).parts)
+    script_parts = set(Path(sys.argv[0]).resolve().parts)
     if ".claude" in script_parts:
         return "claude"
     if ".cursor" in script_parts:

@@ -80,12 +80,12 @@ describeFn("Antigravity hook integration", () => {
   });
 
   it("inject-workflow-state.py emits injectSteps ephemeralMessage for Antigravity", () => {
-    const hookPath = path.join(tmp, ".agent", "hooks", "inject-workflow-state.py");
+    const agentDir = path.join(tmp, ".agent");
     const r = spawnSync(
       "python3",
-      [hookPath],
+      ["hooks/inject-workflow-state.py"],
       {
-        cwd: tmp,
+        cwd: agentDir,
         encoding: "utf-8",
         input: JSON.stringify({
           conversationId: "test-conversation-42",
@@ -108,12 +108,12 @@ describeFn("Antigravity hook integration", () => {
   });
 
   it("inject-shell-session-context.py handles Antigravity run_command toolCall", () => {
-    const hookPath = path.join(tmp, ".agent", "hooks", "inject-shell-session-context.py");
+    const agentDir = path.join(tmp, ".agent");
     const r = spawnSync(
       "python3",
-      [hookPath],
+      ["hooks/inject-shell-session-context.py"],
       {
-        cwd: tmp,
+        cwd: agentDir,
         encoding: "utf-8",
         input: JSON.stringify({
           conversationId: "test-conversation-42",

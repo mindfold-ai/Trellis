@@ -156,7 +156,7 @@ def _host_platform_name() -> str | None:
     other hooks compute — a ticket keyed differently would write a session
     file no later hook ever reads.
     """
-    for part in reversed(Path(sys.argv[0]).parts):
+    for part in reversed(Path(sys.argv[0]).resolve().parts):
         if part.startswith(".") and part not in (".", "..") and len(part) > 1:
             name = part[1:]
             if name in ("agent", "agents"):

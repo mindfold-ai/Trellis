@@ -3,7 +3,7 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "{{PYTHON_CMD}} .agent/hooks/inject-workflow-state.py",
+        "command": "{{PYTHON_CMD}} hooks/inject-workflow-state.py",
         "timeout": 15
       }
     ],
@@ -13,7 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{PYTHON_CMD}} .agent/hooks/inject-shell-session-context.py",
+            "command": "{{PYTHON_CMD}} hooks/inject-shell-session-context.py",
             "timeout": 10
           }
         ]
