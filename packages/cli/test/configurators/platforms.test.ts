@@ -242,6 +242,48 @@ describe("getConfiguredPlatforms", () => {
     expect(getConfiguredPlatforms(platformRoot).has("opencode")).toBe(false);
   });
 
+  it("does not report a platform whose configDir path is a regular file", async () => {
+    const platformRoot = path.join(tmpDir, "file-not-dir");
+    fs.mkdirSync(platformRoot, { recursive: true });
+    const written = startRecordingWrites(platformRoot);
+    try {
+      await configurePlatform("opencode", platformRoot);
+    } finally {
+      stopRecordingWrites();
+    }
+    fs.mkdirSync(path.join(platformRoot, ".trellis"), { recursive: true });
+    initializeHashes(platformRoot, { trackedPaths: written });
+    expect(getConfiguredPlatforms(platformRoot).has("opencode")).toBe(true);
+
+    fs.rmSync(path.join(platformRoot, AI_TOOLS.opencode.configDir), {
+      recursive: true,
+      force: true,
+    });
+    fs.writeFileSync(
+      path.join(platformRoot, AI_TOOLS.opencode.configDir),
+      "not a directory",
+    );
+    expect(getConfiguredPlatforms(platformRoot).has("opencode")).toBe(false);
+  });
+
+  it("does not report devin from stale legacy Windsurf hashes alone", () => {
+    const platformRoot = path.join(tmpDir, "stale-windsurf");
+    const workflowsDir = path.join(platformRoot, ".windsurf", "workflows");
+    fs.mkdirSync(workflowsDir, { recursive: true });
+    fs.writeFileSync(path.join(workflowsDir, "trellis-continue.md"), "# Trellis");
+    fs.mkdirSync(path.join(platformRoot, ".trellis"), { recursive: true });
+    initializeHashes(platformRoot, {
+      trackedPaths: [".windsurf/workflows/trellis-continue.md"],
+    });
+    expect(getConfiguredPlatforms(platformRoot).has("devin")).toBe(true);
+
+    fs.rmSync(path.join(platformRoot, ".windsurf"), {
+      recursive: true,
+      force: true,
+    });
+    expect(getConfiguredPlatforms(platformRoot).has("devin")).toBe(false);
+  });
+
   it("ignores unrelated directories", () => {
     fs.mkdirSync(path.join(tmpDir, ".vscode"));
     fs.mkdirSync(path.join(tmpDir, ".git"));
