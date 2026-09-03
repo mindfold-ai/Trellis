@@ -12,17 +12,17 @@
 
 ## Requirements
 
-- [ ] R1: `getConfiguredPlatforms(cwd)` 对每个平台，在 hash 命中之外，额外要求该平台 `configDir` 在磁盘上存在（`fs.existsSync(path.join(cwd, configDir))`），两者同时满足才算已配置。
-- [ ] R2: hash 有记录 + 目录缺失 → 判定为未配置，`init --opencode` 正常走配置流程重写文件；`platforms` 不再虚报。
-- [ ] R3: 现有语义不变：原生（非 Trellis 写入）的平台目录仍不算已配置（#501 的修复保持）；hash 无记录仍不算已配置；legacy Windsurf→devin 分支逻辑不变。
-- [ ] R4: 回归测试覆盖：hash 有记录但目录被删除 → 未配置；正常配置 → 仍检测到。
+- [x] R1: `getConfiguredPlatforms(cwd)` 对每个平台，在 hash 命中之外，额外要求该平台 `configDir` 在磁盘上以目录形态存在（`isDirectoryOnDisk`：带异常保护的 `statSync().isDirectory()`；缺失、普通文件、不可读一律视为未配置），两者同时满足才算已配置。
+- [x] R2: hash 有记录 + 目录缺失 → 判定为未配置，`init --opencode` 正常走配置流程重写文件；`platforms` 不再虚报。
+- [x] R3: 现有语义不变：原生（非 Trellis 写入）的平台目录仍不算已配置（#501 的修复保持）；hash 无记录仍不算已配置；legacy Windsurf→devin 分支同样要求 hash 分支带磁盘根目录存在校验，磁盘模板分支行为不变。
+- [x] R4: 回归测试覆盖：hash 有记录但目录被删除 → 未配置；configDir 为普通文件 → 未配置；legacy hash 残留但目录缺失 → devin 未配置；正常配置 → 仍检测到。
 
 ## Acceptance Criteria
 
-- [ ] A1: 复现场景验证通过：在 tmp 目录为某平台生成 hash 后删除其配置目录，`getConfiguredPlatforms` 不再包含该平台。
-- [ ] A2: `pnpm test test/configurators/platforms.test.ts` 全绿；`pnpm lint`、`pnpm typecheck` 通过。
-- [ ] A3: 手动验证：`trellis init --opencode` 在目录缺失+hash 残留的项目里会真实写文件（而非 skipping）。
-- [ ] A4: 独立分支 + PR 至远程。
+- [x] A1: 复现场景验证通过：在 tmp 目录为某平台生成 hash 后删除其配置目录，`getConfiguredPlatforms` 不再包含该平台。
+- [x] A2: `pnpm test test/configurators/platforms.test.ts` 全绿；`pnpm lint`、`pnpm typecheck` 通过。
+- [x] A3: 手动验证：`trellis init --opencode` 在目录缺失+hash 残留的项目里会真实写文件（而非 skipping）。
+- [x] A4: 独立分支 + PR 至远程（https://github.com/mindfold-ai/Trellis/pull/601）。
 
 ## Non-Goals
 
