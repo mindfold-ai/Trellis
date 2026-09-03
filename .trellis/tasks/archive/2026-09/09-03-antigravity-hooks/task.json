@@ -1,0 +1,37 @@
+{
+  "id": "antigravity-hooks",
+  "name": "antigravity-hooks",
+  "title": "Support Antigravity lifecycle hooks in Trellis CLI",
+  "description": "Add hooks.json lifecycle hooks and session context injection for Antigravity",
+  "status": "completed",
+  "dev_type": "feat",
+  "scope": "cli",
+  "package": "cli",
+  "priority": "P1",
+  "creator": "alan",
+  "assignee": "alan",
+  "createdAt": "2026-09-03",
+  "completedAt": "2026-09-03",
+  "branch": "feat/antigravity-hooks",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "9c011a9a",
+  "pr_url": "https://github.com/mindfold-ai/Trellis/pull/600",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "packages/cli/src/types/ai-tools.ts",
+    "packages/cli/src/templates/antigravity/hooks.json",
+    "packages/cli/src/templates/antigravity/index.ts",
+    "packages/cli/src/templates/shared-hooks/inject-workflow-state.py",
+    "packages/cli/src/templates/shared-hooks/inject-shell-session-context.py",
+    "packages/cli/src/templates/trellis/scripts/common/active_task.py",
+    "packages/cli/test/scripts/inject-workflow-state-antigravity.integration.test.ts"
+  ],
+  "notes": "Added Antigravity lifecycle hooks support, resolving #599 and PR #600.",
+  "meta": {
+    "issue": "599",
+    "pr": "https://github.com/mindfold-ai/Trellis/pull/600"
+  }
+}

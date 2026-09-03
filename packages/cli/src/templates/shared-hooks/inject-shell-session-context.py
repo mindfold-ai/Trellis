@@ -135,6 +135,14 @@ def _pending_shell_command(hook_input: dict[str, Any]) -> tuple[str, dict[str, A
         if command:
             return command, None
 
+    tool_call = hook_input.get("toolCall")
+    if isinstance(tool_call, dict):
+        args = tool_call.get("args")
+        if isinstance(args, dict):
+            command = _string_value(args.get("CommandLine") or args.get("command"))
+            if command:
+                return command, {"decision": "allow"}
+
     return "", None
 
 
@@ -148,9 +156,12 @@ def _host_platform_name() -> str | None:
     other hooks compute — a ticket keyed differently would write a session
     file no later hook ever reads.
     """
-    for part in reversed(Path(sys.argv[0]).parts):
+    for part in reversed(Path(sys.argv[0]).resolve().parts):
         if part.startswith(".") and part not in (".", "..") and len(part) > 1:
-            return part[1:]
+            name = part[1:]
+            if name in ("agent", "agents"):
+                return "antigravity"
+            return name
     return None
 
 

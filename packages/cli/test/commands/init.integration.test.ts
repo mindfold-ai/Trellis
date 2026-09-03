@@ -338,12 +338,23 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
   });
 
-  it("#3d antigravity platform creates .agent/workflows", async () => {
+  it("#3d antigravity platform creates .agent/workflows and hooks", async () => {
     await init({ yes: true, antigravity: true });
 
     expect(fs.existsSync(path.join(tmpDir, ".agent", "workflows"))).toBe(true);
     expect(
       fs.existsSync(path.join(tmpDir, ".agent", "workflows", "start.md")),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, ".agent", "hooks.json"))).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agent", "hooks", "inject-workflow-state.py"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".agent", "hooks", "inject-shell-session-context.py"),
+      ),
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);

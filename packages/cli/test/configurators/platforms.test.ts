@@ -667,6 +667,25 @@ describe("configurePlatform", () => {
     }
   });
 
+  it("configurePlatform('antigravity') writes hooks.json and hook scripts", async () => {
+    await configurePlatform("antigravity", tmpDir);
+
+    const hooksJsonPath = path.join(tmpDir, ".agent", "hooks.json");
+    expect(fs.existsSync(hooksJsonPath)).toBe(true);
+    const hooksJson = JSON.parse(fs.readFileSync(hooksJsonPath, "utf-8"));
+    expect(hooksJson).toHaveProperty("trellis");
+    expect(hooksJson.trellis).toHaveProperty("PreInvocation");
+    expect(hooksJson.trellis).toHaveProperty("PreToolUse");
+
+    const hooksDir = path.join(tmpDir, ".agent", "hooks");
+    expect(
+      fs.existsSync(path.join(hooksDir, "inject-workflow-state.py")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(hooksDir, "inject-shell-session-context.py")),
+    ).toBe(true);
+  });
+
   it("configurePlatform('devin') creates .devin/workflows directory", async () => {
     await configurePlatform("devin", tmpDir);
     expect(fs.existsSync(path.join(tmpDir, ".devin", "workflows"))).toBe(true);
