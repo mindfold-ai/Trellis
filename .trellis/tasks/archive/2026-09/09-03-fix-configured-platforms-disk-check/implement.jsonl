@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend command/configurator conventions for init + platform detection"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "vitest conventions for the regression test in platforms.test.ts"}

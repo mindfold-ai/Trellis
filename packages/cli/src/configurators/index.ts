@@ -134,6 +134,14 @@ export const ALL_MANAGED_DIRS = [".trellis", ...new Set(PLATFORM_MANAGED_DIRS)];
  * A platform directory may predate Trellis. The template hash manifest records
  * only files Trellis actually wrote, while the platform template registry
  * supplies each platform's distinct file layout.
+ *
+ * Both conditions must hold: a tracked hash entry under the platform's
+ * configDir AND the configDir actually existing on disk as a directory. The
+ * manifest alone is a record of what was once written — the directory may
+ * since have been deleted (fresh clone without committed platform files,
+ * gitignored dirs such as `.cursor/`, manual cleanup). Without the disk
+ * check, `trellis init --<platform>` mis-reports "already configured,
+ * skipping" and writes nothing.
  */
 export function getConfiguredPlatforms(cwd: string): Set<AITool> {
   const platforms = new Set<AITool>();
@@ -148,7 +156,7 @@ export function getConfiguredPlatforms(cwd: string): Set<AITool> {
           relativePath.startsWith(`${configDir}/`)) &&
         hashes[relativePath] !== undefined,
     );
-    if (hasTrackedTemplate) {
+    if (hasTrackedTemplate && isDirectoryOnDisk(cwd, configDir)) {
       platforms.add(id);
     }
   }
@@ -158,18 +166,37 @@ export function getConfiguredPlatforms(cwd: string): Set<AITool> {
   const hasTrackedWindsurfTemplate = Object.keys(hashes).some((relativePath) =>
     relativePath.startsWith(`${legacyWindsurfRoot}/trellis-`),
   );
+  let legacyWindsurfRootExists = false;
   let hasLegacyWindsurfTemplate = false;
   try {
-    hasLegacyWindsurfTemplate = fs
-      .readdirSync(path.join(cwd, legacyWindsurfRoot))
-      .some((name) => name.startsWith("trellis-"));
+    const entries = fs.readdirSync(path.join(cwd, legacyWindsurfRoot));
+    legacyWindsurfRootExists = true;
+    hasLegacyWindsurfTemplate = entries.some((name) =>
+      name.startsWith("trellis-"),
+    );
   } catch {
     // Missing or unreadable legacy directory is not a configured platform.
   }
-  if (hasTrackedWindsurfTemplate || hasLegacyWindsurfTemplate) {
+  if (
+    (hasTrackedWindsurfTemplate && legacyWindsurfRootExists) ||
+    hasLegacyWindsurfTemplate
+  ) {
     platforms.add("devin");
   }
   return platforms;
+}
+
+/**
+ * True when `relDir` exists under `cwd` and is a directory. Missing paths,
+ * regular files, and unreadable paths all report false instead of throwing,
+ * so none of them can read as a configured platform.
+ */
+function isDirectoryOnDisk(cwd: string, relDir: string): boolean {
+  try {
+    return fs.statSync(path.join(cwd, relDir)).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 /**
