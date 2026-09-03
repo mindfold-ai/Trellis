@@ -13,6 +13,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { getPythonCommandForPlatform } from "../../src/configurators/shared";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
@@ -23,9 +24,11 @@ const SHARED_HOOKS = path.resolve(
   "../../src/templates/shared-hooks",
 );
 
+const pythonCmd = getPythonCommandForPlatform();
+
 function hasPython(): boolean {
   try {
-    execFileSync("python3", ["--version"], { stdio: "ignore" });
+    execFileSync(pythonCmd, ["--version"], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -82,7 +85,7 @@ describeFn("Antigravity hook integration", () => {
   it("inject-workflow-state.py emits injectSteps ephemeralMessage for Antigravity", () => {
     const agentDir = path.join(tmp, ".agent");
     const r = spawnSync(
-      "python3",
+      pythonCmd,
       ["hooks/inject-workflow-state.py"],
       {
         cwd: agentDir,
@@ -110,7 +113,7 @@ describeFn("Antigravity hook integration", () => {
   it("inject-shell-session-context.py handles Antigravity run_command toolCall", () => {
     const agentDir = path.join(tmp, ".agent");
     const r = spawnSync(
-      "python3",
+      pythonCmd,
       ["hooks/inject-shell-session-context.py"],
       {
         cwd: agentDir,
@@ -122,7 +125,7 @@ describeFn("Antigravity hook integration", () => {
           toolCall: {
             name: "run_command",
             args: {
-              CommandLine: "python3 .trellis/scripts/task.py start 01-my-task",
+              CommandLine: `${pythonCmd} .trellis/scripts/task.py start 01-my-task`,
             },
           },
         }),
