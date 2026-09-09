@@ -42,6 +42,21 @@ Then route:
   > "FYI, dirty files outside this task's scope — leaving them for the other window: `<list>`."
 - **Genuinely unsure** — ask the user once: "Are `<list>` this task's work I forgot to commit, or another window's? (commit / ignore)" — then route per their answer.
 
+## Step 2b: Present the finish review
+
+For the current task, load `trellis-eli5-review` in finish mode after the
+dirty-code check. Generate and present `finish-review.html` from the reviewed
+plan, committed changes, and verification evidence before archiving.
+Preserve the plan review pair. Show deviations and remaining work explicitly;
+if acceptance is incomplete, return to the relevant workflow step rather
+than archiving as complete. For older tasks without a retained plan view,
+disclose the comparison limitation instead of inventing prior approval.
+
+Do the same for any additional completed tasks whose archive the user
+confirmed. If there is no task to archive, skip review generation.
+Review files stay inside their task directory and are included in the
+existing archive commit; no extra code commit is needed here.
+
 ## Step 3: Archive task(s)
 
 ```bash
@@ -51,6 +66,9 @@ Then route:
 At minimum: the current active task (if any). Plus any extra tasks the user confirmed in Step 1. Each archive produces a `chore(task): archive ...` commit via the script's auto-commit.
 
 If there is no active task and the user did not confirm any cleanup archives, skip this step.
+
+After archive succeeds, share the new archived `finish-review.html` path.
+Its task-relative evidence links and the plan review move with the task.
 
 ## Step 4: Record session journal
 

@@ -1,0 +1,34 @@
+{
+  "title": "Publish the feed only after audio is ready",
+  "summary": "Redacted project example · reconstructed from documentation.",
+  "evidence": [
+    {
+      "label": "Redacted source excerpt",
+      "href": "evidence.md"
+    }
+  ],
+  "before": "The reader must infer failure behavior from a six-step publication transaction and compatibility notes.",
+  "after": "Audio is uploaded and verified before the public feed changes.",
+  "plan_basis": "unavailable",
+  "delivered": [
+    "Visible publication ordering and failure boundary"
+  ],
+  "deviations": [
+    "Reconstructed demonstration, not a completed deployment or historical approval."
+  ],
+  "remaining": [
+    "Exercise a controlled upload failure before production acceptance."
+  ],
+  "checks": [
+    {
+      "name": "Source documentation",
+      "status": "partial",
+      "detail": "The excerpt supports the intended behavior; documentation is not execution evidence."
+    },
+    {
+      "name": "Live acceptance",
+      "status": "not_run",
+      "detail": "No live project tests were run for this demonstration."
+    }
+  ]
+}

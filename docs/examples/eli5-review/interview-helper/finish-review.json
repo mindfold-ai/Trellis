@@ -1,0 +1,34 @@
+{
+  "title": "Keep the answer visible during recovery",
+  "summary": "Redacted project example · reconstructed from documentation.",
+  "evidence": [
+    {
+      "label": "Redacted source excerpt",
+      "href": "evidence.md"
+    }
+  ],
+  "before": "A long UX note mixes hint behavior, code generation, retries, and capture controls.",
+  "after": "The current answer stays visible while recovery and code generation report their own progress.",
+  "plan_basis": "unavailable",
+  "delivered": [
+    "Compact before/after and recovery flow"
+  ],
+  "deviations": [
+    "This is a reconstructed review example, not a historical approved plan."
+  ],
+  "remaining": [
+    "Validate live capture and end-to-end latency separately."
+  ],
+  "checks": [
+    {
+      "name": "Source documentation",
+      "status": "partial",
+      "detail": "The excerpt supports the intended behavior; documentation is not execution evidence."
+    },
+    {
+      "name": "Live acceptance",
+      "status": "not_run",
+      "detail": "No live project tests were run for this demonstration."
+    }
+  ]
+}
