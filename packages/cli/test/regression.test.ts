@@ -1487,6 +1487,56 @@ describe("regression: JSON read/write failure reporting", () => {
     },
   );
 
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] archive restore survives a duplicated child entry",
+    () => {
+      const create = (title: string, slug: string, parent?: string): string => {
+        const args = [
+          "create",
+          title,
+          "--description",
+          "regression fixture",
+          "--slug",
+          slug,
+          "--no-start",
+        ];
+        if (parent) args.push("--parent", parent);
+        expect(runTask(args).status).toBe(0);
+        return `${datePrefix}-${slug}`;
+      };
+
+      const parentName = create("Mum", "mum-dup");
+      const firstChild = create("Kid A", "kid-a-dup", parentName);
+      const failingChild = create("Kid B", "kid-b-dup", parentName);
+
+      // A duplicated entry makes the unlink loop visit `kid-a-dup` twice.
+      // The second visit must not snapshot the already-cleared `null`, or the
+      // restore writes that back over the real link and detaches the child
+      // while its parent is still in the active tree.
+      const parentJson = readTaskJson(parentName);
+      parentJson.children = [firstChild, firstChild, failingChild];
+      fs.writeFileSync(
+        taskJsonPath(parentName),
+        `${JSON.stringify(parentJson, null, 2)}\n`,
+        "utf-8",
+      );
+
+      fs.chmodSync(taskDir(failingChild), 0o555);
+      fs.chmodSync(taskJsonPath(failingChild), 0o444);
+      try {
+        expect(runTask(["archive", parentName, "--no-commit"]).status).not.toBe(
+          0,
+        );
+      } finally {
+        fs.chmodSync(taskJsonPath(failingChild), 0o644);
+        fs.chmodSync(taskDir(failingChild), 0o755);
+      }
+
+      expect(readTaskJson(firstChild).parent).toBe(parentName);
+      expect(readTaskJson(failingChild).parent).toBe(parentName);
+    },
+  );
+
   it("[audit] list warns about a skipped task instead of silently dropping it", () => {
     expect(
       runTask([

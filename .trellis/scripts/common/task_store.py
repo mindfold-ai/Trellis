@@ -196,7 +196,7 @@ def _report_write_failure(path: Path) -> None:
     )
 
 
-def _restore_child_links(unlinked: list[tuple[Path, str | None]]) -> None:
+def _restore_child_links(unlinked: dict[Path, str | None]) -> None:
     """Put back the parent links this archive attempt already removed.
 
     The unlink loop below walks a parent's children one at a time, so a
@@ -210,7 +210,7 @@ def _restore_child_links(unlinked: list[tuple[Path, str | None]]) -> None:
     the caller can re-link it by hand instead of guessing which one broke.
     """
     broken: list[str] = []
-    for child_json, original_parent in unlinked:
+    for child_json, original_parent in unlinked.items():
         child_data, _ = read_json_checked(child_json)
         if child_data is None:
             broken.append(child_json.parent.name)
@@ -1368,8 +1368,11 @@ def cmd_archive(args: argparse.Namespace) -> int:
 
             # If this is a parent, clear parent field in all children.
             # Remember each link removed so a later failure in this loop can
-            # put it back (see _restore_child_links).
-            unlinked_children: list[tuple[Path, str | None]] = []
+            # put it back (see _restore_child_links). Keyed by the child's
+            # task.json: a `children` list that names the same child twice
+            # would otherwise record a second, already-cleared snapshot and
+            # the restore would write that `null` back over the real parent.
+            unlinked_children: dict[Path, str | None] = {}
             if task_children:
                 for child_name in task_children:
                     child_dir_path = find_task_by_name(child_name, tasks_dir)
@@ -1388,7 +1391,14 @@ def cmd_archive(args: argparse.Namespace) -> int:
                                     file=sys.stderr,
                                 )
                                 continue
+                            # Only the first visit to a child records its original
+                            # parent: a `children` list naming the same child twice
+                            # would otherwise snapshot the already-cleared value and
+                            # the restore would write that `null` back over the link.
+                            first_visit = child_json not in unlinked_children
                             original_parent = child_data.get("parent")
+                            if first_visit:
+                                unlinked_children[child_json] = original_parent
                             child_data["parent"] = None
                             if not write_json(child_json, child_data):
                                 # Stop before the move: a child pointing at a
@@ -1399,6 +1409,10 @@ def cmd_archive(args: argparse.Namespace) -> int:
                                 # other way round is just as unrecoverable.
                                 # Retrying is safe — every step so far is
                                 # idempotent.
+                                if first_visit:
+                                    # The link never came off, so there is nothing
+                                    # to put back for this child.
+                                    del unlinked_children[child_json]
                                 _restore_child_links(unlinked_children)
                                 _report_write_failure(child_json)
                                 print(
@@ -1409,7 +1423,6 @@ def cmd_archive(args: argparse.Namespace) -> int:
                                     file=sys.stderr,
                                 )
                                 return 1
-                            unlinked_children.append((child_json, original_parent))
                             modified_children.append(child_dir_path.name)
 
     # Clear any session that still points at this task before the path moves.
