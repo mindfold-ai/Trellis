@@ -1423,6 +1423,70 @@ describe("regression: JSON read/write failure reporting", () => {
     },
   );
 
+  it.skipIf(!canProvokePermissionFailure)(
+    "[audit] archive restores the children it already unlinked when a later one fails",
+    () => {
+      const createTask = (
+        title: string,
+        slug: string,
+        parent?: string,
+      ): void => {
+        const args = [
+          "create",
+          title,
+          "--description",
+          "regression fixture",
+          "--slug",
+          slug,
+          "--no-start",
+        ];
+        if (parent) args.push("--parent", parent);
+        expect(runTask(args).status).toBe(0);
+      };
+
+      createTask("Mum", "mum2");
+      const parentName = `${datePrefix}-mum2`;
+      createTask("Kid A", "kid-a", parentName);
+      createTask("Kid B", "kid-b", parentName);
+      const firstChild = `${datePrefix}-kid-a`;
+      const failingChild = `${datePrefix}-kid-b`;
+
+      // Archive walks `children` in order, so pin the order: the failing
+      // child has to come second, after `kid-a` has already lost its link.
+      const parentJson = readTaskJson(parentName);
+      parentJson.children = [firstChild, failingChild];
+      fs.writeFileSync(
+        taskJsonPath(parentName),
+        `${JSON.stringify(parentJson, null, 2)}\n`,
+        "utf-8",
+      );
+
+      // Provoke the write failure through both mechanisms the atomic
+      // writer can hit: a read-only directory fails `mkstemp`, and a
+      // read-only target fails the final replace. Which one a platform
+      // enforces is not the point of this test.
+      fs.chmodSync(taskDir(failingChild), 0o555);
+      fs.chmodSync(taskJsonPath(failingChild), 0o444);
+      try {
+        const r = runTask(["archive", parentName, "--no-commit"]);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain("Failed to write");
+        expect(r.stderr).toContain(failingChild);
+        expect(r.stderr).toContain("Not archived");
+      } finally {
+        fs.chmodSync(taskJsonPath(failingChild), 0o644);
+        fs.chmodSync(taskDir(failingChild), 0o755);
+      }
+
+      // Stopping before the move is not enough on its own: `kid-a` was
+      // unlinked before the failure, and with its parent still in the
+      // active tree that link is lost for good. It has to come back.
+      expect(fs.existsSync(taskJsonPath(parentName))).toBe(true);
+      expect(readTaskJson(firstChild).parent).toBe(parentName);
+      expect(readTaskJson(failingChild).parent).toBe(parentName);
+    },
+  );
+
   it("[audit] list warns about a skipped task instead of silently dropping it", () => {
     expect(
       runTask([

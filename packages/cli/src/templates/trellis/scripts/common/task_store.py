@@ -196,6 +196,40 @@ def _report_write_failure(path: Path) -> None:
     )
 
 
+def _restore_child_links(unlinked: list[tuple[Path, str | None]]) -> None:
+    """Put back the parent links this archive attempt already removed.
+
+    The unlink loop below walks a parent's children one at a time, so a
+    failure part-way through leaves the earlier children carrying
+    ``parent: null`` while their parent is still in the active tree. That is
+    the mirror image of the dangling reference the same loop already refuses
+    to create, and nothing repairs it later either, so undo it before the
+    failure is reported.
+
+    Restoring is best-effort: if a child cannot be written back, name it so
+    the caller can re-link it by hand instead of guessing which one broke.
+    """
+    broken: list[str] = []
+    for child_json, original_parent in unlinked:
+        child_data, _ = read_json_checked(child_json)
+        if child_data is None:
+            broken.append(child_json.parent.name)
+            continue
+        child_data["parent"] = original_parent
+        if not write_json(child_json, child_data):
+            broken.append(child_json.parent.name)
+    if broken:
+        print(
+            colored(
+                f"Warning: could not restore the parent link on: {', '.join(broken)}. "
+                "Re-link each one with `python3 .trellis/scripts/task.py "
+                "add-subtask <parent> <child>`.",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
+
+
 # =============================================================================
 # Sub-agent platform detection + JSONL context files
 # =============================================================================
@@ -1332,7 +1366,10 @@ def cmd_archive(args: argparse.Namespace) -> int:
             # missing from the active set are treated as completed.
             task_children = data.get("children", [])
 
-            # If this is a parent, clear parent field in all children
+            # If this is a parent, clear parent field in all children.
+            # Remember each link removed so a later failure in this loop can
+            # put it back (see _restore_child_links).
+            unlinked_children: list[tuple[Path, str | None]] = []
             if task_children:
                 for child_name in task_children:
                     child_dir_path = find_task_by_name(child_name, tasks_dir)
@@ -1351,13 +1388,18 @@ def cmd_archive(args: argparse.Namespace) -> int:
                                     file=sys.stderr,
                                 )
                                 continue
+                            original_parent = child_data.get("parent")
                             child_data["parent"] = None
                             if not write_json(child_json, child_data):
                                 # Stop before the move: a child pointing at a
                                 # parent that has left .trellis/tasks/ is a
                                 # dangling reference nothing repairs later.
+                                # Put back the children already unlinked above —
+                                # their parent is staying, so losing the link the
+                                # other way round is just as unrecoverable.
                                 # Retrying is safe — every step so far is
                                 # idempotent.
+                                _restore_child_links(unlinked_children)
                                 _report_write_failure(child_json)
                                 print(
                                     f"Not archived: {_repo_relative_path(task_dir, repo_root)} is "
@@ -1367,6 +1409,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
                                     file=sys.stderr,
                                 )
                                 return 1
+                            unlinked_children.append((child_json, original_parent))
                             modified_children.append(child_dir_path.name)
 
     # Clear any session that still points at this task before the path moves.
