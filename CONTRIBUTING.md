@@ -42,10 +42,10 @@ Code contributions are welcome for:
 
 ### Prerequisites
 
-- Node.js 18.0.0+
+- Node.js 18.17.0+ (`packages/cli` sets `engines.node` to `>=18.17.0`)
 - pnpm
-- Python 3 (for hooks)
-- Bash (for scripts)
+- Python 3 (for `.claude/hooks/` and the `.trellis/scripts/` workflow scripts)
+- A POSIX shell (for the Husky pre-commit hook and the two `.sh` helpers)
 
 ### Getting Started
 
@@ -70,35 +70,42 @@ Code contributions are welcome for:
 ### Running Checks
 
 ```bash
-pnpm lint        # ESLint for TypeScript
-pnpm lint:py     # Type checking for Python (basedpyright)
-pnpm lint:all    # Run both
-pnpm typecheck   # TypeScript type checking
+pnpm lint                                   # ESLint for TypeScript, both packages
+pnpm typecheck                              # TypeScript type checking
+pnpm --filter @mindfoldhq/trellis lint:py   # Type checking for Python (basedpyright)
+pnpm --filter @mindfoldhq/trellis lint:all  # ESLint + basedpyright for the CLI package
 ```
 
-> **Note:** Pre-commit hooks will automatically run `eslint --fix` and `prettier --write` on staged `.ts` files.
+> **Note:** `lint:py` and `lint:all` are defined in `packages/cli`, so they need the
+> `--filter` prefix from the repository root.
+
+> **Note:** Pre-commit hooks will automatically run `eslint --fix` and `prettier --write` on staged `packages/cli/src/**/*.ts` files.
 
 ## Project Structure
 
 ```
 Trellis/
-├── src/                    # TypeScript source code
-│   ├── cli/                # CLI entry point
-│   ├── commands/           # CLI commands (init, update)
-│   ├── configurators/      # Template application logic
-│   ├── templates/          # Templates copied to user projects ←
-│   └── utils/              # Utility functions
+├── packages/
+│   ├── cli/                # @mindfoldhq/trellis - the CLI
+│   │   └── src/
+│   │       ├── cli/                # CLI entry point
+│   │       ├── commands/           # CLI commands (init, update)
+│   │       ├── configurators/      # Template application logic
+│   │       ├── migrations/         # Version migration manifests
+│   │       ├── templates/          # Templates copied to user projects ←
+│   │       └── utils/              # Utility functions
+│   └── core/               # @mindfoldhq/trellis-core - channel, mem, task
 ├── .claude/                # Claude Code config (project's own) ←
 │   ├── agents/             # Agent definitions
 │   ├── commands/           # Slash commands
 │   └── hooks/              # Python hook scripts
 ├── .trellis/               # Trellis workflow (project's own) ←
-│   ├── scripts/            # Bash scripts
+│   ├── scripts/            # Python scripts
 │   └── spec/               # Spec file templates
-└── docs/                   # Documentation
+└── docs-site/              # Documentation (git submodule)
 ```
 
-> **Important:** When modifying `.claude/`, `.trellis/`, or `.cursor/`, check if the same changes need to be applied to `src/templates/`. The project uses its own config files, but templates are what gets installed to user projects.
+> **Important:** When modifying `.claude/`, `.trellis/`, or `.cursor/`, check if the same changes need to be applied to `packages/cli/src/templates/`. The project uses its own config files, but templates are what gets installed to user projects.
 
 ## Commit Guidelines
 

@@ -42,10 +42,10 @@
 
 ### 前置要求
 
-- Node.js 18.0.0+
+- Node.js 18.17.0+（`packages/cli` 的 `engines.node` 为 `>=18.17.0`）
 - pnpm
-- Python 3（用于 hooks）
-- Bash（用于脚本）
+- Python 3（用于 `.claude/hooks/` 和 `.trellis/scripts/` 工作流脚本）
+- POSIX shell（用于 Husky pre-commit hook 和两个 `.sh` 辅助脚本）
 
 ### 开始开发
 
@@ -70,35 +70,41 @@
 ### 运行检查
 
 ```bash
-pnpm lint        # TypeScript ESLint 检查
-pnpm lint:py     # Python 类型检查 (basedpyright)
-pnpm lint:all    # 同时运行以上两者
-pnpm typecheck   # TypeScript 类型检查
+pnpm lint                                   # 两个包的 TypeScript ESLint 检查
+pnpm typecheck                              # TypeScript 类型检查
+pnpm --filter @mindfoldhq/trellis lint:py   # Python 类型检查 (basedpyright)
+pnpm --filter @mindfoldhq/trellis lint:all  # CLI 包的 ESLint + basedpyright
 ```
 
-> **注意：** 提交时 pre-commit hook 会自动对暂存的 `.ts` 文件运行 `eslint --fix` 和 `prettier --write`。
+> **注意：** `lint:py` 和 `lint:all` 定义在 `packages/cli` 中，从仓库根目录运行需要加 `--filter` 前缀。
+
+> **注意：** 提交时 pre-commit hook 会自动对暂存的 `packages/cli/src/**/*.ts` 文件运行 `eslint --fix` 和 `prettier --write`。
 
 ## 项目结构
 
 ```
 Trellis/
-├── src/                    # TypeScript 源代码
-│   ├── cli/                # CLI 入口
-│   ├── commands/           # CLI 命令 (init, update)
-│   ├── configurators/      # 模板应用逻辑
-│   ├── templates/          # 安装到用户项目的模板 ←
-│   └── utils/              # 工具函数
+├── packages/
+│   ├── cli/                # @mindfoldhq/trellis - CLI
+│   │   └── src/
+│   │       ├── cli/                # CLI 入口
+│   │       ├── commands/           # CLI 命令 (init, update)
+│   │       ├── configurators/      # 模板应用逻辑
+│   │       ├── migrations/         # 版本迁移清单
+│   │       ├── templates/          # 安装到用户项目的模板 ←
+│   │       └── utils/              # 工具函数
+│   └── core/               # @mindfoldhq/trellis-core - channel、mem、task
 ├── .claude/                # Claude Code 配置（项目自用）←
 │   ├── agents/             # Agent 定义
 │   ├── commands/           # 斜杠命令
 │   └── hooks/              # Python Hook 脚本
 ├── .trellis/               # Trellis 工作流（项目自用）←
-│   ├── scripts/            # Bash 脚本
+│   ├── scripts/            # Python 脚本
 │   └── spec/               # Spec 文件模板
-└── docs/                   # 文档
+└── docs-site/              # 文档（git 子模块）
 ```
 
-> **重要：** 修改 `.claude/`、`.trellis/` 或 `.cursor/` 时，请检查是否需要同步更新 `src/templates/`。项目使用自己的配置文件，但模板才是安装到用户项目的内容。
+> **重要：** 修改 `.claude/`、`.trellis/` 或 `.cursor/` 时，请检查是否需要同步更新 `packages/cli/src/templates/`。项目使用自己的配置文件，但模板才是安装到用户项目的内容。
 
 ## 提交规范
 
