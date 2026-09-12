@@ -44,8 +44,8 @@
 
 - Node.js 18.17.0+（`packages/cli` 的 `engines.node` 为 `>=18.17.0`）
 - pnpm
-- Python 3（用于 hooks）
-- Bash（用于脚本）
+- Python 3（用于 `.claude/hooks/` 和 `.trellis/scripts/` 工作流脚本）
+- POSIX shell（用于 Husky pre-commit hook 和两个 `.sh` 辅助脚本）
 
 ### 开始开发
 
