@@ -34,6 +34,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { filterCodexProjectHooks } from "../configurators/codex.js";
 import { collectPlatformTemplates } from "../configurators/index.js";
 import { FILE_NAMES } from "../constants/paths.js";
 import { getAllMigrations } from "../migrations/index.js";
@@ -57,11 +58,17 @@ export interface PruneResult {
  *   - every migration manifest's from/to path (preserve so legitimate
  *     pending migrations can find their source/target)
  */
-function buildKnownKeys(configuredPlatforms: readonly AITool[]): Set<string> {
+function buildKnownKeys(
+  cwd: string,
+  configuredPlatforms: readonly AITool[],
+): Set<string> {
   const known = new Set<string>();
   for (const id of configuredPlatforms) {
     const templates = collectPlatformTemplates(id);
     if (!templates) continue;
+    if (id === "codex") {
+      filterCodexProjectHooks(cwd, templates);
+    }
     for (const key of templates.keys()) {
       known.add(toPosix(key));
     }
@@ -127,7 +134,7 @@ export function pruneOrphanManifestKeys(
   options: PruneOptions = {},
 ): PruneResult {
   const persist = options.persist ?? true;
-  const known = buildKnownKeys(configuredPlatforms);
+  const known = buildKnownKeys(cwd, configuredPlatforms);
   const pruned: string[] = [];
   const kept: TemplateHashes = {};
 
