@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Validate platform registry completeness and template copy manifest sync"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Validate test coverage for platform hook generators and integration runners"}

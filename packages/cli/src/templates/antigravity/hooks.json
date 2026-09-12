@@ -1,0 +1,23 @@
+{
+  "trellis": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "{{PYTHON_CMD}} hooks/inject-workflow-state.py",
+        "timeout": 15
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_CMD}} hooks/inject-shell-session-context.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

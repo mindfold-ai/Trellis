@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI template generation, platform configuration registry, and hook installation guidelines"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Vitest testing conventions, subprocess execution, and cross-platform python detection"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer contract consistency for hook payloads and lifecycle state"}
