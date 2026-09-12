@@ -44,8 +44,8 @@ Code contributions are welcome for:
 
 - Node.js 18.17.0+ (`packages/cli` sets `engines.node` to `>=18.17.0`)
 - pnpm
-- Python 3 (for hooks)
-- Bash (for scripts)
+- Python 3 (for `.claude/hooks/` and the `.trellis/scripts/` workflow scripts)
+- A POSIX shell (for the Husky pre-commit hook and the two `.sh` helpers)
 
 ### Getting Started
 
