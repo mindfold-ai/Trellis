@@ -353,13 +353,20 @@ interface ContextInjectionLimits {
    max_file_bytes: number;
    max_artifact_bytes: number;
    max_total_bytes: number;
+   /** Largest unified diff (bytes) appended for one file before falling back to the full block. */
+   diff_max_bytes: number;
+   /** Consecutive diffs allowed per file within one compaction epoch before a full block resets the baseline. */
+   diff_max_stack: number;
 }
 
 const DEFAULT_CONTEXT_INJECTION_LIMITS: ContextInjectionLimits = {
    max_file_bytes: 32768,
    max_artifact_bytes: 65536,
    max_total_bytes: 131072,
+   diff_max_bytes: 8192,
+   diff_max_stack: 3,
 };
+
 const MAX_JSONL_BYTES = 1024 * 1024;
 
 function stripInlineComment(value: string): string {
@@ -619,61 +626,71 @@ function readJsonlLines(jsonlPath: string, displayPath: string): { lines: string
    }
 }
 
-function buildTaskContext(projectRoot: string, taskDir: string, agentType?: AgentType): string {
-   const parts: string[] = [];
+/** One ordered unit of task context, before the total-bytes budget is applied. */
+type TaskContextEntry =
+   | { kind: "artifact"; displayPath: string; materialized: MaterializedFile }
+   | { kind: "manifest-omitted"; section: string; displayPath: string; notice: string }
+   | { kind: "file"; section: string; displayPath: string; materialized: MaterializedFile };
+
+/**
+ * Materializes prd.md, info.md and every manifest-referenced file in the order
+ * they are injected. Per-file caps are applied here; the shared total budget is
+ * applied by the consumer so the same entries can feed both the system prompt
+ * block and the per-file update baselines.
+ */
+function materializeTaskContextFiles(projectRoot: string, taskDir: string, agentType?: AgentType): TaskContextEntry[] {
+   const entries: TaskContextEntry[] = [];
    // Resolved once per call (not per referenced file) — avoids re-parsing
    // config.yaml for every jsonl row.
    const trustedRoots = resolveTrustedRoots(projectRoot);
    const limits = readContextInjectionLimits(projectRoot);
-   const prefix = "<task-context>\nContext is bounded by .trellis/config.yaml. Files marked [truncated] or [omitted] remain authoritative on disk; use their required_read path before relying on missing detail.\n\n";
-   const suffix = "\n</task-context>";
-   const wrapperBytes = Buffer.byteLength(prefix + suffix, "utf-8");
-   if (limits.max_total_bytes > 0 && limits.max_total_bytes < wrapperBytes) return "";
-   const budget = new ContextBudget(limits.max_total_bytes, wrapperBytes);
-
-   const appendCandidate = (primary: string | null, fallback: string | null = null): void => {
-      const separator = parts.length > 0 ? "\n\n" : "";
-      const output = budget.emitCandidate(
-         primary === null ? null : separator + primary,
-         fallback === null ? null : separator + fallback,
-      );
-      if (output !== null) parts.push(output);
-   };
 
    // prd.md and info.md — always included
    const prdPath = join(taskDir, "prd.md");
-   const relativePrdPath = displayProjectPath(projectRoot, prdPath, taskDir);
    if (existsSync(prdPath)) {
-      const artifact = materialize(prdPath, relativePrdPath, "Requirements document", limits.max_artifact_bytes, "artifact");
-      appendCandidate(artifact.block, artifact.notice);
+      const displayPath = displayProjectPath(projectRoot, prdPath, taskDir);
+      entries.push({
+         kind: "artifact",
+         displayPath,
+         materialized: materialize(
+            prdPath,
+            displayPath,
+            "Requirements document",
+            limits.max_artifact_bytes,
+            "artifact",
+         ),
+      });
    }
    const infoPath = join(taskDir, "info.md");
-   const relativeInfoPath = displayProjectPath(projectRoot, infoPath, taskDir);
    if (existsSync(infoPath)) {
-      const artifact = materialize(infoPath, relativeInfoPath, "Task information", limits.max_artifact_bytes, "artifact");
-      appendCandidate(artifact.block, artifact.notice);
+      const displayPath = displayProjectPath(projectRoot, infoPath, taskDir);
+      entries.push({
+         kind: "artifact",
+         displayPath,
+         materialized: materialize(infoPath, displayPath, "Task information", limits.max_artifact_bytes, "artifact"),
+      });
    }
-
-   // Determine which jsonl files to read based on agent type
-   const jsonlNames = taskContextJsonlNames(agentType);
 
    // A file may be referenced by both manifests. Use the resolved real path so
    // relative aliases and symlinked paths cannot consume the context budget twice.
    const includedPaths = new Set<string>();
 
-   for (const jsonlName of jsonlNames) {
+   for (const jsonlName of taskContextJsonlNames(agentType)) {
       const jsonlPath = join(taskDir, jsonlName);
       if (!existsSync(jsonlPath)) continue;
 
       const relativeJsonlPath = displayProjectPath(projectRoot, jsonlPath, taskDir);
       const manifest = readJsonlLines(jsonlPath, relativeJsonlPath);
       if (manifest.omitted) {
-         appendCandidate(`## ${jsonlName}\n\n${manifest.omitted}`);
+         entries.push({
+            kind: "manifest-omitted",
+            section: jsonlName,
+            displayPath: relativeJsonlPath,
+            notice: manifest.omitted,
+         });
          continue;
       }
 
-      const fileChunks: string[] = [];
-      let sectionHeaderEmitted = false;
       for (const line of manifest.lines) {
          const trimmed = line.trim();
          if (!trimmed) continue;
@@ -685,33 +702,122 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
             if (!targetPath) continue;
             if (includedPaths.has(targetPath)) continue;
             includedPaths.add(targetPath);
-            const materialized = materialize(targetPath, file, typeof row.reason === "string" ? row.reason : "-", limits.max_file_bytes, "file");
-            const sectionPrefix = sectionHeaderEmitted
-               ? "\n\n---\n\n"
-               : `${parts.length > 0 ? "\n\n" : ""}## ${jsonlName}\n\n`;
-            const output = budget.emitCandidate(
-               materialized.block === null ? null : `${sectionPrefix}${materialized.block}`,
-               `${sectionPrefix}${materialized.notice}`,
-            );
-            if (output !== null) {
-               fileChunks.push(output);
-               sectionHeaderEmitted = true;
-            }
+            entries.push({
+               kind: "file",
+               section: jsonlName,
+               displayPath: file,
+               materialized: materialize(
+                  targetPath,
+                  file,
+                  typeof row.reason === "string" ? row.reason : "-",
+                  limits.max_file_bytes,
+                  "file",
+               ),
+            });
          } catch {
             // seed rows and malformed lines are non-fatal
          }
       }
-
-      if (fileChunks.length > 0) parts.push(fileChunks.join(""));
    }
+   return entries;
+}
 
-   if (parts.length === 0) return "";
+/** Text the model is meant to see for one entry when the total budget allows it. */
+function entryBlock(entry: TaskContextEntry): string {
+   if (entry.kind === "manifest-omitted") return entry.notice;
+   return entry.materialized.block ?? entry.materialized.notice;
+}
+
+interface RenderedTaskContext {
+   content: string;
+   /** Display paths whose materialized text was replaced by a notice or dropped by the total budget. */
+   omittedPaths: Set<string>;
+}
+
+/**
+ * Renders materialized entries into the `<task-context>` block under the
+ * shared total budget. `omittedPaths` lets the caller avoid diffing against
+ * text the model never received.
+ */
+function renderTaskContext(projectRoot: string, entries: TaskContextEntry[]): RenderedTaskContext {
+   const parts: string[] = [];
+   const omittedPaths = new Set<string>();
+   const limits = readContextInjectionLimits(projectRoot);
+   const prefix =
+      "<task-context>\nContext is bounded by .trellis/config.yaml. Files marked [truncated] or [omitted] remain authoritative on disk; use their required_read path before relying on missing detail.\n\n";
+   const suffix = "\n</task-context>";
+   const wrapperBytes = Buffer.byteLength(prefix + suffix, "utf-8");
+   if (limits.max_total_bytes > 0 && limits.max_total_bytes < wrapperBytes) {
+      for (const entry of entries) omittedPaths.add(entry.displayPath);
+      return { content: "", omittedPaths };
+   }
+   const budget = new ContextBudget(limits.max_total_bytes, wrapperBytes);
+
+   // Emits `primary` (or `fallback` once the budget is exhausted) and reports
+   // whether the text the baseline will remember (`shown`) is what went out.
+   const appendCandidate = (primary: string | null, fallback: string | null, shown: string): boolean => {
+      const separator = parts.length > 0 ? "\n\n" : "";
+      const output = budget.emitCandidate(
+         primary === null ? null : separator + primary,
+         fallback === null ? null : separator + fallback,
+      );
+      if (output !== null) parts.push(output);
+      return output === separator + shown;
+   };
+
+   let sectionName: string | null = null;
+   let fileChunks: string[] = [];
+   let sectionHeaderEmitted = false;
+   const flushSection = (): void => {
+      if (fileChunks.length > 0) parts.push(fileChunks.join(""));
+      fileChunks = [];
+      sectionHeaderEmitted = false;
+      sectionName = null;
+   };
+
+   for (const entry of entries) {
+      if (entry.kind === "artifact") {
+         const shown = entryBlock(entry);
+         if (!appendCandidate(entry.materialized.block, entry.materialized.notice, shown)) {
+            omittedPaths.add(entry.displayPath);
+         }
+         continue;
+      }
+      if (entry.section !== sectionName) {
+         flushSection();
+         sectionName = entry.section;
+      }
+      if (entry.kind === "manifest-omitted") {
+         const text = `## ${entry.section}\n\n${entry.notice}`;
+         if (!appendCandidate(text, null, text)) omittedPaths.add(entry.displayPath);
+         sectionName = null;
+         continue;
+      }
+      const sectionPrefix = sectionHeaderEmitted
+         ? "\n\n---\n\n"
+         : `${parts.length > 0 ? "\n\n" : ""}## ${entry.section}\n\n`;
+      const primary = entry.materialized.block === null ? null : `${sectionPrefix}${entry.materialized.block}`;
+      const output = budget.emitCandidate(primary, `${sectionPrefix}${entry.materialized.notice}`);
+      if (output !== null) {
+         fileChunks.push(output);
+         sectionHeaderEmitted = true;
+      }
+      if (output !== `${sectionPrefix}${entryBlock(entry)}`) omittedPaths.add(entry.displayPath);
+   }
+   flushSection();
+
+   if (parts.length === 0) return { content: "", omittedPaths };
    const context = `${prefix}${parts.join("")}${suffix}`;
-   if (limits.max_total_bytes <= 0 || Buffer.byteLength(context, "utf-8") <= limits.max_total_bytes) return context;
+   if (limits.max_total_bytes <= 0 || Buffer.byteLength(context, "utf-8") <= limits.max_total_bytes)
+      return { content: context, omittedPaths };
    const suffixBytes = Buffer.byteLength(suffix, "utf-8");
    const bodyLimit = Math.max(0, limits.max_total_bytes - suffixBytes);
    const body = truncateUtf8(Buffer.from(`${prefix}${parts.join("")}`, "utf-8"), bodyLimit).toString("utf-8");
-   return `${body}${suffix}`;
+   return { content: `${body}${suffix}`, omittedPaths };
+}
+
+function buildTaskContext(projectRoot: string, taskDir: string, agentType?: AgentType): string {
+   return renderTaskContext(projectRoot, materializeTaskContextFiles(projectRoot, taskDir, agentType)).content;
 }
 
 // ---------------------------------------------------------------------------
@@ -884,44 +990,462 @@ function detectAgentType(): AgentType {
    return null;
 }
 
-interface TaskContextCache {
-   projectRoot: string;
-   taskDir: string;
-   agentType: AgentType;
-   signature: string;
-   content: string;
+const SESSION_CONTEXT_TYPE = "trellis-session-context";
+const TASK_CONTEXT_TYPE = "trellis-task-context";
+const TASK_CONTEXT_UPDATE_TYPE = "trellis-task-context-update";
+const WORKFLOW_STATE_TYPE = "trellis-workflow-state";
+
+// ---------------------------------------------------------------------------
+// Line diff — self-contained Myers O(ND) with unified output. The provider
+// prefix cache only survives when history is append-only, so task file
+// changes are delivered as diffs against the last snapshot the model saw.
+// ---------------------------------------------------------------------------
+
+/** Lines per side beyond which a diff is not attempted; the full block is sent instead. */
+const DIFF_MAX_LINES = 4000;
+/** Edit-distance ceiling for the Myers search; larger rewrites fall back to the full block. */
+const DIFF_MAX_EDITS = 1000;
+const DIFF_CONTEXT_LINES = 3;
+
+interface DiffEdit {
+   kind: " " | "-" | "+";
+   line: string;
 }
 
+function splitLines(text: string): string[] {
+   if (text === "") return [];
+   const lines = text.split("\n");
+   if (lines[lines.length - 1] === "") lines.pop();
+   return lines;
+}
+
+function myersEdits(a: string[], b: string[], maxEdits: number): DiffEdit[] | null {
+   const n = a.length;
+   const m = b.length;
+   const max = Math.min(maxEdits, n + m);
+   const offset = max + 1;
+   const width = 2 * max + 3;
+   const trace: Int32Array[] = [];
+   const v = new Int32Array(width);
+   v[offset + 1] = 0;
+   let found = -1;
+   for (let d = 0; d <= max; d++) {
+      trace.push(Int32Array.from(v));
+      for (let k = -d; k <= d; k += 2) {
+         let x: number;
+         if (k === -d || (k !== d && v[offset + k - 1]! < v[offset + k + 1]!)) {
+            x = v[offset + k + 1]!;
+         } else {
+            x = v[offset + k - 1]! + 1;
+         }
+         let y = x - k;
+         while (x < n && y < m && a[x] === b[y]) {
+            x++;
+            y++;
+         }
+         v[offset + k] = x;
+         if (x >= n && y >= m) {
+            found = d;
+            break;
+         }
+      }
+      if (found >= 0) break;
+   }
+   if (found < 0) return null;
+
+   const edits: DiffEdit[] = [];
+   let x = n;
+   let y = m;
+   for (let d = found; d >= 0; d--) {
+      const vd = trace[d]!;
+      const k = x - y;
+      let prevK: number;
+      if (k === -d || (k !== d && vd[offset + k - 1]! < vd[offset + k + 1]!)) {
+         prevK = k + 1;
+      } else {
+         prevK = k - 1;
+      }
+      const prevX = vd[offset + prevK]!;
+      const prevY = prevX - prevK;
+      while (x > prevX && y > prevY) {
+         edits.push({ kind: " ", line: a[x - 1]! });
+         x--;
+         y--;
+      }
+      if (d > 0) {
+         if (x === prevX) edits.push({ kind: "+", line: b[prevY]! });
+         else edits.push({ kind: "-", line: a[prevX]! });
+      }
+      x = prevX;
+      y = prevY;
+   }
+   edits.reverse();
+   return edits;
+}
+
+/**
+ * Produces a unified diff between two snapshots of one file.
+ *
+ * @returns `''` when the texts are identical, `null` when a diff is not
+ *   attempted (too many lines or too many edits), otherwise unified hunks.
+ */
+export function unifiedDiff(previous: string, current: string, displayPath: string): string | null {
+   if (previous === current) return "";
+   const a = splitLines(previous);
+   const b = splitLines(current);
+   if (a.length > DIFF_MAX_LINES || b.length > DIFF_MAX_LINES) return null;
+
+   // Trim the shared prefix and suffix so typical localized edits keep the
+   // Myers search tiny regardless of file size.
+   let start = 0;
+   while (start < a.length && start < b.length && a[start] === b[start]) start++;
+   let endA = a.length;
+   let endB = b.length;
+   while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
+      endA--;
+      endB--;
+   }
+   const middle = myersEdits(a.slice(start, endA), b.slice(start, endB), DIFF_MAX_EDITS);
+   if (middle === null) return null;
+   const edits: DiffEdit[] = [
+      ...a.slice(0, start).map((line): DiffEdit => ({ kind: " ", line })),
+      ...middle,
+      ...a.slice(endA).map((line): DiffEdit => ({ kind: " ", line })),
+   ];
+
+   // Group changes into hunks; merge when the gap fits inside twice the context.
+   const changeIndexes: number[] = [];
+   for (let index = 0; index < edits.length; index++) {
+      if (edits[index]!.kind !== " ") changeIndexes.push(index);
+   }
+   if (changeIndexes.length === 0) return "";
+   const ranges: Array<[number, number]> = [];
+   for (const index of changeIndexes) {
+      const from = Math.max(0, index - DIFF_CONTEXT_LINES);
+      const to = Math.min(edits.length - 1, index + DIFF_CONTEXT_LINES);
+      const last = ranges[ranges.length - 1];
+      if (last && from <= last[1] + 1) last[1] = Math.max(last[1], to);
+      else ranges.push([from, to]);
+   }
+
+   const out: string[] = [`--- ${displayPath} (previous snapshot)`, `+++ ${displayPath} (current)`];
+   let oldLine = 1;
+   let newLine = 1;
+   let cursor = 0;
+   for (const [from, to] of ranges) {
+      for (; cursor < from; cursor++) {
+         const edit = edits[cursor]!;
+         if (edit.kind !== "+") oldLine++;
+         if (edit.kind !== "-") newLine++;
+      }
+      let oldCount = 0;
+      let newCount = 0;
+      const body: string[] = [];
+      for (let index = from; index <= to; index++) {
+         const edit = edits[index]!;
+         if (edit.kind !== "+") oldCount++;
+         if (edit.kind !== "-") newCount++;
+         body.push(`${edit.kind}${edit.line}`);
+      }
+      // Match git: an empty side reports the line before the hunk.
+      const oldStart = oldCount === 0 ? oldLine - 1 : oldLine;
+      const newStart = newCount === 0 ? newLine - 1 : newLine;
+      out.push(`@@ -${oldStart},${oldCount} +${newStart},${newCount} @@`, ...body);
+      oldLine += oldCount;
+      newLine += newCount;
+      cursor = to + 1;
+   }
+   return out.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Task context update planning (pure). The system prompt carries the first
+// snapshot for the life of the process; every later change is appended as a
+// persisted message so provider-bound history never rewrites earlier bytes.
+// ---------------------------------------------------------------------------
+
+/** Last text sent to the model for one task file, plus its diff stack within the current epoch. */
+export interface TaskFileBaseline {
+   block: string;
+   stackedDiffs: number;
+   stackedDiffBytes: number;
+   /**
+    * The model may no longer hold `block` verbatim (the update carrying it was
+    * omitted by the budget, or a compaction happened since), so the next change
+    * must be sent in full instead of as a diff against it.
+    */
+   stale: boolean;
+   /**
+    * The model never received `block` at all (omitted by the system prompt or
+    * update budget), so the file is re-sent in full on the next update pass
+    * even when it did not change on disk.
+    */
+   unseen: boolean;
+}
+
+/** Baseline for the bound task; `files` preserves injection order. */
+export interface TaskContextBaseline {
+   taskDir: string;
+   /** Project-relative label used in update headers. */
+   taskLabel: string;
+   signature: string;
+   files: Map<string, TaskFileBaseline>;
+}
+
+/** Current on-disk snapshot of the bound task. */
+export interface TaskContextSnapshot {
+   taskDir: string;
+   taskLabel: string;
+   signature: string;
+   files: Array<{ displayPath: string; block: string }>;
+}
+
+export interface TaskContextUpdatePlan {
+   /** Message body to append, or `''` when nothing changed. */
+   content: string;
+   baseline: TaskContextBaseline | null;
+}
+
+export interface TaskContextUpdateInput {
+   previous: TaskContextBaseline | null;
+   current: TaskContextSnapshot | null;
+   limits: Pick<ContextInjectionLimits, "max_total_bytes" | "diff_max_bytes" | "diff_max_stack">;
+   /** True once after a compaction: earlier snapshots may be summarized away, so diffs need a fresh base. */
+   epochReset: boolean;
+   /** True when the system prompt holds a task block; only affects the wording of the update header. */
+   promptHasTask: boolean;
+}
+
+const UPDATE_PREFIX = `<${TASK_CONTEXT_UPDATE_TYPE}>\n`;
+const UPDATE_SUFFIX = `\n</${TASK_CONTEXT_UPDATE_TYPE}>`;
+
+function snapshotFiles(entries: TaskContextEntry[]): TaskContextSnapshot["files"] {
+   const files: TaskContextSnapshot["files"] = [];
+   const seen = new Set<string>();
+   for (const entry of entries) {
+      if (seen.has(entry.displayPath)) continue;
+      seen.add(entry.displayPath);
+      files.push({ displayPath: entry.displayPath, block: entryBlock(entry) });
+   }
+   return files;
+}
+
+function baselineFrom(snapshot: TaskContextSnapshot, stalePaths: ReadonlySet<string> = new Set()): TaskContextBaseline {
+   const files = new Map<string, TaskFileBaseline>();
+   for (const file of snapshot.files) {
+      files.set(file.displayPath, {
+         block: file.block,
+         stackedDiffs: 0,
+         stackedDiffBytes: 0,
+         stale: stalePaths.has(file.displayPath),
+         unseen: stalePaths.has(file.displayPath),
+      });
+   }
+   return {
+      taskDir: snapshot.taskDir,
+      taskLabel: snapshot.taskLabel,
+      signature: snapshot.signature,
+      files,
+   };
+}
+
+/**
+ * Decides what to append for this turn and what the next baseline is.
+ *
+ * Section shapes degrade in order: unified diff, full block, omitted notice
+ * (when the shared total budget is exhausted). A full block is used whenever
+ * there is no baseline for the file, the baseline is stale (compaction since
+ * it was sent, or its update was omitted), the per-file diff stack is
+ * exhausted, the diffs stacked since the last full send would exceed one full
+ * block, or the diff itself is larger than `diff_max_bytes` or the block.
+ */
+export function planTaskContextUpdate(input: TaskContextUpdateInput): TaskContextUpdatePlan {
+   const { previous, current, limits, epochReset, promptHasTask } = input;
+   if (!current) {
+      if (!previous) return { content: "", baseline: null };
+      const label = previous.taskLabel;
+      return {
+         content: `${UPDATE_PREFIX}Task context for ${label} is no longer active. Ignore its files in the system prompt and earlier updates unless a task is bound again.${UPDATE_SUFFIX}`,
+         baseline: null,
+      };
+   }
+
+   const sameTask = previous !== null && previous.taskDir === current.taskDir;
+   const headerLines: string[] = [];
+   if (previous && !sameTask) {
+      headerLines.push(
+         `Task context for ${previous.taskLabel} is no longer active; the sections below describe the newly bound task.`,
+      );
+   }
+   if (!sameTask && !promptHasTask) {
+      headerLines.push(
+         "The system prompt holds no task context for this task; the sections below are the full baseline.",
+      );
+   } else if (!sameTask) {
+      headerLines.push("The sections below are the full baseline for the newly bound task.");
+   } else {
+      headerLines.push(
+         `Task context changed on disk. Each section below supersedes the same file in ${promptHasTask ? "the system prompt and in earlier updates" : "earlier updates"}.`,
+      );
+   }
+   headerLines.push("Files on disk remain authoritative; use read for anything not shown.");
+   const header = `${headerLines.join(" ")}\n\n`;
+
+   const nextFiles = new Map<string, TaskFileBaseline>();
+   interface Section {
+      primary: string;
+      fallback: string;
+      /** Baseline entry to downgrade to stale when `primary` does not go out; null for removal notices. */
+      file: { displayPath: string; block: string } | null;
+   }
+   const sections: Section[] = [];
+   // A different task has no usable baseline: every file starts without `old`.
+   const previousFiles = sameTask && previous ? previous.files : new Map<string, TaskFileBaseline>();
+
+   for (const file of current.files) {
+      const old = previousFiles.get(file.displayPath);
+      if (old && old.block === file.block && !old.unseen) {
+         // Unchanged. After a compaction the update that carried `old.block` may
+         // have been summarized away, so its next change must be sent in full.
+         nextFiles.set(file.displayPath, epochReset && !old.stale ? { ...old, stale: true } : old);
+         continue;
+      }
+      const blockBytes = Buffer.byteLength(file.block, "utf-8");
+      let diff: string | null = null;
+      if (old && !old.stale && !epochReset && old.stackedDiffs < limits.diff_max_stack) {
+         const candidate = unifiedDiff(old.block, file.block, file.displayPath);
+         const candidateBytes = candidate === null ? 0 : Buffer.byteLength(candidate, "utf-8");
+         // A diff is only worth it when it is cheaper than the block itself and
+         // the diffs stacked since the last full send still cost less than one
+         // full resend; otherwise the full block resets the stack.
+         if (
+            candidate !== null &&
+            candidate !== "" &&
+            candidateBytes <= limits.diff_max_bytes &&
+            candidateBytes < blockBytes &&
+            old.stackedDiffBytes + candidateBytes <= blockBytes
+         ) {
+            diff = candidate;
+         }
+      }
+      const fallback = `## ${file.displayPath} [omitted]\n\n[Trellis: omitted (update budget reached) — ${file.displayPath}; required_read: ${file.displayPath}]`;
+      if (diff !== null && old) {
+         sections.push({ primary: `## ${file.displayPath} (diff)\n\n${diff}`, fallback, file });
+         nextFiles.set(file.displayPath, {
+            block: file.block,
+            stackedDiffs: old.stackedDiffs + 1,
+            stackedDiffBytes: old.stackedDiffBytes + Buffer.byteLength(diff, "utf-8"),
+            stale: false,
+            unseen: false,
+         });
+      } else {
+         sections.push({ primary: `## ${file.displayPath} (full)\n\n${file.block}`, fallback, file });
+         nextFiles.set(file.displayPath, {
+            block: file.block,
+            stackedDiffs: 0,
+            stackedDiffBytes: 0,
+            stale: false,
+            unseen: false,
+         });
+      }
+   }
+   for (const displayPath of previousFiles.keys()) {
+      if (nextFiles.has(displayPath)) continue;
+      const text = `## ${displayPath} (removed)\n\nNo longer part of the task context.`;
+      sections.push({ primary: text, fallback: text, file: null });
+   }
+
+   const baseline: TaskContextBaseline = {
+      taskDir: current.taskDir,
+      taskLabel: current.taskLabel,
+      signature: current.signature,
+      files: nextFiles,
+   };
+   if (sections.length === 0) return { content: "", baseline };
+
+   const wrapperBytes = Buffer.byteLength(UPDATE_PREFIX + header + UPDATE_SUFFIX, "utf-8");
+   const budget = new ContextBudget(limits.max_total_bytes, wrapperBytes);
+   const parts: string[] = [];
+   for (const section of sections) {
+      const separator = parts.length > 0 ? "\n\n" : "";
+      const primary = separator + section.primary;
+      const output = budget.emitCandidate(primary, separator + section.fallback);
+      if (output !== null) parts.push(output);
+      if (section.file && output !== primary) {
+         // The model only got a notice (or nothing): remember the current text so
+         // the change is not re-reported, but never diff against it.
+         nextFiles.set(section.file.displayPath, {
+            block: section.file.block,
+            stackedDiffs: 0,
+            stackedDiffBytes: 0,
+            stale: true,
+            unseen: true,
+         });
+      }
+   }
+   return {
+      content: `${UPDATE_PREFIX}${header}${parts.join("")}${UPDATE_SUFFIX}`,
+      baseline,
+   };
+}
 // ---------------------------------------------------------------------------
 // Extension entry point
 // ---------------------------------------------------------------------------
 
-export default function(pi: ExtensionAPI): void {
+export default function (pi: ExtensionAPI): void {
    let projectRoot: string | null = null;
    const turnCache = new TurnContextCache();
    const agentType = detectAgentType();
    const isSubAgent = agentType !== null;
-   let taskContextCache: TaskContextCache | null = null;
 
-   // Tracks compaction boundaries — context handler skips scanning when no
-   // compaction has occurred since last injection.
-   let lastCompactionTs = 0;
-   let lastInjectionTs = 0;
+   // Set when a compaction is announced and cleared once a workflow breadcrumb
+   // has been persisted or re-projected afterwards. A boolean instead of a
+   // timestamp pair: two events inside the same millisecond must not reopen
+   // the safety net.
+   let compactionPending = false;
 
-   const rememberContextKey = (ctx?: { sessionManager?: { getSessionId?: () => string | undefined; getSessionFile?: () => string | undefined } }): string | null => {
+   // Provider prefix caches invalidate from byte 0 whenever the system prompt
+   // changes, so the task block appended to the system prompt is memoized per
+   // context key + project root and stays byte-identical for the life of the
+   // process. Later on-disk changes travel through persisted update messages.
+   const memoizedTaskBlocks = new Map<string, string>();
+   const taskBaselines = new Map<string, TaskContextBaseline | null>();
+   // Set by session_before_compact and consumed by the next update planning:
+   // earlier snapshots may have been summarized away, so the first change after
+   // a compaction re-sends the full block instead of a diff.
+   let baselineEpochInvalidated = false;
+
+   const rememberContextKey = (ctx?: {
+      sessionManager?: {
+         getSessionId?: () => string | undefined;
+         getSessionFile?: () => string | undefined;
+      };
+   }): string | null => {
       const key = deriveContextKey(ctx);
       if (!key) return null;
       return key;
    };
 
-   const getTaskContext = (taskDir: string, root: string): string => {
+   const promptKey = (root: string, contextKey: string | null): string => `${contextKey ?? "default"}::${root}`;
+
+   const snapshotTask = (
+      taskDir: string,
+      root: string,
+   ): { snapshot: TaskContextSnapshot; entries: TaskContextEntry[] } => {
+      // Signature before content: a write landing between the two reads then
+      // leaves the stored signature older than the text, so the next turn
+      // re-plans (and stays silent if the content matches) instead of missing it.
       const signature = taskContextSignature(root, taskDir, agentType);
-      if (taskContextCache?.projectRoot === root && taskContextCache.taskDir === taskDir && taskContextCache.agentType === agentType && taskContextCache.signature === signature) {
-         return taskContextCache.content;
-      }
-      const content = buildTaskContext(root, taskDir, agentType);
-      taskContextCache = { projectRoot: root, taskDir, agentType, signature, content };
-      return content;
+      const entries = materializeTaskContextFiles(root, taskDir, agentType);
+      return {
+         entries,
+         snapshot: {
+            taskDir,
+            taskLabel: displayProjectPath(root, taskDir, taskDir),
+            signature,
+            files: snapshotFiles(entries),
+         },
+      };
    };
 
    pi.on("session_start", async (_event, ctx) => {
@@ -934,36 +1458,25 @@ export default function(pi: ExtensionAPI): void {
          // Sub-agent: inject precise task context once
          const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
          if (taskDir) {
-            const taskContext = getTaskContext(taskDir, projectRoot);
+            const taskContext = buildTaskContext(projectRoot, taskDir, agentType);
             if (taskContext) {
                await pi.sendMessage({
-                  customType: "trellis-task-context",
+                  customType: TASK_CONTEXT_TYPE,
                   content: taskContext,
                   display: false,
                });
             }
          }
       } else {
-         // Main session: inject session context (global map) + task context
+         // Main session: inject session context (global map). The task context
+         // is carried by the system prompt from the first turn onwards.
          const sessionContext = buildSessionContext(projectRoot, contextKey);
          if (sessionContext) {
             await pi.sendMessage({
-               customType: "trellis-session-context",
+               customType: SESSION_CONTEXT_TYPE,
                content: sessionContext,
                display: false,
             });
-         }
-
-         const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
-         if (taskDir) {
-            const taskContext = getTaskContext(taskDir, projectRoot);
-            if (taskContext) {
-               await pi.sendMessage({
-                  customType: "trellis-task-context",
-                  content: taskContext,
-                  display: false,
-               });
-            }
          }
 
          ctx.ui.notify("Trellis workflow system available", "info");
@@ -971,10 +1484,11 @@ export default function(pi: ExtensionAPI): void {
    });
 
    pi.on("session_before_compact", async () => {
-      lastCompactionTs = Date.now();
+      compactionPending = true;
+      baselineEpochInvalidated = true;
    });
 
-   pi.on("before_agent_start", async (_event, ctx) => {
+   pi.on("before_agent_start", async (event, ctx) => {
       if (!projectRoot) {
          projectRoot = findProjectRoot(ctx.cwd);
       }
@@ -983,86 +1497,133 @@ export default function(pi: ExtensionAPI): void {
 
       // Persistent injection: workflow state for this turn
       const cached = turnCache.get(projectRoot, contextKey);
-      lastInjectionTs = Date.now();
+      compactionPending = false;
 
-      // Skip turn: inject nothing (escape hatch)
-      if (!cached.workflowMsg) return;
+      const message = cached.workflowMsg
+         ? {
+              customType: WORKFLOW_STATE_TYPE,
+              content: cached.workflowMsg,
+              display: false,
+           }
+         : undefined;
 
+      if (isSubAgent) return message ? { message } : undefined;
+
+      // Task block: snapshot once per context key, then keep the system prompt
+      // byte-identical. `event.systemPrompt` already carries earlier handlers'
+      // segments; only append, never replace.
+      const key = promptKey(projectRoot, contextKey);
+      let block = memoizedTaskBlocks.get(key);
+      if (block === undefined) {
+         const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
+         block = "";
+         let baseline: TaskContextBaseline | null = null;
+         if (taskDir) {
+            // One materialization feeds both the prompt block and the baseline so
+            // later diffs are computed against exactly the text the model saw.
+            const { snapshot, entries } = snapshotTask(taskDir, projectRoot);
+            const rendered = renderTaskContext(projectRoot, entries);
+            block = rendered.content;
+            if (block) baseline = baselineFrom(snapshot, rendered.omittedPaths);
+         }
+         memoizedTaskBlocks.set(key, block);
+         taskBaselines.set(key, baseline);
+      }
+      const basePrompt = (event as { systemPrompt?: unknown }).systemPrompt;
+      const systemPrompt = block && Array.isArray(basePrompt) ? [...basePrompt, block] : undefined;
+      if (!message && !systemPrompt) return;
+      return {
+         ...(message ? { message } : {}),
+         ...(systemPrompt ? { systemPrompt } : {}),
+      };
+   });
+
+   // Second handler: append-only task context refresh. Runs after the memoize
+   // handler above (same registration order), returns at most one persisted
+   // message per turn and never touches the system prompt.
+   pi.on("before_agent_start", async (_event, ctx) => {
+      if (!projectRoot || isSubAgent) return;
+      const contextKey = rememberContextKey(ctx);
+      const key = promptKey(projectRoot, contextKey);
+      if (!memoizedTaskBlocks.has(key)) return;
+      // Skip turn (escape hatch): inject nothing and leave the baseline alone so
+      // the change is still reported on the next normal turn.
+      if (!turnCache.get(projectRoot, contextKey).workflowMsg) return;
+
+      const previous = taskBaselines.get(key) ?? null;
+      const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
+      const epochReset = baselineEpochInvalidated;
+      if (
+         taskDir &&
+         previous &&
+         previous.taskDir === taskDir &&
+         !epochReset &&
+         previous.signature === taskContextSignature(projectRoot, taskDir, agentType)
+      ) {
+         return;
+      }
+      baselineEpochInvalidated = false;
+      const plan = planTaskContextUpdate({
+         previous,
+         current: taskDir ? snapshotTask(taskDir, projectRoot).snapshot : null,
+         limits: readContextInjectionLimits(projectRoot),
+         epochReset,
+         promptHasTask: (memoizedTaskBlocks.get(key) ?? "") !== "",
+      });
+      taskBaselines.set(key, plan.baseline);
+      if (!plan.content) return;
       return {
          message: {
-            customType: "trellis-workflow-state",
-            content: cached.workflowMsg,
+            customType: TASK_CONTEXT_UPDATE_TYPE,
+            content: plan.content,
             display: false,
          },
       };
    });
 
    // context fires before EVERY LLM API call (including tool-use continuations
-   // and post-compaction agent.continue() paths). Acts as a safety net when
-   // before_agent_start's persisted message was removed by compaction.
+   // and post-compaction agent.continue() paths). It only acts as a safety net
+   // for the workflow breadcrumb; task context is never rewritten here because
+   // any change to an earlier message breaks the provider prefix cache.
    pi.on("context", async (event, ctx) => {
       if (!projectRoot) return;
       const contextKey = rememberContextKey(ctx);
 
       const messages = event.messages as { role?: string; customType?: string; content?: string }[];
-      const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
-      const currentTaskContext = taskDir ? getTaskContext(taskDir, projectRoot) : "";
-      const taskContextIndexes = messages
-         .map((message, index) => message.customType === "trellis-task-context" ? index : -1)
-         .filter((index) => index >= 0);
-      const existingTaskContext = taskContextIndexes.length > 0
-         ? messages[taskContextIndexes[0]]?.content ?? ""
-         : "";
-      const taskContextChanged = existingTaskContext !== currentTaskContext || taskContextIndexes.length > 1;
-      let projectedMessages = messages;
-      if (taskContextChanged) {
-         const replacement = currentTaskContext
-            ? { role: "custom" as const, customType: "trellis-task-context", content: currentTaskContext, display: false, timestamp: Date.now() }
-            : null;
-         let replaced = false;
-         projectedMessages = messages.flatMap((message) => {
-            if (message.customType !== "trellis-task-context") return [message];
-            if (replaced || !replacement) return [];
-            replaced = true;
-            return [replacement];
-         });
-         if (replacement && !replaced) projectedMessages.push(replacement);
-      }
 
       // Resolve the turn state before the fast path: a skip turn must still
       // run breadcrumb cleanup even when nothing else changed.
       const cached = turnCache.get(projectRoot, contextKey);
       const skipping = !cached.workflowMsg;
 
-      // Fast path: no task change, no compaction, not skipping — all persisted context is current.
-      if (!taskContextChanged && !skipping && lastInjectionTs > lastCompactionTs) return;
+      if (!skipping && !compactionPending) return;
 
       if (skipping) {
          // Skip turn (escape hatch): drop any persisted breadcrumb from an
          // earlier turn so the skip actually takes effect.
-         const withoutBreadcrumb = projectedMessages.filter(
-            (message) => !(message.role === "custom" && message.customType === "trellis-workflow-state"),
+         const withoutBreadcrumb = messages.filter(
+            (message) => !(message.role === "custom" && message.customType === WORKFLOW_STATE_TYPE),
          );
-         if (withoutBreadcrumb.length === projectedMessages.length && !taskContextChanged) return;
-         lastInjectionTs = Date.now();
+         if (withoutBreadcrumb.length === messages.length) return;
+         compactionPending = false;
          return { messages: withoutBreadcrumb };
       }
 
       // Post-compaction: reverse-scan to confirm absence before injecting
-      for (let i = projectedMessages.length - 1; i >= 0; i--) {
-         if (projectedMessages[i].role === "custom" && projectedMessages[i].customType === "trellis-workflow-state") {
-            lastInjectionTs = Date.now();
-            return taskContextChanged ? { messages: projectedMessages } : undefined;
+      for (let i = messages.length - 1; i >= 0; i--) {
+         if (messages[i].role === "custom" && messages[i].customType === WORKFLOW_STATE_TYPE) {
+            compactionPending = false;
+            return;
          }
       }
 
-      lastInjectionTs = Date.now();
+      compactionPending = false;
       return {
          messages: [
-            ...projectedMessages,
+            ...messages,
             {
                role: "custom" as const,
-               customType: "trellis-workflow-state",
+               customType: WORKFLOW_STATE_TYPE,
                content: cached.workflowMsg,
                display: false,
                timestamp: Date.now(),
