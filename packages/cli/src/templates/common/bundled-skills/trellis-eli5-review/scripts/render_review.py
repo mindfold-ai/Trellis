@@ -12,7 +12,8 @@ import tempfile
 from urllib.parse import unquote, urlsplit
 
 
-_LANGUAGE_TAG = re.compile(r"^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$")
+_LANGUAGE_SUBTAG = re.compile(r"^[A-Za-z0-9]{1,8}$")
+_LANGUAGE = re.compile(r"^[A-Za-z]{2,8}$")
 
 
 def text(value: object, field: str) -> str:
@@ -24,8 +25,33 @@ def text(value: object, field: str) -> str:
 
 def language_tag(value: object) -> str:
     """Require a safe BCP 47 language tag for the document's HTML language."""
-    if not isinstance(value, str) or not _LANGUAGE_TAG.fullmatch(value):
+    if not isinstance(value, str):
         raise ValueError("locale must be a valid language tag")
+    subtags = value.split("-")
+    if not subtags or not _LANGUAGE.fullmatch(subtags[0]):
+        raise ValueError("locale must be a valid language tag")
+    index = 1
+    while index < len(subtags):
+        subtag = subtags[index]
+        if not _LANGUAGE_SUBTAG.fullmatch(subtag):
+            raise ValueError("locale must be a valid language tag")
+        if len(subtag) != 1:
+            if len(subtag) < 2:
+                raise ValueError("locale must be a valid language tag")
+            index += 1
+            continue
+        if index + 1 >= len(subtags):
+            raise ValueError("locale must be a valid language tag")
+        if subtag.lower() == "x":
+            index += 1
+            while index < len(subtags):
+                if not _LANGUAGE_SUBTAG.fullmatch(subtags[index]):
+                    raise ValueError("locale must be a valid language tag")
+                index += 1
+            break
+        if len(subtags[index + 1]) < 2:
+            raise ValueError("locale must be a valid language tag")
+        index += 2
     return html.escape(value, quote=True)
 
 

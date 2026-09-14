@@ -95,6 +95,8 @@ describe("human review rendering", () => {
     "en_US",
     "en US",
     "en--US",
+    "en-a",
+    "en-x",
     'en"><script>alert(1)</script>',
     "en-123456789",
   ])(
