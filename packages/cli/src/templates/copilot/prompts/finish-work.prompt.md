@@ -75,7 +75,8 @@ At minimum: the current active task (if any). Plus any extra tasks the user conf
 
 If there is no active task and the user did not confirm any cleanup archives, skip this step.
 
-After archive succeeds, share the new archived `finish-review.html` path.
+After each archive succeeds, share the archived `finish-review.html` path for
+that task — the current task and every additional task confirmed in Step 1.
 Its task-relative evidence links and the plan review move with the task.
 
 ## Step 4: Record session journal

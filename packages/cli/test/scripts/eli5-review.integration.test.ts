@@ -3,13 +3,17 @@ import { spawnSync, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   collectPlatformTemplates,
   PLATFORM_IDS,
 } from "../../src/configurators/index.js";
 
 const python = process.platform === "win32" ? "python" : "python3";
-const templates = path.resolve(__dirname, "../../src/templates");
+const templates = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../src/templates",
+);
 const renderer = path.join(
   templates,
   "common/bundled-skills/trellis-eli5-review/scripts/render_review.py",

@@ -20,7 +20,8 @@ Plan additionally requires string arrays: `why`, `approach`, `in_scope`,
 
 Finish additionally requires strings `before`, `after`, `plan_basis`
 (`reviewed` or `unavailable`); string arrays `delivered`, `deviations`,
-`remaining`; and `checks`:
+`remaining`; and `checks`, whose entries each require non-empty string fields
+`name`, `status`, and `detail`:
 
 ```json
 [
