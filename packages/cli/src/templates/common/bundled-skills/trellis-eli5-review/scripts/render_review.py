@@ -7,8 +7,12 @@ import html
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 from urllib.parse import unquote, urlsplit
+
+
+_LANGUAGE_TAG = re.compile(r"^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$")
 
 
 def text(value: object, field: str) -> str:
@@ -16,6 +20,13 @@ def text(value: object, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must be non-empty text")
     return html.escape(value)
+
+
+def language_tag(value: object) -> str:
+    """Require a safe BCP 47 language tag for the document's HTML language."""
+    if not isinstance(value, str) or not _LANGUAGE_TAG.fullmatch(value):
+        raise ValueError("locale must be a valid language tag")
+    return html.escape(value, quote=True)
 
 
 def items(data: dict, field: str) -> str:
@@ -51,6 +62,7 @@ def render(data: dict, mode: str, task: Path) -> str:
     """Validate the mode contract and assemble the human-facing sections."""
     title = text(data.get("title"), "title")
     summary = text(data.get("summary"), "summary")
+    language = language_tag(data.get("locale"))
     sections = []
     if mode == "plan":
         fields = [("why", "Why it matters"), ("approach", "How it works"),
@@ -87,10 +99,10 @@ def render(data: dict, mode: str, task: Path) -> str:
         links.append(f'<a href="{evidence_link(entry.get("href"), task)}">{text(entry.get("label"), "evidence label")}</a>')
     shell = (Path(__file__).resolve().parent.parent / "assets" / "review.html").read_text(encoding="utf-8")
     # Substitute once: source text containing a marker must remain literal.
-    import re
     values = {"TITLE": title, "SUMMARY": summary, "MODE": mode,
-              "CONTENT": ''.join(sections), "EVIDENCE": ''.join(links)}
-    return re.sub(r"@@(TITLE|SUMMARY|MODE|CONTENT|EVIDENCE)@@", lambda m: values[m.group(1)], shell)
+              "CONTENT": ''.join(sections), "EVIDENCE": ''.join(links),
+              "LANG": language}
+    return re.sub(r"@@(TITLE|SUMMARY|MODE|CONTENT|EVIDENCE|LANG)@@", lambda m: values[m.group(1)], shell)
 
 
 def main() -> None:

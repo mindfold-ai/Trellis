@@ -21,6 +21,7 @@ const renderer = path.join(
 const plan = {
   title: "Clear review <script>alert(1)</script>",
   summary: "Review @@MODE@@ & evidence",
+  locale: "zh-Hans",
   why: ["Understand changes"],
   approach: ["Read", "Review"],
   in_scope: ["Views"],
@@ -32,6 +33,7 @@ const plan = {
 const finish = {
   title: "Result",
   summary: "One check still pending",
+  locale: "en-US",
   plan_basis: "reviewed",
   before: "Long prose",
   after: "Compact review",
@@ -71,6 +73,7 @@ describe("human review rendering", () => {
     );
     expect(original).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(original).toContain("Review @@MODE@@ &amp; evidence");
+    expect(original).toContain('<html lang="zh-Hans">');
     expect(run("finish", finish).status).toBe(0);
     const report = fs.readFileSync(
       path.join(task, "finish-review.html"),
@@ -86,6 +89,28 @@ describe("human review rendering", () => {
       "Authoritative requirements",
     );
   });
+
+  it.each([
+    "",
+    "en_US",
+    "en US",
+    "en--US",
+    'en"><script>alert(1)</script>',
+    "en-123456789",
+  ])(
+    "rejects malformed or unsafe locale %s without replacing output",
+    (locale) => {
+      expect(run("plan", plan).status).toBe(0);
+      const original = fs.readFileSync(
+        path.join(task, "plan-review.html"),
+        "utf8",
+      );
+      expect(run("plan", { ...plan, locale }).status).toBe(1);
+      expect(fs.readFileSync(path.join(task, "plan-review.html"), "utf8")).toBe(
+        original,
+      );
+    },
+  );
 
   it.each([
     "javascript:alert(1)",

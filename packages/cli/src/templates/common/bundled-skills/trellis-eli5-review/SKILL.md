@@ -48,7 +48,8 @@ available evidence honestly; the renderer adds a visible comparison warning.
 
 Use only the mode needed. Inspect the result for accurate synthesis and
 readable layout; open it when the host supports local HTML, otherwise share
-the path. Keep wording in the user's language. The report is self-contained
+the path. Keep wording in the user's language and set the input `locale` to
+that language's BCP 47 tag. The report is self-contained
 and has no remote assets. Use task-relative evidence paths so archive retains
 working links, or stable HTTPS commit URLs. Copy no secrets into reports.
 

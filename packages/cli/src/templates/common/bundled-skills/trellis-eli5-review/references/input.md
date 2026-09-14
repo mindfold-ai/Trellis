@@ -11,9 +11,14 @@ Common fields:
 {
   "title": "Human-facing task title",
   "summary": "One sentence explaining the proposed change or actual outcome.",
+  "locale": "en-US",
   "evidence": [{"label": "Requirements", "href": "prd.md"}]
 }
 ```
+
+`locale` is a required BCP 47 language tag for the report (for example `en`,
+`en-US`, or `zh-Hans`). The renderer rejects malformed tags and values that
+could inject HTML into the document language attribute.
 
 Plan additionally requires string arrays: `why`, `approach`, `in_scope`,
 `out_of_scope`, `acceptance`, `decisions`.
