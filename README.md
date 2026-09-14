@@ -42,7 +42,7 @@
 | --- | --- |
 | **Auto-injected specs** | Write conventions once in `.trellis/spec/`, then let Trellis inject the relevant context into each session instead of repeating yourself. |
 | **Task-centered workflow** | Keep PRDs, implementation context, review context, and task status in `.trellis/tasks/` so AI work stays structured. |
-| **Project memory** | Journals in `.trellis/workspace/` preserve what happened last time, so each new session starts with real context. |
+| **Project memory** | Task artifacts preserve requirements, decisions, and verification evidence so work can resume from an explicit task. |
 | **Team-shared standards** | Specs live in the repo, so one person's hard-won workflow or rule can benefit the whole team. |
 | **Multi-platform setup** | Bring the same Trellis structure to 22 AI coding platforms instead of rebuilding your workflow per tool. |
 
@@ -58,10 +58,10 @@
 npm install -g @mindfoldhq/trellis@latest
 
 # 2. Initialize in your repo
-trellis init -u your-name
+trellis init --creator your-name --assignee your-name
 
 # 3. Or initialize with the platforms you actually use
-trellis init --cursor --opencode --codex -u your-name
+trellis init --cursor --opencode --codex --creator your-name --assignee your-name
 ```
 
 See the [Quick Start](https://docs.trytrellis.app/start/install-and-first-task) and [Supported Platforms](https://docs.trytrellis.app/advanced/multi-platform) guides for setup details.
@@ -73,7 +73,7 @@ The workflow is simple:
 1. **Describe what you want** in natural language.
 2. **Brainstorm** with the AI one question at a time until the PRD is clear, then implementation begins.
 3. **Let it run** — the AI calls Trellis Implement and auto-checks the result against specs, lint, type-check, and tests.
-4. **Type `/trellis:finish-work`** when the work is done or the session context fills up. Trellis archives the task and updates journals.
+4. **Type `/trellis:finish-work`** when the task is complete. Trellis verifies task evidence and archives the selected task.
 
 ## How It Works
 
@@ -99,7 +99,7 @@ Trellis runs a 4-phase loop with auto-invoked skills and sub-agents:
 <details>
 <summary><strong>How is Trellis different from <code>CLAUDE.md</code>, <code>AGENTS.md</code>, or <code>.cursorrules</code>?</strong></summary>
 
-Those files are useful entry points, but they tend to become monolithic. Trellis adds scoped specs, task PRDs, workflow gates, workspace memory, and platform-aware generated files around them.
+Those files are useful entry points, but they tend to become monolithic. Trellis adds scoped specs, task PRDs, workflow gates, task-scoped progress, and platform-aware generated files around them.
 
 </details>
 
@@ -127,7 +127,7 @@ No. Many teams start by letting AI draft specs from existing code and then tight
 <details>
 <summary><strong>Can teams use this without constant conflicts?</strong></summary>
 
-Yes. Personal workspace journals stay separate per developer, while shared specs and tasks stay in the repo where they can be reviewed and improved like any other project artifact.
+Yes. New tasks take explicit creator and assignee inputs, while current-task bindings stay isolated per session. Shared specs and task artifacts remain reviewable in the repo.
 
 </details>
 
@@ -138,9 +138,8 @@ Yes. `trellis ablate` temporarily removes all supported project-owned Trellis
 surfaces after creating a verified recovery transaction outside the project.
 Start a fresh agent session for the comparison, then run `trellis restore` to
 recover the exact prior state. Use `--dry-run` to preview either operation.
-The private recovery transaction includes exact `.trellis` task, spec, and
-workspace bytes, which may contain user-authored sensitive text, and is kept
-until restore verifies successfully.
+The private recovery transaction includes exact managed `.trellis` task and spec bytes, which may contain user-authored sensitive text, and is kept
+until restore verifies successfully. Retired identity and historical workspace trees remain untouched in place; they are not included in snapshots or restored.
 
 This is different from `trellis uninstall` (permanent removal) and
 `TRELLIS_HOOKS=0` (hooks only). Ablation does not launch agents, manage

@@ -25,7 +25,13 @@
 import { cpSync, readdirSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 
-const EXCLUDED_TEMPLATE_ENTRIES = new Set(["__pycache__", ".DS_Store"]);
+const EXCLUDED_TEMPLATE_ENTRIES = new Set([
+  "__pycache__",
+  ".DS_Store",
+  "init_developer.py",
+  "get_developer.py",
+  "add_session.py",
+]);
 const EXCLUDED_TEMPLATE_EXTENSIONS = new Set([".pyc", ".pyo", ".ts"]);
 
 function shouldSkipTemplateEntry(entry) {

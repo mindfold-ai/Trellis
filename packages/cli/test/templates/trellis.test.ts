@@ -10,17 +10,13 @@ import {
   scriptsInit,
   commonInit,
   commonPaths,
-  commonDeveloper,
   commonGitContext,
   commonTaskQueue,
   commonTaskUtils,
   commonActiveTask,
   commonCliAdapter,
-  getDeveloperScript,
-  initDeveloperScript,
   taskScript,
   getContextScript,
-  addSessionScript,
   workflowMdTemplate,
   gitignoreTemplate,
   getAllScripts,
@@ -39,17 +35,13 @@ describe("trellis template constants", () => {
     scriptsInit,
     commonInit,
     commonPaths,
-    commonDeveloper,
     commonGitContext,
     commonTaskQueue,
     commonTaskUtils,
     commonActiveTask,
     commonCliAdapter,
-    getDeveloperScript,
-    initDeveloperScript,
     taskScript,
     getContextScript,
-    addSessionScript,
     workflowMdTemplate,
     gitignoreTemplate,
   };
@@ -110,7 +102,6 @@ describe("trellis template constants", () => {
       commonInit,
       commonPaths,
       commonActiveTask,
-      getDeveloperScript,
       taskScript,
     ];
     for (const script of pyScripts) {
@@ -131,15 +122,15 @@ describe("trellis template constants", () => {
     expect(workflowMdTemplate).toContain("#");
   });
 
-  it("marketplace native workflow mirror matches the bundled workflow", () => {
-    const repoRoot = fs.existsSync(path.join(process.cwd(), "marketplace"))
+  it("dogfood workflow matches the bundled task authority contract", () => {
+    const repoRoot = fs.existsSync(path.join(process.cwd(), ".trellis"))
       ? process.cwd()
       : path.resolve(process.cwd(), "../..");
-    const marketplaceNative = fs.readFileSync(
-      path.join(repoRoot, "marketplace/workflows/native/workflow.md"),
-      "utf-8",
-    );
-    expect(marketplaceNative).toBe(workflowMdTemplate);
+    const workflow = fs.readFileSync(path.join(repoRoot, ".trellis/workflow.md"), "utf-8");
+    for (const content of [workflow, workflowMdTemplate]) {
+      expect(content).toContain("--creator <creator> --assignee <assignee>");
+      expect(content).not.toMatch(/init_developer|add_session|--mine|### Workspace System/);
+    }
   });
 
   it("marketplace TDD workflow planning breadcrumbs include behavior gates", () => {
@@ -353,7 +344,10 @@ describe("getAllScripts", () => {
     expect(scripts.has("common/paths.py")).toBe(true);
     expect(scripts.has("common/active_task.py")).toBe(true);
     expect(scripts.has("task.py")).toBe(true);
-    expect(scripts.has("get_developer.py")).toBe(true);
+    expect(scripts.has("get_developer.py")).toBe(false);
+    expect(scripts.has("init_developer.py")).toBe(false);
+    expect(scripts.has("add_session.py")).toBe(false);
+    expect(scripts.has("common/developer.py")).toBe(false);
   });
 
   it("has at least one entry", () => {

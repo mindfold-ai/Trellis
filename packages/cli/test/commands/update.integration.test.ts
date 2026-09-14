@@ -119,9 +119,67 @@ function removeSubagentsSection(content: string): string {
 describe("update() integration", () => {
   let tmpDir: string;
 
+  it.each([".claude/settings.json", ".trellis/config.yaml", "AGENTS.md"])(
+    "refuses historical link %s before reading its contents",
+    async (relativePath) => {
+      await setupProject();
+      const original = readProjectFile(relativePath);
+      const history = projectFile(".trellis/workspace/settings.json");
+      writeProjectFile(".trellis/workspace/settings.json", original);
+      fs.unlinkSync(projectFile(relativePath));
+      fs.symlinkSync(history, projectFile(relativePath));
+      const version = fs.readFileSync(versionFilePath(), "utf8");
+      const hashes = fs.readFileSync(hashFilePath(), "utf8");
+      const read = vi.spyOn(fs, "readFileSync");
+      await expect(update({ force: true, migrate: true, assignee: "owner" }))
+        .rejects.toThrow(/retired/i);
+      expect(read.mock.calls.some(([name]) =>
+        String(name) === history || String(name) === projectFile(relativePath),
+      )).toBe(false);
+      read.mockRestore();
+      expect(fs.readFileSync(history, "utf8")).toBe(original);
+      expect(fs.readlinkSync(projectFile(relativePath))).toBe(history);
+      expect(fs.readFileSync(versionFilePath(), "utf8")).toBe(version);
+      expect(fs.readFileSync(hashFilePath(), "utf8")).toBe(hashes);
+    },
+  );
+
+  it.each([false, true])("blocks custom receiptless legacy commands with force=%s", async (force) => {
+    await setupProject();
+    const name = ".claude/commands/trellis/record-session.md";
+    const content = "# Custom recording\nNever forget to run init_developer.py\n";
+    writeProjectFile(name, content);
+    fs.writeFileSync(versionFilePath(), "0.6.15");
+    const version = fs.readFileSync(versionFilePath(), "utf8");
+    const hashes = fs.readFileSync(hashFilePath(), "utf8");
+    await expect(update({ force, migrate: true, skipAll: !force, assignee: "owner" }))
+      .rejects.toThrow(/record-session/);
+    expect(readProjectFile(name)).toBe(content);
+    expect(fs.readFileSync(versionFilePath(), "utf8")).toBe(version);
+    expect(fs.readFileSync(hashFilePath(), "utf8")).toBe(hashes);
+  });
+
+  it.each([
+    "Never forget to run init_developer.py",
+    "Do not forget to export TRELLIS_DEVELOPER=alice",
+  ])("blocks incompatible custom workflows: %s", async (instruction) => {
+    await setupProject();
+    writeProjectFile(".trellis/workflow.md", instruction);
+    const hashes = fs.readFileSync(hashFilePath(), "utf8");
+    await expect(update({ migrate: true, skipAll: true, assignee: "owner" }))
+      .rejects.toThrow(/workflow.md/);
+    expect(readProjectFile(".trellis/workflow.md")).toBe(instruction);
+    expect(fs.readFileSync(hashFilePath(), "utf8")).toBe(hashes);
+  });
+
   /** Initialize a fresh project in tmpDir */
   async function setupProject(): Promise<void> {
-    await init({ yes: true, force: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+    });
   }
 
   function projectFile(relativePath: string): string {
@@ -217,7 +275,7 @@ describe("update() integration", () => {
     };
     walk(tmpDir);
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     // Full snapshot after update
     const snapshotAfter = new Map<string, string>();
@@ -260,17 +318,29 @@ describe("update() integration", () => {
 
   it("#1b current OpenCode templates are not classified as deprecated", async () => {
     const startPath = ".opencode/commands/trellis/start.md";
-    await init({ yes: true, force: true, opencode: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      opencode: true,
+    });
     expect(fs.existsSync(projectFile(startPath))).toBe(true);
 
-    await update({ dryRun: true });
+    await update({ assignee: "fixture-owner", dryRun: true });
 
     const output = vi.mocked(console.log).mock.calls.flat().join("\n");
     expect(output).not.toContain(`${startPath} (modified, skipped)`);
   });
 
   it("[issue-zcode-codex-upgrade] zcode private skills do not trigger legacy Codex backfill", async () => {
-    await init({ yes: true, force: true, zcode: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      zcode: true,
+    });
 
     expect(fs.existsSync(projectFile(".zcode/commands/trellis/start.md"))).toBe(
       false,
@@ -292,7 +362,7 @@ describe("update() integration", () => {
       fs.existsSync(projectFile(".agents/skills/trellis-continue/SKILL.md")),
     ).toBe(false);
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     const logOutput = vi.mocked(console.log).mock.calls.flat().join("\n");
     expect(logOutput).not.toContain("Legacy Codex detected");
@@ -310,7 +380,13 @@ describe("update() integration", () => {
   });
 
   it("[issue-zcode-plugin-hint] zcode update prints the bilingual plugin hint when already up to date", async () => {
-    await init({ yes: true, force: true, zcode: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      zcode: true,
+    });
 
     const originalVitest = process.env.VITEST;
     const originalQuiet = process.env.TRELLIS_QUIET;
@@ -324,7 +400,7 @@ describe("update() integration", () => {
     delete process.env.TRELLIS_QUIET;
 
     try {
-      await update({});
+      await update({ assignee: "fixture-owner" });
     } finally {
       process.stderr.write = originalWrite;
       if (originalVitest === undefined) delete process.env.VITEST;
@@ -341,7 +417,13 @@ describe("update() integration", () => {
   });
 
   it("[issue-zcode-plugin-hint] zcode update prints the bilingual plugin hint after applying changes", async () => {
-    await init({ yes: true, force: true, zcode: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      zcode: true,
+    });
     writeProjectFile(MANAGED_FILE, "user modified content");
 
     const originalVitest = process.env.VITEST;
@@ -356,7 +438,7 @@ describe("update() integration", () => {
     delete process.env.TRELLIS_QUIET;
 
     try {
-      await update({ force: true });
+      await update({ assignee: "fixture-owner", force: true });
     } finally {
       process.stderr.write = originalWrite;
       if (originalVitest === undefined) delete process.env.VITEST;
@@ -384,7 +466,14 @@ describe("update() integration", () => {
     // because the 0.6.8 manifest only becomes "pending" once the CLI's own
     // package.json version reaches 0.6.8 — a release-time bump orthogonal to
     // this bug fix.
-    await init({ yes: true, force: true, pi: true, codex: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      pi: true,
+      codex: true,
+    });
 
     // `.agents/skills/` now holds the correct, neutral, current-version
     // content (written by both Codex and current Pi in current code).
@@ -459,16 +548,21 @@ describe("update() integration", () => {
     expect(classified.conflict).toHaveLength(0);
     expect(classified.auto).toHaveLength(1);
 
-    await executeMigrations(classified, tmpDir, { force: true, skipAll: false }, currentTemplates);
+    await executeMigrations(
+      classified,
+      tmpDir,
+      { force: true, skipAll: false },
+      currentTemplates,
+    );
 
     // No duplicate/leftover `.pi/skills/` directory should survive.
     expect(fs.existsSync(projectFile(".pi/skills"))).toBe(false);
 
     // `.agents/skills/` must end up with the correct, current, neutral
     // content — not the stale Pi-flavored bytes from the deleted legacy dir.
-    expect(
-      readProjectFile(".agents/skills/trellis-update-spec/SKILL.md"),
-    ).toBe(neutralContent);
+    expect(readProjectFile(".agents/skills/trellis-update-spec/SKILL.md")).toBe(
+      neutralContent,
+    );
   });
 
   it("#2 dry run makes no file changes even when changes exist", async () => {
@@ -488,7 +582,7 @@ describe("update() integration", () => {
     writeHashesV2(hashFile, hashes);
     fs.unlinkSync(target);
 
-    await update({ dryRun: true });
+    await update({ assignee: "fixture-owner", dryRun: true });
 
     // File should still be missing (dry run didn't recreate it)
     expect(fs.existsSync(target)).toBe(false);
@@ -497,7 +591,7 @@ describe("update() integration", () => {
     expect(entries.filter((e) => e.startsWith(".backup-")).length).toBe(0);
   });
 
-  it("#3 user-deleted file (with stored hash) is not re-added on update", async () => {
+  it("#3 user-deleted file (with stored hash) is restored for runtime coherence on update", async () => {
     await setupProject();
 
     const target = path.join(tmpDir, MANAGED_FILE);
@@ -507,10 +601,10 @@ describe("update() integration", () => {
     fs.unlinkSync(target);
     expect(fs.existsSync(target)).toBe(false);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
-    // File should NOT be re-created (user deleted it, hash still exists)
-    expect(fs.existsSync(target)).toBe(false);
+    // Required runtime files must be restored despite an older receipt.
+    expect(fs.existsSync(target)).toBe(true);
   });
 
   it("#4 auto-updates file when template changed but user did not modify", async () => {
@@ -533,7 +627,7 @@ describe("update() integration", () => {
     hashes[targetRelative] = computeHash(oldContent);
     writeHashesV2(hashFile, hashes);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // File should be auto-updated back to current template
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(templateContent);
@@ -562,7 +656,7 @@ describe("update() integration", () => {
     ) as Record<string, string>;
     writeHashesV2(hashFile, hashes);
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(expectedContent);
     expect(readHashesV2(hashFile)[targetRelative]).toBe(
@@ -593,7 +687,9 @@ describe("update() integration", () => {
     ) as Record<string, string>;
     writeHashesV2(hashFile, hashes);
 
-    await update({ skipAll: true });
+    await expect(
+      update({ assignee: "fixture-owner", skipAll: true }),
+    ).rejects.toThrow("Retirement requires reconciliation");
 
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(modifiedOldContent);
   });
@@ -611,7 +707,7 @@ describe("update() integration", () => {
     const userContent = "# Project notes\n\nThings the team agreed on.\n";
     fs.writeFileSync(targetFull, userContent);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     const result = fs.readFileSync(targetFull, "utf-8");
     expect(result).toContain("# Project notes");
@@ -627,7 +723,13 @@ describe("update() integration", () => {
   });
 
   it("#4e appends Trellis Copilot guidance to existing repo instructions", async () => {
-    await init({ yes: true, force: true, copilot: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      copilot: true,
+    });
 
     const userContent =
       "# Repo Copilot Instructions\n\nReview app code first.\n";
@@ -640,7 +742,7 @@ describe("update() integration", () => {
     ) as Record<string, string>;
     writeHashesV2(hashFile, hashes);
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     const result = readProjectFile(COPILOT_INSTRUCTIONS_PATH);
     expect(result).toContain("# Repo Copilot Instructions");
@@ -657,7 +759,13 @@ describe("update() integration", () => {
   });
 
   it("#4f refreshes only the Trellis Copilot guidance block", async () => {
-    await init({ yes: true, force: true, copilot: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      copilot: true,
+    });
 
     const oldBlock = getCopilotInstructions().replace(
       "Group duplicate root-cause findings into one comment",
@@ -671,7 +779,7 @@ describe("update() integration", () => {
     hashes[COPILOT_INSTRUCTIONS_PATH] = computeHash(existingContent);
     writeHashesV2(hashFile, hashes);
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     const result = readProjectFile(COPILOT_INSTRUCTIONS_PATH);
     expect(result).toContain("# Repo Copilot Instructions");
@@ -695,7 +803,7 @@ describe("update() integration", () => {
     // User modifies file (hash won't match)
     fs.writeFileSync(targetFull, "user customized content");
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(templateContent);
   });
@@ -707,7 +815,7 @@ describe("update() integration", () => {
     fs.writeFileSync(targetFull, "user customized content");
     vi.mocked(inquirer.prompt).mockClear();
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(inquirer.prompt).not.toHaveBeenCalled();
   });
@@ -718,7 +826,9 @@ describe("update() integration", () => {
     const targetFull = path.join(tmpDir, MANAGED_FILE);
     fs.writeFileSync(targetFull, "user customized content");
 
-    await update({ skipAll: true });
+    await expect(
+      update({ assignee: "fixture-owner", skipAll: true }),
+    ).rejects.toThrow("Retirement requires reconciliation");
 
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(
       "user customized content",
@@ -729,10 +839,12 @@ describe("update() integration", () => {
     await setupProject();
 
     const targetFull = path.join(tmpDir, MANAGED_FILE);
-    const templateContent = fs.readFileSync(targetFull, "utf-8");
+
     fs.writeFileSync(targetFull, "user customized content");
 
-    await update({ createNew: true });
+    await expect(
+      update({ assignee: "fixture-owner", createNew: true }),
+    ).rejects.toThrow("Retirement requires reconciliation");
 
     // Original preserved
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(
@@ -740,8 +852,7 @@ describe("update() integration", () => {
     );
     // .new file created with template content
     const newFile = targetFull + ".new";
-    expect(fs.existsSync(newFile)).toBe(true);
-    expect(fs.readFileSync(newFile, "utf-8")).toBe(templateContent);
+    expect(fs.existsSync(newFile)).toBe(false);
   });
 
   it("#8 updates version file after successful update", async () => {
@@ -749,9 +860,9 @@ describe("update() integration", () => {
 
     // Simulate older project version
     const versionPath = path.join(tmpDir, DIR_NAMES.WORKFLOW, ".version");
-    fs.writeFileSync(versionPath, "0.0.1");
+    fs.writeFileSync(versionPath, "0.1.0");
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // Version is updated even when no file changes are needed
     expect(fs.readFileSync(versionPath, "utf-8")).toBe(VERSION);
@@ -774,7 +885,7 @@ describe("update() integration", () => {
     hashes[MANAGED_FILE] = computeHash(oldContent);
     writeHashesV2(hashFile, hashes);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     const entries = fs.readdirSync(path.join(tmpDir, DIR_NAMES.WORKFLOW));
     const backupDirs = entries.filter((e) => e.startsWith(".backup-"));
@@ -788,7 +899,7 @@ describe("update() integration", () => {
     const versionPath = path.join(tmpDir, DIR_NAMES.WORKFLOW, ".version");
     fs.writeFileSync(versionPath, "99.99.99");
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     // Version should NOT be changed
     expect(fs.readFileSync(versionPath, "utf-8")).toBe("99.99.99");
@@ -814,7 +925,7 @@ describe("update() integration", () => {
     writeHashesV2(hashFile, hashes);
     fs.unlinkSync(target);
 
-    await update({ allowDowngrade: true, force: true });
+    await update({ assignee: "fixture-owner", allowDowngrade: true, force: true });
 
     // File recreated (truly new — no stored hash)
     expect(fs.existsSync(target)).toBe(true);
@@ -829,7 +940,7 @@ describe("update() integration", () => {
     const versionPath = versionFilePath();
     fs.writeFileSync(versionPath, "0.3.0-rc.6");
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     // .version must be updated to the current CLI version
     expect(fs.readFileSync(versionPath, "utf-8")).toBe(VERSION);
@@ -838,8 +949,6 @@ describe("update() integration", () => {
   it("#12b versioned upgrade scenario applies auto-updates, additive config sections, and modified-file skips", async () => {
     await setupProject();
 
-    const expectedWorkflow = replacePythonCommandLiterals(workflowMdTemplate);
-    const expectedGetContext = readProjectFile(MANAGED_FILE);
     const userModifiedScript = `${PATHS.SCRIPTS}/add_session.py`;
     const userModifiedScriptContent = "# user customized add_session.py\n";
     const oldConfigWithoutSessionAutoCommit =
@@ -868,42 +977,15 @@ describe("update() integration", () => {
       },
     });
 
-    await update({ skipAll: true });
-
-    expect(fs.readFileSync(versionFilePath(), "utf-8")).toBe(VERSION);
-
-    // Hash-tracked pristine templates from the older install are whole-file
-    // auto-updated to the current packaged template.
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(expectedWorkflow);
-    expect(readProjectFile(MANAGED_FILE)).toBe(expectedGetContext);
-    // Prefix, not the whole marker: the inline block gains members as
-    // sub-agent-less platforms are added, and this assertion is about the
-    // block surviving the update, not about who is currently in it.
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toContain(
-      "[codex-inline, Kilo, Antigravity, Devin",
-    );
-    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).not.toContain("[Codex]");
-
-    // Version-specific additive config sections still apply to a user-modified
-    // config.yaml, while preserving the local content around the append.
-    const updatedConfig = readProjectFile(`${DIR_NAMES.WORKFLOW}/config.yaml`);
-    expect(updatedConfig).toContain(
-      "Local 0.5.10 config customization that must survive update.",
-    );
-    expect(updatedConfig).toContain("Session Auto-Commit");
-    expect(updatedConfig).toContain("session_auto_commit: true");
-
-    // User-modified template files are skipped under skipAll and their hashes
-    // are not rewritten to bless the local modification as a template.
+    const versionBefore = fs.readFileSync(versionFilePath(), "utf-8");
+    const hashesBefore = fs.readFileSync(hashFilePath(), "utf-8");
+    await expect(
+      update({ assignee: "fixture-owner", skipAll: true }),
+    ).rejects.toThrow("Retirement requires reconciliation");
+    expect(readProjectFile(PATHS.WORKFLOW_GUIDE_FILE)).toBe(oldWorkflow);
     expect(readProjectFile(userModifiedScript)).toBe(userModifiedScriptContent);
-    const hashes = readHashesV2(hashFilePath());
-    expect(hashes[PATHS.WORKFLOW_GUIDE_FILE]).toBe(
-      computeHash(expectedWorkflow),
-    );
-    expect(hashes[MANAGED_FILE]).toBe(computeHash(expectedGetContext));
-    expect(hashes[userModifiedScript]).not.toBe(
-      computeHash(userModifiedScriptContent),
-    );
+    expect(fs.readFileSync(versionFilePath(), "utf-8")).toBe(versionBefore);
+    expect(fs.readFileSync(hashFilePath(), "utf-8")).toBe(hashesBefore);
   });
 
   it("#13 user-edited spec/guides files are preserved after update with force", async () => {
@@ -915,7 +997,7 @@ describe("update() integration", () => {
     const customContent = "# My Custom Guides\n\nEdited by user.\n";
     fs.writeFileSync(guidesIndex, customContent);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // User's customized content must be preserved (update should not touch spec/)
     expect(fs.readFileSync(guidesIndex, "utf-8")).toBe(customContent);
@@ -929,7 +1011,7 @@ describe("update() integration", () => {
     fs.rmSync(specDir, { recursive: true, force: true });
     expect(fs.existsSync(specDir)).toBe(false);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // spec/ directory should NOT be recreated by update
     expect(fs.existsSync(specDir)).toBe(false);
@@ -963,7 +1045,7 @@ describe("update() integration", () => {
       }),
     );
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(readProjectFile(specFile)).toBe("# remote spec v2\n");
     expect(readHashesV2(hashFilePath())[specFile]).toBe(
@@ -1002,7 +1084,7 @@ describe("update() integration", () => {
       }),
     );
 
-    await update({ skipAll: true });
+    await update({ assignee: "fixture-owner", skipAll: true });
 
     expect(readProjectFile(specFile)).toBe("# local edits\n");
     expect(readHashesV2(hashFilePath())[specFile]).toBe(
@@ -1052,7 +1134,7 @@ describe("update() integration", () => {
       }),
     );
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(readProjectFile(specFile)).toBe("# golang spec v2\n");
     expect(readHashesV2(hashFilePath())[specFile]).toBe(
@@ -1080,7 +1162,7 @@ describe("update() integration", () => {
     fs.unlinkSync(targetPath);
 
     // Run update
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // File SHOULD be created (no hash = truly new)
     expect(fs.existsSync(targetPath)).toBe(true);
@@ -1092,10 +1174,9 @@ describe("update() integration", () => {
     const gitattributesPath = path.join(tmpDir, ".gitattributes");
     fs.rmSync(gitattributesPath, { force: true });
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
-    const content = fs.readFileSync(gitattributesPath, "utf-8");
-    expect(content).toContain(".trellis/workspace/*/journal-*.md merge=union");
+    expect(fs.existsSync(gitattributesPath)).toBe(false);
   });
 
   it("#15b does not duplicate an existing user journal merge=union rule (#415)", async () => {
@@ -1106,7 +1187,7 @@ describe("update() integration", () => {
       "# my own rules\n*.png binary\n.trellis/workspace/*/journal-*.md merge=union\n";
     fs.writeFileSync(gitattributesPath, userContent);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(fs.readFileSync(gitattributesPath, "utf-8")).toBe(userContent);
   });
@@ -1129,7 +1210,9 @@ describe("update() integration", () => {
     fs.writeFileSync(targetPath, "# modified by user\n");
 
     // Run update
-    await update({ force: true });
+    await expect(
+      update({ assignee: "fixture-owner", force: true }),
+    ).rejects.toThrow("Retirement requires reconciliation");
 
     // File should NOT be overwritten (it's in skip list)
     expect(fs.readFileSync(targetPath, "utf-8")).toBe("# modified by user\n");
@@ -1153,7 +1236,9 @@ describe("update() integration", () => {
     fs.writeFileSync(targetPath, "# user modified paths.py\n");
 
     // Run update
-    await update({ force: true });
+    await expect(
+      update({ assignee: "fixture-owner", force: true }),
+    ).rejects.toThrow("Retirement requires reconciliation");
 
     // File should NOT be overwritten (its directory is in skip list)
     expect(fs.readFileSync(targetPath, "utf-8")).toBe(
@@ -1173,7 +1258,7 @@ describe("update() integration", () => {
       "# My customized before-backend-dev command\nUser edited this.\n";
     fs.writeFileSync(deprecatedFile, userContent);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // File should be preserved (hash doesn't match allowed_hashes)
     expect(fs.existsSync(deprecatedFile)).toBe(true);
@@ -1190,7 +1275,7 @@ describe("update() integration", () => {
     fs.writeFileSync(versionPath, "0.3.7");
 
     // This should complete without errors even though deprecated files don't exist
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // Version updated successfully
     expect(fs.readFileSync(versionPath, "utf-8")).toBe(VERSION);
@@ -1238,7 +1323,7 @@ describe("update() integration", () => {
       configContent + `\nupdate:\n  skip:\n    - .claude/commands/trellis/\n`,
     );
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // File should be preserved (directory is in update.skip, overriding safe-file-delete)
     expect(fs.existsSync(deprecatedFile)).toBe(true);
@@ -1261,14 +1346,20 @@ describe("update() integration", () => {
     const deprecatedFile = path.join(deprecatedDir, "check-backend.md");
     fs.writeFileSync(deprecatedFile, ORIGINAL_CHECK_BACKEND_CONTENT);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // File should be DELETED (hash matched allowed_hashes, no update.skip protection)
     expect(fs.existsSync(deprecatedFile)).toBe(false);
   });
 
   it("#22 preserves existing Claude statusLine config and hook file on update", async () => {
-    await init({ yes: true, force: true, claude: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      claude: true,
+    });
 
     const settingsPath = path.join(tmpDir, ".claude", "settings.json");
     const statusLinePath = path.join(
@@ -1291,7 +1382,7 @@ describe("update() integration", () => {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
     fs.writeFileSync(statusLinePath, "# existing local statusline\n");
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(fs.existsSync(statusLinePath)).toBe(true);
     const updatedSettings = JSON.parse(
@@ -1302,7 +1393,13 @@ describe("update() integration", () => {
   });
 
   it("#22a does not install statusline on update for opted-out projects", async () => {
-    await init({ yes: true, force: true, claude: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      claude: true,
+    });
 
     const statusLinePath = path.join(
       tmpDir,
@@ -1312,7 +1409,7 @@ describe("update() integration", () => {
     );
     expect(fs.existsSync(statusLinePath)).toBe(false);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     // statusline.py must NOT enter the template walk as a `newFiles` install
     expect(fs.existsSync(statusLinePath)).toBe(false);
@@ -1323,7 +1420,14 @@ describe("update() integration", () => {
   });
 
   it("#22b preserves a --with-statusline install across update", async () => {
-    await init({ yes: true, force: true, claude: true, withStatusline: true });
+    await init({
+      creator: "fixture-creator",
+      assignee: "fixture-owner",
+      yes: true,
+      force: true,
+      claude: true,
+      withStatusline: true,
+    });
 
     const settingsPath = path.join(tmpDir, ".claude", "settings.json");
     const statusLinePath = path.join(
@@ -1340,7 +1444,7 @@ describe("update() integration", () => {
       (JSON.parse(settingsBefore) as Record<string, unknown>).statusLine,
     ).toBeDefined();
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     expect(fs.existsSync(statusLinePath)).toBe(true);
     expect(fs.readFileSync(statusLinePath, "utf-8")).toBe(hookContentBefore);
@@ -1384,7 +1488,7 @@ describe("update() integration", () => {
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
 
-    await update({});
+    await update({ assignee: "fixture-owner" });
 
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
@@ -1397,7 +1501,7 @@ describe("update() integration", () => {
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
 
-    await update({ dryRun: true });
+    await update({ assignee: "fixture-owner", dryRun: true });
 
     // Gate must not fire for preview mode (users need to inspect before migrating)
     expect(exitSpy).not.toHaveBeenCalled();
@@ -1411,7 +1515,7 @@ describe("update() integration", () => {
       .spyOn(process, "exit")
       .mockImplementation(() => undefined as never);
 
-    await update({ migrate: true, force: true });
+    await update({ assignee: "fixture-owner", migrate: true, force: true });
 
     // Gate passes when --migrate is present; update proceeds to completion
     expect(exitSpy).not.toHaveBeenCalled();
@@ -1430,6 +1534,9 @@ describe("update() integration", () => {
   async function installChoiceMock(
     choice: "rename" | "backup-rename" | "skip",
   ) {
+    vi.spyOn(process, "stdin", "get").mockReturnValue({
+      isTTY: true,
+    } as typeof process.stdin);
     const inquirer = (await import("inquirer")).default;
     vi.mocked(inquirer.prompt).mockImplementation(((questions: unknown) => {
       const q = Array.isArray(questions) ? questions[0] : questions;
@@ -1458,7 +1565,7 @@ describe("update() integration", () => {
 
     await installChoiceMock("backup-rename");
 
-    await update({ migrate: true });
+    await update({ assignee: "fixture-owner", migrate: true });
 
     // After migration:
     //   - new-path exists (rename completed)
@@ -1487,7 +1594,7 @@ describe("update() integration", () => {
 
     await installChoiceMock("rename");
 
-    await update({ migrate: true });
+    await update({ assignee: "fixture-owner", migrate: true });
 
     const newPath = path.join(
       tmpDir,
@@ -1516,7 +1623,7 @@ describe("update() integration", () => {
     const targetFull = path.join(tmpDir, MANAGED_FILE);
     fs.writeFileSync(targetFull, "user customized content");
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     const entries = fs.readdirSync(path.join(tmpDir, DIR_NAMES.WORKFLOW));
     const backupDirs = entries.filter((e) => e.startsWith(".backup-"));
@@ -1563,7 +1670,7 @@ describe("update() integration", () => {
     hashes[PATHS.WORKFLOW_GUIDE_FILE] = computeHash(staleWorkflow);
     writeHashesV2(hashFile, hashes);
 
-    await update({ force: true });
+    await update({ assignee: "fixture-owner", force: true });
 
     const updated = fs.readFileSync(workflowPath, "utf-8");
     expect(updated).toBe(replacePythonCommandLiterals(workflowMdTemplate));
@@ -1635,7 +1742,7 @@ describe("update() integration", () => {
       writeHashesV2(hashFilePath(), hashes);
       expect(mismatchedEntries()).toContain(victim);
 
-      await update({ yes: true });
+      await update({ assignee: "fixture-owner", yes: true });
 
       // One run is enough. Before this fix the file was classified `unchanged`
       // on every run and skipped, so the entry could never be repaired.
@@ -1654,7 +1761,7 @@ describe("update() integration", () => {
       );
       expect(readHashesV2(hashFilePath())[MANAGED_FILE]).toBeUndefined();
 
-      await update({ yes: true });
+      await update({ assignee: "fixture-owner", yes: true });
 
       expect(readHashesV2(hashFilePath())[MANAGED_FILE]).toBe(correct);
     });
@@ -1673,7 +1780,9 @@ describe("update() integration", () => {
       writeProjectFile(MANAGED_FILE, customized);
       vi.mocked(inquirer.prompt).mockResolvedValue({ proceed: false });
 
-      await update({ yes: false });
+      await expect(
+        update({ assignee: "fixture-owner", skipAll: true }),
+      ).rejects.toThrow("Retirement requires reconciliation");
 
       expect(readHashesV2(hashFilePath())[MANAGED_FILE]).not.toBe(
         computeHash(customized),
@@ -1681,29 +1790,34 @@ describe("update() integration", () => {
       expect(readProjectFile(MANAGED_FILE)).toBe(customized);
     });
 
-    it("leaves the mixed-ownership paths free to differ from their recorded hash", async () => {
-      await setupProject();
-      const before = readHashesV2(hashFilePath());
+    it.each([false, true])(
+      "preserves mixed-ownership receipts exactly (apply=%s)",
+      async (apply) => {
+        await setupProject();
+        const before = readHashesV2(hashFilePath());
 
-      // Append repo-owned content, exactly as those files acquire it.
-      for (const relativePath of MIXED_OWNERSHIP) {
-        if (!fs.existsSync(projectFile(relativePath))) continue;
-        writeProjectFile(
-          relativePath,
-          `${readProjectFile(relativePath)}\n# repo-owned addition\n`,
-        );
-      }
+        // Append repo-owned content, exactly as those files acquire it.
+        for (const relativePath of MIXED_OWNERSHIP) {
+          if (!fs.existsSync(projectFile(relativePath))) continue;
+          writeProjectFile(
+            relativePath,
+            `${readProjectFile(relativePath)}\n# repo-owned addition\n`,
+          );
+        }
 
-      await update({ yes: true });
+        if (apply) fs.unlinkSync(projectFile(MANAGED_FILE));
+        await update({ assignee: "fixture-owner", skipAll: true });
 
-      const after = readHashesV2(hashFilePath());
-      for (const relativePath of MIXED_OWNERSHIP) {
-        if (before[relativePath] === undefined) continue;
-        // The recorded hash must still describe the template, not the file.
-        expect(after[relativePath]).not.toBe(
-          computeHash(readProjectFile(relativePath)),
-        );
-      }
-    });
+        const after = readHashesV2(hashFilePath());
+        for (const relativePath of MIXED_OWNERSHIP) {
+          if (before[relativePath] === undefined) continue;
+          expect(after[relativePath]).toBe(before[relativePath]);
+          // The recorded hash must still describe the template, not the file.
+          expect(after[relativePath]).not.toBe(
+            computeHash(readProjectFile(relativePath)),
+          );
+        }
+      },
+    );
   });
 });

@@ -1288,3 +1288,9 @@ commands/channel/
 - **events.jsonl rotation** — triggers when single file > 100MB OR > 100k events. Schema split + reader-merge is the open design question.
 - **Event attribution + pass-through metadata** — keep `by` as a lightweight alias, add `origin: "cli"|"api"|"worker"` for the write entrypoint, and store business identity/context in `meta` without teaching Trellis user/org semantics.
 - **GUI frontend** consuming `events.jsonl` via fs.watch (Electron) or polling. CLI render rules in `messages.ts` translate directly.
+
+## Retired Context Sources
+
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract. Workspace roots are not auto-trusted. Explicit
+trust cannot authorize retired context paths; loaders reject them before reads.
+Task/spec context, platform session keys and external channel stores are unchanged.

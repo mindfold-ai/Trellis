@@ -1,26 +1,18 @@
 #!/usr/bin/env python3
-"""
-Get current developer name.
-
-This is a wrapper that uses common/paths.py
-"""
-
-from __future__ import annotations
+"""Retirement diagnostic; does not access project data."""
 
 import sys
 
-from common.paths import get_developer
 
-
-def main() -> None:
-    """CLI entry point."""
-    developer = get_developer()
-    if developer:
-        print(developer)
-    else:
-        print("Developer not initialized", file=sys.stderr)
-        sys.exit(1)
+def main() -> int:
+    print(
+        "Error: get_developer.py is retired. Developer identity and workspace recording "
+        "are no longer supported. Use task.py create --creator <name> "
+        "--assignee <name> and task.py finish/archive for task lifecycle.",
+        file=sys.stderr,
+    )
+    return 2
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

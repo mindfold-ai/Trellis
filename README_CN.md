@@ -42,7 +42,7 @@
 | --- | --- |
 | **自动注入规范** | 将规范沉淀到 `.trellis/spec/` 之后，Trellis 会在每次会话中按当前任务自动按需注入相关上下文，无需反复说明。 |
 | **任务驱动工作流** | PRD、实现上下文、审查上下文与任务状态统一存放于 `.trellis/tasks/`，AI 开发过程保持结构化、可追溯。 |
-| **项目记忆** | `.trellis/workspace/` 中的工作日志（journal）会保留上一次会话的脉络，因此每次新会话都能基于真实上下文开始。 |
+| **项目记忆** | 任务产物保留需求、决策和验证证据，新会话从明确选择的任务继续。 |
 | **团队共享标准** | Spec 随仓库一同版本化，个人总结出的规则与流程可以直接成为整个团队的基础设施。 |
 | **多平台复用** | 同一套 Trellis 结构覆盖 22 个 AI coding 平台，无需为每个工具单独搭建工作流。 |
 
@@ -58,10 +58,10 @@
 npm install -g @mindfoldhq/trellis@latest
 
 # 2. 在仓库中初始化
-trellis init -u your-name
+trellis init --creator your-name --assignee your-name
 
 # 3. 或仅初始化你实际使用的平台
-trellis init --cursor --opencode --codex -u your-name
+trellis init --cursor --opencode --codex --creator your-name --assignee your-name
 ```
 
 查看 [快速开始](https://docs.trytrellis.app/zh/start/install-and-first-task) 与 [支持平台](https://docs.trytrellis.app/zh/advanced/multi-platform) 指南以了解详细配置步骤。
@@ -73,7 +73,7 @@ trellis init --cursor --opencode --codex -u your-name
 1. **用自然语言描述你的需求。**
 2. **与 AI 一起头脑风暴**，一次只回答一个问题，直到 PRD 足够清晰，然后开始实现。
 3. **交由 AI 自主推进** —— AI 会调用 `trellis-implement` 编写代码，并自动依据 Spec、lint、type-check 与测试进行校验。
-4. **当工作完成或会话上下文接近上限时，输入 `/trellis:finish-work`**。Trellis 会归档任务并更新工作日志。
+4. **当任务完成时，输入 `/trellis:finish-work`**。Trellis 会核对任务证据并归档所选任务。
 
 ## 工作原理
 
@@ -99,7 +99,7 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 <details>
 <summary><strong>Trellis 与 <code>CLAUDE.md</code>、<code>AGENTS.md</code>、<code>.cursorrules</code> 有何区别？</strong></summary>
 
-这些文件本身是有用的入口，但容易在长期使用中变得冗长臃肿。Trellis 在此之上补充了：作用域明确的 Spec、按任务划分的 PRD、工作流关卡、工作区记忆，以及按平台自动生成的适配文件。
+这些文件本身是有用的入口，但容易在长期使用中变得冗长臃肿。Trellis 在此之上补充了：作用域明确的 Spec、按任务划分的 PRD、工作流关卡、任务进度证据，以及按平台自动生成的适配文件。
 
 </details>
 
@@ -127,7 +127,7 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 <details>
 <summary><strong>团队协作时是否会频繁产生冲突？</strong></summary>
 
-不会。个人工作区的 journal 按开发者独立维护，共享的 Spec 与任务则进入仓库，可以像其他项目产物一样进行评审与改进。
+不会。创建任务时显式提供创建者和负责人，当前任务绑定按会话隔离。共享的 Spec 与任务产物进入仓库，可进行评审与改进。
 
 </details>
 
@@ -138,7 +138,8 @@ Trellis 内部运行一个 4 阶段循环，skill 与子代理均由系统自动
 Trellis 管理的全部项目级表面。请新开一个 agent 会话进行对比；完成后运行
 `trellis restore`，即可精确恢复到消融前的状态。两个命令都支持
 `--dry-run` 预览。
-私有恢复事务会包含 `.trellis` 中 task、spec 和 workspace 的精确字节，
+历史身份文件和工作区树原地保留，不读取、快照或恢复。
+私有恢复事务会包含 `.trellis` 中 受管理 task 和 spec 的精确字节，
 其中可能有用户编写的敏感文本；事务会保留到恢复完成验证为止。
 
 它不同于永久删除的 `trellis uninstall`，也不同于只关闭 hooks 的

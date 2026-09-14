@@ -101,8 +101,10 @@ program
   .option("-y, --yes", "Skip prompts and use defaults")
   .option(
     "-u, --user <name>",
-    "Initialize developer identity with specified name",
+    "Retired identity option (use --creator and --assignee for bootstrap tasks)",
   )
+  .option("--creator <name>", "Explicit creator for a new bootstrap task")
+  .option("--assignee <name>", "Explicit assignee for a new bootstrap task")
   .option("-f, --force", "Overwrite existing files without asking")
   .option("-s, --skip-existing", "Skip existing files without asking")
   .option("--monorepo", "Force monorepo mode")
@@ -162,6 +164,7 @@ program
   .option("-n, --create-new", "Create .new copies for all changed files")
   .option("--allow-downgrade", "Allow downgrading to an older version")
   .option("--migrate", "Apply pending file migrations (renames/deletions)")
+  .option("--assignee <name>", "Explicit assignee for a new migration task")
   .action(async (options: Record<string, unknown>) => {
     try {
       await update({
@@ -171,6 +174,7 @@ program
         createNew: options.createNew as boolean,
         allowDowngrade: options.allowDowngrade as boolean,
         migrate: options.migrate as boolean,
+        assignee: options.assignee as string | undefined,
       });
     } catch (error) {
       console.error(

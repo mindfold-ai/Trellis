@@ -88,7 +88,20 @@ def _run(cmd: list[str], cwd: Path) -> str:
     return err or "(no output)"
 
 
-def _read_text(path: Path, limit: int = 4000) -> str:
+def _is_active_path(repo: Path, path: Path) -> bool:
+    scripts = repo / ".trellis" / "scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    try:
+        from common.history_paths import is_active_path  # type: ignore[import-not-found]
+        return is_active_path(path, repo)
+    except Exception:
+        return False
+
+
+def _read_text(path: Path, repo: Path, limit: int = 4000) -> str:
+    if not _is_active_path(repo, path):
+        return ""
     try:
         data = path.read_text(encoding="utf-8", errors="replace")
     except Exception:
@@ -99,8 +112,8 @@ def _read_text(path: Path, limit: int = 4000) -> str:
     return data
 
 
-def _count_jsonl_lines(path: Path) -> int | None:
-    if not path.is_file():
+def _count_jsonl_lines(path: Path, repo: Path) -> int | None:
+    if not _is_active_path(repo, path) or not path.is_file():
         return None
     try:
         count = 0
@@ -113,8 +126,8 @@ def _count_jsonl_lines(path: Path) -> int | None:
         return None
 
 
-def _jsonl_summaries(path: Path, max_items: int = 8, line_limit: int = 120) -> list[str]:
-    if max_items <= 0 or not path.is_file():
+def _jsonl_summaries(path: Path, repo: Path, max_items: int = 8, line_limit: int = 120) -> list[str]:
+    if max_items <= 0 or not _is_active_path(repo, path) or not path.is_file():
         return []
     items: list[str] = []
     try:
@@ -127,6 +140,9 @@ def _jsonl_summaries(path: Path, max_items: int = 8, line_limit: int = 120) -> l
                 try:
                     obj = json.loads(line)
                     if isinstance(obj, dict):
+                        reference = obj.get("file") or obj.get("path")
+                        if isinstance(reference, str) and not _is_active_path(repo, repo / reference):
+                            continue
                         for key in ("summary", "title", "id", "path", "message", "status"):
                             val = obj.get(key)
                             if isinstance(val, str) and val.strip():
@@ -158,11 +174,12 @@ def _parse_active_task_path(current_out: str, repo: Path) -> Path | None:
         p = Path(raw)
         if not p.is_absolute():
             p = repo / p
-        return p
+        return p if _is_active_path(repo, p) else None
     # Fallback: first path-like token containing tasks/
     m = re.search(r"(\.trellis[/\\]tasks[/\\][^\s]+)", current_out)
     if m:
-        return repo / m.group(1).replace("\\", "/")
+        candidate = repo / m.group(1).replace("\\", "/")
+        return candidate if _is_active_path(repo, candidate) else None
     return None
 
 
@@ -266,11 +283,13 @@ def _agent_kind(stdin_ctx: dict[str, Any]) -> str:
     return "generic"
 
 
-def _task_artifact_summary(task_dir: Path, *, detailed: bool, kind: str) -> list[str]:
+def _task_artifact_summary(task_dir: Path, repo: Path, *, detailed: bool, kind: str) -> list[str]:
+    if not _is_active_path(repo, task_dir):
+        return []
     lines: list[str] = [f"## Active task artifacts ({task_dir.as_posix()})"]
     for name in ("prd.md", "design.md", "implement.md", "task.json"):
         p = task_dir / name
-        if p.is_file():
+        if _is_active_path(repo, p) and p.is_file():
             try:
                 size = p.stat().st_size
             except Exception:
@@ -280,16 +299,16 @@ def _task_artifact_summary(task_dir: Path, *, detailed: bool, kind: str) -> list
             lines.append(f"- {name}: missing")
 
     for jl in ("implement.jsonl", "check.jsonl"):
-        n = _count_jsonl_lines(task_dir / jl)
+        n = _count_jsonl_lines(task_dir / jl, repo)
         if n is None:
             lines.append(f"- {jl}: missing")
         else:
             lines.append(f"- {jl}: {n} entries")
 
     research_dir = task_dir / "research"
-    if research_dir.is_dir():
+    if _is_active_path(repo, research_dir) and research_dir.is_dir():
         try:
-            research_files = [p.name for p in research_dir.iterdir() if p.is_file()]
+            research_files = [p.name for p in research_dir.iterdir() if _is_active_path(repo, p) and p.is_file()]
         except Exception:
             research_files = []
         lines.append(f"- research/: {len(research_files)} file(s)")
@@ -302,27 +321,27 @@ def _task_artifact_summary(task_dir: Path, *, detailed: bool, kind: str) -> list
         return lines
 
     prd = task_dir / "prd.md"
-    if prd.is_file():
+    if _is_active_path(repo, prd) and prd.is_file():
         # Prefer first ~40 lines / ~1800 chars for full mode.
-        body = _read_text(prd, 1800)
+        body = _read_text(prd, repo, 1800)
         if body:
             lines.extend(["## prd.md summary", body, ""])
 
     if kind in {"implement", "generic"}:
         impl = task_dir / "implement.jsonl"
-        items = _jsonl_summaries(impl, max_items=10)
+        items = _jsonl_summaries(impl, repo, max_items=10)
         if items:
             lines.append("## implement.jsonl (recent)")
             lines.extend(items)
             lines.append("")
         design = task_dir / "design.md"
-        if design.is_file():
-            dbody = _read_text(design, 900)
+        if _is_active_path(repo, design) and design.is_file():
+            dbody = _read_text(design, repo, 900)
             if dbody:
                 lines.extend(["## design.md excerpt", dbody, ""])
         implement_md = task_dir / "implement.md"
-        if implement_md.is_file():
-            ibody = _read_text(implement_md, 900)
+        if _is_active_path(repo, implement_md) and implement_md.is_file():
+            ibody = _read_text(implement_md, repo, 900)
             if ibody:
                 lines.extend(["## implement.md excerpt", ibody, ""])
 
@@ -336,7 +355,7 @@ def _task_artifact_summary(task_dir: Path, *, detailed: bool, kind: str) -> list
                 "",
             ]
         )
-        check_items = _jsonl_summaries(task_dir / "check.jsonl", max_items=8)
+        check_items = _jsonl_summaries(task_dir / "check.jsonl", repo, max_items=8)
         if check_items:
             lines.append("## check.jsonl (recent)")
             lines.extend(check_items)
@@ -393,20 +412,16 @@ def _current_session_ids(stdin_ctx: dict[str, Any] | None = None) -> list[str]:
     return ids
 
 
-def _resolve_runtime_session_file(
+def _resolve_active_task(
     repo: Path,
     stdin_ctx: dict[str, Any] | None = None,
-) -> Path | None:
-    # Resolve only the current session runtime file; never pick by mtime.
-    sessions_dir = repo / ".trellis" / ".runtime" / "sessions"
-    if not sessions_dir.is_dir():
-        return None
-    for sid in _current_session_ids(stdin_ctx):
-        for name in (f"{sid}.json", sid):
-            candidate = sessions_dir / name
-            if candidate.is_file():
-                return candidate
-    return None
+):
+    scripts_dir = repo / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.active_task import resolve_active_task  # type: ignore[import-not-found]
+
+    return resolve_active_task(repo, stdin_ctx or {}, platform="snow")
 
 
 def _workflow_phase_summary(
@@ -415,29 +430,28 @@ def _workflow_phase_summary(
 ) -> list[str]:
     lines: list[str] = []
     workflow = repo / ".trellis" / "workflow.md"
-    if workflow.is_file():
-        body = _read_text(workflow, 900)
+    if _is_active_path(repo, workflow) and workflow.is_file():
+        body = _read_text(workflow, repo, 900)
         if body:
             lines.extend(["## workflow.md excerpt", body, ""])
 
     # Prefer classic path; fall back only to the *current* runtime session file.
     session_md = repo / ".trellis" / "session" / "current.md"
-    if session_md.is_file():
-        body = _read_text(session_md, 1200)
+    if _is_active_path(repo, session_md) and session_md.is_file():
+        body = _read_text(session_md, repo, 1200)
         if body:
             lines.extend(["## .trellis/session/current.md", body, ""])
     else:
-        current_session = _resolve_runtime_session_file(repo, stdin_ctx)
-        if current_session is not None:
-            body = _read_text(current_session, 900)
-            if body:
-                lines.extend(
-                    [
-                        f"## runtime session ({current_session.name})",
-                        body,
-                        "",
-                    ]
-                )
+        active = _resolve_active_task(repo, stdin_ctx)
+        if active.error or active.stale:
+            lines.append(f"Task binding error: {active.error or 'stale binding'}")
+        elif active.task_path:
+            lines.extend([
+                f"## runtime session ({active.context_key})",
+                f"Current task: {active.task_path}",
+                f"Task workspace: {active.task_workspace_root}",
+                "",
+            ])
     return lines
 
 
@@ -475,22 +489,22 @@ def build_context(
             lines.append(f"Dispatch prompt (truncated): {p}")
         lines.append("")
 
-    task_py = repo / ".trellis" / "scripts" / "task.py"
-    current = ""
-    task_dir: Path | None = None
-    if task_py.is_file():
-        py = sys.executable or "python3"
-        current = _run([py, "-X", "utf8", str(task_py), "current", "--source"], repo)
-        lines.extend(["## task.py current --source", "```", current, "```", ""])
-        task_dir = _parse_active_task_path(current, repo)
-    else:
-        lines.append("(no .trellis/scripts/task.py — run trellis init first)")
-        lines.append("")
+    active = _resolve_active_task(repo, stdin_ctx)
+    if active.error or active.stale:
+        lines.append(f"Task binding error: {active.error or 'stale binding'}")
+        return "\n".join(lines)
+    task_dir = active.resolved_task_path
+    current = active.task_path or ""
+    lines.extend(["## Current session task", current or "(none)", f"Source: {active.source}", ""])
+    if active.task_workspace_root:
+        lines.append(f"Caller workspace: {repo}; task workspace: {active.task_workspace_root}")
+        repo = active.task_workspace_root
 
-    if task_dir and task_dir.exists():
+    if task_dir and _is_active_path(repo, task_dir) and task_dir.exists():
         lines.extend(
             _task_artifact_summary(
                 task_dir,
+                repo,
                 detailed=not compact,
                 kind=kind if mode == "subagent" else "generic",
             )
@@ -503,15 +517,15 @@ def build_context(
         lines.extend(_workflow_phase_summary(repo, stdin_ctx))
 
         identity = repo / ".trellis" / "identity.md"
-        if identity.is_file():
-            body = _read_text(identity, 900 if mode == "subagent" else 1200)
+        if _is_active_path(repo, identity) and identity.is_file():
+            body = _read_text(identity, repo, 900 if mode == "subagent" else 1200)
             if body:
                 lines.extend(["## .trellis/identity.md", body, ""])
     else:
         # Compact: short identity one-liner if file exists.
         identity = repo / ".trellis" / "identity.md"
-        if identity.is_file():
-            body = _read_text(identity, 280)
+        if _is_active_path(repo, identity) and identity.is_file():
+            body = _read_text(identity, repo, 280)
             if body:
                 first = body.splitlines()[0].strip()
                 lines.append(f"Identity: {first}")
@@ -592,6 +606,8 @@ def main() -> int:
 
         log_dir = repo / ".snow" / "log"
         try:
+            if not _is_active_path(repo, log_dir / "trellis-context.txt"):
+                raise ValueError("Historical or unavailable context log destination")
             log_dir.mkdir(parents=True, exist_ok=True)
             # Keep trellis-context.txt as the richest practical breadcrumb for
             # pull-based reads. User-mode inject stays compact, but must not

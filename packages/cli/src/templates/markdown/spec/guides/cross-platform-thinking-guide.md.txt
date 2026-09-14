@@ -624,7 +624,7 @@ printf '{"name":"trellis-smoke","version":"0.0.0"}\n' > "$tmpdir/package.json"
 git -C "$tmpdir" init -q
 (
   cd "$tmpdir"
-  node /path/to/Trellis/packages/cli/bin/trellis.js init -u smoke --yes --claude --codex
+  node /path/to/Trellis/packages/cli/bin/trellis.js init --creator smoke --assignee smoke --yes --claude --codex
   test -f .claude/skills/<skill>/SKILL.md
   test -f .agents/skills/<skill>/SKILL.md
   grep -q '<skill>' .trellis/.template-hashes.json

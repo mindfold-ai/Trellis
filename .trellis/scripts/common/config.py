@@ -19,9 +19,7 @@ from .trellis_config import parse_simple_yaml
 
 
 # Defaults
-DEFAULT_SESSION_COMMIT_MESSAGE = "chore: record journal"
-DEFAULT_MAX_JOURNAL_LINES = 2000
-DEFAULT_SESSION_AUTO_COMMIT = True
+DEFAULT_TASK_AUTO_COMMIT = True
 DEFAULT_CODEX_DISPATCH_MODE = "auto"
 
 CONFIG_FILE = "config.yaml"
@@ -76,13 +74,17 @@ def _get_config_path(repo_root: Path | None = None) -> Path:
 
 
 def _load_config(repo_root: Path | None = None) -> dict:
-    """Load and parse config.yaml. Returns empty dict on any error.
+    """Load active config.yaml; ordinary read/parse errors return an empty dict.
 
     Fail-open, matching ``trellis_config.read_trellis_config``: a malformed
     config must not take down ``task.py create``. A parse failure is reported
-    once on stderr so it is not invisible.
+    once on stderr so it is not invisible. Historical aliases fail closed.
     """
-    config_file = _get_config_path(repo_root)
+    from .history_paths import require_active_path
+
+    root = repo_root if repo_root is not None else get_repo_root()
+    config_file = _get_config_path(root)
+    require_active_path(config_file, root)
     try:
         content = config_file.read_text(encoding="utf-8")
     except (OSError, IOError):
@@ -99,41 +101,22 @@ def _load_config(repo_root: Path | None = None) -> dict:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def get_session_commit_message(repo_root: Path | None = None) -> str:
-    """Get the commit message for auto-committing session records."""
-    config = _load_config(repo_root)
-    return config.get("session_commit_message", DEFAULT_SESSION_COMMIT_MESSAGE)
+def get_task_auto_commit(repo_root: Path | None = None) -> bool:
+    """Task archive policy: explicit new key, legacy alias, then true.
 
-
-def get_max_journal_lines(repo_root: Path | None = None) -> int:
-    """Get the maximum lines per journal file."""
-    config = _load_config(repo_root)
-    value = config.get("max_journal_lines", DEFAULT_MAX_JOURNAL_LINES)
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return DEFAULT_MAX_JOURNAL_LINES
-
-
-def get_session_auto_commit(repo_root: Path | None = None) -> bool:
-    """Whether scripts should auto-stage + auto-commit session/task changes.
-
-    Governs both ``add_session.py:_auto_commit_workspace`` and
-    ``task_store.py:_auto_commit_archive``.
-
-    Default: ``True`` (existing behavior — auto-stage + auto-commit).
-    Set ``session_auto_commit: false`` in ``.trellis/config.yaml`` to skip
-    auto-staging entirely; the journal/archive files are still written to
-    disk, but the user manages ``git add`` / ``git commit`` themselves.
-
-    Accepts native YAML booleans (``true`` / ``false``) and the string
-    aliases ``true / false / yes / no / 1 / 0 / on / off`` (case-insensitive).
-    Invalid values fall back to ``True`` with a stderr warning.
+    The legacy key controls archive only; it cannot enable recording.
     """
     config = _load_config(repo_root)
-    raw = config.get("session_auto_commit", DEFAULT_SESSION_AUTO_COMMIT)
+    key = "task_auto_commit"
+    if key not in config and "session_auto_commit" in config:
+        key = "session_auto_commit"
+        print(
+            "[WARN] session_auto_commit is deprecated; use task_auto_commit. "
+            "The legacy setting applies only to task archive.",
+            file=sys.stderr,
+        )
     return coerce_config_bool(
-        raw, DEFAULT_SESSION_AUTO_COMMIT, "session_auto_commit"
+        config.get(key, DEFAULT_TASK_AUTO_COMMIT), DEFAULT_TASK_AUTO_COMMIT, key
     )
 
 

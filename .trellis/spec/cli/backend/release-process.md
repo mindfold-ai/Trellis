@@ -6,7 +6,8 @@
 
 ## Overview
 
-Trellis publishes two npm packages from one git tag:
+The authorized upstream npm route publishes two packages from one git tag.
+The castbox fork uses the attachment-only route below, not these npm commands:
 
 | Package | Role | Published by |
 |---|---|---|
@@ -21,7 +22,9 @@ The package pair is version-locked. Every published version must exist for both 
 
 Official npm publishing must happen through `.github/workflows/publish.yml`.
 
-Do not run `npm publish` or `pnpm publish` locally for official Trellis packages. Local machines may run `pnpm pack`, `release-preflight`, tests, lint, typecheck, and dry-run checks, but not package publication.
+Do not run `npm publish` or `pnpm publish` locally for official Trellis packages. Local machines may run pack, tests, lint, typecheck, and generic
+`check-versions` / `verify-packed-cli` checks. `npm-tag`, `publish-plan` and
+`verify-npm` require the exact approved repository context; do not spoof it.
 
 If a CI publish looks partial or inconsistent:
 
@@ -56,7 +59,7 @@ node packages/cli/scripts/release-preflight.js verify-npm --package all
 
 `packages/cli/scripts/release-preflight.js` is the source of truth for these checks.
 
-Required gates:
+Required upstream npm gates (fork local validation omits `publish-plan`):
 
 ```bash
 node packages/cli/scripts/release-preflight.js check-versions
@@ -168,7 +171,7 @@ run("git add -A -- ':!docs-site' ':!marketplace' ':!.trellis'");
 ```
 
 `.trellis/tasks/` is not gitignored, so a blanket `git add -A` sweeps in any
-dirty in-progress task dirs, workspace journal drafts, and runtime artifacts
+dirty in-progress task dirs, historical data, and runtime artifacts
 that happen to be present in the release session. Staging `.trellis/` is only
 ever allowed through `common/safe_commit.py`'s precise allowlist (see the
 "unscoped `.trellis` staging" bug class in `script-conventions.md`) — never
@@ -180,7 +183,7 @@ through a release-time blanket stage.
 > (`5ee43ecc`, `ec123deb`). The maintainer had to `git rm --cached` three
 > times (`d66405d9`, `81960120`, `3c3219cf`) before finally tracking the
 > drafts to stop the bleed (`e83233c9`). The same staging-scope defect also
-> lives in `add_session.py` (the #303 body) and in ad-hoc human/AI
+> historically existed in the now-retired `add_session.py` (the #303 body) and in ad-hoc human/AI
 > `git add -A`. This contract exists so the release route can never re-open
 > that escape hatch. See `script-conventions.md` → "Absolute prohibition:
 > never blanket-stage" for the full bug-class writeup.
@@ -236,6 +239,10 @@ The release script does not publish locally. The pushed tag is what starts offic
 ## Publish workflow sequence
 
 `.github/workflows/publish.yml` runs on `v*` tag push and GitHub Release publication. It is idempotent for reruns on the same tag.
+
+Before any step, job-level `github.repository == 'mindfold-ai/trellis'`
+must hold for both push and release.published. Fork events skip the whole job,
+including checkout, lifecycle scripts and credential access.
 
 Required order:
 
@@ -293,7 +300,7 @@ printf '{"name":"trellis-smoke","version":"0.0.0"}\n' > "$tmpdir/package.json"
 git -C "$tmpdir" init -q
 (
   cd "$tmpdir"
-  node /path/to/Trellis/packages/cli/bin/trellis.js init -u smoke --yes --claude --codex
+  node /path/to/Trellis/packages/cli/bin/trellis.js init --creator smoke --assignee smoke --yes --claude --codex
   test -f .claude/skills/<skill>/SKILL.md
   test -f .agents/skills/<skill>/SKILL.md
   grep -q '<skill>' .trellis/.template-hashes.json
@@ -326,3 +333,27 @@ git -C "$tmpdir" init -q
 - Manifest format and migration types: `migrations.md`
 - Docs lifecycle: `.trellis/spec/docs-site/docs/release-lifecycle.md`
 - Native dependency policy: `quality-guidelines.md`
+
+## Castbox Fixed-Version Delivery
+
+The retirement release uses paired `0.7.0-castbox.N` tarballs attached to a
+`castbox/Trellis` release, with `castbox-v<VERSION>` bound to the reviewed full
+SHA. Verify the next unused N before assigning it; never replace published bytes.
+This route does not invoke `release.js`, `publish-plan`, npm publish or upstream
+publish lifecycle hooks. Local validation is not authorization to tag/upload.
+
+Required assets: both package tarballs, SHA256SUMS, migration guide and manifest
+(repository, full SHA, tag, version, filenames, checksums, exact CLI/core dependency).
+Keep existing package names and exact paired dependency; install both downloaded
+local tarballs together in an isolated consumer prefix and verify core resolution.
+Record actual filenames and commands, not floating branch instructions. Repeat
+checks from the published download only after separate publication authorization.
+External docs-site/marketplace and Guru adoption remain separate owner handoffs.
+
+Publication defense is independent of tag naming: npm preflight requires exact
+`GITHUB_REPOSITORY=mindfold-ai/trellis`, anchored `v` tags and supported release
+tracks. Unknown/castbox prereleases must fail, never map to latest. Generic local
+version/pack checks remain usable without npm authority. Side-effect-free tests
+cover both event types, upstream/fork/missing repository, normal/fork tags and
+unknown tracks, even with simulated credentials. Verify guards on the workflow
+revision used by the event and inspect the skipped npm job after authorized release.

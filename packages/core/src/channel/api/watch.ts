@@ -24,6 +24,7 @@ export function watchChannelEvents(
   });
   return watchEvents(opts.channel, opts.filter ?? {}, {
     project: ref.project,
+    ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}),
     ...(opts.signal !== undefined ? { signal: opts.signal } : {}),
     ...(opts.fromStart !== undefined ? { fromStart: opts.fromStart } : {}),
     ...(opts.sinceSeq !== undefined ? { sinceSeq: opts.sinceSeq } : {}),

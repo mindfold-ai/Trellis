@@ -39,7 +39,7 @@ export async function postThread(
       `Invalid thread action '${opts.action}'. Must be one of: ${[...VALID_ACTIONS].join(", ")}`,
     );
   }
-  await readForumChannelEvents(opts.channel, ref.project, "post");
+  await readForumChannelEvents(opts.channel, ref.project, "post", opts.cwd);
   const thread = resolveThreadKey(opts.action, opts.thread);
   const event = await appendEvent(
     opts.channel,
@@ -67,6 +67,7 @@ export async function postThread(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   );
   return event as ThreadChannelEvent;
 }
@@ -97,6 +98,7 @@ export async function renameThread(
     opts.channel,
     ref.project,
     "thread rename",
+    opts.cwd,
   );
   const oldKey = normalizeThreadKey(opts.thread);
   const newKey = normalizeThreadKey(opts.newThread);
@@ -141,6 +143,7 @@ export async function renameThread(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   );
   return event as ThreadChannelEvent;
 }

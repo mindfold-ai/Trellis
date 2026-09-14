@@ -27,6 +27,7 @@ from pathlib import Path
 
 from .config import get_context_injection_limits
 from .git import branch_exists_locally
+from .history_paths import require_active_path
 from .io import read_json
 from .log import Colors, colored
 from .paths import DIR_ARCHIVE, DIR_TASKS, DIR_WORKFLOW, FILE_TASK_JSON, get_repo_root
@@ -91,6 +92,13 @@ def cmd_add_context(args: argparse.Namespace) -> int:
     jsonl_file = target_dir / jsonl_name
     full_path = repo_root / path
 
+    try:
+        require_active_path(jsonl_file, repo_root)
+        require_active_path(full_path, repo_root)
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED))
+        return 1
+
     entry_type = "file"
     if full_path.is_dir():
         entry_type = "directory"
@@ -125,7 +133,7 @@ def cmd_add_context(args: argparse.Namespace) -> int:
 # Command: validate
 # =============================================================================
 
-def curated_entry_count(jsonl_file: Path) -> int | None:
+def curated_entry_count(jsonl_file: Path, repo_root: Path | None = None) -> int | None:
     """Count curated entries in a jsonl context manifest.
 
     Returns None when the file does not exist — `task.py create` seeds the
@@ -134,6 +142,11 @@ def curated_entry_count(jsonl_file: Path) -> int | None:
     entry is a JSON object row carrying a truthy ``file`` (or legacy ``path``)
     value: the same rows the sub-agent injection hook materializes.
     """
+    try:
+        require_active_path(jsonl_file, repo_root if repo_root is not None else get_repo_root())
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED))
+        return 0
     if not jsonl_file.is_file():
         return None
     try:
@@ -223,6 +236,7 @@ def _resolve_context_entry_path(
     ``None`` means the remapped path traversed or resolved outside that archive.
     """
     repo_path = repo_root / file_path
+    require_active_path(repo_path, repo_root)
     if task_dir is None:
         return repo_path
 
@@ -260,7 +274,9 @@ def _resolve_context_entry_path(
 
     try:
         archive_root = task_dir.resolve()
-        resolved_path = task_dir.joinpath(*relative_parts).resolve()
+        archive_path = task_dir.joinpath(*relative_parts)
+        require_active_path(archive_path, repo_root)
+        resolved_path = archive_path.resolve()
         resolved_path.relative_to(archive_root)
     except (OSError, RuntimeError, ValueError):
         return None
@@ -284,6 +300,11 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
     file_name = jsonl_file.name
     errors = 0
 
+    try:
+        require_active_path(jsonl_file, repo_root)
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED))
+        return 1
     if not jsonl_file.is_file():
         print(f"  {colored(f'{file_name}: not found (skipped)', Colors.YELLOW)}")
         return 0
@@ -346,7 +367,14 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             continue
 
         real_entries += 1
-        full_path = _resolve_context_entry_path(file_path, repo_root, task_dir)
+        try:
+            full_path = _resolve_context_entry_path(file_path, repo_root, task_dir)
+            if full_path is not None:
+                require_active_path(full_path, repo_root)
+        except ValueError as exc:
+            print(colored(f"{file_name}:{line_num}: {exc}", Colors.RED))
+            errors += 1
+            continue
         if entry_type == "directory":
             if full_path is None or not full_path.is_dir():
                 print(f"  {colored(f'{file_name}:{line_num}: Directory not found: {file_path}', Colors.RED)}")
@@ -427,6 +455,11 @@ def cmd_list_context(args: argparse.Namespace) -> int:
 
     for jsonl_name in ["implement.jsonl", "check.jsonl"]:
         jsonl_file = target_dir / jsonl_name
+        try:
+            require_active_path(jsonl_file, repo_root)
+        except ValueError as exc:
+            print(colored(f"Error: {exc}", Colors.RED))
+            return 1
         if not jsonl_file.is_file():
             continue
 

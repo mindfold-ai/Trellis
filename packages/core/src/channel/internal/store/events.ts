@@ -368,8 +368,9 @@ export function isChannelMetadataEvent(
 export async function ensureChannelDir(
   name: string,
   project?: string,
+  cwd?: string,
 ): Promise<string> {
-  const dir = channelDir(name, project);
+  const dir = channelDir(name, project, cwd);
   await fsp.mkdir(dir, { recursive: true, mode: 0o700 });
   return dir;
 }
@@ -382,10 +383,11 @@ export async function ensureChannelDir(
 export async function readLastSeq(
   name: string,
   project?: string,
+  cwd?: string,
 ): Promise<number> {
-  const file = eventsPath(name, project);
+  const file = eventsPath(name, project, cwd);
   if (!fs.existsSync(file)) return 0;
-  return reconcileSeq(file, seqSidecarPath(name, project));
+  return reconcileSeq(file, seqSidecarPath(name, project, cwd));
 }
 
 export interface AppendablePartial {
@@ -413,12 +415,14 @@ export async function appendEvent(
   name: string,
   partial: AppendablePartial,
   project?: string,
+  cwd?: string,
 ): Promise<ChannelEvent> {
   validateEventBase(partial);
-  await ensureChannelDir(name, project);
-  const jsonl = eventsPath(name, project);
-  const sidecar = seqSidecarPath(name, project);
-  return withLock(lockPath(name, project), async () => {
+  const jsonl = eventsPath(name, project, cwd);
+  const sidecar = seqSidecarPath(name, project, cwd);
+  const lock = lockPath(name, project, cwd);
+  await ensureChannelDir(name, project, cwd);
+  return withLock(lock, async () => {
     await truncateIncompleteTail(jsonl);
     const existing = findIdempotentEvent(jsonl, partial);
     if (existing !== undefined) return existing;
@@ -510,8 +514,9 @@ export async function readChannelEvents(
   name: string,
   project?: string,
   pagination?: ReadChannelEventsPagination,
+  cwd?: string,
 ): Promise<ChannelEvent[]> {
-  const file = eventsPath(name, project);
+  const file = eventsPath(name, project, cwd);
   const all = readAllEvents(file);
 
   if (

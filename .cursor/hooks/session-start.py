@@ -126,7 +126,7 @@ if sys.platform.startswith("win"):
 
 
 
-def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
+def _has_curated_jsonl_entry(jsonl_path: Path, repo_root: Path) -> bool:
     """Return True iff jsonl has at least one row with a ``file`` field.
 
     A newly created jsonl is empty, and older tasks may still carry a
@@ -135,7 +135,7 @@ def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
     contract used by hook-inject and pull-based sub-agent context loaders.
     """
     try:
-        for line in jsonl_path.read_text(encoding="utf-8").splitlines():
+        for line in read_file(jsonl_path, repo_root).splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -173,10 +173,25 @@ def should_skip_injection() -> bool:
     return any(os.environ.get(var) == "1" for var in non_interactive_vars)
 
 
-def read_file(path: Path, fallback: str = "") -> str:
+def _is_active_path(path: Path, repo_root: Path) -> bool:
+    scripts_dir = repo_root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import is_active_path  # type: ignore[import-not-found]
+
+    return is_active_path(path, repo_root)
+
+
+def read_file(path: Path, repo_root: Path, fallback: str = "") -> str:
+    scripts_dir = repo_root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import RetiredDataPathError, require_active_path  # type: ignore[import-not-found]
+
     try:
+        require_active_path(path, repo_root)
         return path.read_text(encoding="utf-8")
-    except (FileNotFoundError, PermissionError):
+    except (FileNotFoundError, PermissionError, RetiredDataPathError):
         return fallback
 
 
@@ -208,7 +223,7 @@ def _run_git(repo_root: Path, args: list[str]) -> str:
 def _format_git_state(repo_root: Path) -> str:
     branch = _run_git(repo_root, ["branch", "--show-current"]) or "(detached)"
     dirty_lines = [
-        line for line in _run_git(repo_root, ["status", "--porcelain"]).splitlines()
+        line for line in _run_git(repo_root, ["status", "--porcelain", "--", ".", ":(exclude).trellis/workspace", ":(exclude).trellis/agent-traces", ":(exclude).trellis/.developer", ":(exclude).trellis/.backup-*"]).splitlines()
         if line.strip()
     ]
     dirty_text = "clean" if not dirty_lines else f"dirty {len(dirty_lines)} paths"
@@ -275,7 +290,7 @@ def _resolve_context_key(trellis_dir: Path, input_data: dict) -> str | None:
     return resolve_context_key(input_data, platform=_detect_platform(input_data))
 
 
-def _persist_context_key_for_bash(context_key: str | None) -> None:
+def _persist_context_key_for_bash(context_key: str | None, repo_root: Path) -> None:
     """Expose Trellis session identity to later Claude Code Bash commands.
 
     Claude Code SessionStart hooks can append exports to CLAUDE_ENV_FILE; those
@@ -295,6 +310,9 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
         return
     env_file = os.environ.get("CLAUDE_ENV_FILE")
     if not env_file:
+        return
+    if not _is_active_path(Path(os.path.abspath(env_file)), repo_root):
+        print("[WARN] Retired identity/history cannot be used as CLAUDE_ENV_FILE.", file=sys.stderr)
         return
     export_line = f"export TRELLIS_CONTEXT_ID={shlex.quote(context_key)}"
     try:
@@ -421,6 +439,17 @@ def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
     return trellis_dir / "tasks" / path_obj
 
 
+def _load_task_data(trellis_dir: Path, task_dir: Path) -> dict:
+    """Read task metadata through the shared historical-data boundary."""
+    scripts_dir = trellis_dir / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.tasks import load_task  # type: ignore[import-not-found]
+
+    task = load_task(task_dir, trellis_dir.parent)
+    return task.raw if task is not None else {}
+
+
 def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
     """Return compact active-task status, artifact presence, and next action."""
     active = _resolve_active_task(trellis_dir, input_data)
@@ -442,13 +471,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
             "then ask the user what to work on next."
         )
 
-    task_json_path = task_dir / "task.json"
-    task_data = {}
-    if task_json_path.is_file():
-        try:
-            task_data = json.loads(task_json_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, PermissionError):
-            pass  # Optional task metadata; fall back to generic status.
+    task_data = _load_task_data(trellis_dir, task_dir)
 
     task_title = task_data.get("title", task_ref)
     task_status = task_data.get("status", "unknown")
@@ -471,8 +494,8 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
     implement_jsonl = task_dir / "implement.jsonl"
     check_jsonl = task_dir / "check.jsonl"
     jsonl_ready = (
-        (not implement_jsonl.is_file() or _has_curated_jsonl_entry(implement_jsonl))
-        and (not check_jsonl.is_file() or _has_curated_jsonl_entry(check_jsonl))
+        (not implement_jsonl.is_file() or _has_curated_jsonl_entry(implement_jsonl, trellis_dir.parent))
+        and (not check_jsonl.is_file() or _has_curated_jsonl_entry(check_jsonl, trellis_dir.parent))
     )
 
     if task_status == "planning" and not has_prd:
@@ -541,16 +564,10 @@ def _load_trellis_config(trellis_dir: Path, input_data: dict) -> tuple:
             platform=_detect_platform(input_data),
         )
         if current:
-            task_json = repo_root / current / "task.json"
-            if task_json.is_file():
-                try:
-                    data = json.loads(task_json.read_text(encoding="utf-8"))
-                    if isinstance(data, dict):
-                        tp = data.get("package")
-                        if isinstance(tp, str) and tp:
-                            task_pkg = tp
-                except (json.JSONDecodeError, OSError):
-                    pass  # Optional package metadata; fall back to default scope.
+            data = _load_task_data(trellis_dir, repo_root / current)
+            tp = data.get("package")
+            if isinstance(tp, str) and tp:
+                task_pkg = tp
 
         default_pkg = get_default_package(repo_root)
         return is_mono, packages, scope, task_pkg, default_pkg
@@ -567,14 +584,15 @@ def _check_legacy_spec(trellis_dir: Path, is_mono: bool, packages: dict) -> str 
         return None
 
     spec_dir = trellis_dir / "spec"
-    if not spec_dir.is_dir():
+    if not _is_active_path(spec_dir, trellis_dir.parent) or not spec_dir.is_dir():
         return None
 
     # Check for legacy flat spec dirs (spec/backend/, spec/frontend/ with index.md)
     has_legacy = False
     for legacy_name in ("backend", "frontend"):
         legacy_dir = spec_dir / legacy_name
-        if legacy_dir.is_dir() and (legacy_dir / "index.md").is_file():
+        if (_is_active_path(legacy_dir / "index.md", trellis_dir.parent)
+                and legacy_dir.is_dir() and (legacy_dir / "index.md").is_file()):
             has_legacy = True
             break
 
@@ -584,7 +602,7 @@ def _check_legacy_spec(trellis_dir: Path, is_mono: bool, packages: dict) -> str 
     # Check which packages are missing spec/<pkg>/ directory
     missing = [
         name for name in sorted(packages.keys())
-        if not (spec_dir / name).is_dir()
+        if not _is_active_path(spec_dir / name, trellis_dir.parent) or not (spec_dir / name).is_dir()
     ]
 
     if not missing:
@@ -665,8 +683,11 @@ def _resolve_spec_scope(
 
 def _collect_spec_index_paths(trellis_dir: Path, allowed_pkgs: set | None) -> list[str]:
     paths: list[str] = []
+    repo_root = trellis_dir.parent
+    if not _is_active_path(trellis_dir / "spec", repo_root):
+        return paths
     guides_index = trellis_dir / "spec" / "guides" / "index.md"
-    if guides_index.is_file():
+    if _is_active_path(guides_index, repo_root) and guides_index.is_file():
         paths.append(".trellis/spec/guides/index.md")
 
     spec_dir = trellis_dir / "spec"
@@ -674,21 +695,21 @@ def _collect_spec_index_paths(trellis_dir: Path, allowed_pkgs: set | None) -> li
         return paths
 
     for sub in sorted(spec_dir.iterdir()):
-        if not sub.is_dir() or sub.name.startswith(".") or sub.name == "guides":
+        if not _is_active_path(sub, repo_root) or not sub.is_dir() or sub.name.startswith(".") or sub.name == "guides":
             continue
 
         index_file = sub / "index.md"
-        if index_file.is_file():
+        if _is_active_path(index_file, repo_root) and index_file.is_file():
             paths.append(f".trellis/spec/{sub.name}/index.md")
             continue
 
         if allowed_pkgs is not None and sub.name not in allowed_pkgs:
             continue
         for nested in sorted(sub.iterdir()):
-            if not nested.is_dir():
+            if not _is_active_path(nested, repo_root) or not nested.is_dir():
                 continue
             nested_index = nested / "index.md"
-            if nested_index.is_file():
+            if _is_active_path(nested_index, repo_root) and nested_index.is_file():
                 paths.append(f".trellis/spec/{sub.name}/{nested.name}/index.md")
 
     return paths
@@ -703,50 +724,32 @@ def _build_compact_current_state(
     lines: list[str] = []
 
     try:
-        from common.paths import get_active_journal_file, get_developer, get_tasks_dir, count_lines  # type: ignore[import-not-found]
+        from common.paths import get_tasks_dir  # type: ignore[import-not-found]
         from common.tasks import iter_active_tasks  # type: ignore[import-not-found]
     except Exception:
-        get_active_journal_file = None  # type: ignore[assignment]
-        get_developer = None  # type: ignore[assignment]
         get_tasks_dir = None  # type: ignore[assignment]
-        count_lines = None  # type: ignore[assignment]
         iter_active_tasks = None  # type: ignore[assignment]
 
-    developer = get_developer(repo_root) if get_developer else None
-    lines.append(f"Developer: {developer or '(not initialized)'}")
     lines.append(_format_git_state(repo_root))
 
     active = _resolve_active_task(trellis_dir, input_data)
     if active.task_path:
         task_dir = _resolve_task_dir(trellis_dir, active.task_path)
         status = "unknown"
-        task_json = task_dir / "task.json"
-        if task_json.is_file():
-            try:
-                data = json.loads(task_json.read_text(encoding="utf-8"))
-                if isinstance(data, dict):
-                    status = str(data.get("status") or "unknown")
-            except (json.JSONDecodeError, OSError):
-                pass  # Optional task metadata; fall back to generic status.
+        data = _load_task_data(trellis_dir, task_dir)
+        status = str(data.get("status") or "unknown")
         lines.append(f"Current task: {_repo_relative(repo_root, task_dir)}; status={status}.")
     else:
         lines.append("Current task: none.")
 
     if get_tasks_dir and iter_active_tasks:
         try:
-            task_count = sum(1 for _ in iter_active_tasks(get_tasks_dir(repo_root)))
+            task_count = sum(1 for _ in iter_active_tasks(get_tasks_dir(repo_root), repo_root))
             lines.append(
-                f"Active tasks: {task_count} total. Use `python3 ./.trellis/scripts/task.py list --mine` only if needed."
+                f"Project tasks: {task_count} total. Use `python3 ./.trellis/scripts/task.py list` only if needed."
             )
         except Exception:
             pass  # Optional task summary; keep compact state available.
-
-    if get_active_journal_file and count_lines:
-        journal = get_active_journal_file(repo_root)
-        if journal:
-            lines.append(
-                f"Journal: {_repo_relative(repo_root, journal)}, {count_lines(journal)} / 2000 lines."
-            )
 
     if spec_index_paths:
         lines.append(f"Spec indexes: {len(spec_index_paths)} available.")
@@ -802,7 +805,7 @@ def _strip_breadcrumb_tag_blocks(content: str) -> str:
 
 def _build_workflow_overview(workflow_path: Path) -> str:
     """Inject only the compact Phase Index summary for SessionStart."""
-    content = read_file(workflow_path)
+    content = read_file(workflow_path, workflow_path.parent.parent)
     if not content:
         return "No workflow.md found"
 
@@ -854,7 +857,7 @@ def main():
 
     trellis_dir = project_dir / ".trellis"
     context_key = _resolve_context_key(trellis_dir, hook_input)
-    _persist_context_key_for_bash(context_key)
+    _persist_context_key_for_bash(context_key, trellis_dir.parent)
 
     # Load config for scope filtering and legacy detection
     is_mono, packages, scope_config, task_pkg, default_pkg = _load_trellis_config(

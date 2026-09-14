@@ -1,6 +1,6 @@
 ---
 name: trellis-start
-description: "Initializes an AI development session by reading workflow guides, developer identity, git status, active tasks, and project guidelines from .trellis/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context."
+description: "Initializes an AI development session by reading workflow guides, checkout facts, git status, active tasks, and project guidelines from .trellis/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context."
 ---
 
 # Start Session
@@ -10,7 +10,7 @@ Initialize a Trellis-managed development session. This platform has no session-s
 ---
 
 ## Step 1: Current state
-Identity, git status, current task, active tasks, journal location.
+Checkout/Git facts, current-session task, and project task inventory.
 
 ```bash
 python3 ./.trellis/scripts/get_context.py

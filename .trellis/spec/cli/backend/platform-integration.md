@@ -1580,7 +1580,7 @@ Use parent/child task trees when a request contains multiple deliverables that c
 ### Signatures
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <name> --parent <parent-dir>
+python3 ./.trellis/scripts/task.py create "<title>" --creator <creator> --assignee <assignee> --description "<one-line summary>" --slug <name> --parent <parent-dir>
 python3 ./.trellis/scripts/task.py add-subtask <parent-dir> <child-dir>
 python3 ./.trellis/scripts/task.py remove-subtask <parent-dir> <child-dir>
 ```
@@ -1906,7 +1906,7 @@ Codex has even tighter limits — users report 40-80 KB payloads consuming most 
 | Block                |       Size | Notes                                                                                                                                 |
 | -------------------- | ---------: | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `<session-context>`  |     0.1 KB | Fixed                                                                                                                                 |
-| `<current-state>`    |     0.3 KB | Compact developer/git/task state                                                                                                      |
+| `<current-state>`    |     0.3 KB | Compact git/task state                                                                                                      |
 | `<trellis-workflow>` |     4.4 KB | Compact Phase Index after stripping workflow-state blocks, comments, and platform markers; detailed phase bodies are loaded on demand |
 | `<guidelines>`       |     0.5 KB | Context order + spec index paths only                                                                                                 |
 | `<ready>`            |     0.1 KB | Fixed                                                                                                                                 |
@@ -1946,7 +1946,7 @@ instead of the actual workflow guidance.
 
 **Decision**: SessionStart now injects only compact orientation:
 
-1. compact current state (developer, git summary, active task, journal, spec
+1. compact current state (git summary, active task, spec
    index count)
 2. compact `<trellis-workflow>` Phase Index
 3. artifact read order and spec index paths
@@ -2089,69 +2089,16 @@ This keeps state minimal, avoids the "task.json drifts from filesystem reality" 
 
 ---
 
-## Bootstrap & Joiner Task Auto-Generation
+## Bootstrap Task Generation
 
-`trellis init` generates a first-session task based on checkout state. Three branches dispatch off two filesystem flags:
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
-| `.trellis/` exists? | `.trellis/.developer` exists? | Meaning                                                           | Task generated                           |
-| ------------------- | ----------------------------- | ----------------------------------------------------------------- | ---------------------------------------- |
-| no                  | n/a                           | First-time `init` on this project                                 | `00-bootstrap-guidelines` (creator flow) |
-| yes                 | no                            | Fresh clone / per-checkout first-init (new machine, new teammate) | `00-join-<slug>` (joiner flow)           |
-| yes                 | yes                           | Same dev re-running init                                          | none (no-op)                             |
-
-### Design Decision: `.developer` File Is the Per-Checkout Signal
-
-**Context**: we need a signal for "this checkout has never been init'd by this developer before" to trigger joiner onboarding.
-
-**Options Considered**:
-
-1. `.trellis/workspace/<name>/` directory existence — ❌ this dir is committed to git, so a fresh clone already has it
-2. A registry file listing onboarded developers — ❌ needs migration + bookkeeping, over-engineered for single-user checkouts
-3. `.trellis/.developer` file existence — ✅ **chosen**
-
-**Decision**: Use `.trellis/.developer` (gitignored) as the per-checkout onboarding signal.
-
-**Why**: `.trellis/.developer` is declared in `.trellis/.gitignore` (template `gitignore.txt`), so it is never committed. A fresh clone has an empty `.developer` slot by construction; the first `init` writes it. Subsequent same-machine re-inits see the file and no-op.
-
-**Consequence (accepted)**: Same developer on two machines (laptop A + laptop B) gets a joiner task on laptop B. This is fine — it's a chance to re-read the spec, and archiving is one command.
-
-**Anti-pattern**: Do not use `.trellis/workspace/<name>/` existence as "this developer already onboarded" — that directory is the journal archive and belongs to git.
-
-### Gotcha: Joiner Dispatch Must Be Wired in Two Places
-
-`trellis init` has two code paths that both reach the end of initialization but through different branches of `init()`. Any new init-time trigger (joiner onboarding, future first-session tasks, etc.) must be registered in **both**:
-
-**Path 1 — Main dispatch** (`src/commands/init.ts`, near the end of `init()`):
-
-- Reached only when `!isFirstInit` is false **OR** `options.force` / `options.skipExisting` is set
-- Fires from the block that runs after `createWorkflowStructure` + `init_developer.py`
-
-**Path 2 — Re-init fast path** (`handleReinit`, inside `doAddDeveloper` branch):
-
-- Reached when `.trellis/` already exists AND user runs default `trellis init --user <name>` (no `--force`, no `--skip-existing`)
-- `init()` short-circuits via `if (!isFirstInit && !options.force && !options.skipExisting) { await handleReinit(...); return; }` — main dispatch is **never executed**
-
-Both paths must capture the pre-existing `.developer` state **before** running `init_developer.py` (which writes the file), then use that snapshot to decide whether joiner generation applies.
-
-```typescript
-// Path 1 (init end) — snapshot at init() start
-const hadDeveloperFileAtStart = fs.existsSync(developerFilePath);
-// ... later, after init_developer.py:
-if (!isFirstInit && !hadDeveloperFileAtStart) {
-  createJoinerOnboardingTask(cwd, developerName);
-}
-
-// Path 2 (handleReinit) — snapshot just before init_developer.py
-const hadDeveloperFileBefore = fs.existsSync(developerFilePath);
-execSync(`${pythonCmd} ${initDeveloperScript} "${devName}"`, { ... });
-if (!hadDeveloperFileBefore) {
-  createJoinerOnboardingTask(cwd, devName);
-}
-```
-
-**Test coverage requirement**: integration tests must cover BOTH paths. The quick way to detect regressions is to run `init` without `force: true` and assert joiner-task creation — tests that all pass `{ force: true }` will miss Path 2 bugs entirely.
-
----
+Init derives bootstrap eligibility from installation/spec state, never identity
+file presence. New bootstrap tasks require explicit creator and assignee before
+mutation; existing bootstrap ownership is preserved. Re-init and adding a platform
+do not create per-developer joiner tasks. Test both the main init path and re-init
+fast path, including noninteractive missing-input rejection. Registry-derived
+platform tests must cover generated hooks, skills and enabled context paths.
 
 ## Common Mistakes
 
@@ -2307,13 +2254,13 @@ Note this is *only* about `{{…}}` placeholders. The separate `python3` → `py
 
 ### Added an init-time trigger but forgot the `handleReinit` fast path
 
-**Symptom**: The trigger works when users pass `--force` / `--skip-existing` / run init on an empty dir, but the default `trellis init --user <name>` on an existing checkout silently does nothing. Integration tests pass.
+**Symptom**: The trigger works when users pass `--force` / `--skip-existing` / run init on an empty dir, but the default `trellis init` on an existing checkout silently does nothing. Integration tests pass.
 
 **Cause**: `init()` at `src/commands/init.ts` early-returns into `handleReinit` when `.trellis/` already exists and neither `--force` nor `--skip-existing` is set. Main dispatch at the end of `init()` is never reached. If the new trigger is only wired into main dispatch, the most common real-user path is uncovered.
 
-**Fix**: Wire the trigger into BOTH (a) the main-dispatch block near the end of `init()` AND (b) `handleReinit`'s `doAddDeveloper` / `doAddPlatforms` branch, whichever is relevant. Capture any pre-init filesystem state (e.g., `.developer` existence) in each path separately, before scripts that mutate it run.
+**Fix**: Wire the trigger into BOTH (a) the main-dispatch block near the end of `init()` AND (b) `handleReinit` platform branch, whichever is relevant. Use installation/spec state only; never identity or retired-data presence.
 
-**Prevention**: Integration tests must cover the default path WITHOUT `force: true`. Any test using `force: true` bypasses `handleReinit` and is not testing real-user behavior. See "Bootstrap & Joiner Task Auto-Generation" above for the canonical two-point wiring pattern.
+**Prevention**: Integration tests must cover the default path WITHOUT `force: true`. Any test using `force: true` bypasses `handleReinit` and is not testing real-user behavior. See "Bootstrap Task Generation" above for the current contract.
 
 ---
 
@@ -2325,4 +2272,4 @@ Note this is *only* about `{{…}}` placeholders. The separate `python3` → `py
 | main                          | Antigravity      | Workflows + skills from `common/`              | No physical template dir — one `collectBothTemplates()` call; no Codex coupling                |
 | #71                           | Qoder            | Skills (like Codex/Kiro)                       | Skills with YAML frontmatter; Trae was dropped (IDE-only, no deterministic invocation trigger) |
 | feat/v0.5.0-beta              | All platforms (13 at the time; 21 today) | Unified template architecture | Common templates + shared hooks + `createTemplateReader()` factory                    |
-| `04-21-bootstrap-onboard-gap` | n/a              | Three-branch init dispatch + joiner onboarding | `.developer` file as per-checkout signal; documents the `handleReinit` two-point wiring        |
+| `04-21-bootstrap-onboard-gap` | n/a              | Three-branch init dispatch + joiner onboarding | Historical only: identity signal and automatic joiner are retired; fast-path coverage remains relevant        |

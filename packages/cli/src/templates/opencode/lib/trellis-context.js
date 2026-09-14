@@ -5,10 +5,10 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync } from "fs"
-import { isAbsolute, join, relative } from "path"
+import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync, lstatSync } from "fs"
+import { dirname, isAbsolute, join, relative, resolve } from "path"
 import { platform } from "os"
-import { execSync } from "child_process"
+import { execSync, execFileSync } from "child_process"
 import { createHash } from "crypto"
 import { Buffer, isUtf8 } from "buffer"
 import process from "process"
@@ -150,12 +150,7 @@ function unquoteYaml(s) {
  */
 function readContextInjectionLimits(repoRoot) {
   const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS }
-  let text = null
-  try {
-    text = readFileSync(join(repoRoot, ".trellis", "config.yaml"), "utf-8")
-  } catch {
-    return limits
-  }
+  const text = readFileBytes(repoRoot, join(repoRoot, ".trellis", "config.yaml"))?.toString("utf-8")
   if (!text) return limits
 
   let inSection = false
@@ -236,10 +231,125 @@ function budgetedBlock(budget, header, plainPath, content, reason, sizeForIndex)
   return block
 }
 
+function isHistoricalPath(filePath, basePath) {
+  const absolute = resolve(filePath)
+  const protectedName = name => [".developer", "workspace", "agent-traces"].includes(name) || name.startsWith(".backup-")
+  const parts = absolute.split("\\").join("/").split("/")
+  if (parts.some((name, index) => name === ".trellis" && protectedName(parts[index + 1] || ""))) return true
+  if (basePath !== undefined) {
+    try {
+      const workflowRoot = realpathSync(join(basePath, ".trellis"))
+      const first = relative(workflowRoot, absolute).split("\\").join("/").split("/")[0]
+      return protectedName(first)
+    } catch {
+      return false
+    }
+  }
+  return false
+}
+
+function pathWithin(root, candidate) {
+  const rel = relative(root, candidate)
+  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith("../") && !rel.startsWith("..\\"))
+}
+
+// Resolve existing ancestors too: missing descendants of historical aliases
+// must be rejected before an existence probe or content read.
+function activeStoragePath(root, candidate) {
+  if (isHistoricalPath(candidate, root)) throw new Error("historical_path")
+  let parent = resolve(candidate)
+  while (true) {
+    try {
+      lstatSync(parent)
+      const actual = resolve(realpathSync(parent), relative(parent, resolve(candidate)))
+      if (isHistoricalPath(actual, root)) throw new Error("historical_path")
+      return candidate
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error
+      const next = dirname(parent)
+      if (next === parent) throw error
+      parent = next
+    }
+  }
+}
+
+function bindingExists(root, candidate) {
+  activeStoragePath(root, candidate)
+  try {
+    lstatSync(candidate)
+    return true
+  } catch (error) {
+    if (error.code === "ENOENT") return false
+    throw error
+  }
+}
+
+function gitOutput(root, args) {
+  const excluded = new Set(["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES"])
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !excluded.has(key)))
+  env.LC_ALL = "C"
+  return execFileSync("git", ["-C", root, ...args], {
+    encoding: "utf-8", timeout: 5000, stdio: ["ignore", "pipe", "pipe"], env,
+  })
+}
+
+function commonDir(root) {
+  const value = gitOutput(root, ["rev-parse", "--git-common-dir"]).replace(/[\r\n]+$/, "")
+  return realpathSync(resolve(root, value))
+}
+
+function repositoryFacts(root) {
+  let common
+  try {
+    common = commonDir(root)
+  } catch (error) {
+    // A failed Git probe in an apparent checkout is not a non-Git project.
+    for (let parent = root; ; parent = dirname(parent)) {
+      if (bindingExists(root, join(parent, ".git"))) throw new Error("git_discovery_failed")
+      if (dirname(parent) === parent) break
+    }
+    if (!String(error.stderr || "").includes("not a git repository")) throw new Error("git_discovery_failed")
+    return { common: null, roots: [root], gitRoot: root }
+  }
+  const roots = gitOutput(root, ["worktree", "list", "--porcelain", "-z"])
+    .split("\0").filter(field => field.startsWith("worktree ")).map(field => {
+      const candidate = field.slice("worktree ".length)
+      try { return realpathSync(candidate) } catch { return null }
+    }).filter(Boolean)
+  const gitRoot = realpathSync(gitOutput(root, ["rev-parse", "--show-toplevel"]).replace(/[\r\n]+$/, ""))
+  if (!roots.includes(gitRoot) || !pathWithin(gitRoot, root)) throw new Error("unregistered_workspace")
+  return { common, roots, gitRoot }
+}
+
+function validateWorkspace(root, facts) {
+  const actual = realpathSync(root)
+  activeStoragePath(actual, join(actual, ".trellis"))
+  if (!statSync(join(actual, ".trellis")).isDirectory()) throw new Error("invalid_workspace")
+  if (!facts.common) {
+    if (actual !== facts.roots[0]) throw new Error("workspace_mismatch")
+    return actual
+  }
+  const gitRoot = realpathSync(gitOutput(actual, ["rev-parse", "--show-toplevel"]).replace(/[\r\n]+$/, ""))
+  if (!facts.roots.includes(gitRoot) || !pathWithin(gitRoot, actual)) throw new Error("unregistered_workspace")
+  if (commonDir(actual) !== facts.common) throw new Error("common_dir_mismatch")
+  return actual
+}
+
+function readBinding(root, file) {
+  activeStoragePath(root, file)
+  const bytes = readFileSync(file)
+  if (!isUtf8(bytes)) throw new Error("binding_encoding_error")
+  const data = JSON.parse(bytes.toString("utf-8"))
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid_binding")
+  return data
+}
+
 /** Read raw file bytes, return null if file doesn't exist. */
 function readFileBytes(basePath, filePath) {
   const fullPath = isAbsolute(filePath) ? filePath : join(basePath, filePath)
+  if (isHistoricalPath(fullPath)) return null
   try {
+    if (isHistoricalPath(realpathSync(fullPath), basePath)) return null
     if (!statSync(fullPath).isFile()) return null
   } catch {
     return null
@@ -277,12 +387,14 @@ function materializeFile(basePath, filePath, reason, limits, budget) {
 function materializeDirectory(basePath, dirPath, reason, limits, budget, maxFiles = 20) {
   const blocks = []
   const fullPath = isAbsolute(dirPath) ? dirPath : join(basePath, dirPath)
+  if (isHistoricalPath(fullPath)) return blocks
 
   let files
   try {
+    if (isHistoricalPath(realpathSync(fullPath), basePath)) return blocks
     if (!statSync(fullPath).isDirectory()) return blocks
     files = readdirSync(fullPath)
-      .filter(f => f.endsWith(".md") && statSync(join(fullPath, f)).isFile())
+      .filter(f => f.endsWith(".md") && !isHistoricalPath(join(fullPath, f)) && statSync(join(fullPath, f)).isFile())
       .sort()
   } catch {
     return blocks
@@ -359,45 +471,87 @@ export class TrellisContext {
   }
 
   readContext(contextKey) {
-    try {
-      const contextPath = join(this.directory, ".trellis", ".runtime", "sessions", `${contextKey}.json`)
-      if (!existsSync(contextPath)) return null
-      return JSON.parse(readFileSync(contextPath, "utf-8"))
-    } catch {
-      return null
+    const binding = this._readSessionBinding(contextKey)
+    if (!binding) return null
+    this._validateBinding(binding)
+    return binding.data
+  }
+
+  _readSessionBinding(contextKey) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(contextKey || "")) throw new Error("invalid_context_key")
+    const root = realpathSync(this.directory)
+    const facts = repositoryFacts(root)
+    validateWorkspace(root, facts)
+    const store = facts.common
+      ? join(facts.common, "trellis", "sessions")
+      : join(root, ".trellis", ".runtime", "sessions")
+    const current = join(store, `${contextKey}.json`)
+    if (bindingExists(root, current)) {
+      const data = readBinding(root, current)
+      return { data, root, facts, legacy: facts.common === null, versioned: facts.common !== null || "schema_version" in data }
+    }
+    if (!facts.common) return null
+
+    const offset = relative(facts.gitRoot, root)
+    const candidates = []
+    const legacyRoots = new Set(facts.roots.flatMap(worktree => [worktree, join(worktree, offset)]))
+    for (const legacyRoot of legacyRoots) {
+      const file = join(legacyRoot, ".trellis", ".runtime", "sessions", `${contextKey}.json`)
+      activeStoragePath(root, file)
+      if (!bindingExists(legacyRoot, file)) continue
+      validateWorkspace(legacyRoot, facts)
+      const data = readBinding(legacyRoot, file)
+      const binding = { data, root: legacyRoot, facts, legacy: true, versioned: "schema_version" in data }
+      this._validateBinding(binding)
+      candidates.push(binding)
+    }
+    if (candidates.length > 1) throw new Error("ambiguous_legacy_binding")
+    return candidates[0] || null
+  }
+
+  _validateBinding({ data, root, facts, versioned, legacy }) {
+    let workspace = root
+    if (versioned) {
+      if (data.schema_version !== 1) throw new Error("unsupported_schema")
+      if (data.repository_common_dir !== facts.common) throw new Error("common_dir_mismatch")
+      if (typeof data.task_workspace_root !== "string" || !isAbsolute(data.task_workspace_root)) throw new Error("invalid_workspace")
+      workspace = validateWorkspace(data.task_workspace_root, facts)
+      if (legacy && workspace !== root) throw new Error("foreign_legacy_workspace")
+    }
+    if (typeof data.current_task !== "string" || !data.current_task.trim() || isAbsolute(data.current_task)) throw new Error("invalid_task_path")
+    const ref = this.normalizeTaskRef(data.current_task)
+    const taskContext = new TrellisContext(workspace)
+    const taskDir = taskContext.resolveTaskDir(ref)
+    if (!taskDir) throw new Error("invalid_task_path")
+    const metadata = readBinding(workspace, join(taskDir, "task.json"))
+    if (Object.keys(metadata).length === 0) throw new Error("empty_task_metadata")
+    return {
+      taskPath: relative(workspace, taskDir).split("\\").join("/"),
+      taskWorkspaceRoot: workspace,
+      resolvedTaskPath: taskDir,
+      repositoryCommonDir: facts.common,
     }
   }
 
-  /**
-   * Get active task from session runtime context.
-   *
-   * Resolution order (mirrors Python `active_task.resolve_active_task`):
-   *   1. Lookup the runtime file for the input-derived context key.
-   *   2. If that misses and exactly one session runtime file exists locally,
-   *      use it (`_resolveSingleSessionFallback`). Refuses to guess when 0 or
-   *      ≥2 files exist so multi-window isolation holds.
-   */
+  /** Exact identity only. A known key miss or error never borrows a session. */
   getActiveTask(platformInput = null) {
     const contextKey = this.getContextKey(platformInput)
-    if (contextKey) {
-      const context = this.readContext(contextKey)
-      const taskRef = this.normalizeTaskRef(context?.current_task || "")
-      if (taskRef) {
-        const taskDir = this.resolveTaskDir(taskRef)
-        return {
-          taskPath: taskRef,
-          source: `session:${contextKey}`,
-          stale: !taskDir || !existsSync(taskDir),
-        }
-      }
+    const empty = {
+      taskPath: null, source: "none", stale: false, error: null, contextKey,
+      invocationRoot: resolve(this.directory), repositoryCommonDir: null,
+      taskWorkspaceRoot: null, resolvedTaskPath: null,
     }
-
-    const fallback = this._resolveSingleSessionFallback()
-    if (fallback) {
-      return fallback
+    try {
+      const facts = repositoryFacts(realpathSync(this.directory))
+      validateWorkspace(this.directory, facts)
+      empty.repositoryCommonDir = facts.common
+      if (!contextKey) return empty
+      const binding = this._readSessionBinding(contextKey)
+      if (!binding) return empty
+      return { ...empty, ...this._validateBinding(binding), source: `session:${contextKey}` }
+    } catch (error) {
+      return { ...empty, source: contextKey ? `session:${contextKey}` : "none", stale: true, error: error.message }
     }
-
-    return { taskPath: null, source: "none", stale: false }
   }
 
   /**
@@ -406,35 +560,40 @@ export class TrellisContext {
    * else null.
    */
   _resolveSingleSessionFallback() {
+    if (this.getContextKey()) return null
     const sessionsDir = join(this.directory, ".trellis", ".runtime", "sessions")
-    if (!existsSync(sessionsDir)) return null
+    if (!bindingExists(this.directory, sessionsDir)) return null
 
     let files
     try {
       files = readdirSync(sessionsDir)
         .filter(name => name.endsWith(".json"))
         .sort()
-    } catch {
-      return null
+    } catch (error) {
+      throw new Error(`binding_read_failed: ${error.message}`)
     }
     if (files.length !== 1) return null
 
-    const sessionFile = join(sessionsDir, files[0])
-    let context
-    try {
-      context = JSON.parse(readFileSync(sessionFile, "utf-8"))
-    } catch {
-      return null
-    }
-    const taskRef = this.normalizeTaskRef(context?.current_task || "")
-    if (!taskRef) return null
-
-    const taskDir = this.resolveTaskDir(taskRef)
     const fallbackKey = files[0].replace(/\.json$/, "")
+    const root = realpathSync(this.directory)
+    const facts = repositoryFacts(root)
+    validateWorkspace(root, facts)
+    let file = join(sessionsDir, files[0])
+    let legacy = true
+    if (facts.common) {
+      const commonFile = join(facts.common, "trellis", "sessions", files[0])
+      if (bindingExists(root, commonFile)) {
+        file = commonFile
+        legacy = false
+      }
+    }
+    const data = readBinding(root, file)
+    const active = this._validateBinding({ data, root, facts, legacy, versioned: !legacy || "schema_version" in data })
+    if (active.taskWorkspaceRoot !== root) return null
     return {
-      taskPath: taskRef,
+      ...active,
       source: `session-fallback:${fallbackKey}`,
-      stale: !taskDir || !existsSync(taskDir),
+      contextKey: fallbackKey, invocationRoot: root, stale: false, error: null,
     }
   }
 
@@ -499,14 +658,40 @@ export class TrellisContext {
         ? join(this.directory, normalized)
         : join(this.directory, ".trellis", "tasks", normalized)
 
-    return this.containInProject(candidate)
+    try {
+      const tasksRoot = join(this.directory, ".trellis", "tasks")
+      activeStoragePath(this.directory, tasksRoot)
+      activeStoragePath(this.directory, candidate)
+      const lexical = relative(tasksRoot, candidate).split("\\").join("/")
+      if (!lexical || lexical.split("/").length !== 1 || lexical === ".." || lexical === "archive" || isAbsolute(lexical)) return null
+      const actualRoot = realpathSync(tasksRoot)
+      const actual = realpathSync(candidate)
+      const actualRef = relative(actualRoot, actual).split("\\").join("/")
+      if (!actualRef || actualRef.split("/").length !== 1 || !pathWithin(actualRoot, actual) || actualRef === "archive") return null
+      if (!statSync(actual).isDirectory()) return null
+      const canonical = join(tasksRoot, actualRef)
+      activeStoragePath(this.directory, join(canonical, "task.json"))
+      return canonical
+    } catch {
+      return null
+    }
   }
 
   // ============================================================
   // File Reading Utilities
   // ============================================================
 
+  isActivePath(filePath) {
+    if (isHistoricalPath(filePath)) return false
+    try {
+      return !isHistoricalPath(realpathSync(filePath), this.directory)
+    } catch {
+      return false
+    }
+  }
+
   readFile(filePath) {
+    if (!this.isActivePath(filePath)) return null
     try {
       if (existsSync(filePath)) {
         return readFileSync(filePath, "utf-8")

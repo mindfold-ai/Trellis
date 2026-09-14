@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { assertActiveDataPath } from "../../retired-data.js";
 
 import {
   appendEvent,
@@ -30,7 +31,7 @@ export async function createChannel(
     forCreate: true,
   });
   const channelType = parseChannelType(opts.type);
-  const events = eventsPath(opts.channel, ref.project);
+  const events = eventsPath(opts.channel, ref.project, opts.cwd);
   const dir = ref.dir;
 
   if (fs.existsSync(events) && !opts.force) {
@@ -40,10 +41,10 @@ export async function createChannel(
   }
 
   if (opts.force && fs.existsSync(dir)) {
-    await forceCleanChannel(opts.channel, ref.project);
+    await forceCleanChannel(opts.channel, ref.project, opts.cwd);
   }
 
-  ensureBucketMarker(ref.project);
+  ensureBucketMarker(ref.project, opts.cwd);
 
   const cwd = opts.cwd ?? process.cwd();
 
@@ -67,12 +68,13 @@ export async function createChannel(
       ...(opts.meta ? { meta: opts.meta } : {}),
     },
     ref.project,
+    cwd,
   );
   return event as CreateChannelEvent;
 }
 
-async function forceCleanChannel(name: string, project: string): Promise<void> {
-  const dir = channelDir(name, project);
+async function forceCleanChannel(name: string, project: string, cwd: string = process.cwd()): Promise<void> {
+  const dir = channelDir(name, project, cwd);
   let entries: string[];
   try {
     entries = fs.readdirSync(dir);
@@ -82,6 +84,7 @@ async function forceCleanChannel(name: string, project: string): Promise<void> {
   for (const f of entries) {
     if (!f.endsWith(".pid")) continue;
     const pidFile = path.join(dir, f);
+    assertActiveDataPath(pidFile, cwd);
     let pid = 0;
     try {
       pid = Number(fs.readFileSync(pidFile, "utf-8").trim());

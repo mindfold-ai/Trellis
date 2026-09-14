@@ -1,33 +1,29 @@
 ---
-description: Archive the active task and record the session journal
+description: "Finish completed tasks: verify evidence and archive the selected task."
 argument-hint: [task-name]
 ---
 
-Wrap up the current session: archive the active task (and any other completed-but-unarchived tasks the user wants to clean up) and record the session journal. Code commits are NOT done here — those happen in workflow Phase 3.4 before you invoke this command.
+# Finish Work
+
+Wrap up the current session: archive the active task (and any other completed-but-unarchived tasks the user wants to clean up). Code commits are NOT done here — those happen in workflow Phase 3.4 before you invoke this command.
 
 ## Step 1: Survey current state
 
 ```bash
-python3 ./.trellis/scripts/get_context.py --mode record
+python3 ./.trellis/scripts/get_context.py
 ```
 
-This prints:
-
-- **My active tasks** — review whether any besides the current one are actually done (code merged, AC met) and should be archived this round.
-- **Git status** — quick visual on what's dirty.
-- **Recent commits** — you'll need their hashes in Step 4 for `--commit`.
-
-If `--mode record` surfaces other completed tasks not tied to the current session, surface them to the user with a one-shot confirmation: "These N tasks look done — archive them too in this round? [y/N]". Default is no; the current active task is always archived in Step 3 regardless.
+Context distinguishes the current-session task from the project task inventory. Read the current task's acceptance criteria and verification evidence before archiving it. Other tasks require explicit selection and user confirmation; never infer personal task ownership.
 
 ## Step 2: Sanity check — classify dirty paths
 
 Run:
 
 ```bash
-git status --porcelain
+git status --porcelain -- . ':(exclude).trellis/workspace' ':(exclude).trellis/agent-traces' ':(exclude).trellis/.developer' ':(exclude).trellis/.backup-*'
 ```
 
-Filter out paths under `.trellis/workspace/` and `.trellis/tasks/` — those are managed by `add_session.py` and `task.py archive` auto-commits and will appear dirty as part of this skill's own work.
+The command excludes retired historical data before Git examines files. Classify task metadata changes separately from code; leave unrelated changes untouched.
 
 For each remaining dirty path, decide whether it belongs to **the current task** or to **other parallel work** (e.g., another terminal window editing the same repo). Heuristics:
 
@@ -38,7 +34,7 @@ For each remaining dirty path, decide whether it belongs to **the current task**
 Then route:
 
 - **Any remaining path looks like current-task work** — bail out with:
-  > "Working tree has uncommitted code changes from this task: `<list>`. Return to workflow Phase 3.4 to commit them before running `/trellis:finish-work`."
+  > "Working tree has uncommitted code changes from this task: `<list>`. Return to workflow Phase 3.4 to commit them before running `/trellis-finish-work`."
 
   Do NOT run `git commit` here. Do NOT prompt the user to commit. The user goes back to Phase 3.4 and the AI drives the batched commit there.
 - **All remaining paths look unrelated** (other parallel-window work) — report them once and continue to Step 3:
@@ -51,19 +47,10 @@ Then route:
 python3 ./.trellis/scripts/task.py archive <task-name>
 ```
 
-At minimum: the current active task (if any). Plus any extra tasks the user confirmed in Step 1. Each archive produces a `chore(task): archive ...` commit via the script's auto-commit.
+Archive the current task only when its acceptance criteria and verification evidence establish completion. If incomplete, leave it active and report remaining work. Additional tasks require the explicit confirmation from Step 1. Archive auto-commit defaults to true, controlled by `task_auto_commit`; honor explicit opt-outs and use `--no-commit` when commits are not authorized.
 
 If there is no active task and the user did not confirm any cleanup archives, skip this step.
 
-## Step 4: Record session journal
+## Step 4: Report outcome
 
-```bash
-python3 ./.trellis/scripts/add_session.py \
-  --title "Session Title" \
-  --commit "hash1,hash2" \
-  --summary "Brief summary"
-```
-
-Use the work-commit hashes produced in Phase 3.4 (visible in Step 1's `Recent commits` list, or via `git log --oneline`) for `--commit`. Do not include the archive commit hashes from Step 3. This produces a `chore: record journal` commit.
-
-Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` (one or more) → `chore: record journal`.
+Summarize the archived task, validation results, and remaining follow-ups. Keep durable evidence in the task artifacts; no additional recording step is needed.

@@ -7,7 +7,7 @@ Reads Claude Code session JSON from stdin + Trellis task data from filesystem.
 Outputs 1-2 lines:
   With active task:  [P1] Task title (status)  +  info line
   Without task:      info line only
-Info line: model · ctx% · branch · duration · developer · tasks · rate limits
+Info line: model · ctx% · branch · duration · tasks · rate limits
 When COLUMNS (injected by Claude Code v2.1.153+) is too narrow for the info
 line, the rate-limit segments move to their own line via an explicit "\n".
 """
@@ -39,15 +39,28 @@ if sys.platform == "win32":
             reconfigure(encoding="utf-8", errors="replace")
 
 
-def _read_text(path: Path) -> str:
+def _is_active_path(root: Path, path: Path) -> bool:
+    scripts_dir = root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.history_paths import is_active_path  # type: ignore[import-not-found]
+        return is_active_path(path, root)
+    except Exception:
+        return False
+
+
+def _read_text(path: Path, root: Path) -> str:
+    if not _is_active_path(root, path):
+        return ""
     try:
         return path.read_text(encoding="utf-8").strip()
     except (FileNotFoundError, PermissionError, OSError):
         return ""
 
 
-def _read_json(path: Path) -> dict:
-    text = _read_text(path)
+def _read_json(path: Path, root: Path) -> dict:
+    text = _read_text(path, root)
     if not text:
         return {}
     try:
@@ -107,23 +120,23 @@ def _get_current_task_for_input(trellis_dir: Path, cc_data: dict) -> dict | None
         sys.path.insert(0, str(scripts_dir))
     try:
         from common.active_task import resolve_active_task  # type: ignore[import-not-found]
-    except Exception:
-        return None
+        active = resolve_active_task(trellis_dir.parent, cc_data, platform="claude")
+    except Exception as error:
+        return {"title": f"Task error: {error}", "status": "task_error", "priority": "P?", "source": "error"}
 
-    active = resolve_active_task(trellis_dir.parent, cc_data, platform="claude")
-    if not active.task_path:
-        return None
-
-    task_path = _resolve_task_dir(trellis_dir, active.task_path)
-    if active.stale:
+    if getattr(active, "error", None) or getattr(active, "stale", False):
         return {
-            "title": task_path.name,
-            "status": "stale",
+            "title": f"Task error: {getattr(active, 'error', None) or 'stale binding'}",
+            "status": "task_error",
             "priority": "P?",
             "source": active.source,
         }
 
-    task_data = _read_json(task_path / "task.json")
+    if not active.task_path:
+        return None
+    task_path = active.resolved_task_path
+
+    task_data = _read_json(task_path / "task.json", active.task_workspace_root)
     if not task_data:
         return None
 
@@ -137,24 +150,16 @@ def _get_current_task_for_input(trellis_dir: Path, cc_data: dict) -> dict | None
 
 def _count_active_tasks(trellis_dir: Path) -> int:
     """Count non-archived task directories with valid task.json."""
+    root = trellis_dir.parent
     tasks_dir = trellis_dir / "tasks"
-    if not tasks_dir.is_dir():
+    if not _is_active_path(root, tasks_dir) or not tasks_dir.is_dir():
         return 0
-    count = 0
-    for d in tasks_dir.iterdir():
-        if d.is_dir() and d.name != "archive" and (d / "task.json").is_file():
-            count += 1
-    return count
-
-
-def _get_developer(trellis_dir: Path) -> str:
-    content = _read_text(trellis_dir / ".developer")
-    if not content:
-        return "unknown"
-    for line in content.splitlines():
-        if line.startswith("name="):
-            return line[5:].strip()
-    return content.splitlines()[0].strip() or "unknown"
+    return sum(
+        1 for directory in tasks_dir.iterdir()
+        if directory.name != "archive" and _is_active_path(root, directory)
+        and directory.is_dir() and _is_active_path(root, directory / "task.json")
+        and (directory / "task.json").is_file()
+    )
 
 
 def _get_git_branch() -> str:
@@ -262,7 +267,6 @@ def main() -> None:
 
     # --- Trellis data ---
     task = _get_current_task_for_input(trellis_dir, cc_data) if trellis_dir else None
-    dev = _get_developer(trellis_dir) if trellis_dir else ""
     task_count = _count_active_tasks(trellis_dir) if trellis_dir else 0
 
     # --- CC session data ---
@@ -286,7 +290,7 @@ def main() -> None:
     else:
         ctx_color = "\033[32m"
 
-    # Build info line: model · ctx · branch · duration · dev · tasks [· rate limits]
+    # Build info line: model · ctx · branch · duration · tasks [· rate limits]
     parts = [
         model_label,
         f"ctx {ctx_color}{ctx_pct}%\033[0m",
@@ -294,8 +298,6 @@ def main() -> None:
     if branch:
         parts.append(f"\033[35m{branch}\033[0m")
     parts.append(duration)
-    if dev:
-        parts.append(f"\033[32m{dev}\033[0m")
     if task_count:
         parts.append(f"{task_count} task(s)")
 

@@ -101,7 +101,7 @@ Use when:
 
 ```bash
 # title is task description, --slug for task directory name
-TASK_DIR=$(python3 ./.trellis/scripts/task.py create "<title>" --description "<one-line summary>" --slug <task-name>)
+TASK_DIR=$(python3 ./.trellis/scripts/task.py create "<title>" --creator <creator> --assignee <assignee> --description "<one-line summary>" --slug <task-name>)
 ```
 
 #### Step 2: Configure Task
@@ -167,7 +167,7 @@ The following slash commands are for users (not AI):
 |---------|-------------|
 | `/` | Start Multi-Agent Pipeline (this command) |
 | `/` | Start normal development mode (single process) |
-| `/` | Record session progress |
+| `/` | Record task progress in task artifacts |
 | `/` | Pre-completion checklist |
 
 ---

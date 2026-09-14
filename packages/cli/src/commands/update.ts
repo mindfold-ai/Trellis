@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import chalk from "chalk";
 import inquirer from "inquirer";
 
@@ -27,7 +28,6 @@ import {
   updateHashes,
   isTemplateModified,
   removeHash,
-  renameHash,
   computeHash,
   shouldExcludeFromHash,
 } from "../utils/template-hash.js";
@@ -61,7 +61,16 @@ import {
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
 import { preserveCodexAgentModelKeys } from "../configurators/codex.js";
 import { printZcodeSetupHint } from "../configurators/zcode.js";
-import { ensureGitattributes } from "../configurators/workflow.js";
+import { writeFileAtomic } from "../utils/atomic-write.js";
+import { assertActiveDataPath } from "../utils/retired-data.js";
+import {
+  isRetiredDataPath,
+  migrationTouchesRetiredData,
+  RETIRED_RUNTIME_FILES,
+  retirementGuide,
+  RETIREMENT_GUIDE_MARKER,
+  hasRetiredInstructions,
+} from "../migrations/retirement.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
 import {
   fetchRegistrySpecTemplates,
@@ -92,6 +101,7 @@ export interface UpdateOptions {
   createNew?: boolean;
   allowDowngrade?: boolean;
   migrate?: boolean;
+  assignee?: string;
 }
 
 interface FileChange {
@@ -124,7 +134,8 @@ const LEGACY_UNTRACKED_AGENTS_MD_BLOCK_HASHES = new Set<string>([
 // Paths that should never be touched (true user data)
 // spec/ is user-customized content created during init; update should never modify it
 const PROTECTED_PATHS = [
-  `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.WORKSPACE}`, // workspace/
+  ".trellis/workspace",
+  ".trellis/agent-traces",
   `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.TASKS}`, // tasks/
   `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.SPEC}`, // spec/
   `${DIR_NAMES.WORKFLOW}/.developer`,
@@ -222,6 +233,7 @@ function buildManagedBlockTemplate(
   endMarker: string,
 ): string {
   const fullPath = path.join(cwd, ...relativePath.split("/"));
+  assertActiveDataPath(fullPath, cwd);
   if (!fs.existsSync(fullPath)) {
     return templateContent;
   }
@@ -352,7 +364,12 @@ function collectSafeFileDeletes(
   const results: SafeFileDeleteClassified[] = [];
 
   for (const item of safeDeletes) {
+    if (migrationTouchesRetiredData(item)) {
+      results.push({ item, action: "skip-protected" });
+      continue;
+    }
     const fullPath = path.join(cwd, item.from);
+    assertActiveDataPath(fullPath, cwd);
 
     // Check: file exists?
     if (!fs.existsSync(fullPath)) {
@@ -453,6 +470,7 @@ function printSafeFileDeleteSummary(
 function executeSafeFileDeletes(
   classified: SafeFileDeleteClassified[],
   cwd: string,
+  deferredHashes?: TemplateHashes,
 ): number {
   const toDelete = classified.filter((c) => c.action === "delete");
   let deleted = 0;
@@ -461,7 +479,8 @@ function executeSafeFileDeletes(
     const fullPath = path.join(cwd, c.item.from);
     try {
       fs.unlinkSync(fullPath);
-      removeHash(cwd, c.item.from);
+      if (deferredHashes) Reflect.deleteProperty(deferredHashes, c.item.from);
+      else removeHash(cwd, c.item.from);
       cleanupEmptyDirs(cwd, path.dirname(c.item.from));
       deleted++;
     } catch {
@@ -485,6 +504,7 @@ function executeSafeFileDeletes(
  */
 export function loadUpdateSkipPaths(cwd: string): string[] {
   const configPath = path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
+  assertActiveDataPath(configPath, cwd);
   if (!fs.existsSync(configPath)) return [];
 
   try {
@@ -616,6 +636,7 @@ export function applyConfigSectionsAdded(
     seen.add(dedupeKey);
 
     const targetPath = path.join(cwd, entry.file);
+    assertActiveDataPath(targetPath, cwd);
     if (!fs.existsSync(targetPath)) continue;
 
     let userContent: string;
@@ -635,7 +656,7 @@ export function applyConfigSectionsAdded(
     const separator = userContent.endsWith("\n") ? "\n" : "\n\n";
     const newContent = userContent + separator + section + "\n";
     try {
-      fs.writeFileSync(targetPath, newContent);
+      writeFileAtomic(targetPath, newContent);
     } catch {
       continue;
     }
@@ -711,13 +732,34 @@ function preserveExistingClaudeStatusLine(
   if (!newSettingsContent) return;
 
   const settingsPath = path.join(cwd, CLAUDE_SETTINGS_PATH);
+  assertActiveDataPath(settingsPath, cwd);
   if (!fs.existsSync(settingsPath)) return;
 
+  let existingSettings: Record<string, unknown>;
   try {
-    const existingSettings = JSON.parse(
+    existingSettings = JSON.parse(
       fs.readFileSync(settingsPath, "utf-8"),
     ) as Record<string, unknown>;
+  } catch {
+    // Invalid local JSON is handled by the normal conflict path.
+    return;
+  }
 
+  if (!existingSettings || typeof existingSettings !== "object") return;
+  const statusLine = existingSettings.statusLine;
+  if (
+    statusLine &&
+    typeof statusLine === "object" &&
+    "command" in statusLine &&
+    typeof statusLine.command === "string" &&
+    hasRetiredInstructions(statusLine.command)
+  ) {
+    throw new Error(
+      `Incompatible statusLine in ${CLAUDE_SETTINGS_PATH}: reconcile the retired identity/recording command before updating.`,
+    );
+  }
+
+  try {
     if (!Object.prototype.hasOwnProperty.call(existingSettings, "statusLine")) {
       return;
     }
@@ -986,6 +1028,7 @@ function analyzeChanges(
 
   for (const [relativePath, newContent] of templates) {
     const fullPath = path.join(cwd, relativePath);
+    assertActiveDataPath(fullPath, cwd);
     const exists = fs.existsSync(fullPath);
 
     const change: FileChange = {
@@ -1092,6 +1135,14 @@ function collectUnchangedFileHashRepairs(
     // whatever the path: a wrong value is strictly worse than an absent one,
     // because it reads as a real local modification.
     if (recorded !== computeHash(file.newContent)) {
+      if (
+        [
+          FILE_NAMES.AGENTS,
+          COPILOT_INSTRUCTIONS_PATH,
+          ".trellis/config.yaml",
+        ].includes(key)
+      )
+        continue;
       files.set(key, file.newContent);
     }
   }
@@ -1152,6 +1203,7 @@ function printChangeSummary(changes: ChangeAnalysis): void {
 
   // Only show protected paths that actually exist
   const existingProtectedPaths = changes.protectedPaths.filter((p) => {
+    if (isRetiredDataPath(p)) return false;
     const fullPath = path.join(process.cwd(), p);
     return fs.existsSync(fullPath);
   });
@@ -1234,7 +1286,11 @@ async function promptConflictResolution(
  */
 function createBackupDirPath(cwd: string): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  return path.join(cwd, DIR_NAMES.WORKFLOW, `.backup-${timestamp}`);
+  return path.join(
+    cwd,
+    DIR_NAMES.WORKFLOW,
+    `.backup-${timestamp}-${randomUUID()}`,
+  );
 }
 
 /**
@@ -1246,11 +1302,17 @@ function backupFile(
   relativePath: string,
 ): void {
   const srcPath = path.join(cwd, relativePath);
-  if (!fs.existsSync(srcPath)) return;
+  assertActiveDataPath(srcPath, cwd);
+  const stat = fs.lstatSync(srcPath, { throwIfNoEntry: false });
+  if (!stat) return;
 
   const backupPath = path.join(backupDir, relativePath);
   fs.mkdirSync(path.dirname(backupPath), { recursive: true });
-  fs.copyFileSync(srcPath, backupPath);
+  if (stat.isSymbolicLink()) {
+    fs.symlinkSync(fs.readlinkSync(srcPath), backupPath);
+  } else {
+    fs.copyFileSync(srcPath, backupPath);
+  }
 }
 
 /**
@@ -1288,6 +1350,7 @@ const BACKUP_EXCLUDE_PATTERNS = [
  * @internal Exported for testing only
  */
 export function shouldExcludeFromBackup(relativePath: string): boolean {
+  if (isRetiredDataPath(relativePath)) return true;
   // Normalize Windows backslashes to forward slashes so patterns like
   // "/worktrees/" / "/tasks/" match regardless of host OS. Without this,
   // Windows `path.relative` returns `.claude\worktrees\...` and none of
@@ -1297,7 +1360,10 @@ export function shouldExcludeFromBackup(relativePath: string): boolean {
   // used by `isManagedPath` in configurators/index.ts.
   const normalized = relativePath.replace(/\\/g, "/");
   for (const pattern of BACKUP_EXCLUDE_PATTERNS) {
-    if (normalized.includes(pattern)) {
+    if (
+      normalized.includes(pattern) ||
+      (pattern.endsWith("/") && normalized.endsWith(pattern.slice(0, -1)))
+    ) {
       return true;
     }
   }
@@ -1317,7 +1383,7 @@ function createFullBackup(cwd: string): string | null {
     const dirPath = path.join(cwd, dir);
     if (!fs.existsSync(dirPath)) continue;
 
-    const files = collectAllFiles(dirPath, cwd);
+    const files = collectAllFiles(dirPath, cwd, true);
     for (const fullPath of files) {
       const relativePath = path.relative(cwd, fullPath);
 
@@ -1348,12 +1414,34 @@ function createFullBackup(cwd: string): string | null {
   return hasFiles ? backupDir : null;
 }
 
+/** Scoped backups capture links, never the files beneath a linked directory. */
+function assertBackupSupportsPaths(cwd: string, names: Iterable<string>): void {
+  for (const name of names) {
+    if (isRetiredDataPath(name, true) || isProtectedPath(name)) continue;
+    assertActiveDataPath(path.join(cwd, name), cwd);
+    const segments = toPosix(name).split("/");
+    for (let index = 1; index < segments.length; index++) {
+      const parent = segments.slice(0, index).join("/");
+      if (
+        fs
+          .lstatSync(path.join(cwd, parent), { throwIfNoEntry: false })
+          ?.isSymbolicLink()
+      ) {
+        throw new Error(
+          `Unsupported managed symlink parent ${parent} for ${name}; reconcile this path before update. No managed files were changed.`,
+        );
+      }
+    }
+  }
+}
+
 /**
  * Update version file
  */
 function updateVersionFile(cwd: string): void {
   const versionPath = path.join(cwd, DIR_NAMES.WORKFLOW, ".version");
-  fs.writeFileSync(versionPath, VERSION);
+  assertActiveDataPath(versionPath, cwd);
+  writeFileAtomic(versionPath, VERSION);
 }
 
 /**
@@ -1361,6 +1449,7 @@ function updateVersionFile(cwd: string): void {
  */
 function getInstalledVersion(cwd: string): string {
   const versionPath = path.join(cwd, DIR_NAMES.WORKFLOW, ".version");
+  assertActiveDataPath(versionPath, cwd);
   if (fs.existsSync(versionPath)) {
     return fs.readFileSync(versionPath, "utf-8").trim();
   }
@@ -1388,10 +1477,15 @@ async function getLatestNpmVersion(): Promise<string | null> {
 /**
  * Recursively collect all files in a directory
  */
-function collectAllFiles(dirPath: string, cwd = process.cwd()): string[] {
-  if (!fs.existsSync(dirPath)) return [];
-
-  const rootStat = fs.statSync(dirPath);
+function collectAllFiles(
+  dirPath: string,
+  cwd = process.cwd(),
+  includeLinks = false,
+): string[] {
+  if (shouldExcludeFromBackup(path.relative(cwd, dirPath))) return [];
+  const rootStat = fs.lstatSync(dirPath, { throwIfNoEntry: false });
+  if (!rootStat) return [];
+  if (rootStat.isSymbolicLink()) return includeLinks ? [dirPath] : [];
   if (rootStat.isFile()) {
     return [dirPath];
   }
@@ -1414,7 +1508,11 @@ function collectAllFiles(dirPath: string, cwd = process.cwd()): string[] {
       // Never follow symlinks / Windows directory junctions — a junction
       // pointing at an ancestor would loop the scan forever. Node's
       // `isSymbolicLink()` returns true for NTFS junctions since v12.
-      if (entry.isSymbolicLink()) continue;
+      if (shouldExcludeFromBackup(relativePath)) continue;
+      if (entry.isSymbolicLink()) {
+        if (includeLinks) files.push(fullPath);
+        continue;
+      }
 
       if (entry.isDirectory()) {
         if (!shouldExcludeFromBackup(relativePath)) {
@@ -1447,6 +1545,7 @@ function dirMatchesCurrentTemplates(
   templates: Map<string, string>,
 ): boolean {
   const dirFullPath = path.join(cwd, dirRelativePath);
+  assertActiveDataPath(dirFullPath, cwd);
   if (!fs.existsSync(dirFullPath)) return false;
 
   const files = collectAllFiles(dirFullPath, cwd);
@@ -1475,6 +1574,7 @@ function isDirectorySafeToReplace(
   templates: Map<string, string>,
 ): boolean {
   const dirFullPath = path.join(cwd, dirRelativePath);
+  assertActiveDataPath(dirFullPath, cwd);
   if (!fs.existsSync(dirFullPath)) return true;
 
   const files = collectAllFiles(dirFullPath, cwd);
@@ -1527,6 +1627,7 @@ function isFileSafeToReplace(
 ): boolean {
   const fullPath = path.join(cwd, relativePath);
   if (!fs.existsSync(fullPath)) return true;
+  assertActiveDataPath(fullPath, cwd);
 
   const templateContent = templates.get(relativePath);
   if (!templateContent) return false; // Not a template file
@@ -1571,6 +1672,10 @@ export function classifyMigrations(
   };
 
   for (const item of migrations) {
+    if (migrationTouchesRetiredData(item)) {
+      result.skip.push(item);
+      continue;
+    }
     // safe-file-delete handled separately (not via --migrate)
     if (item.type === "safe-file-delete") continue;
 
@@ -1592,6 +1697,8 @@ export function classifyMigrations(
     }
 
     const oldPath = path.join(cwd, item.from);
+    assertActiveDataPath(oldPath, cwd);
+    if (item.to) assertActiveDataPath(path.join(cwd, item.to), cwd);
     const oldExists = fs.existsSync(oldPath);
 
     if (!oldExists) {
@@ -1842,7 +1949,12 @@ export function sortMigrationsForExecution(
 export async function executeMigrations(
   classified: ClassifiedMigrations,
   cwd: string,
-  options: { force?: boolean; skipAll?: boolean },
+  options: {
+    force?: boolean;
+    skipAll?: boolean;
+    actions?: ReadonlyMap<string, MigrationAction>;
+    deferredHashes?: TemplateHashes;
+  },
   templates: Map<string, string>,
 ): Promise<MigrationResult> {
   const result: MigrationResult = {
@@ -1851,9 +1963,28 @@ export async function executeMigrations(
     skipped: 0,
     conflicts: classified.conflict.length,
   };
+  const readReceipt = (): TemplateHashes =>
+    options.deferredHashes ?? loadHashes(cwd);
+  const saveReceipt = (next: TemplateHashes): void => {
+    if (!options.deferredHashes) {
+      saveHashes(cwd, next);
+      return;
+    }
+    for (const key of Object.keys(options.deferredHashes))
+      Reflect.deleteProperty(options.deferredHashes, key);
+    Object.assign(options.deferredHashes, next);
+  };
+  const moveReceipt = (from: string, to?: string): void => {
+    const next = { ...readReceipt() };
+    if (to && next[from]) next[to] = next[from];
+    Reflect.deleteProperty(next, from);
+    saveReceipt(next);
+  };
 
   // Sort migrations for safe execution order
-  const sortedAuto = sortMigrationsForExecution(classified.auto);
+  const sortedAuto = sortMigrationsForExecution(
+    classified.auto.filter((item) => !migrationTouchesRetiredData(item)),
+  );
 
   // 1. Execute auto migrations (unmodified files and directories)
   for (const item of sortedAuto) {
@@ -1866,7 +1997,7 @@ export async function executeMigrations(
       fs.renameSync(oldPath, newPath);
 
       // Update hash tracking
-      renameHash(cwd, item.from, item.to);
+      moveReceipt(item.from, item.to);
 
       // Make executable if it's a script
       if (item.to.endsWith(".sh") || item.to.endsWith(".py")) {
@@ -1894,13 +2025,13 @@ export async function executeMigrations(
       ) {
         removeDirectoryRecursive(oldPath);
 
-        const hashes = loadHashes(cwd);
+        const hashes = readReceipt();
         const updatedHashes: TemplateHashes = {};
         for (const [hashPath, hashValue] of Object.entries(hashes)) {
           if (hashPath.startsWith(oldPrefix)) continue; // source retired
           updatedHashes[hashPath] = hashValue;
         }
-        saveHashes(cwd, updatedHashes);
+        saveReceipt(updatedHashes);
 
         result.deleted++;
         continue;
@@ -1919,7 +2050,7 @@ export async function executeMigrations(
       fs.renameSync(oldPath, newPath);
 
       // Batch update hash tracking for all files in the directory
-      const hashes = loadHashes(cwd);
+      const hashes = readReceipt();
 
       const updatedHashes: TemplateHashes = {};
       for (const [hashPath, hashValue] of Object.entries(hashes)) {
@@ -1936,7 +2067,7 @@ export async function executeMigrations(
           updatedHashes[hashPath] = hashValue;
         }
       }
-      saveHashes(cwd, updatedHashes);
+      saveReceipt(updatedHashes);
 
       result.renamed++;
     } else if (item.type === "delete") {
@@ -1944,7 +2075,7 @@ export async function executeMigrations(
       fs.unlinkSync(filePath);
 
       // Remove from hash tracking
-      removeHash(cwd, item.from);
+      moveReceipt(item.from);
 
       // Clean up empty directory
       cleanupEmptyDirs(cwd, path.dirname(item.from));
@@ -1956,9 +2087,12 @@ export async function executeMigrations(
   // 2. Handle confirm items (modified files)
   // Note: All files are already backed up by createMigrationBackup before execution
   for (const item of classified.confirm) {
+    if (migrationTouchesRetiredData(item)) continue;
     let action: MigrationAction;
 
-    if (options.force) {
+    if (options.actions?.has(item.from)) {
+      action = options.actions.get(item.from) ?? "skip";
+    } else if (options.force) {
       // Force mode: proceed (already backed up)
       action = "rename";
     } else if (options.skipAll) {
@@ -1992,7 +2126,7 @@ export async function executeMigrations(
       }
 
       fs.renameSync(oldPath, newPath);
-      renameHash(cwd, item.from, item.to);
+      moveReceipt(item.from, item.to);
 
       if (item.to.endsWith(".sh") || item.to.endsWith(".py")) {
         fs.chmodSync(newPath, "755");
@@ -2012,7 +2146,7 @@ export async function executeMigrations(
       }
 
       fs.unlinkSync(filePath);
-      removeHash(cwd, item.from);
+      moveReceipt(item.from);
 
       // Clean up empty directory
       cleanupEmptyDirs(cwd, path.dirname(item.from));
@@ -2053,41 +2187,14 @@ function printMigrationResult(result: MigrationResult): void {
   }
 }
 
-/**
- * One-time 0.2.0 migration: rename `traces-*.md` → `journal-*.md` in every
- * developer workspace directory.
- *
- * Never overwrites an existing `journal-N.md`: a newer session may already
- * have created it, and `.trellis/workspace/` is excluded from the update
- * backup (see `BACKUP_EXCLUDE_PATTERNS`), so clobbering it would be
- * unrecoverable data loss. Conflicting `traces-N.md` files are left in place
- * and reported instead.
- */
-export function renameTracesToJournal(workspaceDir: string): {
+/** Compatibility diagnostic only; never probes historical data. */
+export function renameTracesToJournal(_workspaceDir: string): {
   renamed: number;
   skipped: string[];
 } {
-  const skipped: string[] = [];
-  let renamed = 0;
-  if (!fs.existsSync(workspaceDir)) return { renamed, skipped };
-
-  for (const dev of fs.readdirSync(workspaceDir)) {
-    const devPath = path.join(workspaceDir, dev);
-    if (!fs.statSync(devPath).isDirectory()) continue;
-
-    for (const file of fs.readdirSync(devPath)) {
-      if (!(file.startsWith("traces-") && file.endsWith(".md"))) continue;
-      const oldPath = path.join(devPath, file);
-      const newPath = path.join(devPath, file.replace("traces-", "journal-"));
-      if (fs.existsSync(newPath)) {
-        skipped.push(oldPath);
-        continue;
-      }
-      fs.renameSync(oldPath, newPath);
-      renamed++;
-    }
-  }
-  return { renamed, skipped };
+  throw new Error(
+    "Trace migration is retired; historical data must remain untouched.",
+  );
 }
 
 /**
@@ -2169,6 +2276,8 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Load template hashes for modification detection
   let hashes = loadHashes(cwd);
+  const originalHashes = { ...hashes };
+  const orphanHashKeys: string[] = [];
   const zcodeConfigured = getConfiguredPlatforms(cwd).has("zcode");
   const isFirstHashTracking = Object.keys(hashes).length === 0;
 
@@ -2212,8 +2321,10 @@ export async function update(options: UpdateOptions): Promise<void> {
       cwd,
       [...configuredPlatforms],
       hashes,
+      { persist: false },
     );
     if (prune.pruned.length > 0) {
+      orphanHashKeys.push(...prune.pruned);
       console.log(
         chalk.gray(
           `   Pruned ${prune.pruned.length} orphan manifest entries from .template-hashes.json`,
@@ -2244,7 +2355,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   const templates = await collectTemplateFiles(
     cwd,
     codexUpgradeNeeded ? new Set<AITool>(["codex"]) : undefined,
-    breakingBypass,
+    true,
   );
 
   // Load update.skip paths (used for both safe-file-delete and template collection)
@@ -2252,7 +2363,20 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Collect safe-file-delete items from ALL manifests (hash match is the safety net)
   // This runs regardless of version — unknown version still gets safe cleanup
-  const allMigrations = getAllMigrations();
+  const allMigrations = getAllMigrations().filter(
+    (item) => !migrationTouchesRetiredData(item),
+  );
+  assertBackupSupportsPaths(cwd, [
+    ...templates.keys(),
+    ...Object.keys(hashes),
+    ...RETIRED_RUNTIME_FILES,
+    ...allMigrations.flatMap((item) => [
+      item.from,
+      ...(item.to ? [item.to] : []),
+    ]),
+    ".trellis/.version",
+    ".trellis/.template-hashes.json",
+  ]);
   const safeFileDeletes = collectSafeFileDeletes(
     allMigrations,
     cwd,
@@ -2266,7 +2390,9 @@ export async function update(options: UpdateOptions): Promise<void> {
   // Check for pending regular migrations (skip if unknown version)
   let pendingMigrations = isUnknownVersion
     ? []
-    : getMigrationsForVersion(projectVersion, cliVersion);
+    : getMigrationsForVersion(projectVersion, cliVersion).filter(
+        (item) => !migrationTouchesRetiredData(item),
+      );
 
   // Also check for "orphaned" migrations - where source still exists but version says we shouldn't migrate
   // This handles cases where version was updated but migrations weren't applied
@@ -2386,7 +2512,291 @@ export async function update(options: UpdateOptions): Promise<void> {
   }
 
   // Analyze changes (pass hashes for modification detection)
+  const workflowPath = ".trellis/workflow.md";
+  const installedWorkflowPath = path.join(cwd, workflowPath);
+  assertActiveDataPath(installedWorkflowPath, cwd);
+  if (fs.existsSync(installedWorkflowPath)) {
+    const content = fs.readFileSync(installedWorkflowPath, "utf-8");
+    if (
+      hashes[workflowPath] !== computeHash(content) &&
+      !hasRetiredInstructions(content)
+    ) {
+      // A selected external or compatible customized workflow remains user-owned.
+      templates.delete(workflowPath);
+    }
+  }
   const changes = analyzeChanges(cwd, hashes, templates);
+  const configPath = path.join(cwd, ".trellis/config.yaml");
+  assertActiveDataPath(configPath, cwd);
+  const incompatibleConfig =
+    fs.existsSync(configPath) &&
+    hasRetiredInstructions(fs.readFileSync(configPath, "utf-8"));
+  const requiredRuntime = (name: string): boolean =>
+    !isProtectedPath(name) &&
+    (name !== ".trellis/config.yaml" || incompatibleConfig) &&
+    name !== ".trellis/.gitignore";
+  // Missing runtime dependencies must be restored even when an earlier receipt exists.
+  changes.newFiles.push(
+    ...changes.userDeletedFiles.filter((file) =>
+      requiredRuntime(file.relativePath),
+    ),
+  );
+  const conflictActions = new Map<string, ConflictAction>();
+  const migrationActions = new Map<string, MigrationAction>();
+  const applyToAll: { action: ConflictAction | null } = { action: null };
+  const blocked: string[] = [];
+  for (const file of [
+    ...changes.newFiles,
+    ...changes.autoUpdateFiles,
+    ...changes.changedFiles,
+  ]) {
+    const skippedByConfig = skipPaths.some(
+      (skip) =>
+        file.relativePath === skip ||
+        file.relativePath.startsWith(skip.replace(/\/$/, "") + "/"),
+    );
+    if (skippedByConfig && requiredRuntime(file.relativePath))
+      blocked.push(file.relativePath);
+  }
+  for (const file of changes.changedFiles) {
+    const action =
+      options.dryRun ||
+      (!process.stdin.isTTY &&
+        !options.force &&
+        !options.skipAll &&
+        !options.createNew)
+        ? options.force
+          ? "overwrite"
+          : "skip"
+        : await promptConflictResolution(file, options, applyToAll);
+    conflictActions.set(file.relativePath, action);
+    if (action === "create-new") assertActiveDataPath(file.path + ".new", cwd);
+    if (action !== "overwrite" && requiredRuntime(file.relativePath))
+      blocked.push(file.relativePath);
+  }
+  const retiredFiles: string[] = [];
+  // Known retired paths survive receipt pruning. Their stock/custom decision
+  // below uses originalHashes, without restoring ownership to arbitrary orphans.
+  const retiredCandidates = new Set<string>(RETIRED_RUNTIME_FILES);
+  // Inventory membership identifies a compatibility candidate, not ownership.
+  // Stock allowlisted files still use safe cleanup; custom unowned files block.
+  for (const entry of safeFileDeletes) {
+    if (
+      entry.action === "delete" ||
+      entry.action === "skip-missing" ||
+      entry.action === "skip-protected"
+    )
+      continue;
+    const candidatePath = path.join(cwd, entry.item.from);
+    assertActiveDataPath(candidatePath, cwd);
+    if (
+      fs.existsSync(candidatePath) &&
+      hasRetiredInstructions(fs.readFileSync(candidatePath, "utf-8"))
+    ) {
+      retiredCandidates.add(entry.item.from);
+    }
+  }
+  for (const name of Object.keys(originalHashes)) {
+    if (!Object.hasOwn(hashes, name) && !retiredCandidates.has(name)) continue;
+    if (
+      templates.has(name) ||
+      isProtectedPath(name) ||
+      isRetiredDataPath(name, true)
+    )
+      continue;
+    if (
+      !/(?:\/scripts\/|\/hooks\/|\/commands\/|\/skills\/|\/prompts\/|\/workflows\/)/.test(
+        name,
+      )
+    )
+      continue;
+    if (
+      name.includes("/__pycache__/") ||
+      !/\.(?:py|sh|md|json|toml|ya?ml|[cm]?[jt]s)$/.test(name)
+    )
+      continue;
+    const fullPath = path.join(cwd, name);
+    assertActiveDataPath(fullPath, cwd);
+    if (
+      fs.existsSync(fullPath) &&
+      fs.lstatSync(fullPath).isFile() &&
+      hasRetiredInstructions(fs.readFileSync(fullPath, "utf-8"))
+    )
+      retiredCandidates.add(name);
+  }
+  for (const name of retiredCandidates) {
+    if (
+      templates.has(name) ||
+      isProtectedPath(name) ||
+      isRetiredDataPath(name, true)
+    )
+      continue;
+    const fullPath = path.join(cwd, name);
+    assertActiveDataPath(fullPath, cwd);
+    if (!fs.existsSync(fullPath)) continue;
+    const stock =
+      originalHashes[name] === computeHash(fs.readFileSync(fullPath, "utf-8"));
+    if (
+      (!stock && (!options.force || !Object.hasOwn(originalHashes, name))) ||
+      skipPaths.some(
+        (skip) =>
+          name === skip || name.startsWith(skip.replace(/\/$/, "") + "/"),
+      )
+    )
+      blocked.push(name);
+    else retiredFiles.push(name);
+  }
+  if (classifiedMigrations) {
+    if (classifiedMigrations.conflict.length)
+      blocked.push(...classifiedMigrations.conflict.map((item) => item.from));
+    for (const item of classifiedMigrations.confirm) {
+      if (!options.migrate) {
+        blocked.push(item.from);
+        continue;
+      }
+      const action = options.force
+        ? "rename"
+        : options.skipAll ||
+            options.createNew ||
+            options.dryRun ||
+            !process.stdin.isTTY
+          ? "skip"
+          : await promptMigrationAction(item);
+      migrationActions.set(item.from, action);
+      if (action === "skip") blocked.push(item.from);
+    }
+  }
+  if (blocked.length && !options.dryRun) {
+    throw new Error(
+      `Retirement requires reconciliation of managed runtime files before update: ${[...new Set(blocked)].join(", ")}. Replace approved managed code with --force or reconcile it explicitly; skip/.new cannot complete retirement.`,
+    );
+  }
+  if (blocked.length)
+    console.log(
+      chalk.yellow(`Retirement conflicts: ${[...new Set(blocked)].join(", ")}`),
+    );
+
+  const guide = retirementGuide(
+    projectVersion,
+    cliVersion,
+    options.allowDowngrade,
+  );
+  const tasksDir = path.join(cwd, ".trellis/tasks");
+  assertActiveDataPath(tasksDir, cwd);
+  const taskSlug = `migrate-to-${cliVersion}`;
+  const existingTasks = fs.existsSync(tasksDir)
+    ? fs
+        .readdirSync(tasksDir, { withFileTypes: true })
+        .filter(
+          (entry) => entry.isDirectory() && entry.name.endsWith(`-${taskSlug}`),
+        )
+    : [];
+  if (existingTasks.length > 1)
+    throw new Error(
+      `Multiple migration tasks for ${cliVersion}; reconcile explicitly.`,
+    );
+  const existingTask = existingTasks[0]
+    ? path.join(tasksDir, existingTasks[0].name)
+    : undefined;
+  if (existingTask) {
+    const prdPath = path.join(existingTask, "prd.md");
+    assertActiveDataPath(prdPath, cwd);
+    assertActiveDataPath(path.join(existingTask, "task.json"), cwd);
+    const text = fs.existsSync(prdPath)
+      ? fs.readFileSync(prdPath, "utf-8")
+      : "";
+    if (
+      !text.includes(RETIREMENT_GUIDE_MARKER) ||
+      hasRetiredInstructions(text) ||
+      !fs.existsSync(path.join(existingTask, "task.json"))
+    ) {
+      throw new Error(
+        `Incompatible migration task ${existingTask}; reconcile its instructions explicitly before update.`,
+      );
+    }
+    const metadata: unknown = JSON.parse(
+      fs.readFileSync(path.join(existingTask, "task.json"), "utf-8"),
+    );
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+      throw new Error(`Invalid migration task metadata: ${existingTask}`);
+  }
+  const needsMigrationTask = cliVsProject > 0 && !existingTask;
+  const today = new Date();
+  const monthDay = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const newTaskDir = path.join(tasksDir, `${monthDay}-${taskSlug}`);
+  assertActiveDataPath(newTaskDir, cwd);
+  if (needsMigrationTask && fs.existsSync(newTaskDir))
+    throw new Error(`Migration task destination conflicts: ${newTaskDir}`);
+  let createdTaskDir: string | undefined;
+  let assignee = options.assignee?.trim();
+  if (needsMigrationTask && !assignee && !options.dryRun) {
+    if (!process.stdin.isTTY) {
+      console.error(
+        "Migration task requires explicit --assignee before update.",
+      );
+      process.exit(2);
+    }
+    const answer = await inquirer.prompt<{ assignee: string }>([
+      { type: "input", name: "assignee", message: "Migration task assignee:" },
+    ]);
+    assignee = answer.assignee?.trim();
+    if (!assignee) {
+      console.error("Migration task requires explicit --assignee.");
+      process.exit(2);
+    }
+  }
+  const finishMigrationTask = (): void => {
+    if (!needsMigrationTask) return;
+    const taskDir = newTaskDir;
+    if (!assignee)
+      throw new Error("Migration task requires explicit --assignee.");
+    fs.mkdirSync(taskDir, { recursive: true });
+    createdTaskDir = taskDir;
+    writeFileAtomic(path.join(taskDir, "prd.md"), guide);
+    writeFileAtomic(
+      path.join(taskDir, "task.json"),
+      JSON.stringify(
+        emptyTaskJson({
+          id: taskSlug,
+          name: taskSlug,
+          title: `Migrate to v${cliVersion}`,
+          description: `Migration from ${projectVersion} to ${cliVersion}`,
+          status: "planning",
+          scope: "migration",
+          priority: "P1",
+          creator: "trellis-update",
+          assignee,
+          createdAt: today.toISOString().split("T")[0],
+        }),
+        null,
+        2,
+      ),
+    );
+  };
+  const postcheck = (): void => {
+    for (const [name, content] of templates) {
+      if (!requiredRuntime(name)) continue;
+      const fullPath = path.join(cwd, name);
+      if (
+        !fs.existsSync(fullPath) ||
+        fs.readFileSync(fullPath, "utf-8") !== content
+      ) {
+        throw new Error(`Retirement postcheck failed: ${name}`);
+      }
+    }
+    for (const name of retiredFiles)
+      if (fs.existsSync(path.join(cwd, name)))
+        throw new Error(`Retirement postcheck failed: ${name}`);
+    if (hasRetiredInstructions(guide))
+      throw new Error("Retirement migration instructions failed validation.");
+    if (
+      createdTaskDir &&
+      hasRetiredInstructions(
+        fs.readFileSync(path.join(createdTaskDir, "prd.md"), "utf-8"),
+      )
+    )
+      throw new Error("Generated migration task failed validation.");
+  };
   const unchangedFileHashRepairs = collectUnchangedFileHashRepairs(
     changes,
     hashes,
@@ -2410,14 +2820,6 @@ export async function update(options: UpdateOptions): Promise<void> {
     );
   }
 
-  // Ensure project-root .gitattributes carries the journal merge=union rule.
-  // Additive-only (see ensureGitattributes) — runs regardless of whether
-  // other template files changed, so it must sit before the "nothing to do"
-  // early-return below. Never touches disk in --dry-run.
-  if (!options.dryRun) {
-    ensureGitattributes(cwd);
-  }
-
   // Check if there's anything to do
   const isUpgrade = cliVsProject > 0;
   const isDowngrade = cliVsProject < 0;
@@ -2435,20 +2837,25 @@ export async function update(options: UpdateOptions): Promise<void> {
     changes.autoUpdateFiles.length === 0 &&
     changes.changedFiles.length === 0 &&
     !hasPendingMigrations &&
-    !hasSafeDeletes
+    !hasSafeDeletes &&
+    retiredFiles.length === 0 &&
+    !needsMigrationTask
   ) {
     // The "already up to date" exit still has to repair the receipt: this is
     // exactly the clean tree where every file is `unchanged`, so it is the run
     // where a wrong entry would otherwise be skipped again.
-    if (!options.dryRun && unchangedFileHashRepairs.size > 0) {
-      updateHashes(cwd, unchangedFileHashRepairs);
+    if (!options.dryRun) {
+      postcheck();
+      if (orphanHashKeys.length) saveHashes(cwd, hashes);
+      if (unchangedFileHashRepairs.size > 0)
+        updateHashes(cwd, unchangedFileHashRepairs);
     }
 
     if (isSameVersion) {
       console.log(chalk.green("✓ Already up to date!"));
     } else {
       // Version changed but no file changes needed — still update the version stamp
-      updateVersionFile(cwd);
+      if (!options.dryRun) updateVersionFile(cwd);
       if (isUpgrade) {
         console.log(
           chalk.green(
@@ -2489,7 +2896,11 @@ export async function update(options: UpdateOptions): Promise<void> {
       );
       if (preConfirmMetadata.changelog.length > 0) {
         console.log("");
-        console.log(chalk.white(preConfirmMetadata.changelog[0]));
+        console.log(
+          chalk.white(
+            "Retire identity and recording runtime; preserve historical data and use explicit task ownership.",
+          ),
+        );
       }
       if (preConfirmMetadata.recommendMigrate && !options.migrate) {
         console.log("");
@@ -2538,7 +2949,12 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Batch-resolution flags are explicit consent for non-interactive runs.
   // Prompting here breaks CI and `node ... update --force --migrate` smoke tests.
-  if (!options.force && !options.skipAll && !options.createNew) {
+  if (
+    process.stdin.isTTY &&
+    !options.force &&
+    !options.skipAll &&
+    !options.createNew
+  ) {
     const { proceed } = await inquirer.prompt<{ proceed: boolean }>([
       {
         type: "confirm",
@@ -2563,362 +2979,366 @@ export async function update(options: UpdateOptions): Promise<void> {
     );
   }
 
-  // Execute migrations if --migrate flag is set
-  if (options.migrate && classifiedMigrations) {
-    const migrationResult = await executeMigrations(
-      classifiedMigrations,
-      cwd,
-      {
-        force: options.force,
-        skipAll: options.skipAll,
-      },
-      templates,
-    );
-    printMigrationResult(migrationResult);
-
-    // Hardcoded: Rename traces-*.md to journal-*.md in workspace directories
-    // Why hardcoded: The migration system only supports fixed path renames, not pattern-based.
-    // traces-*.md files are in .trellis/workspace/{developer}/ with variable developer names
-    // and variable file numbers (traces-1.md, traces-2.md, etc.), so we can't enumerate them
-    // in the migration manifest. This is a one-time migration for the 0.2.0 naming redesign.
-    const workspaceDir = path.join(cwd, PATHS.WORKSPACE);
-    const { renamed: journalRenamed, skipped: journalSkipped } =
-      renameTracesToJournal(workspaceDir);
-    if (journalRenamed > 0) {
-      console.log(
-        chalk.cyan(`Renamed ${journalRenamed} traces file(s) to journal`),
+  const originalFiles = new Set(
+    backupDir
+      ? collectAllFiles(backupDir, backupDir, true).map((name) =>
+          toPosix(path.relative(backupDir, name)),
+        )
+      : [],
+  );
+  try {
+    // Execute migrations if --migrate flag is set
+    for (const name of retiredFiles) fs.unlinkSync(path.join(cwd, name));
+    if (options.migrate && classifiedMigrations) {
+      const migrationResult = await executeMigrations(
+        {
+          ...classifiedMigrations,
+          auto: classifiedMigrations.auto.filter(
+            (item) => !retiredFiles.includes(item.from),
+          ),
+          confirm: classifiedMigrations.confirm.filter(
+            (item) => !retiredFiles.includes(item.from),
+          ),
+        },
+        cwd,
+        {
+          force: true,
+          actions: migrationActions,
+          deferredHashes: hashes,
+        },
+        templates,
       );
+      printMigrationResult(migrationResult);
     }
-    for (const oldPath of journalSkipped) {
-      console.warn(
-        chalk.yellow(
-          `Kept ${path.relative(cwd, oldPath)}: its journal target already exists`,
+
+    // Execute safe-file-delete (after backup, before template writes)
+    let safeDeleted = 0;
+    if (hasSafeDeletes) {
+      safeDeleted = executeSafeFileDeletes(
+        safeFileDeletes.filter(
+          (entry) => !retiredFiles.includes(entry.item.from),
         ),
+        cwd,
+        hashes,
       );
+      if (safeDeleted > 0) {
+        console.log(
+          chalk.cyan(`\nCleaned up ${safeDeleted} deprecated command file(s)`),
+        );
+      }
     }
-  }
 
-  // Execute safe-file-delete (after backup, before template writes)
-  let safeDeleted = 0;
-  if (hasSafeDeletes) {
-    safeDeleted = executeSafeFileDeletes(safeFileDeletes, cwd);
-    if (safeDeleted > 0) {
-      console.log(
-        chalk.cyan(`\nCleaned up ${safeDeleted} deprecated command file(s)`),
-      );
-    }
-  }
-
-  // Track results
-  let added = 0;
-  let autoUpdated = 0;
-  let updated = 0;
-  let skipped = 0;
-  let createdNew = 0;
-
-  // Add new files
-  if (changes.newFiles.length > 0) {
-    console.log(chalk.blue("\nAdding new files..."));
-    for (const file of changes.newFiles) {
-      const dir = path.dirname(file.path);
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(file.path, file.newContent);
-
-      // Make scripts executable
-      if (
-        file.relativePath.endsWith(".sh") ||
-        file.relativePath.endsWith(".py")
-      ) {
-        fs.chmodSync(file.path, "755");
+    // Classification preceded renames. Reapply canonical destinations that an
+    // old rename replaced, including files previously classified as unchanged.
+    const migratedTemplates = new Map<string, string>();
+    if (options.migrate)
+      for (const item of [
+        ...(classifiedMigrations?.auto ?? []),
+        ...(classifiedMigrations?.confirm ?? []),
+      ]) {
+        if (!item.to) continue;
+        for (const [name, content] of templates) {
+          if (name === item.to || name.startsWith(item.to + "/")) {
+            const destination = path.join(cwd, name);
+            assertActiveDataPath(destination, cwd);
+            fs.mkdirSync(path.dirname(destination), { recursive: true });
+            writeFileAtomic(destination, content);
+            migratedTemplates.set(name, content);
+          }
+        }
       }
 
-      console.log(chalk.green(`  + ${file.relativePath}`));
-      added++;
-    }
-  }
+    // Track results
+    let added = 0;
+    let autoUpdated = 0;
+    let updated = 0;
+    let skipped = 0;
+    let createdNew = 0;
 
-  // Auto-update files (template updated, user didn't modify)
-  if (changes.autoUpdateFiles.length > 0) {
-    console.log(chalk.blue("\nAuto-updating template files..."));
-    for (const file of changes.autoUpdateFiles) {
-      fs.writeFileSync(file.path, file.newContent);
+    // Add new files
+    if (changes.newFiles.length > 0) {
+      console.log(chalk.blue("\nAdding new files..."));
+      for (const file of changes.newFiles) {
+        assertActiveDataPath(file.path, cwd);
+        const dir = path.dirname(file.path);
+        fs.mkdirSync(dir, { recursive: true });
+        writeFileAtomic(file.path, file.newContent);
 
-      // Make scripts executable
-      if (
-        file.relativePath.endsWith(".sh") ||
-        file.relativePath.endsWith(".py")
-      ) {
-        fs.chmodSync(file.path, "755");
-      }
-
-      console.log(chalk.cyan(`  ↑ ${file.relativePath}`));
-      autoUpdated++;
-    }
-  }
-
-  // Handle changed files
-  if (changes.changedFiles.length > 0) {
-    console.log(chalk.blue("\n--- Resolving conflicts ---\n"));
-
-    const applyToAll: { action: ConflictAction | null } = { action: null };
-
-    for (const file of changes.changedFiles) {
-      const action = await promptConflictResolution(file, options, applyToAll);
-
-      if (action === "overwrite") {
-        fs.writeFileSync(file.path, file.newContent);
+        // Make scripts executable
         if (
           file.relativePath.endsWith(".sh") ||
           file.relativePath.endsWith(".py")
         ) {
           fs.chmodSync(file.path, "755");
         }
-        console.log(chalk.yellow(`  ✓ Overwritten: ${file.relativePath}`));
-        updated++;
-      } else if (action === "create-new") {
-        const newPath = file.path + ".new";
-        fs.writeFileSync(newPath, file.newContent);
-        console.log(chalk.blue(`  ✓ Created: ${file.relativePath}.new`));
-        createdNew++;
-      } else {
-        console.log(chalk.gray(`  ○ Skipped: ${file.relativePath}`));
-        skipped++;
+
+        console.log(chalk.green(`  + ${file.relativePath}`));
+        added++;
       }
     }
-  }
 
-  // Append additive config.yaml sections introduced between versions.
-  // Sentinel-gated, so users keep their customizations and re-running update
-  // on already-migrated files is a no-op. Skipped on unknown / downgrade.
-  let configSectionsAppended = 0;
-  if (cliVsProject > 0 && projectVersion !== "unknown") {
-    const sectionEntries = getConfigSectionsAddedBetween(
-      projectVersion,
-      cliVersion,
-    );
-    if (sectionEntries.length > 0) {
-      const { appended } = applyConfigSectionsAdded(
-        sectionEntries,
-        cwd,
-        templates,
+    // Auto-update files (template updated, user didn't modify)
+    if (changes.autoUpdateFiles.length > 0) {
+      console.log(chalk.blue("\nAuto-updating template files..."));
+      for (const file of changes.autoUpdateFiles) {
+        assertActiveDataPath(file.path, cwd);
+        writeFileAtomic(file.path, file.newContent);
+
+        // Make scripts executable
+        if (
+          file.relativePath.endsWith(".sh") ||
+          file.relativePath.endsWith(".py")
+        ) {
+          fs.chmodSync(file.path, "755");
+        }
+
+        console.log(chalk.cyan(`  ↑ ${file.relativePath}`));
+        autoUpdated++;
+      }
+    }
+
+    // Handle changed files
+    if (changes.changedFiles.length > 0) {
+      console.log(chalk.blue("\n--- Resolving conflicts ---\n"));
+
+      for (const file of changes.changedFiles) {
+        const action = conflictActions.get(file.relativePath) ?? "skip";
+
+        if (action === "overwrite") {
+          assertActiveDataPath(file.path, cwd);
+          writeFileAtomic(file.path, file.newContent);
+          if (
+            file.relativePath.endsWith(".sh") ||
+            file.relativePath.endsWith(".py")
+          ) {
+            fs.chmodSync(file.path, "755");
+          }
+          console.log(chalk.yellow(`  ✓ Overwritten: ${file.relativePath}`));
+          updated++;
+        } else if (action === "create-new") {
+          const newPath = file.path + ".new";
+          assertActiveDataPath(newPath, cwd);
+          writeFileAtomic(newPath, file.newContent);
+          console.log(chalk.blue(`  ✓ Created: ${file.relativePath}.new`));
+          createdNew++;
+        } else {
+          console.log(chalk.gray(`  ○ Skipped: ${file.relativePath}`));
+          skipped++;
+        }
+      }
+    }
+
+    // Append additive config.yaml sections introduced between versions.
+    // Sentinel-gated, so users keep their customizations and re-running update
+    // on already-migrated files is a no-op. Skipped on unknown / downgrade.
+    let configSectionsAppended = 0;
+    if (cliVsProject > 0 && projectVersion !== "unknown") {
+      const sectionEntries = getConfigSectionsAddedBetween(
+        projectVersion,
+        cliVersion,
       );
-      configSectionsAppended = appended;
-    }
-  }
-
-  // Update version file
-  updateVersionFile(cwd);
-
-  // Update template hashes for new, auto-updated, and overwritten files
-  const filesToHash = new Map<string, string>(unchangedFileHashRepairs);
-  for (const file of changes.newFiles) {
-    filesToHash.set(file.relativePath, file.newContent);
-  }
-  // Auto-updated files always get new hash
-  for (const file of changes.autoUpdateFiles) {
-    filesToHash.set(file.relativePath, file.newContent);
-  }
-  // Only hash overwritten files (not skipped or .new copies)
-  for (const file of changes.changedFiles) {
-    const fullPath = path.join(cwd, file.relativePath);
-    if (fs.existsSync(fullPath)) {
-      const content = fs.readFileSync(fullPath, "utf-8");
-      if (content === file.newContent) {
-        filesToHash.set(file.relativePath, file.newContent);
+      if (sectionEntries.length > 0) {
+        const { appended } = applyConfigSectionsAdded(
+          sectionEntries,
+          cwd,
+          templates,
+        );
+        configSectionsAppended = appended;
       }
     }
-  }
-  if (filesToHash.size > 0) {
-    updateHashes(cwd, filesToHash);
-  }
 
-  // Print summary
-  console.log(chalk.cyan("\n--- Summary ---\n"));
-  if (added > 0) {
-    console.log(`  Added: ${added} file(s)`);
-  }
-  if (autoUpdated > 0) {
-    console.log(`  Auto-updated: ${autoUpdated} file(s)`);
-  }
-  if (updated > 0) {
-    console.log(`  Updated: ${updated} file(s)`);
-  }
-  if (skipped > 0) {
-    console.log(`  Skipped: ${skipped} file(s)`);
-  }
-  if (createdNew > 0) {
-    console.log(`  Created .new copies: ${createdNew} file(s)`);
-  }
-  if (safeDeleted > 0) {
-    console.log(`  Cleaned up: ${safeDeleted} deprecated file(s)`);
-  }
-  if (configSectionsAppended > 0) {
-    console.log(`  Config sections added: ${configSectionsAppended}`);
-  }
-  if (backupDir) {
-    console.log(`  Backup: ${path.relative(cwd, backupDir)}/`);
-  }
+    finishMigrationTask();
+    postcheck();
 
-  const actionWord = isDowngrade ? "Downgrade" : "Update";
-  console.log(
-    chalk.green(
-      `\n✅ ${actionWord} complete! (${projectVersion} → ${cliVersion})`,
-    ),
-  );
+    // Update template hashes for new, auto-updated, and overwritten files
+    const filesToHash = new Map<string, string>(unchangedFileHashRepairs);
+    for (const [name, content] of migratedTemplates)
+      filesToHash.set(name, content);
+    for (const file of changes.newFiles) {
+      filesToHash.set(file.relativePath, file.newContent);
+    }
+    // Auto-updated files always get new hash
+    for (const file of changes.autoUpdateFiles) {
+      filesToHash.set(file.relativePath, file.newContent);
+    }
+    // Only hash overwritten files (not skipped or .new copies)
+    for (const file of changes.changedFiles) {
+      if (conflictActions.get(file.relativePath) !== "overwrite") continue;
+      const fullPath = path.join(cwd, file.relativePath);
+      if (fs.existsSync(fullPath)) {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        if (content === file.newContent) {
+          filesToHash.set(file.relativePath, file.newContent);
+        }
+      }
+    }
+    const completedHashes = { ...hashes };
+    for (const [name, content] of filesToHash)
+      completedHashes[name] = computeHash(content);
+    for (const name of [...retiredFiles, ...orphanHashKeys])
+      Reflect.deleteProperty(completedHashes, name);
+    saveHashes(cwd, completedHashes);
+    updateVersionFile(cwd);
 
-  if (createdNew > 0) {
+    // Print summary
+    console.log(chalk.cyan("\n--- Summary ---\n"));
+    if (added > 0) {
+      console.log(`  Added: ${added} file(s)`);
+    }
+    if (autoUpdated > 0) {
+      console.log(`  Auto-updated: ${autoUpdated} file(s)`);
+    }
+    if (updated > 0) {
+      console.log(`  Updated: ${updated} file(s)`);
+    }
+    if (skipped > 0) {
+      console.log(`  Skipped: ${skipped} file(s)`);
+    }
+    if (createdNew > 0) {
+      console.log(`  Created .new copies: ${createdNew} file(s)`);
+    }
+    if (safeDeleted > 0) {
+      console.log(`  Cleaned up: ${safeDeleted} deprecated file(s)`);
+    }
+    if (configSectionsAppended > 0) {
+      console.log(`  Config sections added: ${configSectionsAppended}`);
+    }
+    if (backupDir) {
+      console.log(`  Backup: ${path.relative(cwd, backupDir)}/`);
+    }
+
+    const actionWord = isDowngrade ? "Downgrade" : "Update";
     console.log(
-      chalk.gray(
-        "\nTip: Review .new files and merge changes manually if needed.",
+      chalk.green(
+        `\n✅ ${actionWord} complete! (${projectVersion} → ${cliVersion})`,
       ),
     );
-  }
 
-  // Create migration task if there are breaking changes with migration guides
-  if (cliVsProject > 0 && projectVersion !== "unknown") {
-    const metadata = getMigrationMetadata(projectVersion, cliVersion);
+    if (createdNew > 0) {
+      console.log(
+        chalk.gray(
+          "\nTip: Review .new files and merge changes manually if needed.",
+        ),
+      );
+    }
 
-    if (metadata.breaking && metadata.migrationGuides.length > 0) {
-      // Create task directory
-      const today = new Date();
-      const monthDay = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      const taskSlug = `migrate-to-${cliVersion}`;
-      const taskDirName = `${monthDay}-${taskSlug}`;
-      const tasksDir = path.join(cwd, DIR_NAMES.WORKFLOW, DIR_NAMES.TASKS);
-      const taskDir = path.join(tasksDir, taskDirName);
+    if (zcodeConfigured) printZcodeSetupHint();
 
-      // Check if task already exists
-      if (!fs.existsSync(taskDir)) {
-        fs.mkdirSync(taskDir, { recursive: true });
+    // Display breaking change warnings at the very end (so they don't scroll off screen)
+    if (cliVsProject > 0 && projectVersion !== "unknown") {
+      const finalMetadata = getMigrationMetadata(projectVersion, cliVersion);
 
-        // Get current developer for assignee.
-        // `.developer` is a key=value file (written by init_developer.py):
-        //   name=<developer-name>
-        //   initialized_at=<iso8601>
-        // Reading it raw and .trim()-ing embeds the entire file contents
-        // (including the `name=` prefix and the `initialized_at` line) into
-        // the assignee field, producing bogus assignees like
-        // "name=suyuan\ninitialized_at=2026-04-07T23:41:21.978312" that
-        // later break session-start task rendering.
-        const developerFile = path.join(cwd, DIR_NAMES.WORKFLOW, ".developer");
-        let currentDeveloper = "unknown";
-        if (fs.existsSync(developerFile)) {
-          const raw = fs.readFileSync(developerFile, "utf-8");
-          const nameMatch = raw.match(/^\s*name\s*=\s*(.+?)\s*$/m);
-          if (nameMatch) {
-            currentDeveloper = nameMatch[1];
-          }
+      if (finalMetadata.breaking || finalMetadata.changelog.length > 0) {
+        console.log("");
+        console.log(chalk.cyan("═".repeat(60)));
+
+        if (finalMetadata.breaking) {
+          console.log(
+            chalk.bgRed.white.bold(" ⚠️  BREAKING CHANGES ") +
+              chalk.red.bold(" This update contains breaking changes!"),
+          );
+          console.log("");
         }
 
-        // Build task.json — canonical 24-field shape via shared factory.
-        const taskTitle = `Migrate to v${cliVersion}`;
-        const todayStr = today.toISOString().split("T")[0];
-        const taskJson = emptyTaskJson({
-          id: taskSlug,
-          name: taskSlug,
-          title: taskTitle,
-          description: `Breaking change migration from v${projectVersion} to v${cliVersion}`,
-          status: "planning",
-          scope: "migration",
-          priority: "P1",
-          creator: "trellis-update",
-          assignee: currentDeveloper,
-          createdAt: todayStr,
-        });
-
-        // Write task.json
-        const taskJsonPath = path.join(taskDir, "task.json");
-        fs.writeFileSync(taskJsonPath, JSON.stringify(taskJson, null, 2));
-
-        // Build PRD content
-        let prdContent = `# Migration Task: Upgrade to v${cliVersion}\n\n`;
-        prdContent += `**Created**: ${todayStr}\n`;
-        prdContent += `**From Version**: ${projectVersion}\n`;
-        prdContent += `**To Version**: ${cliVersion}\n`;
-        prdContent += `**Assignee**: ${currentDeveloper}\n\n`;
-        prdContent += `## Status\n\n- [ ] Review migration guide\n- [ ] Update custom files\n- [ ] Run \`trellis update --migrate\`\n- [ ] Test workflows\n\n`;
-
-        for (const {
-          version,
-          guide,
-          aiInstructions,
-        } of metadata.migrationGuides) {
-          prdContent += `---\n\n## v${version} Migration Guide\n\n`;
-          prdContent += guide;
-          prdContent += "\n\n";
-
-          if (aiInstructions) {
-            prdContent += `### AI Assistant Instructions\n\n`;
-            prdContent += `When helping with this migration:\n\n`;
-            prdContent += aiInstructions;
-            prdContent += "\n\n";
-          }
+        if (finalMetadata.changelog.length > 0) {
+          console.log(chalk.cyan.bold("📋 What's Changed:"));
+          console.log(
+            chalk.white(
+              "   Task ownership is explicit. Identity and recording runtime are retired; historical data stays untouched.",
+            ),
+          );
+          console.log("");
         }
 
-        // Write PRD
-        const prdPath = path.join(taskDir, "prd.md");
-        fs.writeFileSync(prdPath, prdContent);
+        if (finalMetadata.recommendMigrate && !options.migrate) {
+          console.log(
+            chalk.bgGreen.black.bold(" 💡 RECOMMENDED ") +
+              chalk.green.bold(" Run with --migrate to complete the migration"),
+          );
+          console.log(
+            chalk.gray(
+              "   This will remove legacy files and apply all changes.",
+            ),
+          );
+          console.log("");
+        }
 
-        console.log("");
-        console.log(chalk.bgCyan.black.bold(" 📋 MIGRATION TASK CREATED "));
-        console.log(
-          chalk.cyan(
-            `A task has been created to help you complete the migration:`,
-          ),
-        );
-        console.log(
-          chalk.white(
-            `   ${DIR_NAMES.WORKFLOW}/${DIR_NAMES.TASKS}/${taskDirName}/`,
-          ),
-        );
-        console.log("");
-        console.log(
-          chalk.gray(
-            "Use AI to help: Ask Claude/Cursor to read the task and fix your custom files.",
-          ),
-        );
+        console.log(chalk.cyan("═".repeat(60)));
       }
     }
-  }
-
-  if (zcodeConfigured) printZcodeSetupHint();
-
-  // Display breaking change warnings at the very end (so they don't scroll off screen)
-  if (cliVsProject > 0 && projectVersion !== "unknown") {
-    const finalMetadata = getMigrationMetadata(projectVersion, cliVersion);
-
-    if (finalMetadata.breaking || finalMetadata.changelog.length > 0) {
-      console.log("");
-      console.log(chalk.cyan("═".repeat(60)));
-
-      if (finalMetadata.breaking) {
-        console.log(
-          chalk.bgRed.white.bold(" ⚠️  BREAKING CHANGES ") +
-            chalk.red.bold(" This update contains breaking changes!"),
-        );
-        console.log("");
+  } catch (error) {
+    const failures: string[] = [];
+    if (createdTaskDir) {
+      try {
+        for (const name of ["prd.md", "task.json"])
+          fs.rmSync(path.join(createdTaskDir, name), { force: true });
+        fs.rmdirSync(createdTaskDir);
+      } catch {
+        failures.push(createdTaskDir);
       }
-
-      if (finalMetadata.changelog.length > 0) {
-        console.log(chalk.cyan.bold("📋 What's Changed:"));
-        for (const entry of finalMetadata.changelog) {
-          console.log(chalk.white(`   ${entry}`));
-        }
-        console.log("");
-      }
-
-      if (finalMetadata.recommendMigrate && !options.migrate) {
-        console.log(
-          chalk.bgGreen.black.bold(" 💡 RECOMMENDED ") +
-            chalk.green.bold(" Run with --migrate to complete the migration"),
-        );
-        console.log(
-          chalk.gray("   This will remove legacy files and apply all changes."),
-        );
-        console.log("");
-      }
-
-      console.log(chalk.cyan("═".repeat(60)));
     }
+    // Restore only this run's managed backup. Retired data was never captured.
+    const affected = new Set([
+      ...templates.keys(),
+      ...changes.changedFiles
+        .filter(
+          (file) => conflictActions.get(file.relativePath) === "create-new",
+        )
+        .map((file) => `${file.relativePath}.new`),
+      ...retiredFiles,
+      ...pendingMigrations.flatMap((item) => [
+        item.from,
+        ...(item.to ? [item.to, `${item.to}.backup`] : []),
+      ]),
+    ]);
+    for (const item of pendingMigrations) {
+      if (
+        item.type !== "rename-dir" ||
+        !item.to ||
+        migrationTouchesRetiredData(item)
+      )
+        continue;
+      for (const name of collectAllFiles(path.join(cwd, item.to), cwd))
+        affected.add(toPosix(path.relative(cwd, name)));
+    }
+    for (const name of affected) {
+      if (
+        isRetiredDataPath(name, true) ||
+        isProtectedPath(name) ||
+        originalFiles.has(name)
+      )
+        continue;
+      try {
+        const fullPath = path.join(cwd, name);
+        if (fs.existsSync(fullPath) && fs.lstatSync(fullPath).isFile())
+          fs.unlinkSync(fullPath);
+      } catch {
+        failures.push(name);
+      }
+    }
+    if (backupDir)
+      for (const name of originalFiles) {
+        if (isRetiredDataPath(name)) continue;
+        try {
+          const destination = path.join(cwd, name);
+          fs.mkdirSync(path.dirname(destination), { recursive: true });
+          const source = path.join(backupDir, name);
+          if (fs.lstatSync(source).isSymbolicLink()) {
+            fs.rmSync(destination, { force: true });
+            fs.symlinkSync(fs.readlinkSync(source), destination);
+            continue;
+          }
+          fs.copyFileSync(path.join(backupDir, name), destination);
+          fs.chmodSync(
+            destination,
+            fs.statSync(path.join(backupDir, name)).mode,
+          );
+        } catch {
+          failures.push(name);
+        }
+      }
+    throw new Error(
+      `Update incomplete; managed backup restoration ${failures.length ? `failed for ${failures.join(", ")}` : "completed"}. Repair and retry before continuing task workflows. ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

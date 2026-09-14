@@ -4,20 +4,14 @@ Common path utilities for Trellis workflow.
 
 Provides:
     get_repo_root          - Get repository root directory
-    get_developer          - Get developer name
-    get_workspace_dir      - Get developer workspace directory
     get_tasks_dir          - Get tasks directory
-    get_active_journal_file - Get current journal file
 """
 
 from __future__ import annotations
 
-import os
-import re
 from datetime import datetime
 from pathlib import Path
 
-from .git import main_worktree_root
 
 
 # =============================================================================
@@ -26,29 +20,14 @@ from .git import main_worktree_root
 
 # Directory names
 DIR_WORKFLOW = ".trellis"
-DIR_WORKSPACE = "workspace"
 DIR_TASKS = "tasks"
 DIR_ARCHIVE = "archive"
 DIR_SPEC = "spec"
 DIR_SCRIPTS = "scripts"
 
 # File names
-FILE_DEVELOPER = ".developer"
 FILE_CURRENT_TASK = ".current-task"
 FILE_TASK_JSON = "task.json"
-FILE_JOURNAL_PREFIX = "journal-"
-
-# Environment override for the developer identity, ahead of the .developer file.
-ENV_DEVELOPER = "TRELLIS_DEVELOPER"
-
-# Appended to every "no developer set" error so the two non-obvious sources are
-# discoverable from the failure itself.
-DEVELOPER_HINT = (
-    f"  Or set {ENV_DEVELOPER}=<your-name> in the environment.\n"
-    f"  A linked git worktree inherits {DIR_WORKFLOW}/{FILE_DEVELOPER} from its "
-    f"main checkout — run init_developer.py there to cover every worktree."
-)
-
 
 # =============================================================================
 # Repository Root
@@ -77,81 +56,6 @@ def get_repo_root(start_path: Path | None = None) -> Path:
 
 
 # =============================================================================
-# Developer
-# =============================================================================
-
-def _read_developer_file(dev_file: Path) -> str | None:
-    """Read the `name=` field out of a .developer file, or None."""
-    if not dev_file.is_file():
-        return None
-
-    try:
-        content = dev_file.read_text(encoding="utf-8")
-    except (OSError, IOError):
-        return None
-
-    for line in content.splitlines():
-        if line.startswith("name="):
-            return line.split("=", 1)[1].strip() or None
-
-    return None
-
-
-def get_developer(repo_root: Path | None = None) -> str | None:
-    """Get the developer name for this checkout.
-
-    Resolution order, first hit wins (a CLI `--assignee` flag overrides all of
-    it, before this function is ever called):
-
-        1. The ``TRELLIS_DEVELOPER`` environment variable.
-        2. ``.trellis/.developer`` in this checkout.
-        3. ``.trellis/.developer`` in the main checkout, when this checkout is a
-           linked git worktree.
-
-    Step 3 exists because `.developer` is gitignored on purpose — it carries a
-    personal identity and no tracked file should. A fresh `git worktree add`
-    therefore starts with no identity file of its own, which used to make every
-    task.py command fail until init_developer.py was re-run per worktree. The
-    main checkout's file is read, never copied: a copy would go stale and shadow
-    later changes made in the main checkout.
-
-    Args:
-        repo_root: Repository root path. Defaults to auto-detected.
-
-    Returns:
-        Developer name or None if not initialized.
-    """
-    env_name = os.environ.get(ENV_DEVELOPER, "").strip()
-    if env_name:
-        return env_name
-
-    if repo_root is None:
-        repo_root = get_repo_root()
-
-    local = _read_developer_file(repo_root / DIR_WORKFLOW / FILE_DEVELOPER)
-    if local:
-        return local
-
-    main_root = main_worktree_root(repo_root)
-    if main_root is None:
-        return None
-
-    return _read_developer_file(main_root / DIR_WORKFLOW / FILE_DEVELOPER)
-
-
-def check_developer(repo_root: Path | None = None) -> bool:
-    """Check if developer is initialized.
-
-    Args:
-        repo_root: Repository root path. Defaults to auto-detected.
-
-    Returns:
-        True if developer is initialized.
-    """
-    return get_developer(repo_root) is not None
-
-
-# =============================================================================
 # Tasks Directory
 # =============================================================================
 
@@ -166,86 +70,12 @@ def get_tasks_dir(repo_root: Path | None = None) -> Path:
     """
     if repo_root is None:
         repo_root = get_repo_root()
-    return repo_root / DIR_WORKFLOW / DIR_TASKS
+    # Local import: the shared guard uses this module's path constants.
+    from .history_paths import require_active_path
 
-
-# =============================================================================
-# Workspace Directory
-# =============================================================================
-
-def get_workspace_dir(repo_root: Path | None = None) -> Path | None:
-    """Get developer workspace directory.
-
-    Args:
-        repo_root: Repository root path. Defaults to auto-detected.
-
-    Returns:
-        Path to workspace directory or None if developer not set.
-    """
-    if repo_root is None:
-        repo_root = get_repo_root()
-
-    developer = get_developer(repo_root)
-    if developer:
-        return repo_root / DIR_WORKFLOW / DIR_WORKSPACE / developer
-    return None
-
-
-# =============================================================================
-# Journal File
-# =============================================================================
-
-def get_active_journal_file(repo_root: Path | None = None) -> Path | None:
-    """Get the current active journal file.
-
-    Args:
-        repo_root: Repository root path. Defaults to auto-detected.
-
-    Returns:
-        Path to active journal file or None if not found.
-    """
-    if repo_root is None:
-        repo_root = get_repo_root()
-
-    workspace_dir = get_workspace_dir(repo_root)
-    if workspace_dir is None or not workspace_dir.is_dir():
-        return None
-
-    latest: Path | None = None
-    highest = 0
-
-    for f in workspace_dir.glob(f"{FILE_JOURNAL_PREFIX}*.md"):
-        if not f.is_file():
-            continue
-
-        # Extract number from filename
-        name = f.stem  # e.g., "journal-1"
-        match = re.search(r"(\d+)$", name)
-        if match:
-            num = int(match.group(1))
-            if num > highest:
-                highest = num
-                latest = f
-
-    return latest
-
-
-def count_lines(file_path: Path) -> int:
-    """Count lines in a file.
-
-    Args:
-        file_path: Path to file.
-
-    Returns:
-        Number of lines, or 0 if file doesn't exist.
-    """
-    if not file_path.is_file():
-        return 0
-
-    try:
-        return len(file_path.read_text(encoding="utf-8").splitlines())
-    except (OSError, IOError):
-        return 0
+    tasks_dir = repo_root / DIR_WORKFLOW / DIR_TASKS
+    require_active_path(tasks_dir, repo_root)
+    return tasks_dir
 
 
 # =============================================================================
@@ -320,10 +150,13 @@ def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | Non
     # resolve() collapses `..` and follows symlinks, so a task directory that
     # links outside the repo is refused too. Both sides are resolved because
     # repo_root itself may sit behind a symlink (/tmp on macOS does).
+    from .history_paths import RetiredDataPathError, require_active_path
+
     try:
+        require_active_path(candidate, repo_root)
         resolved = candidate.resolve()
         workflow_real = (root / DIR_WORKFLOW).resolve()
-    except OSError:
+    except (OSError, RetiredDataPathError):
         return None
 
     try:
@@ -352,20 +185,28 @@ def get_current_task(
     platform_input: dict | None = None,
     platform: str | None = None,
 ) -> str | None:
-    """Get current task directory path (relative to repo_root).
+    """Get a join-safe task path, absolute when owned by another workspace.
 
     Args:
         repo_root: Repository root path. Defaults to auto-detected.
 
     Returns:
-        Relative path to current task directory or None.
+        Local relative path, validated cross-workspace absolute path, or None.
     """
     if repo_root is None:
         repo_root = get_repo_root()
 
     from .active_task import resolve_active_task
+    from .session_storage import SessionBindingError
 
-    return resolve_active_task(repo_root, platform_input, platform).task_path
+    active = resolve_active_task(repo_root, platform_input, platform)
+    if active.error:
+        raise SessionBindingError(active.error)
+    # Compatibility callers join this string to their own root. Return an
+    # absolute path across workspaces so that join cannot select a namesake.
+    if active.task_workspace_root and active.task_workspace_root != repo_root.resolve():
+        return str(active.resolved_task_path) if active.resolved_task_path else None
+    return active.task_path
 
 
 def get_current_task_abs(
@@ -384,10 +225,13 @@ def get_current_task_abs(
     if repo_root is None:
         repo_root = get_repo_root()
 
-    relative = get_current_task(repo_root, platform_input, platform)
-    if relative:
-        return resolve_task_ref(relative, repo_root)
-    return None
+    from .active_task import resolve_active_task
+    from .session_storage import SessionBindingError
+
+    active = resolve_active_task(repo_root, platform_input, platform)
+    if active.error:
+        raise SessionBindingError(active.error)
+    return active.resolved_task_path
 
 
 def get_current_task_source(
@@ -536,8 +380,5 @@ def get_package_path(package: str, repo_root: Path | None = None) -> Path | None
 if __name__ == "__main__":
     repo = get_repo_root()
     print(f"Repository root: {repo}")
-    print(f"Developer: {get_developer(repo)}")
     print(f"Tasks dir: {get_tasks_dir(repo)}")
-    print(f"Workspace dir: {get_workspace_dir(repo)}")
-    print(f"Journal file: {get_active_journal_file(repo)}")
     print(f"Current task: {get_current_task(repo)}")

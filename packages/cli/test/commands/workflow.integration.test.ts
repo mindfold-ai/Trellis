@@ -101,7 +101,7 @@ describe("trellis workflow integration", () => {
 
   it("init --workflow native keeps workflow.md hash-tracked", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ creator: "test", assignee: "test", yes: true });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     expect(fs.existsSync(wfPath)).toBe(true);
@@ -114,7 +114,7 @@ describe("trellis workflow integration", () => {
 
   it("init --workflow tdd writes marketplace content and removes the hash entry", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true, workflow: "tdd" } as Record<string, unknown>);
+    await init({ creator: "test", assignee: "test", yes: true, workflow: "tdd" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     const written = fs.readFileSync(wfPath, "utf-8");
@@ -152,10 +152,12 @@ describe("trellis workflow integration", () => {
     );
 
     await init({
+      creator: "test",
+      assignee: "test",
       yes: true,
       workflow: "custom",
       workflowSource: "gh:example/workflows",
-    } as Record<string, unknown>);
+    });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     expect(fs.readFileSync(wfPath, "utf-8")).toBe(
@@ -168,13 +170,13 @@ describe("trellis workflow integration", () => {
     stubMarketplaceFetch();
 
     await expect(
-      init({ yes: true, workflow: "missing-id" } as Record<string, unknown>),
+      init({ creator: "test", assignee: "test", yes: true, workflow: "missing-id" }),
     ).rejects.toThrow(/workflow template/i);
   });
 
   it("trellis workflow --template native refreshes hash after switching from tdd", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true, workflow: "tdd" } as Record<string, unknown>);
+    await init({ creator: "test", assignee: "test", yes: true, workflow: "tdd" });
     expect(
       loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE],
     ).toBeUndefined();
@@ -194,7 +196,7 @@ describe("trellis workflow integration", () => {
 
   it("trellis workflow --template tdd writes marketplace content and removes the hash", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ creator: "test", assignee: "test", yes: true });
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBeTruthy();
 
     await runWorkflowCommand({ template: "tdd" });
@@ -208,7 +210,7 @@ describe("trellis workflow integration", () => {
 
   it("non-interactive run with a locally-modified workflow.md fails without --force", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ creator: "test", assignee: "test", yes: true });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     fs.writeFileSync(wfPath, "# My custom edits", "utf-8");
@@ -237,7 +239,7 @@ describe("trellis workflow integration", () => {
 
   it("explicit --template run with a locally-modified workflow.md fails even when stdin is a TTY", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ creator: "test", assignee: "test", yes: true });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     fs.writeFileSync(wfPath, "# My custom edits", "utf-8");
@@ -263,7 +265,7 @@ describe("trellis workflow integration", () => {
 
   it("--create-new writes .new file and never touches workflow.md or hash", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ creator: "test", assignee: "test", yes: true });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     const originalContent = fs.readFileSync(wfPath, "utf-8");
@@ -283,7 +285,7 @@ describe("trellis workflow integration", () => {
 
   it("trellis update after switching to tdd does not silently restore native workflow", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ creator: "test", assignee: "test", yes: true });
     await runWorkflowCommand({ template: "tdd" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);

@@ -45,7 +45,7 @@ Every AI session starts with a blank slate. Unlike human engineers who accumulat
 
 **The Problem**: Without memory, AI asks the same questions repeatedly, makes the same mistakes, and can't build on previous work.
 
-**The Solution**: The `.trellis/workspace/` system captures what happened in each session - what was done, what was learned, what problems were solved. The `/` command reads this history at session start, giving AI "artificial memory."
+**The Solution**: Task artifacts preserve requirements, decisions, progress, and validation. Session start loads the current-session task and checkout facts; reusable lessons belong in specs.
 
 ### Challenge 2: AI Has Generic Knowledge, Not Project-Specific Knowledge
 
@@ -69,13 +69,7 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 
 ```
 .trellis/
-|-- .developer              # Your identity (gitignored)
 |-- workflow.md             # Complete workflow documentation
-|-- workspace/              # "AI Memory" - session history
-|   |-- index.md            # All developers' progress
-|   +-- {developer}/        # Per-developer directory
-|       |-- index.md        # Personal progress index
-|       +-- journal-N.md    # Session records (max 2000 lines)
 |-- tasks/                  # Task tracking (unified)
 |   +-- {MM}-{DD}-{slug}/   # Task directory
 |       |-- task.json       # Task metadata
@@ -118,11 +112,9 @@ When a human engineer joins a project, they spend days/weeks learning: What is t
 AI needs the same onboarding - but compressed into seconds at session start.
 
 **WHAT IT ACTUALLY DOES**:
-1. Reads developer identity (who am I in this project?)
-2. Checks git status (what branch? uncommitted changes?)
-3. Reads recent session history from `workspace/` (what happened before?)
-4. Identifies active features (what's in progress?)
-5. Understands current project state before making any changes
+1. Checks checkout and scoped git status.
+2. Resolves the validated current-session task and reads its artifacts.
+3. Shows project task inventory separately from the current task.
 
 **WHY THIS MATTERS**:
 - Without /: AI is blind. It might work on wrong branch, conflict with others' work, or redo already-completed work.
@@ -197,15 +189,9 @@ The `/check-*` commands focus on code quality within a single layer. But real ch
 
 ---
 
-### / - Persist Memory for Future
+### /finish-work - Complete A Task
 
-**WHY IT EXISTS**:
-All the context AI built during this session will be lost when session ends. The next session's `/` needs this information.
-
-**WHAT IT ACTUALLY DOES**:
-1. Records session summary to `workspace/{developer}/journal-N.md`
-2. Captures what was done, learned, and what's remaining
-3. Updates index files for quick lookup
+Verify acceptance and preserve validation evidence in task artifacts. Archive the completed task after the approved code-commit step; report remaining follow-ups. Other tasks require explicit confirmation.
 
 ---
 
@@ -214,20 +200,20 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 1: Bug Fix Session
 
 **[1/8] /** - AI needs project context before touching code
-**[2/8] python3 ./.trellis/scripts/task.py create "Fix bug" --description "Fix the reported bug" --slug fix-bug** - Track work for future reference
+**[2/8] python3 ./.trellis/scripts/task.py create "Fix bug" --creator <creator> --assignee <assignee> --description "Fix the reported bug" --slug fix-bug** - Track work for future reference
 **[3/8] /** - Inject project-specific development guidelines
 **[4/8] Investigate and fix the bug** - Actual development work
 **[5/8] /** - Re-verify code against guidelines
 **[6/8] /** - Holistic cross-layer review
 **[7/8] Human tests and commits** - Human validates before code enters repo
-**[8/8] /** - Persist memory for future sessions
+**[8/8] /** - Preserve evidence in task artifacts
 
 ### Example 2: Planning Session (No Code)
 
 **[1/4] /** - Context needed even for non-coding work
-**[2/4] python3 ./.trellis/scripts/task.py create "Planning task" --description "Plan the upcoming work" --slug planning-task** - Planning is valuable work
+**[2/4] python3 ./.trellis/scripts/task.py create "Planning task" --creator <creator> --assignee <assignee> --description "Plan the upcoming work" --slug planning-task** - Planning is valuable work
 **[3/4] Review docs, create subtask list** - Actual planning work
-**[4/4] / (with --summary)** - Planning decisions must be recorded
+**[4/4] Update task artifacts** - Planning decisions must be recorded
 
 ### Example 3: Code Review Fixes
 
@@ -244,7 +230,7 @@ All the context AI built during this session will be lost when session ends. The
 **[2/5] Plan phases** - Break into verifiable chunks
 **[3/5] Execute phase by phase with / after each** - Incremental verification
 **[4/5] /** - Check if new patterns should be documented
-**[5/5] Record with multiple commit hashes** - Link all commits to one feature
+**[5/5] Link work commits in task artifacts** - Link all commits to one feature
 
 ### Example 5: Debug Session
 
@@ -262,7 +248,7 @@ All the context AI built during this session will be lost when session ends. The
 1. **AI NEVER commits** - Human tests and approves. AI prepares, human validates.
 2. **Guidelines before code** - /before-dev command injects project knowledge.
 3. **Check after code** - /check-* commands catch context drift.
-4. **Record everything** - / persists memory.
+4. **Persist task evidence** - Keep decisions and validation in task artifacts.
 
 ---
 
@@ -320,7 +306,7 @@ I recommend reading through `.trellis/spec/` to familiarize yourself with the te
 If the developer wants help filling guidelines, create a feature to track this:
 
 ```bash
-python3 ./.trellis/scripts/task.py create "Fill spec guidelines" --description "Fill in the spec guideline files" --slug fill-spec-guidelines
+python3 ./.trellis/scripts/task.py create "Fill spec guidelines" --creator <creator> --assignee <assignee> --description "Fill in the spec guideline files" --slug fill-spec-guidelines
 ```
 
 Then systematically analyze the codebase and fill each guideline file:
@@ -355,7 +341,7 @@ After covering all three parts, summarize:
 - Part 3: Guidelines status (empty templates need filling / already customized)
 
 **Next steps** (tell user):
-1. Run `/` to record this onboard session
+1. Record onboarding decisions in the task artifacts
 2. [If guidelines empty] Start filling in `.trellis/spec/` guidelines
 3. [If guidelines ready] Start your first development task
 

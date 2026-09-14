@@ -5,18 +5,43 @@
  * to cover command-level behavior that was previously untested.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import {
+  applyConfigSectionsAdded,
   cleanupEmptyDirs,
   loadUpdateSkipPaths,
   renameTracesToJournal,
   shouldExcludeFromBackup,
   sortMigrationsForExecution,
 } from "../../src/commands/update.js";
+
+describe("additive config writes preserve linked targets", () => {
+  it("replaces the managed path without modifying the symlink target", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-config-link-"));
+    try {
+      fs.mkdirSync(path.join(root, ".trellis"));
+      const external = path.join(root, "shared.yaml");
+      const target = path.join(root, ".trellis/config.yaml");
+      const original = "task_auto_commit: false\n";
+      fs.writeFileSync(external, original);
+      fs.symlinkSync(external, target);
+      const result = applyConfigSectionsAdded(
+        [{ file: ".trellis/config.yaml", sentinel: "example:", sectionHeading: "Example" }],
+        root,
+        new Map([[".trellis/config.yaml", "#---\n# Example\n#---\nexample: true\n"]]),
+      );
+      expect(result.appended).toBe(1);
+      expect(fs.readFileSync(external, "utf8")).toBe(original);
+      expect(fs.readFileSync(target, "utf8")).toContain("example: true");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
 
 // =============================================================================
 // cleanupEmptyDirs
@@ -326,45 +351,26 @@ describe("renameTracesToJournal", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("renames traces-N.md to journal-N.md when no target exists", () => {
-    const dev = path.join(ws, "alice");
-    fs.writeFileSync(path.join(dev, "traces-1.md"), "trace one");
-
-    const { renamed, skipped } = renameTracesToJournal(ws);
-
-    expect(renamed).toBe(1);
-    expect(skipped).toEqual([]);
-    expect(fs.existsSync(path.join(dev, "traces-1.md"))).toBe(false);
-    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
-      "trace one",
-    );
-  });
-
-  it("never overwrites an existing journal target; keeps both and reports it", () => {
+  it("rejects retired migration without reading or changing history", () => {
     const dev = path.join(ws, "alice");
     fs.writeFileSync(path.join(dev, "traces-1.md"), "old trace");
-    // A newer session already created journal-1.md with real history.
-    fs.writeFileSync(path.join(dev, "journal-1.md"), "REAL SESSION HISTORY");
-
-    const { renamed, skipped } = renameTracesToJournal(ws);
-
-    expect(renamed).toBe(0);
-    expect(skipped).toEqual([path.join(dev, "traces-1.md")]);
-    // Existing journal is untouched...
-    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
-      "REAL SESSION HISTORY",
-    );
-    // ...and the traces file is preserved, not destroyed.
+    fs.writeFileSync(path.join(dev, "journal-1.md"), "history");
+    const read = vi.spyOn(fs, "readdirSync");
+    expect(() => renameTracesToJournal(ws)).toThrow("retired");
+    expect(read).not.toHaveBeenCalled();
+    read.mockRestore();
     expect(fs.readFileSync(path.join(dev, "traces-1.md"), "utf-8")).toBe(
       "old trace",
     );
+    expect(fs.readFileSync(path.join(dev, "journal-1.md"), "utf-8")).toBe(
+      "history",
+    );
   });
 
-  it("returns zero counts when the workspace dir does not exist", () => {
-    expect(renameTracesToJournal(path.join(tmpDir, "nope"))).toEqual({
-      renamed: 0,
-      skipped: [],
-    });
+  it("rejects without probing a missing historical directory", () => {
+    expect(() => renameTracesToJournal(path.join(tmpDir, "missing"))).toThrow(
+      "retired",
+    );
   });
 });
 

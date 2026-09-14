@@ -1,4 +1,4 @@
-# Developer identity (local only)
+# Preserve ignored historical identity files; no current runtime consumes them
 .developer
 
 # Current task pointer (each dev works on different task)

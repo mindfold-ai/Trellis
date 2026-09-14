@@ -7,9 +7,22 @@ import {
   resolvePlaceholdersNeutral,
   resolveSkillsNeutral,
   wrapWithOmpFrontmatter,
+  buildPullBasedPrelude,
 } from "../../src/configurators/shared.js";
 import { AI_TOOLS } from "../../src/types/ai-tools.js";
 import type { TemplateContext } from "../../src/types/ai-tools.js";
+
+describe("pull-based task workspace authority", () => {
+  it.each(["implement", "check"] as const)("%s prelude binds relative context to the task workspace", (role) => {
+    const prelude = buildPullBasedPrelude(role);
+    expect(prelude).toContain("current --json");
+    expect(prelude).toContain("resolved_task_path");
+    expect(prelude).toContain("task_workspace_root");
+    expect(prelude).toContain("relative `file` path against `task_workspace_root`");
+    expect(prelude).toContain("Do NOT select a same-named local task");
+    expect(prelude).toContain(`<task-path>/${role}.jsonl`);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures

@@ -67,34 +67,20 @@ Used at the CLI command level to catch all errors:
 When an operation is optional and failure is acceptable:
 
 ```typescript
-// Git config might not be available
-let developerName: string | undefined;
+// Checkout branch is an optional Git fact, not a task owner.
+let branch: string | undefined;
 try {
-  developerName = execSync("git config user.name", {
-    encoding: "utf-8",
-  }).trim();
+  branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim();
 } catch {
-  // Git not available or no user.name configured - silently ignore
+  // No Git checkout; caller handles the missing branch.
 }
 ```
 
 ### Pattern 3: Graceful Degradation with Warning
 
-When operation fails but we can continue:
-
-```typescript
-try {
-  execSync(`bash "${scriptPath}" "${developerName}"`, { cwd, stdio: "inherit" });
-  developerInitialized = true;
-} catch (error) {
-  console.log(
-    chalk.yellow(
-      `Warning: Failed to initialize developer: ${error instanceof Error ? error.message : error}`,
-    ),
-  );
-  // Continue without developer initialization
-}
-```
+Optional advisory checks may warn and continue. Required ownership validation
+is not optional: reject missing creator/assignee before writes. See
+[Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md).
 
 ### Pattern 4: Return-Based Error Signaling
 
@@ -360,19 +346,6 @@ program
 ```typescript
 async function init(options: InitOptions): Promise<void> {
   const cwd = process.cwd();
-
-  // Optional: detect developer name from git
-  let developerName = options.user;
-  if (!developerName) {
-    try {
-      developerName = execSync("git config user.name", {
-        cwd,
-        encoding: "utf-8",
-      }).trim();
-    } catch {
-      // Git not available - will prompt user later
-    }
-  }
 
   // Required operation - let errors bubble up
   await createWorkflowStructure(cwd, options);

@@ -8,6 +8,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import {
+  assertActiveDataPath,
+  isRetiredDataPath,
+  removeActiveTrellisData,
+} from "./retired-data.js";
 
 import { DIR_NAMES, FILE_NAMES } from "../constants/paths.js";
 import { ALL_MANAGED_DIRS } from "../configurators/index.js";
@@ -240,15 +245,24 @@ export function buildManagedRemovalPlan(
   hashes: Record<string, string>,
   options: BuildManagedRemovalPlanOptions = {},
 ): ManagedRemovalPlan {
+  if (lstatIfPresent(path.join(cwd, DIR_NAMES.WORKFLOW))?.isSymbolicLink()) {
+    throw new Error(
+      "Removal refused for a linked .trellis root: retired history must remain in place. Use a directory root with task symlinks instead.",
+    );
+  }
   const structured = buildStructuredFileSpecs();
-  const allPosixPaths = Object.keys(hashes);
+  const allPosixPaths = Object.keys(hashes).filter(
+    (entry) => !isRetiredDataPath(path.resolve(cwd, entry)),
+  );
   const deletions: PlannedDeletion[] = [];
   const modifications: PlannedModification[] = [];
 
   for (const posixPath of allPosixPaths) {
+    if (isRetiredDataPath(path.resolve(cwd, posixPath))) continue;
     const absPath = options.strictPaths
       ? assertSafeManagedPath(cwd, posixPath)
       : path.join(cwd, ...posixPath.split("/"));
+    assertActiveDataPath(absPath, cwd);
     const stat = options.strictPaths ? lstatIfPresent(absPath) : null;
     const spec = structured.get(posixPath);
 
@@ -313,13 +327,21 @@ export function executeManagedRemovalPlan(
   let deletedFiles = 0;
   let modifiedFiles = 0;
 
+  // Validate the complete plan before any modification, including linked files.
+  for (const entry of [...plan.modifications, ...plan.deletions]) {
+    if (!isRetiredDataPath(entry.absPath))
+      assertActiveDataPath(entry.absPath, cwd);
+  }
+
   for (const modification of plan.modifications) {
+    if (isRetiredDataPath(modification.absPath)) continue;
     fs.writeFileSync(modification.absPath, modification.result.content);
     modifiedFiles += 1;
   }
 
   const deletedDirCandidates = new Set<string>();
   for (const deletion of plan.deletions) {
+    if (isRetiredDataPath(deletion.absPath)) continue;
     if (deletion.missing) continue;
     try {
       fs.unlinkSync(deletion.absPath);
@@ -334,8 +356,8 @@ export function executeManagedRemovalPlan(
   if (plan.removeTrellisDir) {
     const trellisDir = path.join(cwd, DIR_NAMES.WORKFLOW);
     if (lstatIfPresent(trellisDir)) {
-      fs.rmSync(trellisDir, { recursive: true, force: true });
-      deletedDirs += 1;
+      removeActiveTrellisData(trellisDir);
+      if (!lstatIfPresent(trellisDir)) deletedDirs += 1;
     }
   }
 

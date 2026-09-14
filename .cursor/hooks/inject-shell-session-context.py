@@ -107,7 +107,18 @@ def _find_trellis_root(start: Path) -> Path | None:
 
 
 def _runtime_ticket_dir(root: Path) -> Path:
-    return root / DIR_WORKFLOW / DIR_RUNTIME / DIR_SHELL_TICKETS
+    directory = root / DIR_WORKFLOW / DIR_RUNTIME / DIR_SHELL_TICKETS
+    _require_active_path(root, directory)
+    return directory
+
+
+def _require_active_path(root: Path, path: Path) -> None:
+    scripts_dir = root / DIR_WORKFLOW / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import require_active_path  # type: ignore[import-not-found]
+
+    require_active_path(path, root)
 
 
 def _pending_shell_command(hook_input: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
@@ -183,10 +194,14 @@ def _extract_task_subcommands(command: str) -> list[dict[str, str]]:
     return subcommands
 
 
-def _cleanup_expired_tickets(ticket_dir: Path, now: float) -> None:
+def _cleanup_expired_tickets(ticket_dir: Path, now: float, root: Path) -> None:
+    _require_active_path(root, ticket_dir)
     if not ticket_dir.is_dir():
         return
-    for ticket_path in ticket_dir.glob("*.json"):
+    tickets = list(ticket_dir.glob("*.json"))
+    for ticket_path in tickets:
+        _require_active_path(root, ticket_path)
+    for ticket_path in tickets:
         try:
             data = json.loads(ticket_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
@@ -214,12 +229,13 @@ def _write_ticket(
     now = time.time()
     ticket_dir = _runtime_ticket_dir(root)
     ticket_dir.mkdir(parents=True, exist_ok=True)
-    _cleanup_expired_tickets(ticket_dir, now)
+    _cleanup_expired_tickets(ticket_dir, now, root)
 
     digest = hashlib.sha256(
         f"{context_key}\0{command}\0{now}".encode("utf-8"),
     ).hexdigest()[:16]
     ticket_path = ticket_dir / f"{int(now * 1000)}-{digest}.json"
+    _require_active_path(root, ticket_path)
 
     payload = {
         # Debugging metadata. The consumer accepts a ticket on freshness, repo
@@ -278,8 +294,13 @@ def main() -> int:
     if not context_key:
         return 0
 
+    from common.history_paths import RetiredDataPathError  # type: ignore[import-not-found]
+
     try:
         _write_ticket(root, hook_input, context_key, command, platform_name, subcommands)
+    except RetiredDataPathError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
     except OSError:
         return 0
 

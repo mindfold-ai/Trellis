@@ -39,6 +39,7 @@ import { FILE_NAMES } from "../constants/paths.js";
 import { getAllMigrations } from "../migrations/index.js";
 import { saveHashes } from "./template-hash.js";
 import { toPosix } from "./posix.js";
+import { assertActiveDataPath } from "./retired-data.js";
 import { TRELLIS_BLOCK_END, TRELLIS_BLOCK_START } from "./managed-paths.js";
 import type { AITool } from "../types/ai-tools.js";
 import type { TemplateHashes } from "../types/migration.js";
@@ -86,6 +87,7 @@ function buildKnownKeys(configuredPlatforms: readonly AITool[]): Set<string> {
  */
 function shouldKeepAgentsMd(cwd: string): boolean {
   const fullPath = path.join(cwd, FILE_NAMES.AGENTS);
+  assertActiveDataPath(fullPath, cwd);
   if (!fs.existsSync(fullPath)) {
     return true;
   }

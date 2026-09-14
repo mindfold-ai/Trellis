@@ -1,5 +1,5 @@
 /* global process */
-import { existsSync, readFileSync, readdirSync, statSync } from "fs"
+import { existsSync, readdirSync, statSync } from "fs"
 import { join } from "path"
 import { execFileSync } from "child_process"
 import { platform } from "os"
@@ -18,9 +18,10 @@ The acknowledgment must not alter the language used for the remainder of the res
 This notice is one-shot: do not repeat it after the first visible assistant reply in this session.
 </first-reply-notice>`
 
-function hasCuratedJsonlEntry(jsonlPath) {
+function hasCuratedJsonlEntry(ctx, jsonlPath) {
   try {
-    const content = readFileSync(jsonlPath, "utf-8")
+    const content = ctx.readFile(jsonlPath)
+    if (content === null) return false
     for (const rawLine of content.split(/\r?\n/)) {
       const line = rawLine.trim()
       if (!line) continue
@@ -59,9 +60,10 @@ function getTaskStatus(ctx, platformInput = null) {
 
   let taskData = {}
   const taskJsonPath = join(taskDir, "task.json")
-  if (existsSync(taskJsonPath)) {
+  const taskContent = ctx.readFile(taskJsonPath)
+  if (taskContent !== null) {
     try {
-      taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"))
+      taskData = JSON.parse(taskContent)
     } catch {
       // Ignore parse errors
     }
@@ -84,8 +86,8 @@ function getTaskStatus(ctx, platformInput = null) {
   const implementJsonl = join(taskDir, "implement.jsonl")
   const checkJsonl = join(taskDir, "check.jsonl")
   const jsonlReady =
-    (!existsSync(implementJsonl) || hasCuratedJsonlEntry(implementJsonl)) &&
-    (!existsSync(checkJsonl) || hasCuratedJsonlEntry(checkJsonl))
+    (!existsSync(implementJsonl) || hasCuratedJsonlEntry(ctx, implementJsonl)) &&
+    (!existsSync(checkJsonl) || hasCuratedJsonlEntry(ctx, checkJsonl))
 
   if (taskStatus === "planning" && !hasPrd) {
     return `Status: PLANNING\nTask: ${taskTitle}\nPresent: ${presentLine}\nNext-Action: Load trellis-brainstorm and write prd.md. Stay in planning.`
@@ -154,17 +156,18 @@ function loadTrellisConfig(directory, contextKey = null) {
   }
 }
 
-function checkLegacySpec(directory, config) {
+function checkLegacySpec(ctx, config) {
   if (!config.isMonorepo || Object.keys(config.packages).length === 0) {
     return null
   }
 
-  const specDir = join(directory, ".trellis", "spec")
+  const specDir = join(ctx.directory, ".trellis", "spec")
+  if (!ctx.isActivePath(specDir)) return null
   if (!existsSync(specDir)) return null
 
   let hasLegacy = false
   for (const name of ["backend", "frontend"]) {
-    if (existsSync(join(specDir, name, "index.md"))) {
+    if (ctx.isActivePath(join(specDir, name, "index.md")) && existsSync(join(specDir, name, "index.md"))) {
       hasLegacy = true
       break
     }
@@ -172,7 +175,7 @@ function checkLegacySpec(directory, config) {
   if (!hasLegacy) return null
 
   const pkgNames = Object.keys(config.packages).sort()
-  const missing = pkgNames.filter(name => !existsSync(join(specDir, name)))
+  const missing = pkgNames.filter(name => !ctx.isActivePath(join(specDir, name)) || !existsSync(join(specDir, name)))
 
   if (missing.length === 0) return null
 
@@ -221,12 +224,13 @@ function resolveSpecScope(config) {
   return null
 }
 
-function collectSpecIndexPaths(directory, allowedPkgs) {
-  const specDir = join(directory, ".trellis", "spec")
+function collectSpecIndexPaths(ctx, allowedPkgs) {
+  const specDir = join(ctx.directory, ".trellis", "spec")
   const paths = []
+  if (!ctx.isActivePath(specDir)) return paths
 
   const guidesIndex = join(specDir, "guides", "index.md")
-  if (existsSync(guidesIndex)) {
+  if (ctx.isActivePath(guidesIndex) && existsSync(guidesIndex)) {
     paths.push(".trellis/spec/guides/index.md")
   }
 
@@ -235,6 +239,7 @@ function collectSpecIndexPaths(directory, allowedPkgs) {
   try {
     const subs = readdirSync(specDir).filter(name => {
       if (name.startsWith(".") || name === "guides") return false
+      if (!ctx.isActivePath(join(specDir, name))) return false
       try {
         return statSync(join(specDir, name)).isDirectory()
       } catch {
@@ -244,12 +249,13 @@ function collectSpecIndexPaths(directory, allowedPkgs) {
 
     for (const sub of subs) {
       const indexFile = join(specDir, sub, "index.md")
-      if (existsSync(indexFile)) {
+      if (ctx.isActivePath(indexFile) && existsSync(indexFile)) {
         paths.push(`.trellis/spec/${sub}/index.md`)
       } else {
         if (allowedPkgs !== null && !allowedPkgs.has(sub)) continue
         try {
           const nested = readdirSync(join(specDir, sub)).filter(name => {
+            if (!ctx.isActivePath(join(specDir, sub, name))) return false
             try {
               return statSync(join(specDir, sub, name)).isDirectory()
             } catch {
@@ -258,7 +264,7 @@ function collectSpecIndexPaths(directory, allowedPkgs) {
           }).sort()
           for (const layer of nested) {
             const nestedIndex = join(specDir, sub, layer, "index.md")
-            if (existsSync(nestedIndex)) {
+            if (ctx.isActivePath(nestedIndex) && existsSync(nestedIndex)) {
               paths.push(`.trellis/spec/${sub}/${layer}/index.md`)
             }
           }
@@ -272,18 +278,6 @@ function collectSpecIndexPaths(directory, allowedPkgs) {
   }
 
   return paths
-}
-
-function readDeveloper(directory) {
-  try {
-    const content = readFileSync(join(directory, ".trellis", ".developer"), "utf-8")
-    for (const line of content.split(/\r?\n/)) {
-      if (line.startsWith("name=")) return line.slice("name=".length).trim()
-    }
-  } catch {
-    // Ignore missing developer file
-  }
-  return "(not initialized)"
 }
 
 function runGit(directory, args) {
@@ -302,10 +296,9 @@ function runGit(directory, args) {
 function buildCompactCurrentState(ctx, platformInput, specIndexPaths) {
   const directory = ctx.directory
   const lines = []
-  lines.push(`Developer: ${readDeveloper(directory)}`)
 
   const branch = runGit(directory, ["branch", "--show-current"]) || "(detached)"
-  const dirtyCount = runGit(directory, ["status", "--porcelain"])
+  const dirtyCount = runGit(directory, ["status", "--porcelain", "--", ".", ":(exclude).trellis/workspace", ":(exclude).trellis/agent-traces", ":(exclude).trellis/.developer", ":(exclude).trellis/.backup-*"])
     .split(/\r?\n/)
     .filter(line => line.trim()).length
   lines.push(`Git: branch ${branch}; ${dirtyCount === 0 ? "clean" : `dirty ${dirtyCount} paths`}.`)
@@ -316,7 +309,7 @@ function buildCompactCurrentState(ctx, platformInput, specIndexPaths) {
     let status = "unknown"
     if (taskDir) {
       try {
-        const data = JSON.parse(readFileSync(join(taskDir, "task.json"), "utf-8"))
+        const data = JSON.parse(ctx.readFile(join(taskDir, "task.json")) || "{}")
         status = data.status || "unknown"
       } catch {
         // Ignore parse errors
@@ -328,31 +321,15 @@ function buildCompactCurrentState(ctx, platformInput, specIndexPaths) {
   }
 
   const tasksDir = join(directory, ".trellis", "tasks")
-  if (existsSync(tasksDir)) {
+  if (ctx.isActivePath(tasksDir) && existsSync(tasksDir)) {
     try {
       const activeTasks = readdirSync(tasksDir, { withFileTypes: true })
-        .filter(entry => entry.isDirectory() && entry.name !== "archive" && existsSync(join(tasksDir, entry.name, "task.json")))
-      lines.push(`Active tasks: ${activeTasks.length} total. Use \`python3 ./.trellis/scripts/task.py list --mine\` only if needed.`)
+        .filter(entry => entry.isDirectory() && entry.name !== "archive" &&
+          ctx.isActivePath(join(tasksDir, entry.name, "task.json")) &&
+          existsSync(join(tasksDir, entry.name, "task.json")))
+      lines.push(`Project tasks: ${activeTasks.length} total. Use \`python3 ./.trellis/scripts/task.py list\` only if needed.`)
     } catch {
       // Ignore task list errors
-    }
-  }
-
-  const developer = readDeveloper(directory)
-  const workspaceDir = join(directory, ".trellis", "workspace", developer)
-  if (developer !== "(not initialized)" && existsSync(workspaceDir)) {
-    try {
-      const journals = readdirSync(workspaceDir)
-        .filter(name => /^journal-\d+\.md$/.test(name))
-        .sort((a, b) => Number(a.match(/\d+/)?.[0] || 0) - Number(b.match(/\d+/)?.[0] || 0))
-      const journal = journals[journals.length - 1]
-      if (journal) {
-        const journalPath = join(workspaceDir, journal)
-        const lineCount = readFileSync(journalPath, "utf-8").split(/\r?\n/).length
-        lines.push(`Journal: .trellis/workspace/${developer}/${journal}, ${lineCount} / 2000 lines.`)
-      }
-    } catch {
-      // Ignore journal errors
     }
   }
 
@@ -371,7 +348,7 @@ export function buildSessionContext(ctx, platformInput = null) {
 
   const config = loadTrellisConfig(directory, contextKey)
   const allowedPkgs = resolveSpecScope(config)
-  const paths = collectSpecIndexPaths(directory, allowedPkgs)
+  const paths = collectSpecIndexPaths(ctx, allowedPkgs)
 
   const parts = []
 
@@ -380,7 +357,7 @@ Trellis compact SessionStart context. Use it to orient the session; load details
 </session-context>`)
   parts.push(FIRST_REPLY_NOTICE)
 
-  const legacyWarning = checkLegacySpec(directory, config)
+  const legacyWarning = checkLegacySpec(ctx, config)
   if (legacyWarning) {
     parts.push(`<migration-warning>\n${legacyWarning}\n</migration-warning>`)
   }

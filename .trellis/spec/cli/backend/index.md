@@ -15,6 +15,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Directory Structure](./directory-structure.md) | Module organization, file layout, design decisions | Done |
+| [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) | Explicit ownership, retired data boundaries, archive and upgrade contracts | Done |
 | [Script Conventions](./script-conventions.md) | Python script standards for .trellis/scripts/ | Done |
 | [Error Handling](./error-handling.md) | Error types, handling strategies | Done |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | Done |
@@ -44,7 +45,7 @@ Before writing backend code, read the relevant guidelines based on your task:
 - Error handling → [error-handling.md](./error-handling.md)
 - Logging → [logging-guidelines.md](./logging-guidelines.md)
 - Adding a platform → [platform-integration.md](./platform-integration.md)
-- Modifying `init.ts` flow (new triggers, dispatch branches, bootstrap/joiner) → [platform-integration.md "Bootstrap & Joiner Task Auto-Generation"](./platform-integration.md) — two-point wiring + `.developer` signal
+- Modifying init, task ownership, context, archive or historical-data exclusions → [identity-free-task-lifecycle.md](./identity-free-task-lifecycle.md) and [platform-integration.md](./platform-integration.md)
 - Script work → [script-conventions.md](./script-conventions.md)
 - Migration system → [migrations.md](./migrations.md)
 - Writing/deleting/moving/overwriting files in a user repo (any `writeFileSync`, `rmSync`, `renameSync`, `shutil.move`, or user/agent-supplied path segment) → [filesystem-safety.md](./filesystem-safety.md)

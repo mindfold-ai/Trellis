@@ -2,11 +2,11 @@
  * Trusted-root resolution for the context-loading containment checks
  * (`context-loader.ts` `jailedRealpath`, `agent-loader.ts` `findAgentFile`).
  *
- * Users who persist `.trellis/tasks` / `.trellis/workspace` as symlinks to
+ * Users who persist `.trellis/tasks` as symlinks to
  * an external directory get legitimate context files rejected by the
  * cwd-only jail. This module resolves an additional set of trusted realpath
  * roots — from `.trellis/config.yaml` `channel.trusted_context_dirs`, plus a
- * narrow auto-trust of `.trellis/tasks` / `.trellis/workspace` when either is
+ * narrow auto-trust of `.trellis/tasks` when it is
  * itself a top-level symlink — so those roots can be accepted alongside cwd
  * without weakening the containment check to lexical matching (see
  * spec/cli/backend/filesystem-safety.md §2).
@@ -16,9 +16,14 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { DIR_NAMES } from "../../constants/paths.js";
+import {
+  assertActiveDataPath,
+  isRetiredDataPath,
+  resolveTrellisDataRoot,
+} from "../../utils/retired-data.js";
 
 /** Top-level `.trellis/*` entries eligible for symlink auto-trust. */
-const AUTO_TRUST_ENTRIES = ["tasks", "workspace"] as const;
+const AUTO_TRUST_ENTRIES = ["tasks"] as const;
 
 interface ChannelTrustConfig {
   trustedDirs: string[];
@@ -106,6 +111,7 @@ function stripTrustValue(s: string): string {
 
 function loadChannelTrustConfig(cwd: string): ChannelTrustConfig {
   const configPath = path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
+  assertActiveDataPath(configPath, cwd);
   if (!fs.existsSync(configPath)) return { trustedDirs: [] };
   let content: string;
   try {
@@ -126,8 +132,16 @@ export function resolveTrustedRoots(cwd: string): string[] {
 
   for (const entry of config.trustedDirs) {
     const resolved = path.resolve(cwd, entry);
+    if (isRetiredDataPath(resolved, resolveTrellisDataRoot(cwd))) {
+      process.stderr.write(
+        "[channel] Retired identity/history is not context; use task/spec context instead.\n",
+      );
+      continue;
+    }
     try {
-      roots.push(fs.realpathSync(resolved));
+      const real = fs.realpathSync(resolved);
+      if (!isRetiredDataPath(real, resolveTrellisDataRoot(cwd)))
+        roots.push(real);
     } catch {
       process.stderr.write(
         `[channel] channel.trusted_context_dirs: entry not found or invalid, skipping: ${entry}\n`,
@@ -146,7 +160,9 @@ export function resolveTrustedRoots(cwd: string): string[] {
       }
       if (!lstat.isSymbolicLink()) continue;
       try {
-        roots.push(fs.realpathSync(entryPath));
+        const real = fs.realpathSync(entryPath);
+        if (!isRetiredDataPath(real, resolveTrellisDataRoot(cwd)))
+          roots.push(real);
       } catch {
         // Broken symlink — nothing to trust.
       }

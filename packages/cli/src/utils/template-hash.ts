@@ -21,6 +21,7 @@ import { DIR_NAMES, FILE_NAMES } from "../constants/paths.js";
 import type { TemplateHashes } from "../types/migration.js";
 import { writeFileAtomic } from "./atomic-write.js";
 import { toPosix } from "./posix.js";
+import { assertActiveDataPath } from "./retired-data.js";
 
 /** File name for storing template hashes */
 const HASHES_FILE = ".template-hashes.json";
@@ -49,7 +50,9 @@ export function computeHash(content: string): string {
  * Get path to the hashes file
  */
 function getHashesPath(cwd: string): string {
-  return path.join(cwd, DIR_NAMES.WORKFLOW, HASHES_FILE);
+  const filePath = path.join(cwd, DIR_NAMES.WORKFLOW, HASHES_FILE);
+  assertActiveDataPath(filePath, cwd);
+  return filePath;
 }
 
 /**
@@ -138,6 +141,7 @@ export function updateHashes(cwd: string, files: Map<string, string>): void {
  */
 export function updateHashFromFile(cwd: string, relativePath: string): void {
   const fullPath = path.join(cwd, relativePath);
+  assertActiveDataPath(fullPath, cwd);
   if (!fs.existsSync(fullPath)) {
     return;
   }
@@ -190,6 +194,7 @@ export function isTemplateModified(
   hashes: TemplateHashes,
 ): boolean {
   const fullPath = path.join(cwd, relativePath);
+  assertActiveDataPath(fullPath, cwd);
 
   // If file doesn't exist, can't be modified
   if (!fs.existsSync(fullPath)) {
@@ -227,6 +232,7 @@ export function matchesOriginalTemplate(
   originalContent: string,
 ): boolean {
   const fullPath = path.join(cwd, relativePath);
+  assertActiveDataPath(fullPath, cwd);
 
   if (!fs.existsSync(fullPath)) {
     return false;
@@ -265,8 +271,9 @@ const EXCLUDE_FROM_HASH = [
   ".template-hashes.json", // Hash file itself
   ".version", // Version file
   ".gitignore", // Git ignore files
-  ".developer", // Developer identity file
-  "workspace/", // Workspace files (user data)
+  ".developer", // Retired user data: never hash or consume
+  "workspace/", // Retired user data: never hash or consume
+  "agent-traces/", // Retired predecessor directory
   "tasks/", // Task files (user data)
   ".current-task", // Current task marker (file, not directory)
   ".trellis/spec/", // User-customized spec files
@@ -279,7 +286,10 @@ const EXCLUDE_FROM_HASH = [
 export function shouldExcludeFromHash(relativePath: string): boolean {
   const normalizedPath = toPosix(relativePath);
   for (const pattern of EXCLUDE_FROM_HASH) {
-    if (normalizedPath.includes(pattern)) {
+    if (
+      normalizedPath.includes(pattern) ||
+      (pattern.endsWith("/") && `${normalizedPath}/`.includes(pattern))
+    ) {
       return true;
     }
   }
@@ -370,6 +380,7 @@ export function initializeHashes(
         continue;
       }
       const fullPath = path.join(cwd, ...relativePath.split("/"));
+      assertActiveDataPath(fullPath, cwd);
       if (!fs.existsSync(fullPath)) continue;
       try {
         const content = fs.readFileSync(fullPath, "utf-8");
@@ -387,6 +398,7 @@ export function initializeHashes(
   const files = collectFiles(cwd, ".trellis");
   for (const relativePath of files) {
     const fullPath = path.join(cwd, relativePath);
+    assertActiveDataPath(fullPath, cwd);
     try {
       const content = fs.readFileSync(fullPath, "utf-8");
       hashes[relativePath] = computeHash(content);
@@ -403,6 +415,7 @@ export function initializeHashes(
     for (const relativePath of [FILE_NAMES.AGENTS]) {
       if (shouldExcludeFromHash(relativePath)) continue;
       const fullPath = path.join(cwd, relativePath);
+      assertActiveDataPath(fullPath, cwd);
       if (!fs.existsSync(fullPath)) continue;
       try {
         const content = fs.readFileSync(fullPath, "utf-8");

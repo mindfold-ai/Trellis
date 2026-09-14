@@ -295,7 +295,7 @@ Configurators must respect these. They are not enforced by types; tests in `test
 - **Touch the network.** No template fetching; no version probing. Everything operates on bundled templates loaded from `templates/common/index.ts` and `templates/shared-hooks/index.ts`.
 - **Mutate the registry.** `types/ai-tools.ts:AI_TOOLS` is read-only from this file. Adding a platform updates the registry first, then the configurator file consumes it.
 - **Decide capability flags.** `agentCapable` / `hasHooks` come from the `TemplateContext` constructed in `configurators/index.ts`; shared helpers only read them.
-- **Touch user-owned spec content.** `.trellis/spec/`, `.trellis/.developer`, `.trellis/tasks/`, `.trellis/workspace/`, `.trellis/.current-task` are protected paths owned by `commands/update.ts` migration logic, not by configurators.
+- **Touch user-owned spec/task content outside the operation contract.** Retired identity/workspace/history is never read or mutated, including by migration logic. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md).
 - **Cache anything other than the resolved Python command.** The single piece of module state (`resolvedPythonCommand`) exists because init runs once and configurators are called repeatedly afterward. Anything else with cross-call lifetime belongs at the `commands/init.ts` call site, not here.
 
 ---

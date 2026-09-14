@@ -2,10 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadAgent } from "../../src/commands/channel/agent-loader.js";
 import { assembleContext } from "../../src/commands/channel/context-loader.js";
+import { resolveChannelTextBody } from "../../src/commands/channel/text-body.js";
 import {
   parseChannelTrustSection,
   resolveTrustedRoots,
@@ -19,9 +20,9 @@ function realTmp(): string {
 
 describe("parseChannelTrustSection", () => {
   it("returns empty when channel section absent", () => {
-    expect(parseChannelTrustSection("packages:\n  cli:\n    path: x\n")).toEqual(
-      { trustedDirs: [] },
-    );
+    expect(
+      parseChannelTrustSection("packages:\n  cli:\n    path: x\n"),
+    ).toEqual({ trustedDirs: [] });
   });
 
   it("parses a trusted_context_dirs list", () => {
@@ -44,12 +45,14 @@ describe("parseChannelTrustSection", () => {
 
   it("parses auto_trust_trellis_symlinks true/false", () => {
     expect(
-      parseChannelTrustSection("channel:\n  auto_trust_trellis_symlinks: false\n")
-        .autoTrustSymlinks,
+      parseChannelTrustSection(
+        "channel:\n  auto_trust_trellis_symlinks: false\n",
+      ).autoTrustSymlinks,
     ).toBe(false);
     expect(
-      parseChannelTrustSection("channel:\n  auto_trust_trellis_symlinks: true\n")
-        .autoTrustSymlinks,
+      parseChannelTrustSection(
+        "channel:\n  auto_trust_trellis_symlinks: true\n",
+      ).autoTrustSymlinks,
     ).toBe(true);
   });
 
@@ -96,6 +99,35 @@ describe("resolveTrustedRoots", () => {
     expect(resolveTrustedRoots(cwd)).toEqual([]);
   });
 
+  it.each([false, true])("refuses a historical config source before reading it (external=%s)", (external) => {
+    let workflow = path.join(cwd, ".trellis");
+    if (external) {
+      const backing = path.join(tmpDir, "backing");
+      fs.renameSync(workflow, backing);
+      fs.symlinkSync(backing, workflow, "dir");
+      workflow = backing;
+    }
+    const outside = path.join(tmpDir, "outside");
+    fs.mkdirSync(outside);
+    const history = path.join(workflow, "workspace/config.yaml");
+    fs.mkdirSync(path.dirname(history));
+    const content = `channel:\n  trusted_context_dirs:\n    - ${outside}\n`;
+    fs.writeFileSync(history, content);
+    const config = path.join(cwd, ".trellis/config.yaml");
+    fs.symlinkSync(history, config);
+    const reads = vi.spyOn(fs, "readFileSync");
+    try {
+      expect(() => resolveTrustedRoots(cwd)).toThrow("Retired identity/history");
+      expect(reads).not.toHaveBeenCalled();
+    } finally {
+      reads.mockRestore();
+    }
+    fs.unlinkSync(config);
+    fs.writeFileSync(config, content);
+    expect(resolveTrustedRoots(cwd)).toEqual([fs.realpathSync(outside)]);
+    expect(fs.readFileSync(history, "utf8")).toBe(content);
+  });
+
   it("adds a configured trusted_context_dirs entry (realpath)", () => {
     const extDir = path.join(tmpDir, "ext");
     fs.mkdirSync(extDir, { recursive: true });
@@ -139,7 +171,7 @@ describe("resolveTrustedRoots", () => {
   );
 
   it.skipIf(isWin)(
-    "auto-trusts .trellis/workspace when it is a top-level symlink",
+    "does not auto-trust retired history even when it is a top-level symlink",
     () => {
       const extWorkspace = path.join(tmpDir, "ext-workspace");
       fs.mkdirSync(extWorkspace, { recursive: true });
@@ -149,7 +181,7 @@ describe("resolveTrustedRoots", () => {
         "dir",
       );
       const roots = resolveTrustedRoots(cwd);
-      expect(roots).toEqual([fs.realpathSync(extWorkspace)]);
+      expect(roots).toEqual([]);
     },
   );
 
@@ -196,7 +228,95 @@ describe("assembleContext with trusted roots (#414 repro)", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it.skipIf(isWin)("rejects history aliases under an external .trellis root before reads or enumeration", async () => {
+    const backing = path.join(tmpDir, "backing-store");
+    fs.renameSync(path.join(cwd, ".trellis"), backing);
+    fs.symlinkSync(backing, path.join(cwd, ".trellis"), "dir");
+    for (const dir of ["workspace", "spec", "agents"]) fs.mkdirSync(path.join(backing, dir));
+    const history = path.join(backing, "workspace/history.md");
+    fs.writeFileSync(history, "PRIVATE HISTORY");
+    fs.writeFileSync(path.join(backing, "workspace/manifest.jsonl"), JSON.stringify({ file: ".trellis/spec/current.md" }));
+    fs.writeFileSync(path.join(backing, "spec/current.md"), "ACTIVE SPEC");
+    fs.symlinkSync("../workspace/history.md", path.join(backing, "spec/history-alias.md"));
+    fs.symlinkSync("../workspace", path.join(backing, "spec/history-dir"), "dir");
+    fs.symlinkSync("../workspace/manifest.jsonl", path.join(backing, "spec/manifest-alias.jsonl"));
+    fs.symlinkSync("../workspace/history.md", path.join(backing, "agents/history.md"));
+    fs.writeFileSync(path.join(backing, "spec/current.jsonl"), JSON.stringify({ file: ".trellis/spec/history-alias.md" }));
+    fs.writeFileSync(path.join(backing, "config.yaml"), "channel:\n  trusted_context_dirs:\n    - .trellis\n    - .trellis/spec/history-dir\n");
+    const read = vi.spyOn(fs, "readFileSync");
+    const open = vi.spyOn(fs, "openSync");
+    const list = vi.spyOn(fs, "readdirSync");
+    const roots = resolveTrustedRoots(cwd);
+    expect(roots).toEqual([backing]);
+    const result = assembleContext(cwd, [".trellis/spec/current.md", ".trellis/spec/history-alias.md", ".trellis/spec/history-dir/**/*.md"], [".trellis/spec/manifest-alias.jsonl", ".trellis/spec/current.jsonl"], roots);
+    expect(result.prompt).toContain("ACTIVE SPEC");
+    expect(result.prompt).not.toContain("PRIVATE HISTORY");
+    expect(result.manifests).not.toContain(path.relative(cwd, path.join(backing, "workspace/manifest.jsonl")));
+    expect(() => loadAgent("history", cwd, roots)).toThrow(/not found/);
+    vi.spyOn(process, "cwd").mockReturnValue(cwd);
+    await expect(resolveChannelTextBody({ textFile: path.join(cwd, ".trellis/spec/history-alias.md") }, { required: true, missingMessage: "missing", emptyMessage: "empty" })).rejects.toThrow(/Retired/);
+    const attempts = [...read.mock.calls, ...open.mock.calls, ...list.mock.calls].filter(([file]) => /workspace|history-alias|history-dir|manifest-alias|agents\/history/.test(String(file)));
+    expect(attempts).toEqual([]);
+    vi.restoreAllMocks();
+    expect(fs.readFileSync(history, "utf8")).toBe("PRIVATE HISTORY");
+  });
+
+  it("excludes historical literals, manifests, references and globs before content access", async () => {
+    const root = path.join(cwd, ".trellis");
+    fs.mkdirSync(path.join(root, "workspace", "nested"), { recursive: true });
+    fs.mkdirSync(path.join(root, "agent-traces"), { recursive: true });
+    for (const file of [
+      ".developer",
+      "workspace/index.md",
+      "workspace/nested/data.md",
+      "agent-traces/raw.md",
+    ]) {
+      fs.writeFileSync(path.join(root, file), "HISTORY");
+    }
+    fs.writeFileSync(path.join(root, "active.md"), "ACTIVE");
+    fs.writeFileSync(
+      path.join(root, "context.jsonl"),
+      JSON.stringify({ file: ".trellis/workspace/index.md" }),
+    );
+    fs.writeFileSync(
+      path.join(root, "config.yaml"),
+      "channel:\n  trusted_context_dirs:\n    - .trellis/workspace\n",
+    );
+    const read = vi.spyOn(fs, "readFileSync");
+    const open = vi.spyOn(fs, "openSync");
+    const list = vi.spyOn(fs, "readdirSync");
+    const roots = resolveTrustedRoots(cwd);
+    expect(roots).toEqual([]);
+    await expect(
+      resolveChannelTextBody(
+        { textFile: path.join(root, "workspace", "index.md") },
+        { required: true, missingMessage: "missing", emptyMessage: "empty" },
+      ),
+    ).rejects.toThrow(/Retired identity\/history is not context/);
+    const result = assembleContext(
+      cwd,
+      [
+        ".trellis/.developer",
+        ".trellis/workspace/index.md",
+        ".trellis/**/*.md",
+      ],
+      [".trellis/workspace/index.md", ".trellis/context.jsonl"],
+      [root],
+    );
+    expect(result.prompt).toContain("ACTIVE");
+    expect(result.prompt).not.toContain("HISTORY");
+    for (const calls of [read.mock.calls, open.mock.calls, list.mock.calls]) {
+      expect(
+        calls.every(
+          ([file]) =>
+            !/(?:workspace|agent-traces|\.developer)/.test(String(file)),
+        ),
+      ).toBe(true);
+    }
   });
 
   it.skipIf(isWin)(

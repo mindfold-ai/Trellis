@@ -116,6 +116,9 @@ describe.skipIf(!hasPython())(
     it("does not bundle dirty changes from other task dirs (scope-creep fix)", () => {
       makeTask(tmp, "task-a", "task A prd\n");
       makeTask(tmp, "task-b", "task B prd v1\n");
+      const historical = path.join(tmp, ".trellis/tasks/archive/2025-01/old-task");
+      fs.mkdirSync(historical, { recursive: true });
+      fs.writeFileSync(path.join(historical, "prd.md"), "historical task\n");
       git(tmp, "add", "-A");
       git(tmp, "commit", "-q", "-m", "initial");
 
@@ -124,6 +127,7 @@ describe.skipIf(!hasPython())(
         path.join(tmp, ".trellis", "tasks", "task-b", "prd.md"),
         "DIRTY EDIT IN TASK-B SHOULD NOT BE COMMITTED\n",
       );
+      fs.appendFileSync(path.join(historical, "prd.md"), "unrelated historical edit\n");
 
       runArchive(tmp, "task-a");
 
@@ -142,10 +146,12 @@ describe.skipIf(!hasPython())(
       // task-b paths must NOT appear in the archive commit.
       const leaked = lastFiles.filter((f) => f.includes("/task-b/"));
       expect(leaked).toEqual([]);
+      expect(lastFiles.some((f) => f.includes("/old-task/"))).toBe(false);
 
       // task-b dirty change still in working tree.
       const status = git(tmp, "status", "--porcelain");
       expect(status).toMatch(/M\s+\.trellis\/tasks\/task-b\/prd\.md/);
+      expect(status).toContain(".trellis/tasks/archive/2025-01/old-task/prd.md");
     });
 
     it("does not sweep pre-staged unrelated files into the archive commit (#579)", () => {

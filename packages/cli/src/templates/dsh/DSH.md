@@ -41,7 +41,7 @@ In dsh:
   to Codex / Gemini CLI / Pi / Kimi writes into the same shared root.
 - `.dsh/skills/` — dsh-private entry skills (`trellis-start` /
   `trellis-continue` / `trellis-finish-work`).
-- `.trellis/` — specs, tasks, workspace memory, and the shared scripts the
+- `.trellis/` — specs, task artifacts, and the shared scripts the
   skills invoke (`get_context.py`, `task.py`, ...).
 
 ## Notes

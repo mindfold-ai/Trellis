@@ -2,7 +2,7 @@
  * External, versioned recovery storage for reversible full Trellis ablation.
  *
  * The store intentionally contains only manifest-owned project paths and the
- * exact `.trellis/` tree. User-authored task/spec/workspace files may contain
+ * active `.trellis/` children. User-authored task/spec files may contain
  * sensitive text, so the state root is private and retained only until a
  * verified restore. Unrelated application files and global host state are
  * never copied.
@@ -16,13 +16,14 @@ import { z } from "zod";
 
 import { VERSION } from "../constants/version.js";
 import { writeFileAtomic } from "./atomic-write.js";
+import { assertActiveDataPath, isRetiredDataPath } from "./retired-data.js";
 import {
   assertSafeManagedPath,
   lstatIfPresent,
   validateManagedRelativePath,
 } from "./managed-removal.js";
 
-export const ABLATION_SCHEMA_VERSION = 1;
+export const ABLATION_SCHEMA_VERSION = 2;
 export const FULL_ABLATION_CAPABILITY = "trellis.full" as const;
 export const ABLATION_STATE_ROOT_ENV = "TRELLIS_ABLATION_STATE_ROOT";
 
@@ -64,8 +65,9 @@ export interface AblationEntry {
   backupPath?: string;
 }
 
-export interface AblationStateV1 {
-  schemaVersion: 1;
+export interface AblationStateV2 {
+  schemaVersion: 2;
+  trellisRootMode?: number;
   status: AblationStatus;
   projectRoot: string;
   projectKey: string;
@@ -99,7 +101,7 @@ export interface StageAblationOptions {
 
 export interface LoadedAblationTransaction {
   paths: TransactionPaths;
-  state: AblationStateV1;
+  state: AblationStateV2;
 }
 
 export interface RestoreAblationOptions {
@@ -165,6 +167,7 @@ const ablationEntrySchema = z
 const ablationStateSchema = z
   .object({
     schemaVersion: z.literal(ABLATION_SCHEMA_VERSION),
+    trellisRootMode: z.number().int().nonnegative().optional(),
     status: z.enum(["preparing", "applied", "restoring", "conflict"]),
     projectRoot: z.string().min(1),
     projectKey: z.string().regex(/^[a-f0-9]{64}$/),
@@ -193,6 +196,7 @@ function hashDirectory(absPath: string): string {
 
   for (const name of entries) {
     const child = path.join(absPath, name);
+    if (isRetiredDataPath(child)) continue;
     const fingerprint = fingerprintPath(child);
     hash.update(name, "utf-8");
     hash.update("\0", "utf-8");
@@ -205,6 +209,9 @@ function hashDirectory(absPath: string): string {
 
 /** Fingerprint one path without dereferencing a symlink leaf. */
 export function fingerprintPath(absPath: string): PathFingerprint {
+  if (isRetiredDataPath(absPath)) {
+    throw new Error("Retired identity/history cannot be fingerprinted.");
+  }
   const stat = lstatIfPresent(absPath);
   if (!stat) return { kind: "absent" };
 
@@ -287,6 +294,7 @@ export function getAblationStateRoot(): string {
   if (override && override.trim().length > 0) {
     return path.resolve(override);
   }
+  // Keep discovery stable so incompatible v1 records are refused, not hidden.
   return path.join(os.homedir(), ".trellis", "ablations", "v1");
 }
 
@@ -298,13 +306,22 @@ export function getTransactionPaths(
   assertExternalStateRoot(canonical, stateRoot);
   const key = projectKey(canonical);
   const transactionDir = path.join(stateRoot, key);
-  return {
+  const paths = {
     stateRoot,
     transactionDir,
     stateFile: path.join(transactionDir, "state.json"),
     backupDir: path.join(transactionDir, "backup"),
     lockFile: path.join(stateRoot, `${key}.lock`),
   };
+  for (const candidate of [
+    paths.transactionDir,
+    paths.stateFile,
+    paths.backupDir,
+    paths.lockFile,
+  ]) {
+    assertActiveDataPath(candidate, canonical);
+  }
+  return paths;
 }
 
 function ensurePrivateDirectory(dir: string): void {
@@ -312,7 +329,7 @@ function ensurePrivateDirectory(dir: string): void {
   if (process.platform !== "win32") fs.chmodSync(dir, 0o700);
 }
 
-function writeState(paths: TransactionPaths, state: AblationStateV1): void {
+function writeState(paths: TransactionPaths, state: AblationStateV2): void {
   writeFileAtomic(paths.stateFile, `${JSON.stringify(state, null, 2)}\n`);
   if (process.platform !== "win32") fs.chmodSync(paths.stateFile, 0o600);
 }
@@ -346,6 +363,7 @@ export function assertExternalStateRoot(
   projectRoot: string,
   stateRoot: string,
 ): void {
+  assertActiveDataPath(stateRoot, projectRoot);
   const projectedStateRoot = projectedCanonicalPath(stateRoot);
   if (isWithinPath(projectRoot, projectedStateRoot)) {
     throw new Error(
@@ -363,6 +381,7 @@ function copyPath(
   destination: string,
   privateParents: boolean,
 ): void {
+  if (isRetiredDataPath(source) || isRetiredDataPath(destination)) return;
   const stat = fs.lstatSync(source);
   if (privateParents) {
     ensurePrivateDirectory(path.dirname(destination));
@@ -427,13 +446,21 @@ function verifyBackupEntry(transactionDir: string, entry: AblationEntry): void {
   }
 }
 
-function validateStatePaths(state: AblationStateV1): void {
+function validateStatePaths(state: AblationStateV2): void {
   const seen = new Set<string>();
   for (const key of Object.keys(state.manifest))
     validateManagedRelativePath(key);
 
   for (const entry of state.entries) {
     validateStoredRelativePath(entry.relativePath);
+    if (
+      entry.relativePath === ".trellis" ||
+      isRetiredDataPath(entry.relativePath)
+    ) {
+      throw new Error(
+        "Incompatible recovery record: retired identity/history must remain in place.",
+      );
+    }
     if (seen.has(entry.relativePath)) {
       throw new Error(`Duplicate ablation entry: ${entry.relativePath}`);
     }
@@ -461,8 +488,18 @@ function validateStatePaths(state: AblationStateV1): void {
 }
 
 /** Parse and validate an external state file. Unknown schemas fail closed. */
-export function parseAblationState(value: unknown): AblationStateV1 {
-  const parsed = ablationStateSchema.parse(value) as AblationStateV1;
+export function parseAblationState(value: unknown): AblationStateV2 {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "schemaVersion" in value &&
+    value.schemaVersion === 1
+  ) {
+    throw new Error(
+      "Incompatible recovery record: version 1 may contain retired identity/history; restore refused before mutation.",
+    );
+  }
+  const parsed = ablationStateSchema.parse(value) as AblationStateV2;
   validateStatePaths(parsed);
   return parsed;
 }
@@ -481,6 +518,15 @@ export function stageAblationTransaction(
   const paths = getTransactionPaths(projectRoot, stateRoot);
   const state = parseAblationState({
     schemaVersion: ABLATION_SCHEMA_VERSION,
+    ...(input.entries.some((entry) =>
+      entry.relativePath.startsWith(".trellis/"),
+    )
+      ? {
+          trellisRootMode: modeBits(
+            fs.lstatSync(path.join(projectRoot, ".trellis")),
+          ),
+        }
+      : {}),
     status: "preparing",
     projectRoot,
     projectKey: projectKey(projectRoot),
@@ -585,8 +631,8 @@ export function loadAblationTransaction(
 export function transitionAblationState(
   transaction: LoadedAblationTransaction,
   status: AblationStatus,
-): AblationStateV1 {
-  const next: AblationStateV1 = { ...transaction.state, status };
+): AblationStateV2 {
+  const next: AblationStateV2 = { ...transaction.state, status };
   writeState(transaction.paths, next);
   transaction.state = next;
   return next;
@@ -599,7 +645,7 @@ function currentPathForEntry(
   return assertSafeManagedPath(projectRoot, entry.relativePath);
 }
 
-function mayAlreadyBeRestored(state: AblationStateV1): boolean {
+function mayAlreadyBeRestored(state: AblationStateV2): boolean {
   return state.status === "preparing" || state.status === "restoring";
 }
 
@@ -677,6 +723,18 @@ export function withAblationProjectLock<T>(
 export function collectRestoreConflicts(
   transaction: LoadedAblationTransaction,
 ): AblationConflict[] {
+  const root = lstatIfPresent(
+    path.join(transaction.state.projectRoot, ".trellis"),
+  );
+  if (
+    root &&
+    transaction.state.trellisRootMode !== undefined &&
+    modeBits(root) !== transaction.state.trellisRootMode
+  ) {
+    throw new Error(
+      "Restore refused because .trellis root permissions changed while ablated.",
+    );
+  }
   const conflicts: AblationConflict[] = [];
   for (const entry of transaction.state.entries) {
     const current = fingerprintPath(
@@ -888,6 +946,16 @@ export function restoreTransactionFiles(
   transaction: LoadedAblationTransaction,
   options: { verifyExpectedState?: boolean } = {},
 ): void {
+  parseAblationState(transaction.state);
+  if (transaction.state.trellisRootMode !== undefined) {
+    const root = path.join(transaction.state.projectRoot, ".trellis");
+    fs.mkdirSync(root, {
+      recursive: true,
+      mode: transaction.state.trellisRootMode,
+    });
+    if (process.platform !== "win32")
+      fs.chmodSync(root, transaction.state.trellisRootMode);
+  }
   const ordered = [...transaction.state.entries].sort(
     (left, right) =>
       left.relativePath.split("/").length -
@@ -933,6 +1001,7 @@ export function restoreAblationTransaction(
   transaction: LoadedAblationTransaction,
   options: RestoreAblationOptions = {},
 ): void {
+  parseAblationState(transaction.state);
   const projectRoot = canonicalProjectRoot(transaction.state.projectRoot);
   const paths = getTransactionPaths(projectRoot, transaction.paths.stateRoot);
   acquireProjectLock(paths);

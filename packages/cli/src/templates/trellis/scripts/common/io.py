@@ -2,7 +2,7 @@
 File I/O utilities.
 
 Provides read_json / write_json as the single source of truth for JSON file
-operations, plus write_text_atomic for the Markdown state files (journal,
+operations, plus write_text_atomic for Markdown state files (task prose,
 index.md) that carry durable session state.
 """
 
@@ -121,7 +121,7 @@ def write_text_atomic(path: Path, text: str) -> bool:
     """Write text to a file atomically (temp in same dir, then replace).
 
     The same never-truncate-in-place guarantee as :func:`write_json`, for the
-    Markdown state files that hold durable session state (journal files,
+    Markdown state files that hold durable task state (task prose,
     index.md). A crash or Ctrl-C mid-write leaves the previous content intact
     instead of a half-written record that no retry can classify.
 

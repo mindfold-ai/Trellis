@@ -138,9 +138,9 @@ const cwd = process.cwd();
 const options: InitOptions = { force: true };
 
 // Good: let for reassigned
-let developerName = options.user;
-if (!developerName) {
-  developerName = detectFromGit();
+let outputFormat = options.format;
+if (!outputFormat) {
+  outputFormat = "text";
 }
 
 // Bad: let for non-reassigned
@@ -779,7 +779,7 @@ Before landing the fix, produce an entry-path inventory:
 
 ```bash
 # Find every call site / branch that can produce the buggy outcome
-rg -n "createBootstrapTask|createJoinerOnboardingTask" packages/cli/src/commands/init.ts
+rg -n "createBootstrapTask|handleReinit" packages/cli/src/commands/init.ts
 rg -n "if \(!options\.force.*return|reinitDone|return true.*//.*handled" packages/cli/src/commands/init.ts
 ```
 
@@ -802,7 +802,11 @@ Funneling is preferred: it eliminates the class of bug, not just the instance.
 - A test that uses a "convenience" flag (`force: true`) to bypass an entry-path guard does NOT cover that entry path — it covers the bypass route. See `cli/unit-test/conventions.md` → "Bug-Fix Tests Must Reproduce Reported Flag Combination".
 - After landing, re-build the CLI and run the user's exact reported command on a fixture. If you can't reproduce the bug pre-fix on that fixture, your repro is wrong, not the fix.
 
-### Wrong vs Correct
+### Historical Routing Incident (Identity/Joiner Paths Now Retired)
+
+The examples below preserve the old failure and fix as evidence, not current
+onboarding instructions. Apply the entry-path testing lesson to the current
+[identity-free lifecycle](./identity-free-task-lifecycle.md).
 
 #### Wrong — patch only the dispatch you noticed, test with a flag combination that bypasses the unpatched path
 

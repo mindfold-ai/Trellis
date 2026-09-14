@@ -14,15 +14,9 @@
 
 ## Trellis System
 
-### Developer Identity
+### Task Ownership
 
-On first use, initialize your identity:
-
-```bash
-python3 ./.trellis/scripts/init_developer.py <your-name>
-```
-
-Creates `.trellis/.developer` (gitignored) + `.trellis/workspace/<your-name>/`.
+New tasks require explicit `--creator <name>` and `--assignee <name>` values supplied by the user or caller. Ask for missing values before creation; do not infer them from Git or session routing. Existing task metadata remains authoritative.
 
 ### Spec System
 
@@ -43,12 +37,12 @@ Every task has its own directory under `.trellis/tasks/{MM-DD-name}/` holding `t
 
 ```bash
 # Task lifecycle
-python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>] [--parent <dir>]
+python3 ./.trellis/scripts/task.py create "<title>" --creator <creator> --assignee <assignee> [--slug <name>] [--parent <dir>]
 python3 ./.trellis/scripts/task.py start <name>          # set active task (session-scoped when available)
 python3 ./.trellis/scripts/task.py current --source      # show active task and source
 python3 ./.trellis/scripts/task.py finish                # clear active task (triggers after_finish hooks)
 python3 ./.trellis/scripts/task.py archive <name>        # move to archive/{year-month}/
-python3 ./.trellis/scripts/task.py list [--mine] [--status <s>]
+python3 ./.trellis/scripts/task.py list [--assignee <name>] [--status <s>]
 python3 ./.trellis/scripts/task.py list-archive
 
 # Code-spec context (injected into implement/check agents via JSONL).
@@ -75,18 +69,7 @@ python3 ./.trellis/scripts/task.py create-pr [name] [--dry-run]
 
 > Run `python3 ./.trellis/scripts/task.py --help` to see the authoritative, up-to-date list.
 
-**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.trellis/.runtime/sessions/`. If no context key is available from hook input, `TRELLIS_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
-
-### Workspace System
-
-Records every AI session for cross-session tracking under `.trellis/workspace/<developer>/`.
-
-- `journal-N.md` — session log. **Max 2000 lines per file**; a new `journal-(N+1).md` is auto-created when exceeded.
-- `index.md` — personal index (total sessions, last active).
-
-```bash
-python3 ./.trellis/scripts/add_session.py --title "Title" --commit "hash" --summary "Summary"
-```
+**Current-task mechanism**: `task.py create` creates the task directory and, when session identity is available, binds the session to it. `task.py start` records the binding and changes `planning` to `in_progress`. Git projects store versioned per-session bindings under `<git-common-dir>/trellis/sessions/`, including task workspace identity; registered worktrees resolve the same binding using live Git validation. Non-Git projects keep `.trellis/.runtime/sessions/`. A unique valid legacy local binding remains readable when the new record is absent. Conflicting, corrupt or stale bindings produce explicit errors, not normal `no_task`. `task.py finish` clears the selected session and legacy state that could resurrect it, without changing task status. Archive completes and moves the task and clears bindings to that exact workspace-qualified task; rename repoints them. No repository-global current task or developer identity is used.
 
 ### Context Script
 
@@ -172,7 +155,7 @@ Use a parent task when one user request contains several independently verifiabl
 
 Use child tasks for deliverables that can be planned, implemented, checked, and archived independently. Parent/child structure is not a dependency system: if one child must wait for another, write that ordering in the child `prd.md` / `implement.md` and keep each child's acceptance criteria testable.
 
-Create new children with `task.py create "<title>" --slug <name> --parent <parent-dir>`. Link existing tasks with `task.py add-subtask <parent> <child>`, and unlink mistakes with `task.py remove-subtask <parent> <child>`.
+Create new children with `task.py create "<title>" --creator <creator> --assignee <assignee> --slug <name> --parent <parent-dir>`. Link existing tasks with `task.py add-subtask <parent> <child>`, and unlink mistakes with `task.py remove-subtask <parent> <child>`.
 
 <!-- Per-turn breadcrumb: shown when there is no active task (before Phase 1) -->
 
@@ -325,7 +308,7 @@ Goal: classify the request, get task-creation consent when a task is needed, and
 Create the task directory only after task-creation consent. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<task title>" --slug <name>
+python3 ./.trellis/scripts/task.py create "<task title>" --creator <creator> --assignee <assignee> --slug <name>
 ```
 
 `--slug` is the human-readable name only. Do **not** include the `MM-DD-` date prefix; `task.py create` adds that prefix automatically.
@@ -601,13 +584,13 @@ Update the docs under `.trellis/spec/` accordingly. Even if the conclusion is "n
 
 **Spec-sync preamble**: before drafting commits, ask: did this task fix a bug or surface non-obvious knowledge that should land in `.trellis/spec/` so future-you (or future-AI) doesn't repeat the mistake? If yes, return to Phase 3.3 first — spec writes belong in the same task's commit batch, not as a forgotten follow-up.
 
-The AI drives a batched commit of this task's code changes so `/finish-work` can run cleanly afterwards. Goal: produce work commits FIRST, then bookkeeping (archive + journal) commits land after — never interleaved.
+The AI drives a batched commit of this task's code changes so `/finish-work` can run cleanly afterwards. Goal: produce work commits FIRST, then bookkeeping (task archive) commits land after — never interleaved.
 
 **Step-by-step**:
 
 1. **Inspect dirty state**:
    ```bash
-   git status --porcelain
+   git status --porcelain -- . ':(exclude).trellis/workspace' ':(exclude).trellis/agent-traces' ':(exclude).trellis/.developer' ':(exclude).trellis/.backup-*'
    ```
    Snapshot every dirty path. If the working tree is clean, skip to 3.5.
 
@@ -644,14 +627,14 @@ The AI drives a batched commit of this task's code changes so `/finish-work` can
 7. **On rejection** (user replies "不行" / "我自己来" / "manual" / any pushback on the plan): stop. Do not attempt a second plan. The user will commit by hand; you skip ahead to 3.5 once they confirm.
 
 **Rules**:
-- No `git commit --amend` anywhere — three-stage three-commit flow (work commits → archive commit → journal commit).
+- No `git commit --amend` anywhere — work commits precede task archive commits.
 - Never push to remote in this step.
 - If the user wants different message wording but accepts the file grouping, edit the message and re-confirm once — but if they reject the grouping, exit to manual mode.
 - The batched plan is one prompt; do not prompt per commit.
 
 #### 3.5 Wrap-up reminder
 
-After the above, remind the user they can run `/finish-work` to wrap up (archive the task, record the session).
+After the above, remind the user they can run `/finish-work` to wrap up (archive the completed task).
 
 ---
 

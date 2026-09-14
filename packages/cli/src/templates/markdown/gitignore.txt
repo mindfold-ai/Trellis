@@ -1,7 +1,7 @@
 # Trellis workflow gitignore
 # Runtime files that should not be committed
 
-# Developer identity (local to each developer)
+# Preserve ignored historical identity files; no current runtime consumes them
 .developer
 
 # Current task pointer (local state)

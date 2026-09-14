@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { workflowMdTemplate } from "../templates/trellis/index.js";
+import { hasRetiredInstructions } from "../migrations/retirement.js";
 import {
   TIMEOUTS,
   TEMPLATE_INDEX_URL,
@@ -245,6 +246,11 @@ export async function resolveWorkflowTemplate(
 
   const backend = fetched.backend;
   const content = await fetchWorkflowFile(entry.path, registry, backend);
+  if (hasRetiredInstructions(content)) {
+    throw new WorkflowResolveError(
+      `Workflow template "${id}" still requires retired identity or workspace operations. Reconcile its instructions or explicitly select the bundled native workflow.`,
+    );
+  }
 
   return {
     id: entry.id,

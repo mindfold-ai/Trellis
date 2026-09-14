@@ -83,7 +83,7 @@ Open technical architecture pages with the system thesis, then immediately groun
 
 **Good:**
 
-> Trellis is a Team-level Agent Harness with built-in LLM wiki. In implementation terms, that means two systems share the same project files: the agent harness controls workflow execution, and the LLM wiki stores specs, tasks, research, and journals.
+> Trellis is a Team-level Agent Harness with built-in LLM wiki. In implementation terms, that means two systems share the same project files: the agent harness controls workflow execution, and the LLM wiki stores specs, tasks, and research.
 
 **Avoid:**
 
@@ -247,7 +247,11 @@ Release notes (`docs-site/changelog/v*.mdx` and `docs-site/zh/changelog/v*.mdx`)
 
 **Why**: A user scanning a changelog wants to answer "does this affect me, and what do I do?" in seconds. Narrative background ("then what? then nothing") pushes the actual change further down the page and tells readers how to feel rather than what changed. It also ages badly — in six months the only reader is an AI grepping for `phase.py` or `init.ts:1370`, not someone reliving the UX story.
 
-**Example (changelog entry)**:
+**Historical voice example (retired joiner behavior, not current product guidance)**:
+
+The snippets through "Instead" below illustrate writing style only. Current
+bootstrap/ownership behavior is defined in
+[Identity-Free Task Lifecycle](../../cli/backend/identity-free-task-lifecycle.md).
 
 ```markdown
 ### Joiner onboarding task

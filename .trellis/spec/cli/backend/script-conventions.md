@@ -18,7 +18,6 @@ All workflow scripts target **Python 3.9+** for cross-platform compatibility (ma
 ├── common/               # Shared modules
 │   ├── __init__.py       # Windows encoding fix (centralized)
 │   ├── paths.py          # Path constants and functions
-│   ├── developer.py      # Developer identity management
 │   ├── io.py             # read_json / write_json
 │   ├── log.py            # Colors class + log_info/log_error/log_warn/log_success
 │   ├── git.py            # run_git() — git command wrapper
@@ -34,15 +33,14 @@ All workflow scripts target **Python 3.9+** for cross-platform compatibility (ma
 │   ├── workflow_phase.py # Extract Phase Index / step sections from .trellis/workflow.md (with platform filter)
 │   ├── cli_adapter.py    # Multi-platform CLI abstraction
 │   ├── git_context.py    # Entry shim → session_context + packages_context
-│   ├── session_context.py    # Session context generation (text/json/record)
+│   ├── session_context.py    # Session context generation (text/json)
 │   └── packages_context.py  # Package discovery and context
 ├── hooks/                # Lifecycle hook scripts (project-specific)
 │   └── linear_sync.py    # Example: sync tasks to Linear
 ├── task.py               # Entry shim → task_store + task_context
-├── get_context.py        # Session context retrieval
-├── init_developer.py     # Developer initialization
-├── get_developer.py      # Get current developer
-└── add_session.py        # Session recording
+└── get_context.py        # Session context retrieval
+
+Legacy identity/recording entry scripts are diagnostic-only retirement shims.
 ```
 
 ---
@@ -352,7 +350,7 @@ _mark_attempted(repo_root)
 
 ### `common/io.py` — File I/O
 
-The single source of truth for all JSON file operations. Replaces 8 duplicated `_read_json_file` and 5 duplicated `_write_json_file` functions. It also owns `write_text_atomic`, the same never-truncate-in-place guarantee for the Markdown state files (`journal-*.md`, `index.md`) that hold durable session state.
+The single source of truth for all JSON file operations. Replaces 8 duplicated `_read_json_file` and 5 duplicated `_write_json_file` functions. It also owns `write_text_atomic`, the same never-truncate-in-place guarantee for durable task Markdown. Historical journal/index consumers are retired.
 
 | Function | Signature | Returns | Error Behavior |
 |----------|-----------|---------|----------------|
@@ -475,35 +473,19 @@ def main_worktree_root(repo_root: Path) -> Path | None
 - Do **not** re-derive this from the `.git` layout by taking the parent of
   `--git-common-dir`. For a bare repo nested in an unrelated checkout
   (`~/repos/project.git` under a `~/repos` that is itself a repo) that parent
-  is a real checkout with a real `.developer`, so the wrong answer is
-  indistinguishable from the right one and identity leaks between
-  repositories. Covered by `[worktree-identity] a bare repo nested inside an
-  unrelated checkout does not leak that checkout's identity`.
+  may be an unrelated checkout. Deriving the main root from that parent
+  misidentifies repository boundaries. Historical identity-inheritance consumers
+  are retired; this helper supplies Git facts only.
 - Memoized per `repo_root` for the life of the process: a checkout cannot
   become a worktree mid-run, and the answer costs two subprocesses on a path
   that is consulted several times per command.
 
-#### Developer identity resolution
+#### Explicit task ownership
 
-`.trellis/.developer` is gitignored on purpose — it carries a personal
-identity and **no tracked file may carry one**. A fresh `git worktree add`
-therefore has no identity file, so `paths.get_developer()` resolves in a fixed
-order, first hit wins:
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
-1. `TRELLIS_DEVELOPER` environment variable (non-empty after strip).
-2. `.trellis/.developer` in this checkout.
-3. `.trellis/.developer` in the main checkout, when this is a linked worktree
-   (`main_worktree_root()`).
-
-A CLI `--assignee` overrides all three — it is applied by the command before
-`get_developer()` is consulted. Step 3 **reads and never copies**: writing the
-inherited name into the worktree would go stale and shadow later changes in
-the main checkout. Steps 2 and 3 are skipped entirely when step 1 hits, so no
-git subprocess runs on the common path.
-
-Every "no developer set" error appends `paths.DEVELOPER_HINT`, which names the
-env var and the worktree-inheritance behavior — the two sources a user cannot
-guess from `init_developer.py` alone.
+No environment, checkout or main-worktree identity lookup remains. Git worktree
+helpers report checkout facts only; they are not person resolvers.
 
 #### `task.json.branch` lifecycle
 
@@ -609,10 +591,10 @@ a `.current-task` fallback or a Python hook directory.
 
 ##### 2. Signatures
 
-- `python3 .trellis/scripts/task.py create "<title>" [--slug <slug>] [--description <text>] [--no-start]`
+- `python3 .trellis/scripts/task.py create "<title>" --creator <creator> --assignee <assignee> [--slug <slug>] [--description <text>] [--no-start]`
 - `python3 .trellis/scripts/task.py start <task-dir>`
 - `python3 .trellis/scripts/task.py current [--source] [--json]`
-- `python3 .trellis/scripts/task.py list [--mine] [--status <status>] [--json]`
+- `python3 .trellis/scripts/task.py list [--assignee <name>] [--status <status>] [--json]`
 - `python3 .trellis/scripts/task.py finish`
 - `resolve_active_task(repo_root, platform_input=None, platform=None) -> ActiveTask`
 - `set_active_task(task_path, repo_root, platform_input=None, platform=None) -> ActiveTask | None`
@@ -713,11 +695,8 @@ a `.current-task` fallback or a Python hook directory.
   distinguishable from a task whose fields genuinely are null. The key is
   absent on the healthy path, and the exit code is unchanged.
 - `task.py list --json` prints `{tasks: [...]}` on one line, one object per
-  task after `--mine`/`--status` filtering: `{dir, id, title, status,
-  display_status, priority, assignee, parent, children, package}`. With
-  `--mine --json` and no developer configured, prints `{"error": "No
-  developer set", "hint": ...}` to stderr and exits 1 (mirrors the human-mode
-  error; `hint` carries `paths.DEVELOPER_HINT`).
+  task after `--assignee`/`--status` filtering: `{dir, id, title, status,
+  display_status, priority, assignee, parent, children, package}`. Retired `--mine/-m` fails before listing, including JSON mode.
   `--json` and human `list` share one iteration pass over
   `iter_active_tasks()` — do not add a second pass for either mode.
 - `display_status` (`_display_status()` in `task.py`) shows `"active"`
@@ -749,7 +728,7 @@ a `.current-task` fallback or a Python hook directory.
 | `archive` when the status write or a child re-parent write fails | Nothing is moved; the failure and the affected child are named; exit 1 |
 | `list` with one corrupt `task.json` | Other tasks still list; the skipped task is named on stderr with the reason; exit 0 |
 | `start` on a task whose `task.json` is corrupt, or whose status write fails | Session pointer is still set and `after_start` hooks still run; the skipped status flip is named on stderr; exit 0 |
-| `list --json --mine` with no developer configured | `{"error": "No developer set", "hint": ...}` on stderr; exit 1 |
+| `list --json --mine` | Retirement diagnostic on stderr; exit 2; use explicit `--assignee` |
 | `list --json` / `list` with a parent whose stored status is `planning` and a child past `planning` | `display_status` (and human list label) shows `"active"`; `task.json.status` on disk stays `planning` |
 | `archive` / `validate` when `task.json.branch` no longer exists locally | Prints a yellow warning; does not block archive or fail validation |
 | stale session task + stale `.current-task` exists | Returns stale session state; no `.current-task` fallback |
@@ -1229,7 +1208,8 @@ GBK cannot encode \ufffd → UnicodeEncodeError: 'gbk' codec can't encode charac
 **The Problem Chain (stdin)**:
 
 ```
-AI agent pipes UTF-8 content via heredoc: cat << 'EOF' | python3 add_session.py ...
+Historical example (retired recording command): an agent piped UTF-8 content
+through a heredoc to add_session.py.
     ↓
 Python stdin defaults to GBK encoding (PowerShell default code page)
     ↓
@@ -1280,10 +1260,10 @@ if sys.platform == "win32":
 
 **Why this is bad**:
 1. **Easy to forget streams**: stdout was fixed but stdin was missed in multiple scripts, causing real user bugs
-2. **Duplicated code**: Same logic copy-pasted across `add_session.py`, `git_context.py`, etc.
+2. **Duplicated code**: Same encoding logic copy-pasted across entry scripts.
 3. **Inconsistent coverage**: Some scripts fix stdout only, others fix stdout+stderr, none fixed stdin
 
-**Real-world failure**: Users on Windows reported garbled Chinese text when using `cat << EOF | python3 add_session.py`. Root cause: stdin was never reconfigured to UTF-8.
+**Historical failure (recording command now retired)**: Users on Windows reported garbled Chinese text when using `cat << EOF | python3 add_session.py`. Root cause: stdin was never reconfigured to UTF-8.
 
 ---
 
@@ -1384,13 +1364,13 @@ Windows; that drift causes misleading bootstrap instructions.
 # In docstrings
 """
 Usage:
-    python task.py create "My Task" -d "What it delivers"      # Windows
-    python3 task.py create "My Task" -d "What it delivers"     # macOS/Linux
+    python task.py create "My Task" --creator alice --assignee bob  # Windows
+    python3 task.py create "My Task" --creator alice --assignee bob # macOS/Linux
 """
 
 # In error messages
 print("Usage: python on Windows, python3 elsewhere")
-print("Run: {{PYTHON_CMD}} ./.trellis/scripts/init_developer.py <name>")
+print("Run: {{PYTHON_CMD}} ./.trellis/scripts/task.py current")
 
 # In help text
 print("Next steps:")
@@ -1676,14 +1656,16 @@ canonical `common/safe_commit.py` helpers. Hand-rolled `git add -A` /
 Staging `.trellis/` is only ever allowed via one of two precise routes:
 
 1. **`common/safe_commit.py`'s precise allowlist** — for all Python auto-commits
-   (`add_session.py`, `task.py archive`).
+   (`task.py archive`).
 2. **`release.js`'s precise pathspec** — for release commits. The pre-release
    sweep MUST exclude `.trellis/` (see `release-process.md`).
 
 For a human/AI assembling an ad-hoc commit: `git status` first, then
 `git add <path>` per file. Never blanket-stage.
 
-#### Why: "unscoped `.trellis` staging" is a bug CLASS, not one bug (#303)
+#### Historical Incident: Unscoped Staging (#303)
+
+The session-specific trigger below is retired; the scope lesson still applies.
 
 The same defect — auto-staging more of `.trellis/` than the current scope —
 recurs across **three independent triggers**, and a fix to one does not
@@ -1702,33 +1684,18 @@ so the class re-surfaced (#303 plus 3 live recurrences in one session). Two of
 the three triggers (release, ad-hoc) bypass `safe_commit.py` entirely; the
 prohibition above is what closes those two escape hatches.
 
-#### Parity invariant (enforced by code + tests)
+#### Current staging contract
 
-> **Any staging helper, when given a `task_name`, MUST NOT do a
-> `tasks_dir.iterdir()` full scan over all task dirs.** It stages ONLY the
-> named task dir (active or archived) plus explicitly-passed children.
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
-This holds for both `safe_trellis_paths_to_add(..., task_name=...)` and
-`safe_archive_paths_to_add(..., task_name=...)`. The legacy no-`task_name`
-wide branches exist only for backwards-compat and are dormant: every live
-caller passes `task_name`. When the current task cannot be resolved (0 or ≥2
-parallel sessions), `add_session.py:_auto_commit_workspace` does NOT fall back
-to the wide scan — it stages only the developer's journal/index and skips
-every task dir, so the parallel-window case can never silently re-open the
-wide scope.
-
-### Canonical helpers
-
-| Helper | Source | Purpose |
-|---|---|---|
-| `safe_trellis_paths_to_add(repo_root, task_name=None)` | `templates/trellis/scripts/common/safe_commit.py:safe_trellis_paths_to_add` | Path whitelist for `add_session.py` — current developer's journal files + index.md, and (when `task_name` is passed) ONLY the current task dir. Callers MUST pass `task_name` so parallel-window dirty task dirs never leak into the session commit (#303). |
-| `safe_archive_paths_to_add(repo_root, task_name=None, modified_children=None)` | `templates/trellis/scripts/common/safe_commit.py:safe_archive_paths_to_add` | Path whitelist for `task.py archive` — archive subtree + explicitly-passed `modified_children` task dirs (parent/child relationship updates). Callers MUST pass `task_name`. |
-| `safe_git_add(paths, repo_root)` | `templates/trellis/scripts/common/safe_commit.py:safe_git_add` | Plain `git add -- <paths>`; never `-f`. Returns `(success, used_force=False, stderr)` |
-| `print_gitignore_warning(paths)` | `templates/trellis/scripts/common/safe_commit.py:print_gitignore_warning` | Single source of truth for the "ignored by .gitignore" warning, including the AI-defense negative example |
-| `get_session_auto_commit(repo_root)` | `templates/trellis/scripts/common/config.py:get_session_auto_commit` | Reads `session_auto_commit` from `.trellis/config.yaml` (default `True`) |
-
-Callers using this contract: `add_session.py:_auto_commit_workspace` and
-`task_store.py:_auto_commit_archive` (invoked from `task.py archive`).
+`safe_trellis_paths_to_add` is removed.
+`safe_archive_paths_to_add(repo_root: Path, archive_dest: Path,
+modified_children: list[str] | None = None) -> list[str]` handles archive
+bookkeeping. Callers supply the exact move destination; changed child metadata
+is scoped to each `task.json`, not the whole child directory. Source deletions
+are staged separately. No archive-wide scan or historical-data staging is allowed.
+`safe_git_add(paths, repo_root, retry_on_index_lock=False)` uses plain add, never force;
+`get_task_auto_commit(repo_root)` controls archive policy.
 
 ### Anti-pattern: AI-invented `git add -f .trellis/`
 
@@ -1756,77 +1723,18 @@ path list, is unacceptable.
 The wider-grain `git add -f .trellis/` stays forbidden, AND the narrow-grain
 auto `-f` is gone. There is no `-f` retry anywhere in the auto-commit path.
 
-### Pattern: path whitelist + plain `git add` + warn-and-skip
+### Pattern: task-scoped archive
 
-```python
-# add_session.py / task.py archive
-from common.safe_commit import (
-    safe_trellis_paths_to_add,
-    safe_git_add,
-    print_gitignore_warning,
-)
-from common.config import get_session_auto_commit
+Use `safe_git_add` with the archive operation's explicit path set, call
+`print_gitignore_warning` on ignored paths, and never retry with `-f`.
+When enabled, failure to commit a tracked archive move is a nonzero result,
+not successful completion. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
-def _auto_commit_workspace(repo_root: Path) -> str:
-    # Returns COMMIT_DONE / COMMIT_SKIPPED / COMMIT_BLOCKED / COMMIT_FAILED.
-    # The caller turns COMMIT_FAILED into a non-zero exit + checkpoint; see
-    # "Session recording is a resumable state machine" below.
-    if not get_session_auto_commit(repo_root):
-        print("[OK] session_auto_commit: false — skipping git stage/commit.",
-              file=sys.stderr)
-        return COMMIT_SKIPPED
+### Historical Incident: Session Recording State Machine (Retired)
 
-    # Scope staging to the CURRENT task only (#303) — never iterdir all tasks.
-    current = get_current_task(repo_root)
-    if current:
-        paths = safe_trellis_paths_to_add(repo_root, task_name=Path(current).name)
-    else:
-        # Task unknown (0 / >=2 parallel sessions): stage journal/index only,
-        # drop every task dir — do NOT re-open the wide scan.
-        paths = [
-            p for p in safe_trellis_paths_to_add(repo_root, task_name=None)
-            if not p.startswith(".trellis/tasks/")
-        ]
-    if not paths:
-        return
-
-    success, _, err = safe_git_add(paths, repo_root)  # plain `git add --`, no -f
-    if not success:
-        if "ignored by" in err.lower():
-            print_gitignore_warning(paths)        # canonical warning text
-        else:
-            print(f"[WARN] git add failed: {err.strip()}", file=sys.stderr)
-        return
-
-    # ... `git diff --cached --quiet` then `git commit -m <message>`
-```
-
-Behavior contract:
-
-- Whitelist is built only from paths that exist on disk; never pass
-  non-existent arguments to `git`.
-- `safe_git_add` runs `git add -- <paths>` exactly once. No retry, no `-f`.
-- On `ignored by` failure → call `print_gitignore_warning(paths)`.
-  `add_session.py` returns `COMMIT_BLOCKED` and still exits 0: a gitignored
-  `.trellis/` is the user telling git to stay out of this tree, which is the
-  same configured skip as `session_auto_commit: false`, not a failure worth
-  retrying. `task.py archive` returns success only when the archived source
-  was not tracked; if tracked task files were moved and the archive commit
-  cannot be created, `archive` exits non-zero so callers do not continue to
-  journal over dirty deletes.
-- On any other failure → log the stderr and return `COMMIT_FAILED`. Do not
-  re-attempt with different flags. `add_session.py` exits non-zero and prints
-  the resume checkpoint.
-- `task.py archive` is stricter than `add_session.py`: when `session_auto_commit`
-  is enabled and the source task had tracked files, the archive move must be
-  accompanied by a successful bookkeeping commit. A failed commit leaves the
-  move on disk but exits non-zero with a "Resolve `git status` before
-  continuing" message.
-- `used_force` in `safe_git_add`'s return tuple is kept for signature
-  compatibility but is always `False`. Do not introduce a code path that
-  sets it to `True`.
-
-### Scenario: Session recording is a resumable state machine
+> Historical evidence only. All signatures, commands, states and tests in this
+> section describe the removed recording runtime. Do not execute, restore or
+> implement them. Current behavior is the identity-free lifecycle linked above.
 
 #### 1. Scope / Trigger
 
@@ -2013,24 +1921,11 @@ for oid, subject in evidence:
     commit_table += f"\n| `{oid}` | {escape_markdown_cell(subject)} |"
 ```
 
-### Pattern: `session_auto_commit` config gate (added 0.5.11)
+### Pattern: archive configuration
 
-```yaml
-# .trellis/config.yaml
-# session_auto_commit: true   # default — auto-stage + auto-commit
-session_auto_commit: false    # files written, git left untouched
-```
-
-- `true` (default) — `add_session.py` and `task.py archive` stage + commit
-  via the helpers above.
-- `false` — early-return before touching git. Files are still written; the
-  user runs `git status` / `git add` / `git commit` themselves.
-- Always read via `get_session_auto_commit(repo_root)`. Do not write a custom
-  YAML reader (see "Config helpers" below).
-
-`session_auto_commit: false` is the recommended escape hatch for users whose
-`.gitignore` intentionally excludes `.trellis/` and who want session data kept
-local-only.
+Use `get_task_auto_commit(repo_root)`: explicit `task_auto_commit`, otherwise
+deprecated archive-only `session_auto_commit`, otherwise true. Neither key enables
+recording. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
 ### Pattern: warning text as canonical AI-defense surface
 
@@ -2082,43 +1977,16 @@ if "ignored by" in err.lower():
     run_git(["add", "-f", "--", *paths], cwd=repo_root)  # reverted in 0.5.11
 ```
 
-#### Correct — current-task-scoped whitelist + plain add + warn-and-skip
+#### Correct — selected-task staging
 
-```python
-current = get_current_task(repo_root)
-task_name = Path(current).name if current else None
-paths = safe_trellis_paths_to_add(repo_root, task_name=task_name)
-success, _, err = safe_git_add(paths, repo_root)
-if not success:
-    if "ignored by" in err.lower():
-        print_gitignore_warning(paths)
-    else:
-        print(f"[WARN] git add failed: {err.strip()}", file=sys.stderr)
-    return
-```
+Resolve the selected task before constructing the archive path set. Use plain
+`safe_git_add`, respect ignored paths, and preserve unrelated staged files.
 
 ### Tests Required
 
-When changing `safe_commit.py`, `add_session.py:_auto_commit_workspace`, or
-`task_store.py:_auto_commit_archive`:
-
-- `safe_trellis_paths_to_add` excludes `.trellis/.backup-*`, `.trellis/worktrees/`,
-  `.trellis/.template-hashes.json`, `.trellis/.runtime`, `.trellis/.cache/`.
-- `safe_git_add` returns `(False, False, stderr)` when paths are gitignored;
-  `used_force` is never `True` in any returned tuple.
-- `print_gitignore_warning` output contains the literal substring
-  `Do NOT use \`git add -f .trellis/\``.
-- `_auto_commit_*` early-returns when `session_auto_commit: false`, with no
-  `git` subprocess invocations.
-- **Scope-creep guard (required for both staging routes):** with two parallel
-  task dirs both dirty, running the auto-commit in task-a's context must NOT
-  stage or commit any `task-b` path, and `task-b` stays dirty. Mirror
-  `task-archive.integration.test.ts` ("does not bundle dirty changes from
-  other task dirs") for the session route in
-  `add-session.integration.test.ts`.
-- **Parity invariant:** `safe_trellis_paths_to_add(repo_root, task_name=...)`
-  returns only the named task dir (active or archived), never the whole task
-  list.
+Archive integration tests must assert other dirty tasks stay uncommitted,
+`used_force` is always false, ignored paths print the canonical warning, and
+explicit archive opt-out never stages or commits. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
 ---
 
@@ -2126,20 +1994,10 @@ When changing `safe_commit.py`, `add_session.py:_auto_commit_workspace`, or
 
 ### Design Decision: `--mode` for Context-Dependent Output
 
-When a script needs different output for different use cases, use `--mode` (not separate scripts or additional flags).
-
-**Example**: `get_context.py` serves two modes:
-- `--mode default` — full session runtime (DEVELOPER, GIT STATUS, RECENT COMMITS, CURRENT TASK, ACTIVE TASKS, MY TASKS, JOURNAL, PATHS)
-- `--mode record` — focused output for record-session (MY ACTIVE TASKS first with emphasis, GIT STATUS, RECENT COMMITS, CURRENT TASK)
-
-```python
-parser.add_argument(
-    "--mode", "-m",
-    choices=["default", "record"],
-    default="default",
-    help="Output mode: default (full context) or record (for record-session)",
-)
-```
+`get_context.py` supports `default` (session/task/Git context), `packages`
+(package discovery), and `phase` (workflow extraction). `--mode record` exits 2
+with a retirement diagnostic before context reads. Default output contains no
+identity, personal-task, workspace or journal fields. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current ownership, preservation and compatibility contract.
 
 ### Session Context Git Contract
 
@@ -2351,9 +2209,9 @@ Two near-misses worth remembering:
   `implement.jsonl` / `check.jsonl`. A missing key defaults to `auto`;
   an invalid explicit value falls back to `inline` (with a stderr warning),
   not `auto`.
-- `session_auto_commit` (0.5.11) almost shipped with a one-line
+- The historical `session_auto_commit` accessor (0.5.11) almost shipped with a one-line
   `config.get(...).strip()` reader before being routed through
-  `get_session_auto_commit`.
+  shared config accessor. Its current archive-only successor is `get_task_auto_commit`.
 
 Both were fixed by deleting the custom reader and routing through
 `_load_config` + a typed accessor.
@@ -2362,13 +2220,17 @@ Both were fixed by deleting the custom reader and routing through
 
 ```python
 # common/config.py
-DEFAULT_SESSION_AUTO_COMMIT = True
+DEFAULT_TASK_AUTO_COMMIT = True
 
-def get_session_auto_commit(repo_root: Path | None = None) -> bool:
+def get_task_auto_commit(repo_root: Path | None = None) -> bool:
     config = _load_config(repo_root)
-    raw = config.get("session_auto_commit", DEFAULT_SESSION_AUTO_COMMIT)
+    key = "task_auto_commit"
+    if key not in config and "session_auto_commit" in config:
+        key = "session_auto_commit"
+        print("[WARN] session_auto_commit is deprecated; use task_auto_commit. "
+              "The legacy setting applies only to task archive.", file=sys.stderr)
     return coerce_config_bool(
-        raw, DEFAULT_SESSION_AUTO_COMMIT, "session_auto_commit"
+        config.get(key, DEFAULT_TASK_AUTO_COMMIT), DEFAULT_TASK_AUTO_COMMIT, key
     )
 ```
 
@@ -2395,7 +2257,7 @@ naturally writes.
 One helper, not one per key. The failure mode is not a missing alias, it is
 two accessors disagreeing about the same word: `_is_true_config_value`
 (reading `packages.*.git`) accepted only the literal `"true"` while
-`get_session_auto_commit` accepted the full set, so `git: yes` silently meant
+`get_task_auto_commit` accepted the full set, so `git: yes` silently meant
 **false** — the opposite branch, no warning, in the accessor that decides
 whether a package is its own git repository. An accepted-here/rejected-there
 split is worse than a narrow set applied consistently.
@@ -2412,13 +2274,13 @@ example in `packages/cli/src/templates/trellis/config.yaml`, with:
   doesn't override the in-code default until the user uncuts it).
 
 ```yaml
-# Auto-commit behavior for session journal + task archive operations.
+# Auto-commit behavior for task archive operations.
 # - true (default): scripts auto-stage and auto-commit ...
 # - false: scripts do not touch git. Files are still written to disk; ...
 #
 # Accepts: true / false / yes / no / 1 / 0 / on / off (case-insensitive).
 #
-# session_auto_commit: true
+# task_auto_commit: true
 ```
 
 If the key is undocumented in `config.yaml`, users discover it only by
@@ -2436,8 +2298,8 @@ undetected.
 ```python
 # test fixture
 config_yaml = """
-session_auto_commit: false  # opt out — gitignored .trellis/
-session_commit_message: "chore: record"  # custom message with quotes
+task_auto_commit: false  # opt out — gitignored .trellis/
+default_package: "cli"  # custom message with quotes
 """
 # Both must parse to the unquoted, comment-free value.
 ```
@@ -2447,21 +2309,21 @@ session_commit_message: "chore: record"  # custom message with quotes
 #### Wrong — custom reader, no inline-comment handling
 
 ```python
-def _read_session_auto_commit(repo_root: Path) -> bool:
+def _read_task_auto_commit(repo_root: Path) -> bool:
     text = (repo_root / ".trellis/config.yaml").read_text(encoding="utf-8")
     for line in text.splitlines():
-        if line.startswith("session_auto_commit:"):
+        if line.startswith("task_auto_commit:"):
             return line.split(":", 1)[1].strip() == "true"
     return True
-# Fails on `session_auto_commit: false  # opt out` — returns True.
+# Fails on `task_auto_commit: false  # opt out` — returns True.
 ```
 
 #### Correct — typed accessor on `_load_config`
 
 ```python
-from common.config import get_session_auto_commit
+from common.config import get_task_auto_commit
 
-if not get_session_auto_commit(repo_root):
+if not get_task_auto_commit(repo_root):
     return  # respects inline comments, quotes, and bool aliases
 ```
 
@@ -2636,8 +2498,8 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 task.py create "Add login" --description "Email + password sign-in" --slug add-login
-  python3 task.py list --mine --status in_progress
+  python3 task.py create "Add login" --creator alice --assignee bob --slug add-login
+  python3 task.py list --assignee alice --status in_progress
 """
     )
 
@@ -2648,10 +2510,12 @@ Examples:
     create_parser.add_argument("title", help="Task title")
     create_parser.add_argument("--description", help="One-line summary")
     create_parser.add_argument("--slug", help="URL-friendly name")
+    create_parser.add_argument("--creator", help="Explicit creator; validated before writes")
+    create_parser.add_argument("--assignee", help="Explicit assignee; validated before writes")
 
     # list command
     list_parser = subparsers.add_parser("list", help="List tasks")
-    list_parser.add_argument("--mine", "-m", action="store_true")
+    list_parser.add_argument("--assignee", "-a", help="Exact assignee filter")
     list_parser.add_argument("--status", "-s", choices=["planning", "in_progress", "review", "completed"])
 
     args = parser.parse_args()
@@ -2673,9 +2537,9 @@ Examples:
 ```python
 # In task.py (root level)
 from common.paths import get_repo_root, DIR_WORKFLOW
-from common.developer import get_developer
+from common.paths import get_repo_root
 
-# In common/developer.py
+# In common/task_store.py
 from .paths import get_repo_root, DIR_WORKFLOW
 ```
 
@@ -2698,7 +2562,7 @@ from pathlib import Path
 
 # 3. Local imports
 from common.paths import get_repo_root
-from common.developer import get_developer
+from common.paths import get_repo_root
 ```
 
 ---
@@ -2823,7 +2687,7 @@ See `.trellis/scripts/task.py` for a comprehensive example with:
 
 Contracts added by task `07-22-script-qol-batch` (#394, #402, meta access):
 
-- `add_session.py` accepts repeatable `--change` / `--test` / `--next-step`;
+- **Historical, retired recording API:** `add_session.py` accepted repeatable `--change` / `--test` / `--next-step`;
   each value renders as one bullet (Testing bullets get the `[OK] ` prefix).
   **Sections with zero values are omitted entirely — never render placeholder
   text** (`(Add details)` / `(Add test results)` are banned strings; a test

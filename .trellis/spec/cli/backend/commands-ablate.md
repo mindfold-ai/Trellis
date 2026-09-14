@@ -7,7 +7,7 @@ Sources:
 - `packages/cli/src/utils/managed-removal.ts`
 
 These commands temporarily subtract every supported project-owned Trellis
-activation surface and later restore the exact pre-ablation state. The first
+activation surface and later restore the exact active pre-ablation state. The first
 public scope is full-only: capability selection and release baselines are not
 supported.
 
@@ -53,7 +53,7 @@ Full ablation removes/scrubs:
 
 1. every current manifest-owned platform file;
 2. only Trellis fields/blocks in registered mixed files;
-3. the visible `.trellis/` path, including tasks/specs/workspace state;
+3. active `.trellis/` children, including tasks/specs, excluding retired data;
 4. managed directories proven empty after planned deletions.
 
 Files outside the pruned manifest and non-Trellis mixed-file content are not
@@ -76,7 +76,8 @@ Transaction directories/state use restrictive POSIX permissions; the outer
 `0700` directory protects exact backup objects whose original modes are kept
 for restoration.
 
-The strict v1 state records:
+The storage directory remains `v1` for discovery of incompatible old records;
+it is not the schema version. New strict state uses `schemaVersion: 2` and records:
 
 - status: `preparing | applied | restoring | conflict`;
 - canonical project root plus full SHA-256 identity;
@@ -102,7 +103,7 @@ the transaction.
 
 - `stageAblationTransaction(input) -> LoadedAblationTransaction`
 - `loadAblationTransaction(projectRoot) -> LoadedAblationTransaction | null`
-- `parseAblationState(value) -> AblationStateV1`
+- `parseAblationState(value: unknown) -> AblationStateV2`
 
 ### 3. Contracts
 
@@ -122,6 +123,8 @@ the transaction.
 | --- | --- |
 | State root resolves inside project | Refuse before project/recovery mutation |
 | Unknown/extra/malformed state field | Strict parse error; no publication |
+| `schemaVersion: 1` | Explicit incompatible-recovery error before backup reads or mutation |
+| Entry is `.trellis` or a retired data path | Reject; only active children can be recovery entries |
 | Backup path differs from `backup/<relativePath>` | Parse/stage refusal |
 | Non-absent entry has no backup | Parse/stage refusal |
 | Absent entry claims a backup | Parse/stage refusal |
@@ -129,8 +132,8 @@ the transaction.
 
 ### 5. Good / base / bad cases
 
-- Good: `/tmp/trellis-state/<project-key>/backup/.trellis` for entry
-  `.trellis`.
+- Good: `/tmp/trellis-state/<project-key>/backup/.trellis/tasks` for entry
+  `.trellis/tasks`.
 - Base: no external transaction exists; restore is a friendly no-op after the
   external-root boundary is validated.
 - Bad: an external-looking symlink ancestor resolves into the project, or entry
@@ -170,8 +173,8 @@ Every manifest/state path is validated before joining:
 - unsupported filesystem object types and manifest-owned directories fail
   closed.
 
-The `.trellis` leaf may itself be a symlink; backup/restoration preserves the
-link rather than copying its target.
+A linked `.trellis` root is rejected before mutation; it must not bypass the
+historical-data boundary. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract.
 
 ## Ablate transaction
 
@@ -184,7 +187,7 @@ link rather than copying its target.
    every backup fingerprint.
 6. Write strict `preparing` state atomically, then rename the complete
    transaction into place before the first project mutation.
-7. Atomically rewrite mixed files, unlink opaque leaves, remove `.trellis`,
+7. Atomically rewrite mixed files, unlink opaque leaves, remove active `.trellis` children,
    and prune predicted empty managed directories.
 8. Verify every expected ablated fingerprint, then atomically mark `applied`.
 9. On apply/verification failure, attempt exact rollback under the same
@@ -229,8 +232,9 @@ reported path to its expected ablated state and rerunning `trellis restore`.
 
 ## Privacy and session boundary
 
-The transaction contains exact `.trellis/` task/spec/workspace bytes because
-they are required for recovery. Those user-authored files may themselves
+The transaction contains exact active task/spec bytes required for recovery.
+Retired identity/workspace/agent-traces data is never copied or fingerprinted.
+The active user-authored task/spec files may themselves
 contain prompts, responses, credentials, or other sensitive text; the CLI
 discloses this before mutation, stores the transaction under a private state
 root, and retains it only until verified restore. Ablation does not separately
@@ -243,7 +247,8 @@ session. Global Trellis CLI data remains installed and explicitly callable.
 
 ## Required tests
 
-- v1 schema/project identity/state permission and corruption rejection;
+- v2 schema/project identity/state permission and corruption rejection;
+- old v1 recovery records rejected before backup access or writes;
 - file/directory/symlink fingerprints and non-dereferencing backup;
 - invalid manifest paths and external parent-symlink refusal;
 - exact init → ablate → restore round trip with user neighbors;
@@ -251,3 +256,9 @@ session. Global Trellis CLI data remains installed and explicitly callable.
 - interrupted `preparing` recovery and apply rollback;
 - all-path restore conflict with zero project writes;
 - complete existing uninstall scrubber/integration/dirty/over-delete suites.
+
+## Retirement Compatibility
+
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract. New transactions enumerate active children only.
+Old whole-tree transactions that cannot satisfy the retired-data exclusion are
+rejected before backup reads or mutation; restore never replays historical data.

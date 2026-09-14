@@ -53,7 +53,7 @@ cannot resolve after checking code and specs.
 |---|---|---|
 | Local codebase | `rg`, file reads | Locate identifiers, files, tests, templates, generated outputs |
 | AST structure | abcoder MCP | Read package/file/function/class structure and direct references |
-| Impact graph | GitNexus MCP | Blast radius, callers, execution flows, route/tool/API consumers |
+| Impact analysis | Source references and tests | Callers, execution flows, route/tool/API consumers |
 | Trellis specs | `.trellis/spec/**` | Project conventions, release/migration/docs-site rules |
 | Task artifacts | `.trellis/tasks/<active>/{prd,design,implement}.md` | Scope, acceptance criteria, prior decisions |
 | External docs | official docs / `mcp__ref__*` / web fetch | Current library, npm, GitHub Actions, Mintlify behavior |
@@ -64,8 +64,8 @@ Examples:
   `packages/cli/scripts/create-manifest.js` and related tests.
 - "Can we rename this template path?" -> inspect manifests, template hashes,
   update flow, and generated platform paths before answering.
-- "Will changing channel `progress` output break users?" -> use GitNexus
-  impact/context and grep tests/docs.
+- "Will changing channel `progress` output break users?" -> inspect its callers,
+  execution paths and tests/docs.
 - "Should this be a new user-facing command or a channel property?" -> map the
   existing channel command model first, then recommend one shape.
 
@@ -171,7 +171,7 @@ Apply these layers in order.
    Transform -> Display`. Name the format and validation owner at each arrow.
 4. **Compatibility.** What did previous releases write, and what will current
    code read or migrate?
-5. **Blast radius.** Use GitNexus/abcoder/rg to list consumers and flows before
+5. **Blast radius.** Use source inspection, abcoder or rg to list consumers and flows before
    recommending changes.
 6. **Cross-platform.** Does the design depend on path separators, line endings,
    shell syntax, Python aliases, env var syntax, or hash stability?
@@ -183,22 +183,13 @@ Apply these layers in order.
 ## Tool Usage
 
 Use `rg` first for string-level truth. Use abcoder when a file/symbol is large
-and you need structure. Use GitNexus when the question is "who depends on this"
-or "what execution flow changes."
+and you need structure. Trace callers and imports directly when the question is
+"who depends on this" or "what execution flow changes."
 
 Required for non-trivial changes:
 
 ```bash
 rg -n '<identifier-or-path>' packages docs-site .trellis
-```
-
-When available, use:
-
-```text
-gitnexus_impact({ target, direction: "upstream" })
-gitnexus_context({ name })
-gitnexus_query({ query })
-gitnexus_detect_changes({ scope: "all" })
 ```
 
 Use abcoder for:
@@ -207,8 +198,8 @@ Use abcoder for:
 list_repos -> get_repo_structure -> get_file_structure -> get_ast_node
 ```
 
-If a graph index is stale or missing, state that and continue with direct
-repo inspection. Do not block the design on tooling freshness.
+If optional analysis tools are unavailable, continue with direct repository
+inspection. Do not block the design on optional tooling.
 
 ---
 

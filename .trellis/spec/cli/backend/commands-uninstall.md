@@ -15,8 +15,8 @@ How the uninstall command removes every Trellis-written file from a project, scr
 - **Two file classes.** Manifest entries fall into:
   1. *Opaque content files* (most `.py`, `.md`, `.toml`, `.json` agents, etc.) — unlinked outright.
   2. *Structured config files* (`settings.json`, `hooks.json`, `package.json`, `config.toml`, and mixed-ownership markdown like `AGENTS.md`) — passed through a scrubber that removes only the trellis-owned fields/block and writes the trimmed result back. If nothing meaningful remains, the scrubber returns `fullyEmpty: true` and the file is deleted instead of rewritten.
-- **`.trellis/` is removed unconditionally once execution proceeds.** Tasks, runtime state, workspace journal, config — all of it; there is no `--keep-tasks` flag. A pre-execution guard warns about (and, for scripted `--yes` runs, can fail closed on) uncommitted specs/tasks/workspace files before that deletion happens — see *Dirty-Data Guard* under *`.trellis/` Handling* below, and [Filesystem Safety § Destructive-op ownership / backup gate](./filesystem-safety.md).
-- **Idempotent.** Re-running on a project that has no `.trellis/` is a friendly no-op. Re-running after a partial failure picks up whatever is still on disk and converges.
+- **Only active `.trellis/` data is removed.** Retired identity/workspace/history stays in place without traversal. Active tasks/specs remain subject to the dirty-data guard. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract.
+- **Idempotent.** Re-running with no `.trellis/`, an empty directory, or only retained historical entries is a friendly no-op. No historical descendants are inspected. Remaining active files without an ownership manifest still require explicit reconciliation.
 - **Best-effort cleanup.** Permission errors on individual `unlink`/`rmdir` calls are swallowed; the command never aborts halfway. The summary at the end reports counts but does not enumerate per-file failures.
 
 For the *content* of each scrubber (which fields are stripped from `.claude/settings.json`, what counts as a trellis comment in `.codex/config.toml`, etc.), see `uninstall-scrubbers.md` for per-file scrubbing rules.
@@ -51,7 +51,7 @@ The command builds a plan first, prints it, optionally prompts, then executes. P
 `commands/uninstall.ts:uninstall` performs two pre-checks at the top:
 
 1. **`.trellis/` must exist.** If missing, print a gray "not installed" message and return cleanly (exit 0). This is the idempotent re-run path.
-2. **Manifest must exist and be non-empty.** `loadHashes(cwd)` returns `{}` when `.trellis/.template-hashes.json` is missing or unreadable. Without the manifest there is no way to distinguish trellis-owned platform files from user-owned ones, so the command refuses to proceed and exits with a red error message + `process.exit(1)`. Users in this state are told they may delete `.trellis/` manually.
+2. **Classify missing ownership without consuming history.** `loadHashes(cwd)` returns `{}` when `.trellis/.template-hashes.json` is missing or unreadable. Read only the `.trellis/` parent's child names via `activeTrellisChildren`. If there are no active entries, return successfully without removing anything or claiming ownership of remaining platform files. If active entries remain, refuse with `process.exit(1)` and request manifest reconciliation. Never recommend deleting the historical directory. A corrupt manifest itself counts as an active entry and is not silently ignored.
 
 ### Planner — `utils/managed-removal.ts:buildManagedRemovalPlan`
 
@@ -142,9 +142,14 @@ For each `PlannedDeletion` where `missing` is false, `fs.unlinkSync(absPath)`. E
 
 While deleting, the parent directory of each deleted file is added to a `Set<string>` of `deletedDirCandidates` (POSIX dirname of the manifest path). These are the directories that may have just become empty and are eligible for pruning.
 
-### Phase 3 — Drop `.trellis/` recursively
+### Phase 3 — Remove Active `.trellis/` Children
 
-`fs.rmSync(trellisDir, { recursive: true, force: true })`. Whole directory tree gone in one call. This is unconditional within `executeManagedRemovalPlan`; the gates all live earlier in `uninstall()` — the pre-checks that the directory exists and a manifest is present, the confirmation prompt (or `--yes`), and the *Dirty-Data Guard* below.
+`removeActiveTrellisData(trellisDir)` excludes retired names before any descent.
+It removes only active children and removes the root only when empty. Historical
+identity/workspace/agent-traces remain in place, never backed up or deleted.
+A linked `.trellis` root is refused before execution; an opaque tasks symlink
+remains supported without traversing its target. Installation/manifest checks,
+confirmation and the dirty-data guard still precede execution.
 
 ### Phase 4 — Prune empty managed sub-directories
 
@@ -165,27 +170,19 @@ Returns `{ deletedFiles, modifiedFiles, deletedDirs }` for the green summary lin
 
 ## `.trellis/` Handling
 
-`.trellis/` is removed in its entirety — there is no `--keep-config` or `--keep-tasks` flag. This includes:
+Active scripts, specs, tasks, runtime, config and management receipts are removed;
+there is no `--keep-tasks` flag. `.trellis/.developer`, `.trellis/workspace/` and
+`.trellis/agent-traces/` remain unchanged in place. Removal refuses a linked
+`.trellis` root rather than traversing it. A remaining historical-only root is
+not an active installation, and output must not claim whole-tree deletion.
 
-| Subdirectory | Status |
-|---|---|
-| `.trellis/scripts/` | Removed (template-managed). |
-| `.trellis/spec/` | Removed (managed via `update.skip` semantics during `update`, but uninstall removes everything). |
-| `.trellis/tasks/` | Removed (user data). |
-| `.trellis/workspace/` | Removed (user journal). |
-| `.trellis/.runtime/` | Removed (session state). |
-| `.trellis/config.yaml` | Removed (user config). |
-| `.trellis/.developer` | Removed. |
-| `.trellis/.current-task` | Removed. |
-| `.trellis/.template-hashes.json` | Removed. |
-
-This is **deliberately destructive** for user data inside `.trellis/`. Users are responsible for backing up `spec/`, `tasks/`, or `workspace/` before running `uninstall` if they want history preserved — the command does not create a backup itself. The plan output prints `WORKFLOW/  (entire directory — including your specs, task PRDs, journals, and memory)` so this is visible before the confirmation prompt.
-
-> Rationale: a "soft uninstall" that leaves orphan `.trellis/` content behind is a worse state than either fully-installed or fully-uninstalled — the leftover files reference removed scripts (`.trellis/scripts/`) and broken sub-agent configs (`.trellis/tasks/<id>/implement.jsonl` pointing at deleted spec files). Either keep Trellis or remove it cleanly. There is no half-Trellis mode.
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract.
 
 ### Dirty-Data Guard — `collectUncommittedTrellisData`
 
-`.trellis/spec/`, `.trellis/tasks/`, and `.trellis/workspace/` are the same subdirectories `update.ts` marks PROTECTED (user-authored specs, task PRDs, journals). Because Phase 3 deletes them with no backup, `uninstall()` calls `collectUncommittedTrellisData(cwd)` right after `renderPlan` (before the dry-run exit and before the confirmation prompt). It shells out to `git status --porcelain -- .trellis/spec .trellis/tasks .trellis/workspace` and returns the list of modified/staged/untracked paths under those three dirs. A non-git repo, or `git` being unavailable, makes it return `[]` — the guard is a no-op in that case, and uninstall proceeds exactly as it did before this fix.
+`collectUncommittedTrellisData(cwd)` checks active specs/tasks with scoped Git
+status before execution. It never probes retired workspace history. Non-Git
+repositories or unavailable Git retain the existing empty-result behavior.
 
 - **Any hits** print a red warning (up to 20 paths, then a "`… and N more`" tail) before the prompt/dry-run message.
 - **Interactive runs** (no `--yes`) only see the warning; the existing `Continue? [Y/n]` prompt is the abort point.
@@ -200,7 +197,7 @@ See [Filesystem Safety § Destructive-op ownership / backup gate](./filesystem-s
 
 ### What `uninstall` will NOT do
 
-- **Touch any file outside `.template-hashes.json`.** User-added scripts inside `.claude/hooks/`, custom commands inside `.cursor/commands/`, project-local agents the user defined themselves — all preserved. Test `#7` in `test/commands/uninstall.integration.test.ts` covers this.
+- **Touch unowned platform files outside `.template-hashes.json`.** User-added scripts inside `.claude/hooks/`, custom commands inside `.cursor/commands/`, project-local agents the user defined themselves — all preserved. Test `#7` in `test/commands/uninstall.integration.test.ts` covers this.
 - **Mutate user-authored sections of structured config.** Scrubbers strip *only* trellis-emitted entries. Other deps in `package.json`, other event hooks in `settings.json`, custom `[features]` table entries in `config.toml` — all preserved. Test `#8` covers this for `.claude/settings.json`.
 - **Touch git history.** No `git add`, no `git commit`, no `git rm`. The user is expected to commit the post-uninstall state themselves. (Same convention as `update`.)
 - **Touch `~/.codex/config.toml` or any other user-level config.** Codex's hook activation flag (`features.hooks = true`) lives in the user's home config; we never edit that. We do remove the project-local `.codex/config.toml`, which only contains `project_doc_fallback_filenames` + a comment block.

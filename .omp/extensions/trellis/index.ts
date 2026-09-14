@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { closeSync, existsSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, realpathSync, statSync, readSync } from "node:fs";
-import { join, dirname, basename, isAbsolute, relative, resolve } from "node:path";
+import { join, dirname, basename, isAbsolute, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
@@ -63,7 +63,17 @@ function isInsideRoot(root: string, candidate: string): boolean {
 // standalone copy since templates don't import from the CLI package).
 // ---------------------------------------------------------------------------
 
-const AUTO_TRUST_ENTRIES = ["tasks", "workspace"];
+const AUTO_TRUST_ENTRIES = ["tasks"];
+
+function isRetiredDataPath(file: string, projectRoot: string): boolean {
+   if (/(?:^|\/)\.trellis\/(?:\.developer|workspace|agent-traces|\.backup-[^/]*)(?:\/|$)/.test(resolve(file).split("\\").join("/"))) return true;
+   try {
+      const entry = relative(realpathSync(join(projectRoot, ".trellis")), resolve(file)).split(sep)[0];
+      return [".developer", "workspace", "agent-traces"].includes(entry) || entry.startsWith(".backup-");
+   } catch {
+      return false;
+   }
+}
 
 function stripTrustValue(s: string): string {
    return s.trim().replace(/\s*#.*$/, "").trim().replace(/^['"]|['"]$/g, "");
@@ -126,9 +136,10 @@ function parseChannelTrustSection(content: string): { trustedDirs: string[]; aut
 function resolveTrustedRoots(projectRoot: string): string[] {
    const configPath = join(projectRoot, ".trellis", "config.yaml");
    let config: { trustedDirs: string[]; autoTrustSymlinks?: boolean } = { trustedDirs: [] };
-   if (existsSync(configPath)) {
+   const configText = readActiveText(projectRoot, configPath);
+   if (configText !== null) {
       try {
-         config = parseChannelTrustSection(readFileSync(configPath, "utf-8"));
+         config = parseChannelTrustSection(configText);
       } catch {
          // ignore
       }
@@ -136,8 +147,10 @@ function resolveTrustedRoots(projectRoot: string): string[] {
 
    const roots: string[] = [];
    for (const entry of config.trustedDirs) {
+      if (isRetiredDataPath(resolve(projectRoot, entry), projectRoot)) continue;
       try {
-         roots.push(realpathSync(resolve(projectRoot, entry)));
+         const real = realpathSync(resolve(projectRoot, entry));
+         if (!isRetiredDataPath(real, projectRoot)) roots.push(real);
       } catch {
          // entry not found or invalid — skip
       }
@@ -148,7 +161,8 @@ function resolveTrustedRoots(projectRoot: string): string[] {
          const entryPath = join(projectRoot, ".trellis", entryName);
          try {
             if (lstatSync(entryPath).isSymbolicLink()) {
-               roots.push(realpathSync(entryPath));
+               const real = realpathSync(entryPath);
+               if (!isRetiredDataPath(real, projectRoot)) roots.push(real);
             }
          } catch {
             // missing / broken symlink — nothing to trust
@@ -164,9 +178,14 @@ function resolveProjectFile(
    file: string,
    trustedRoots: string[],
 ): string | null {
+   if (isRetiredDataPath(resolve(projectRoot, file), projectRoot)) {
+      process.stderr.write("Retired identity/history is not context; use task/spec context instead.\n");
+      return null;
+   }
    try {
       const rootReal = realpathSync(projectRoot);
       const targetReal = realpathSync(resolve(projectRoot, file));
+      if (isRetiredDataPath(targetReal, projectRoot)) return null;
       if (isInsideRoot(rootReal, targetReal)) return targetReal;
       if (trustedRoots.some((root) => isInsideRoot(root, targetReal))) return targetReal;
       return null;
@@ -199,11 +218,26 @@ function displayProjectPath(projectRoot: string, filePath: string, taskDir?: str
 // Active task resolution
 // ---------------------------------------------------------------------------
 
+function isActiveDataPath(projectRoot: string, file: string): boolean {
+   if (isRetiredDataPath(file, projectRoot)) return false;
+   try {
+      return !isRetiredDataPath(realpathSync(file), projectRoot);
+   } catch {
+      return false;
+   }
+}
+
+function readActiveText(projectRoot: string, file: string): string | null {
+   if (!isActiveDataPath(projectRoot, file)) return null;
+   try { return readFileSync(file, "utf-8"); } catch { return null; }
+}
+
 function resolveActiveTaskStatus(
    projectRoot: string,
    contextKey: string | null,
 ): { status: string; taskDir: string | null; taskTitle: string | null } {
    const sessionsDir = join(projectRoot, ".trellis", ".runtime", "sessions");
+   if (!isActiveDataPath(projectRoot, sessionsDir)) return { status: "no_task", taskDir: null, taskTitle: null };
    if (!existsSync(sessionsDir)) return { status: "no_task", taskDir: null, taskTitle: null };
 
    // --- 通过 context key 解析 session 文件 ---
@@ -232,6 +266,7 @@ function resolveActiveTaskStatus(
    }
 
    // --- 读取 session 数据 ---
+   if (!isActiveDataPath(projectRoot, sessionFilePath)) return { status: "no_task", taskDir: null, taskTitle: null };
    let sessionData: Record<string, unknown>;
    try {
       sessionData = JSON.parse(readFileSync(sessionFilePath, "utf-8"));
@@ -250,8 +285,8 @@ function resolveActiveTaskStatus(
    // closed the writer.
    const taskDir = resolveProjectFile(projectRoot, currentTask, resolveTrustedRoots(projectRoot));
    if (!taskDir) return { status: "no_task", taskDir: null, taskTitle: null };
-   const taskJsonPath = join(taskDir, "task.json");
-   if (!existsSync(taskJsonPath)) return { status: "no_task", taskDir: null, taskTitle: null };
+   const taskJsonPath = resolveProjectFile(projectRoot, join(taskDir, "task.json"), resolveTrustedRoots(projectRoot));
+   if (!taskJsonPath) return { status: "no_task", taskDir: null, taskTitle: null };
 
    let taskData: Record<string, unknown>;
    try {
@@ -312,22 +347,23 @@ function taskContextJsonlNames(agentType?: AgentType): string[] {
 function taskContextInputPaths(projectRoot: string, taskDir: string, agentType?: AgentType): string[] {
    const trustedRoots = resolveTrustedRoots(projectRoot);
    const paths = new Set<string>([
-      join(projectRoot, ".trellis", "config.yaml"),
       join(taskDir, "prd.md"),
       join(taskDir, "info.md"),
    ]);
+   const configPath = join(projectRoot, ".trellis", "config.yaml");
+   if (isActiveDataPath(projectRoot, configPath)) paths.add(configPath);
    for (const jsonlName of taskContextJsonlNames(agentType)) {
       const jsonlPath = join(taskDir, jsonlName);
       paths.add(jsonlPath);
       if (!existsSync(jsonlPath)) continue;
       const displayPath = displayProjectPath(projectRoot, jsonlPath, taskDir);
-      const { lines } = readJsonlLines(jsonlPath, displayPath);
+      const { lines } = readJsonlLines(jsonlPath, displayPath, projectRoot);
       for (const line of lines) {
          try {
             const row = JSON.parse(line.trim()) as Record<string, unknown>;
             const file = typeof row.file === "string" ? row.file.trim() : "";
             const candidatePath = file ? resolve(projectRoot, file) : "";
-            if (candidatePath && isInsideRoot(resolve(projectRoot), candidatePath)) paths.add(candidatePath);
+            if (candidatePath && !isRetiredDataPath(candidatePath, projectRoot) && isInsideRoot(resolve(projectRoot), candidatePath)) paths.add(candidatePath);
             const targetPath = file ? resolveProjectFile(projectRoot, file, trustedRoots) : null;
             if (targetPath) paths.add(targetPath);
          } catch {
@@ -335,7 +371,7 @@ function taskContextInputPaths(projectRoot: string, taskDir: string, agentType?:
          }
       }
    }
-   return [...paths];
+   return [...paths].filter((file) => !isRetiredDataPath(file, projectRoot));
 }
 
 function taskContextSignature(projectRoot: string, taskDir: string, agentType?: AgentType): string {
@@ -390,8 +426,8 @@ function unquoteYaml(value: string): string {
 
 function readContextInjectionLimits(projectRoot: string): ContextInjectionLimits {
    const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS };
-   let config = "";
-   try { config = readFileSync(join(projectRoot, ".trellis", "config.yaml"), "utf-8"); } catch { return limits; }
+   const config = readActiveText(projectRoot, join(projectRoot, ".trellis", "config.yaml"));
+   if (config === null) return limits;
 
    let inSection = false;
    let sectionIndent = -1;
@@ -524,9 +560,11 @@ function isUtf8(data: Buffer): boolean {
    return utf8Status(data) === "valid";
 }
 
-function readFilePrefix(filePath: string, maxBytes: number): { data: Buffer; size: number } | null {
+function readFilePrefix(filePath: string, maxBytes: number, projectRoot: string): { data: Buffer; size: number } | null {
+   if (isRetiredDataPath(filePath, projectRoot)) return null;
    let fd: number | null = null;
    try {
+      if (isRetiredDataPath(realpathSync(filePath), projectRoot)) return null;
       fd = openSync(filePath, "r");
       if (maxBytes <= 0) {
          const data = readFileSync(fd);
@@ -571,8 +609,9 @@ function materialize(
    reason: string,
    maxBytes: number,
    kind: "file" | "artifact",
+   projectRoot: string,
 ): MaterializedFile {
-   const file = readFilePrefix(targetPath, maxBytes);
+   const file = readFilePrefix(targetPath, maxBytes, projectRoot);
    if (!file) {
       return { block: null, notice: omittedNotice(displayPath, null, `${kind} is missing or unreadable`) };
    }
@@ -594,9 +633,11 @@ function materialize(
    };
 }
 
-function readJsonlLines(jsonlPath: string, displayPath: string): { lines: string[]; omitted: string | null } {
+function readJsonlLines(jsonlPath: string, displayPath: string, projectRoot: string): { lines: string[]; omitted: string | null } {
+   if (isRetiredDataPath(jsonlPath, projectRoot)) return { lines: [], omitted: "Retired identity/history is not context; use task/spec context instead." };
    let fd: number | null = null;
    try {
+      if (isRetiredDataPath(realpathSync(jsonlPath), projectRoot)) return { lines: [], omitted: "Retired identity/history is not context; use task/spec context instead." };
       fd = openSync(jsonlPath, "r");
       const data = Buffer.allocUnsafe(MAX_JSONL_BYTES + 1);
       const bytesRead = readFully(fd, data);
@@ -644,13 +685,13 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
    const prdPath = join(taskDir, "prd.md");
    const relativePrdPath = displayProjectPath(projectRoot, prdPath, taskDir);
    if (existsSync(prdPath)) {
-      const artifact = materialize(prdPath, relativePrdPath, "Requirements document", limits.max_artifact_bytes, "artifact");
+      const artifact = materialize(prdPath, relativePrdPath, "Requirements document", limits.max_artifact_bytes, "artifact", projectRoot);
       appendCandidate(artifact.block, artifact.notice);
    }
    const infoPath = join(taskDir, "info.md");
    const relativeInfoPath = displayProjectPath(projectRoot, infoPath, taskDir);
    if (existsSync(infoPath)) {
-      const artifact = materialize(infoPath, relativeInfoPath, "Task information", limits.max_artifact_bytes, "artifact");
+      const artifact = materialize(infoPath, relativeInfoPath, "Task information", limits.max_artifact_bytes, "artifact", projectRoot);
       appendCandidate(artifact.block, artifact.notice);
    }
 
@@ -666,7 +707,7 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
       if (!existsSync(jsonlPath)) continue;
 
       const relativeJsonlPath = displayProjectPath(projectRoot, jsonlPath, taskDir);
-      const manifest = readJsonlLines(jsonlPath, relativeJsonlPath);
+      const manifest = readJsonlLines(jsonlPath, relativeJsonlPath, projectRoot);
       if (manifest.omitted) {
          appendCandidate(`## ${jsonlName}\n\n${manifest.omitted}`);
          continue;
@@ -685,7 +726,7 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
             if (!targetPath) continue;
             if (includedPaths.has(targetPath)) continue;
             includedPaths.add(targetPath);
-            const materialized = materialize(targetPath, file, typeof row.reason === "string" ? row.reason : "-", limits.max_file_bytes, "file");
+            const materialized = materialize(targetPath, file, typeof row.reason === "string" ? row.reason : "-", limits.max_file_bytes, "file", projectRoot);
             const sectionPrefix = sectionHeaderEmitted
                ? "\n\n---\n\n"
                : `${parts.length > 0 ? "\n\n" : ""}## ${jsonlName}\n\n`;
@@ -739,8 +780,8 @@ function isYamlNonStringScalar(raw: string): boolean {
 }
 
 function readPromptInjectionSkipKeyword(projectRoot: string): string {
-   let config = "";
-   try { config = readFileSync(join(projectRoot, ".trellis", "config.yaml"), "utf-8"); } catch { return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD; }
+   const config = readActiveText(projectRoot, join(projectRoot, ".trellis", "config.yaml"));
+   if (config === null) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD;
 
    let inSection = false;
    let sectionIndent = -1;
@@ -821,8 +862,7 @@ class TurnContextCache {
       const { status } = resolveActiveTaskStatus(projectRoot, contextKey);
 
       const workflowPath = join(projectRoot, ".trellis", "workflow.md");
-      let workflowMd = "";
-      try { workflowMd = readFileSync(workflowPath, "utf-8"); } catch { }
+      const workflowMd = readActiveText(projectRoot, workflowPath);
 
       let workflowBody = "";
       if (workflowMd) {

@@ -20,6 +20,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import {
+  isRetiredDataPath,
+  resolveTrellisDataRoot,
+} from "../../utils/retired-data.js";
 
 export interface AgentDefinition {
   name: string;
@@ -59,6 +63,7 @@ export function findAgentFile(
     // or one of the trusted roots (see context-trust.ts) — accommodates
     // `.trellis/agents` reached through a trusted `.trellis` symlink.
     const real = fs.existsSync(p) ? fs.realpathSync(p) : p;
+    if (isRetiredDataPath(real, resolveTrellisDataRoot(cwd))) continue;
     const inAgentsRoot =
       real === agentsRoot || real.startsWith(agentsRoot + path.sep);
     const inTrustedRoot = trustedRoots.some(

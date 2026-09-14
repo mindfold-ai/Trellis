@@ -38,7 +38,7 @@ function buildSnowCommandJson(name: string, content: string): string {
     name === "continue"
       ? "Resume the current Trellis task at the right workflow phase."
       : name === "finish-work"
-        ? "Wrap up the current Trellis session: archive tasks and record journal."
+        ? "Wrap up the current Trellis session: archive selected completed tasks."
         : `Trellis: ${name}`;
 
   return (

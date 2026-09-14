@@ -422,9 +422,25 @@ function num(v: unknown): number {
 function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 24);
 }
-function readText(p: string) {
+function isHistoricalPath(root: string, p: string): boolean {
+  const full = resolve(root, p);
+  const protectedName = (name: string) => [".developer", "workspace", "agent-traces"].includes(name) || name.startsWith(".backup-");
+  const parts = full.split(/[\\/]/);
+  if (parts.some((name, index) => name === ".trellis" && protectedName(parts[index + 1] ?? ""))) return true;
   try {
-    return readFileSync(p, "utf-8");
+    return protectedName(relative(realpathSync(join(root, ".trellis")), full).split(/[\\/]/)[0] ?? "");
+  } catch { return false; }
+}
+function activePath(root: string, p: string): string | null {
+  const full = resolve(root, p);
+  if (isHistoricalPath(root, full)) return null;
+  try { return isHistoricalPath(root, realpathSync(full)) ? null : full; } catch { return null; }
+}
+function readText(p: string, root: string) {
+  const file = activePath(root, p);
+  if (!file) return "";
+  try {
+    return readFileSync(file, "utf-8");
   } catch {
     return "";
   }
@@ -815,7 +831,7 @@ function unquoteYaml(s: string): string {
  * fall back to the default for that key). */
 function readContextInjectionLimits(repoRoot: string): ContextInjectionLimits {
   const limits: ContextInjectionLimits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS };
-  const text = readText(join(repoRoot, ".trellis", "config.yaml"));
+  const text = readText(join(repoRoot, ".trellis", "config.yaml"), repoRoot);
   if (!text) return limits;
 
   let inSection = false;
@@ -888,7 +904,8 @@ function budgetedBlock(
   return block;
 }
 function readFileBytes(basePath: string, filePath: string): Buffer | null {
-  const full = join(basePath, filePath);
+  const full = activePath(basePath, join(basePath, filePath));
+  if (!full) return null;
   try {
     if (!statSync(full).isFile()) return null;
   } catch {
@@ -943,8 +960,8 @@ interface JsonlEntry {
   type: string;
   reason: string;
 }
-function readJsonlEntries(basePath: string, jsonlPath: string): JsonlEntry[] {
-  const text = readText(join(basePath, jsonlPath));
+function readJsonlEntries(basePath: string, jsonlPath: string, root: string): JsonlEntry[] {
+  const text = readText(join(basePath, jsonlPath), root);
   if (!text) return [];
   const entries: JsonlEntry[] = [];
   for (const line of text.split(/\r?\n/)) {
@@ -1080,7 +1097,7 @@ function readTaskDir(root: string, key: string | null): string | null {
   if (!key) return null;
   try {
     const ctx = JSON.parse(
-      readText(join(root, ".trellis", ".runtime", "sessions", `${key}.json`)),
+      readText(join(root, ".trellis", ".runtime", "sessions", `${key}.json`), root),
     ) as JsonObject;
     let ref = str(ctx.current_task);
     if (!ref) return null;
@@ -1092,7 +1109,7 @@ function readTaskDir(root: string, key: string | null): string | null {
       : isAbsolute(ref)
         ? ref
         : join(root, ".trellis", "tasks", ref);
-    return containInRoot(root, candidate);
+    return activePath(root, candidate) ? containInRoot(root, candidate) : null;
   } catch {
     return null;
   }
@@ -1102,7 +1119,7 @@ function readTaskDir(root: string, key: string | null): string | null {
 const WF_RE =
   /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g;
 function workflowBreadcrumb(root: string, key: string | null): string {
-  const wf = readText(join(root, ".trellis", "workflow.md"));
+  const wf = readText(join(root, ".trellis", "workflow.md"), root);
   if (!wf) return "";
   const templates: Record<string, string> = {};
   for (const m of wf.matchAll(WF_RE)) {
@@ -1115,7 +1132,7 @@ function workflowBreadcrumb(root: string, key: string | null): string {
     lookup = "no_task";
   if (dir) {
     try {
-      const d = JSON.parse(readText(join(dir, "task.json"))) as JsonObject;
+      const d = JSON.parse(readText(join(dir, "task.json"), root)) as JsonObject;
       const status = str(d.status) ?? "";
       const id = str(d.id) ?? dir.split(/[\\/]/).pop() ?? "";
       if (status) {
@@ -1131,7 +1148,7 @@ function workflowBreadcrumb(root: string, key: string | null): string {
 // ── Session Overview ───────────────────────────────────────────────────
 function runContextScript(root: string, key: string | null, args: string[]): string {
   const script = join(root, ".trellis", "scripts", "get_context.py");
-  if (!exists(script)) return "";
+  if (!activePath(root, script) || !exists(script)) return "";
   try {
     const py = process.platform === "win32" ? "python" : "python3";
     const result = spawnSync(py, [script, ...args], {
@@ -1194,7 +1211,7 @@ function buildContext(root: string, agent: string, key: string | null): string {
   const jsonlName = TRELLIS_AGENT_JSONL[agent] ?? "";
   const specBlocks: string[] = [];
   if (jsonlName) {
-    for (const entry of readJsonlEntries(dir, jsonlName)) {
+    for (const entry of readJsonlEntries(dir, jsonlName, root)) {
       if (entry.type === "directory") continue;
       const block = materializeFile(root, entry.file, entry.reason, limits, budget);
       if (block) specBlocks.push(block);
@@ -1257,7 +1274,7 @@ function buildPrompt(
   key: string | null,
 ): string {
   const agent = normalizeAgent(input.agent);
-  const raw = readText(join(root, ".pi", "agents", `${agent}.md`));
+  const raw = readText(join(root, ".pi", "agents", `${agent}.md`), root);
   const def = stripFM(raw);
   const ctx = buildContext(root, agent, key);
   return [
@@ -1610,7 +1627,7 @@ async function runSubagent(
 ): Promise<{ output: string; details: ProgressDetails; failed: boolean }> {
   const parentSessionId = parentSessionIdForChild(ctx);
   const agentName = normalizeAgent(input.agent);
-  const agentRaw = readText(join(root, ".pi", "agents", `${agentName}.md`));
+  const agentRaw = readText(join(root, ".pi", "agents", `${agentName}.md`), root);
   const agentCfg = parseAgentFM(agentRaw);
   const runCfg = resolveRunCfg(
     input,

@@ -36,10 +36,12 @@ describe("ablation-store", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-ablation-store-"));
     projectDir = path.join(tmpDir, "project");
     stateRoot = path.join(tmpDir, "state");
-    fs.mkdirSync(path.join(projectDir, ".trellis"), { recursive: true });
+    fs.mkdirSync(path.join(projectDir, ".trellis", "active"), {
+      recursive: true,
+    });
     fs.writeFileSync(path.join(projectDir, "managed.txt"), "managed\n");
     fs.writeFileSync(
-      path.join(projectDir, ".trellis", "config.yaml"),
+      path.join(projectDir, ".trellis", "active", "config.yaml"),
       "version: 1\n",
     );
     originalStateRoot = process.env[ABLATION_STATE_ROOT_ENV];
@@ -65,10 +67,10 @@ describe("ablation-store", () => {
         backupPath: "backup/managed.txt",
       },
       {
-        relativePath: ".trellis",
-        pre: fingerprintPath(path.join(projectDir, ".trellis")),
+        relativePath: ".trellis/active",
+        pre: fingerprintPath(path.join(projectDir, ".trellis", "active")),
         expectedAblated: { kind: "absent" },
-        backupPath: "backup/.trellis",
+        backupPath: "backup/.trellis/active",
       },
     ];
   }
@@ -98,6 +100,85 @@ describe("ablation-store", () => {
     const other = path.join(tmpDir, "other");
     fs.mkdirSync(other);
     expect(projectKey(other)).not.toBe(key);
+  });
+
+  it.each(["workspace", "agent-traces", ".backup-old", ".developer"])("rejects historical recovery root %s before IO", (name) => {
+    const history = path.join(tmpDir, "old-project/.trellis", name);
+    fs.mkdirSync(history, { recursive: true });
+    process.env[ABLATION_STATE_ROOT_ENV] = history;
+    const read = vi.spyOn(fs, "readFileSync");
+    const mkdir = vi.spyOn(fs, "mkdirSync");
+    const open = vi.spyOn(fs, "openSync");
+    const chmod = vi.spyOn(fs, "chmodSync");
+    expect(() => getTransactionPaths(projectDir)).toThrow("Retired identity/history");
+    expect(() => loadAblationTransaction(projectDir)).toThrow("Retired identity/history");
+    expect(() => stageAblationTransaction({ projectRoot: projectDir, configuredPlatforms: [], manifest: {}, entries: [] })).toThrow("Retired identity/history");
+    for (const spy of [read, mkdir, open, chmod]) expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing recovery root beneath an alias into external workflow history", () => {
+    const backing = path.join(tmpDir, "backing");
+    fs.renameSync(path.join(projectDir, ".trellis"), backing);
+    fs.symlinkSync(backing, path.join(projectDir, ".trellis"), "dir");
+    fs.mkdirSync(path.join(backing, "workspace"));
+    const alias = path.join(tmpDir, "alias");
+    fs.symlinkSync(path.join(backing, "workspace"), alias, "dir");
+    expect(() => getTransactionPaths(projectDir, path.join(alias, "missing"))).toThrow("Retired identity/history");
+    expect(fs.readdirSync(path.join(backing, "workspace"))).toEqual([]);
+  });
+
+  it.each(["stateFile", "lockFile", "backupDir", "transactionDir"] as const)("rejects a historical %s alias beneath an active recovery root", (key) => {
+    const paths = getTransactionPaths(projectDir);
+    const history = path.join(tmpDir, "old-project/.trellis/workspace/entry");
+    fs.mkdirSync(path.dirname(history), { recursive: true });
+    if (key.endsWith("Dir")) fs.mkdirSync(history);
+    else fs.writeFileSync(history, "historical bytes");
+    fs.mkdirSync(path.dirname(paths[key]), { recursive: true });
+    fs.symlinkSync(history, paths[key], key.endsWith("Dir") ? "dir" : "file");
+    const read = vi.spyOn(fs, "readFileSync");
+    expect(() => getTransactionPaths(projectDir)).toThrow("Retired identity/history");
+    expect(() => loadAblationTransaction(projectDir)).toThrow("Retired identity/history");
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("rejects old whole-tree recovery records before reading backups or writing", () => {
+    const transaction = stage();
+    const old = { ...transaction.state, schemaVersion: 1 };
+    fs.writeFileSync(transaction.paths.stateFile, JSON.stringify(old));
+    const read = vi.spyOn(fs, "readFileSync");
+    const write = vi.spyOn(fs, "writeFileSync");
+    expect(() => loadAblationTransaction(projectDir)).toThrow(
+      /Incompatible recovery record/,
+    );
+    expect(read.mock.calls.map(([file]) => file)).toEqual([
+      transaction.paths.stateFile,
+    ]);
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("rejects retired entries and whole-root records even with the current schema", () => {
+    const transaction = stage();
+    for (const relativePath of [
+      ".trellis",
+      ".trellis/.developer",
+      ".trellis/workspace/index.md",
+      ".trellis/agent-traces/raw",
+      ".trellis/.backup-old",
+      ".trellis/.backup-old/other.txt",
+    ]) {
+      expect(() =>
+        parseAblationState({
+          ...transaction.state,
+          entries: [
+            {
+              relativePath,
+              pre: { kind: "absent" },
+              expectedAblated: { kind: "absent" },
+            },
+          ],
+        }),
+      ).toThrow(/Incompatible recovery record/);
+    }
   });
 
   it("fingerprints files, directories, and symlinks without dereferencing", () => {
@@ -403,7 +484,11 @@ describe("ablation-store", () => {
     const transaction = stage();
     removeManagedState();
     transitionAblationState(transaction, "applied");
-    const trellisPath = path.join(fs.realpathSync(projectDir), ".trellis");
+    const trellisPath = path.join(
+      fs.realpathSync(projectDir),
+      ".trellis",
+      "active",
+    );
     const originalRenameSync = fs.renameSync.bind(fs);
     vi.spyOn(fs, "renameSync").mockImplementation((source, destination) => {
       if (

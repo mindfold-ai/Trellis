@@ -37,6 +37,24 @@ const noop = () => {};
 describe("uninstall() integration", () => {
   let tmpDir: string;
 
+  it("refuses structured settings linked to historical data before scrub or read", async () => {
+    await init({ creator: "test", assignee: "test", yes: true, claude: true, force: true });
+    const settings = path.join(tmpDir, ".claude/settings.json");
+    const history = path.join(tmpDir, ".trellis/workspace/settings.json");
+    const content = fs.readFileSync(settings, "utf8");
+    fs.mkdirSync(path.dirname(history), { recursive: true });
+    fs.writeFileSync(history, content);
+    fs.unlinkSync(settings);
+    fs.symlinkSync(history, settings);
+    const read = vi.spyOn(fs, "readFileSync");
+    await expect(uninstall({ yes: true })).rejects.toThrow(/retired/i);
+    expect(read.mock.calls.some(([name]) => String(name) === settings || String(name) === history)).toBe(false);
+    read.mockRestore();
+    expect(fs.readFileSync(history, "utf8")).toBe(content);
+    expect(fs.readlinkSync(settings)).toBe(history);
+    expect(fs.existsSync(path.join(tmpDir, ".trellis/.version"))).toBe(true);
+  });
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-uninstall-int-"));
     vi.spyOn(process, "cwd").mockReturnValue(tmpDir);
@@ -63,20 +81,116 @@ describe("uninstall() integration", () => {
     expect(fs.readdirSync(tmpDir)).toEqual([]);
   });
 
-  it("#2 errors when manifest is missing but .trellis/ exists", async () => {
-    fs.mkdirSync(path.join(tmpDir, DIR_NAMES.WORKFLOW));
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(((code?: number) => {
-        throw new Error(`process.exit(${code ?? 0})`);
-      }) as never);
+  it("preserves old backup boundaries without reading or traversing them", async () => {
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      claude: true,
+      force: true,
+    });
+    const backup = path.join(tmpDir, ".trellis", ".backup-old");
+    const files = [
+      ".trellis/.developer",
+      ".trellis/workspace/arbitrary.bin",
+      "other.txt",
+    ];
+    for (const file of files) {
+      const target = path.join(backup, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, `unchanged:${file}`);
+    }
+    const read = vi.spyOn(fs, "readFileSync");
+    const list = vi.spyOn(fs, "readdirSync");
+    const copy = vi.spyOn(fs, "copyFileSync");
+    const remove = vi.spyOn(fs, "rmSync");
+    await uninstall({ yes: true });
+    for (const calls of [
+      read.mock.calls,
+      list.mock.calls,
+      copy.mock.calls,
+      remove.mock.calls,
+    ]) {
+      expect(
+        calls.every(([file]) => !String(file).includes(".backup-old")),
+      ).toBe(true);
+    }
+    read.mockRestore();
+    list.mockRestore();
+    copy.mockRestore();
+    remove.mockRestore();
+    for (const file of files)
+      expect(fs.readFileSync(path.join(backup, file), "utf-8")).toBe(
+        `unchanged:${file}`,
+      );
+    expect(fs.existsSync(path.join(tmpDir, ".trellis", "scripts"))).toBe(false);
+  });
+
+  it("#2 errors without deletion advice when active files have no manifest", async () => {
+    fs.mkdirSync(path.join(tmpDir, DIR_NAMES.WORKFLOW, "scripts"), { recursive: true });
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
+      code?: number,
+    ) => {
+      throw new Error(`process.exit(${code ?? 0})`);
+    }) as never);
 
     await expect(uninstall({ yes: true })).rejects.toThrow("process.exit(1)");
     expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(String(vi.mocked(console.error).mock.calls.flat().join(" "))).not.toContain("manually delete");
+    expect(fs.existsSync(path.join(tmpDir, DIR_NAMES.WORKFLOW, "scripts"))).toBe(true);
+  });
+
+  it.each([{ yes: true }, { dryRun: true }])("keeps a history-only directory opaque on repeated uninstall (%j)", async (options) => {
+    await init({ creator: "test", assignee: "test", yes: true, claude: true, force: true });
+    const files = [
+      ".trellis/.developer",
+      ".trellis/workspace/person/journal.md",
+      ".trellis/agent-traces/index.md",
+      ".trellis/.backup-old/.trellis/workspace/index.md",
+    ];
+    for (const file of files) {
+      fs.mkdirSync(path.dirname(path.join(tmpDir, file)), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, file), `retained:${file}\r\n`);
+    }
+    await uninstall({ yes: true });
+    expect(fs.existsSync(path.join(tmpDir, ".trellis/.template-hashes.json"))).toBe(false);
+    vi.mocked(inquirer.prompt).mockClear();
+    const reads = vi.spyOn(fs, "readFileSync");
+    const lists = vi.spyOn(fs, "readdirSync");
+    const removals = vi.spyOn(fs, "rmSync");
+    const exit = vi.spyOn(process, "exit");
+    await uninstall(options);
+    expect(exit).not.toHaveBeenCalled();
+    expect(removals).not.toHaveBeenCalled();
+    expect(inquirer.prompt).not.toHaveBeenCalled();
+    for (const [file] of [...reads.mock.calls, ...lists.mock.calls]) {
+      const relative = path.relative(tmpDir, String(file)).replaceAll("\\", "/");
+      expect(relative).not.toMatch(/^\.trellis\/(?:workspace|agent-traces|\.developer|\.backup-)/);
+    }
+    reads.mockRestore();
+    lists.mockRestore();
+    removals.mockRestore();
+    exit.mockRestore();
+    for (const file of files) expect(fs.readFileSync(path.join(tmpDir, file), "utf8")).toBe(`retained:${file}\r\n`);
+  });
+
+  it("treats an empty leftover .trellis directory as a no-op", async () => {
+    fs.mkdirSync(path.join(tmpDir, ".trellis"));
+    const exit = vi.spyOn(process, "exit");
+    await uninstall({ yes: true });
+    expect(exit).not.toHaveBeenCalled();
+    expect(fs.readdirSync(path.join(tmpDir, ".trellis"))).toEqual([]);
   });
 
   it("#3 init → uninstall → project is clean", async () => {
-    await init({ yes: true, claude: true, cursor: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      claude: true,
+      cursor: true,
+      force: true,
+    });
 
     // Sanity: init wrote things.
     expect(fs.existsSync(path.join(tmpDir, ".trellis"))).toBe(true);
@@ -129,7 +243,13 @@ describe("uninstall() integration", () => {
   });
 
   it("#4 dry-run does not modify anything", async () => {
-    await init({ yes: true, claude: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      claude: true,
+      force: true,
+    });
 
     // Snapshot file tree contents.
     const snapshot: Record<string, string> = {};
@@ -154,7 +274,13 @@ describe("uninstall() integration", () => {
   });
 
   it("#5 user input 'no' aborts without modification", async () => {
-    await init({ yes: true, claude: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      claude: true,
+      force: true,
+    });
     vi.mocked(inquirer.prompt).mockResolvedValueOnce({ proceed: false });
 
     await uninstall({});
@@ -164,7 +290,13 @@ describe("uninstall() integration", () => {
   });
 
   it("#6 user-modified trellis file is still deleted (manifest defines scope)", async () => {
-    await init({ yes: true, cursor: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      cursor: true,
+      force: true,
+    });
 
     // Pick any manifest-tracked file under .cursor/ and overwrite it.
     const hashesBefore = loadHashes(tmpDir);
@@ -185,7 +317,13 @@ describe("uninstall() integration", () => {
   });
 
   it("#7 user-added file in a managed dir is NOT deleted", async () => {
-    await init({ yes: true, claude: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      claude: true,
+      force: true,
+    });
 
     // Drop a user file into .claude/hooks/ that the manifest doesn't track.
     const userHookDir = path.join(tmpDir, ".claude", "hooks");
@@ -206,7 +344,13 @@ describe("uninstall() integration", () => {
     // manifest file is opaque and gets deleted, so the entire .kilocode/
     // tree should disappear, demonstrating both nested-subdir cleanup and
     // empty-platform-root cleanup.
-    await init({ yes: true, kilo: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      kilo: true,
+      force: true,
+    });
 
     // Detect kilo's actual config dir from manifest entries.
     const hashesBefore = loadHashes(tmpDir);
@@ -228,7 +372,13 @@ describe("uninstall() integration", () => {
     // After trellis hooks are stripped, `{ version: 1 }` remains — not fully
     // empty per the scrubber, so the file (and therefore .cursor/) survive.
     // This documents the boundary of the cleanup contract.
-    await init({ yes: true, cursor: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      cursor: true,
+      force: true,
+    });
     await uninstall({ yes: true });
 
     // Sub-directories under .cursor/ that became empty should be gone.
@@ -243,7 +393,13 @@ describe("uninstall() integration", () => {
   });
 
   it("#8 .claude/settings.json with extra user fields keeps user fields, strips trellis hooks", async () => {
-    await init({ yes: true, claude: true, force: true });
+    await init({
+      creator: "test",
+      assignee: "test",
+      yes: true,
+      claude: true,
+      force: true,
+    });
 
     // Simulate a user editing settings.json to add custom fields and a custom
     // hook entry alongside the trellis ones.
@@ -308,7 +464,9 @@ describe("uninstall() integration", () => {
     // We need this file in the manifest for it to be processed. If init
     // didn't track it, add it manually so the scrubber path runs.
     const hashes = loadHashes(tmpDir);
-    if (!Object.prototype.hasOwnProperty.call(hashes, ".claude/settings.json")) {
+    if (
+      !Object.prototype.hasOwnProperty.call(hashes, ".claude/settings.json")
+    ) {
       hashes[".claude/settings.json"] = "synthetic-hash";
       const hashFile = path.join(
         tmpDir,
@@ -325,10 +483,9 @@ describe("uninstall() integration", () => {
 
     // .trellis/ is gone, but settings.json should remain (had user fields).
     if (fs.existsSync(settingsPath)) {
-      const after = JSON.parse(fs.readFileSync(settingsPath, "utf-8")) as Record<
-        string,
-        unknown
-      >;
+      const after = JSON.parse(
+        fs.readFileSync(settingsPath, "utf-8"),
+      ) as Record<string, unknown>;
       expect(after.model).toBe("claude-sonnet-4");
       expect(after.permissions).toEqual({ allow: ["Bash(git:*)"] });
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -14,7 +14,41 @@ import {
   matchesOriginalTemplate,
   getModificationStatus,
   initializeHashes,
+  shouldExcludeFromHash,
 } from "../../src/utils/template-hash.js";
+
+describe("retired data is pruned before hash traversal", () => {
+  it.each([".trellis/workspace", ".trellis/workspace/index.md", ".trellis/agent-traces", ".trellis/.developer"])("excludes %s", (file) => {
+    expect(shouldExcludeFromHash(file)).toBe(true);
+  });
+
+  it("initializes hashes without reading or enumerating retired data", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-hash-retired-"));
+    const workflow = path.join(root, ".trellis");
+    fs.mkdirSync(path.join(workflow, "scripts"), { recursive: true });
+    fs.writeFileSync(path.join(workflow, "scripts", "example.py"), "pass\n");
+    for (const dir of ["workspace", "agent-traces"]) {
+      fs.mkdirSync(path.join(workflow, dir));
+      fs.writeFileSync(path.join(workflow, dir, "index.md"), "historical\n");
+    }
+    fs.writeFileSync(path.join(workflow, ".developer"), "name=historical\n");
+    const reads = vi.spyOn(fs, "readFileSync");
+    const walks = vi.spyOn(fs, "readdirSync");
+    try {
+      initializeHashes(root);
+      for (const [target] of [...reads.mock.calls, ...walks.mock.calls]) {
+        const relative = path.relative(root, String(target)).replaceAll("\\", "/");
+        expect(relative).not.toMatch(/^\.trellis\/(?:workspace|agent-traces|\.developer)(?:\/|$)/);
+      }
+      expect(loadHashes(root)).toHaveProperty(".trellis/scripts/example.py");
+      expect(Object.keys(loadHashes(root))).not.toContain(".trellis/.developer");
+    } finally {
+      reads.mockRestore();
+      walks.mockRestore();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
 
 // =============================================================================
 // computeHash — pure function (EASY)

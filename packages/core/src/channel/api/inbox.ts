@@ -87,7 +87,7 @@ export async function readWorkerInbox(
   input: ReadWorkerInboxInput,
 ): Promise<WorkerInboxMessage[]> {
   const ref = resolve(input);
-  const events = await readEventsInternal(input.channel, ref.project);
+  const events = await readEventsInternal(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events, ref);
   const worker = registry.workers.find((w) => w.workerId === input.workerId);
   if (!worker) {
@@ -146,7 +146,7 @@ export async function watchWorkerInbox(
   input: WatchWorkerInboxInput,
 ): Promise<AsyncGenerator<WorkerInboxMessage, void, unknown>> {
   const ref = resolve(input);
-  const events = await readEventsInternal(input.channel, ref.project);
+  const events = await readEventsInternal(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events, ref);
   const worker = registry.workers.find((w) => w.workerId === input.workerId);
   if (!worker) {
@@ -171,7 +171,9 @@ export async function watchWorkerInbox(
     project: string;
     signal?: AbortSignal;
     sinceSeq?: number;
+    cwd?: string;
   } = { project: ref.project };
+  if (input.cwd !== undefined) watchOpts.cwd = input.cwd;
   if (input.signal !== undefined) watchOpts.signal = input.signal;
   if (input.fromStart) {
     watchOpts.sinceSeq = generationFloorSeq;
@@ -192,6 +194,7 @@ async function* inboxWatchGenerator(
     project: string;
     signal?: AbortSignal;
     sinceSeq?: number;
+    cwd?: string;
   },
 ): AsyncGenerator<WorkerInboxMessage, void, unknown> {
   for await (const ev of watchEvents(

@@ -18,8 +18,6 @@ from .git import run_git
 from .session_context import (
     get_context_json,
     get_context_text,
-    get_context_record_json,
-    get_context_text_record,
     output_json,
     output_text,
 )
@@ -59,7 +57,7 @@ def main() -> None:
         "-m",
         choices=["default", "record", "packages", "phase"],
         default="default",
-        help="Output mode: default (full context), record (for record-session), packages (package info only), phase (workflow step extraction)",
+        help="Output mode: default (full context), record (retired), packages (package info only), phase (workflow step extraction)",
     )
     parser.add_argument(
         "--step",
@@ -73,10 +71,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.mode == "record":
-        if args.json:
-            print(json.dumps(get_context_record_json(), indent=2, ensure_ascii=False))
-        else:
-            print(get_context_text_record())
+        parser.exit(2, "Record mode is retired; use default context and task.py finish/archive.\n")
     elif args.mode == "packages":
         if args.json:
             print(json.dumps(get_context_packages_json(), indent=2, ensure_ascii=False))

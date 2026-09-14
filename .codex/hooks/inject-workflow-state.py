@@ -178,15 +178,12 @@ def get_active_task(
     if active.stale:
         return task_dir.name, f"stale_{active.source_type}", active.source
 
-    task_json = task_dir / "task.json"
-    if not task_json.is_file():
+    from common.tasks import load_task  # type: ignore[import-not-found]
+
+    task = load_task(task_dir, root)
+    if task is None:
         return task_dir.name, "task_error", active.source
-    try:
-        data = json.loads(task_json.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return task_dir.name, "task_error", active.source
-    if not isinstance(data, dict):
-        return task_dir.name, "task_error", active.source
+    data = task.raw
 
     task_id = data.get("id") or task_dir.name
     status = data.get("status", "")
@@ -216,6 +213,15 @@ def load_breadcrumbs(root: Path) -> dict[str, str]:
     workflow.md, rather than the hook silently masking the issue.
     """
     workflow = root / ".trellis" / "workflow.md"
+    scripts_dir = root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import RetiredDataPathError, require_active_path  # type: ignore[import-not-found]
+
+    try:
+        require_active_path(workflow, root)
+    except RetiredDataPathError:
+        return {}
     if not workflow.is_file():
         return {}
     try:

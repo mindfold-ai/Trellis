@@ -36,17 +36,10 @@ function setupRepo(tmp: string): void {
   fs.mkdirSync(scriptsDest, { recursive: true });
   fs.cpSync(TEMPLATE_SCRIPTS, scriptsDest, { recursive: true });
 
-  const r = spawnSync(
-    "python3",
-    [".trellis/scripts/init_developer.py", DEVELOPER],
-    { cwd: tmp, encoding: "utf-8" },
-  );
-  if (r.status !== 0) {
-    throw new Error(`init_developer failed: ${r.stderr}`);
-  }
 }
 
 function runTask(repo: string, ...args: string[]) {
+  if (args[0] === "create") args.push("--creator", DEVELOPER, "--assignee", DEVELOPER);
   return spawnSync("python3", [".trellis/scripts/task.py", ...args], {
     cwd: repo,
     encoding: "utf-8",

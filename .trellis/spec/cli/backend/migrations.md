@@ -156,7 +156,7 @@ src/migrations/
 - `sentinel` —— 幂等 gate：用户文件包含此 substring（live 或注释）就跳过。挑稳定的 token，比如新引入的顶层 YAML key
 - `sectionHeading` —— 模板里 `#---` 分隔块内 `# <heading>` 那一行的内容，extractor 从此分隔块开始抽到下一个 `#---` 分隔块（或 EOF）
 
-**为什么不直接覆盖 config.yaml**：用户基本都改过 `session_commit_message` / `packages` 等字段，hash 不匹配，常规 file-write 流程会触发 `y/n/d` 询问 —— `y` 丢自定义，`n` 拿不到新 section。`configSectionsAdded` 走 sentinel-gated 追加路径，绕过这个二选一。
+**为什么不直接覆盖 config.yaml**：用户基本都改过 `task_auto_commit` / `packages` 等字段，hash 不匹配，常规 file-write 流程会触发 `y/n/d` 询问 —— `y` 丢自定义，`n` 拿不到新 section。`configSectionsAdded` 走 sentinel-gated 追加路径，绕过这个二选一。
 
 **未来加新 section**：在对应版本 manifest 加一条 entry 即可，`update.ts` 不需要改。`packages/cli/src/templates/trellis/config.yaml` 模板里加对应 `#---` 分隔块和 section 内容，`trellis init` 走默认写入路径自然会拿到新 section。
 
@@ -164,13 +164,17 @@ src/migrations/
 
 以下路径不会被任何迁移操作修改或删除（用户数据）：
 
-- `.trellis/workspace` — 开发者工作记录
+- `.trellis/workspace` — retired history; never traverse or consume
 - `.trellis/tasks` — 任务追踪
 - `.trellis/spec` — 开发指南（用户自定义）
-- `.trellis/.developer` — 开发者身份
+- `.trellis/.developer` — retired identity; never read
+- `.trellis/agent-traces` — retired predecessor history; never traverse
 - `.trellis/.current-task` — 当前任务指针
 
-> 注意：`rename`/`rename-dir` 类型允许将文件迁移 **到** 受保护路径（例如 0.2.0 的 `agent-traces` → `workspace` 重命名），但不允许从受保护路径迁移。
+Retired data is excluded as both source and destination, including ancestor
+renames, before access. The historical 0.2.0 trace/workspace rename is not replayed.
+Published manifests stay unchanged; current plans and cumulative guidance follow
+[Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md).
 
 ## update.skip 配置
 

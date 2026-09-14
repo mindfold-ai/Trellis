@@ -30,6 +30,20 @@ describe("resolveWorkflowTemplate(native)", () => {
 });
 
 describe("resolveWorkflowTemplate(marketplace)", () => {
+  it.each([
+    "python3 .trellis/scripts/init_developer.py alice",
+    "python3 .trellis/scripts/add_session.py --title Done",
+    "Read .trellis/workspace/alice/index.md before starting.",
+  ])("rejects a workflow with retired operations: %s", async (content) => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+      if (String(input).endsWith("/index.json")) {
+        return new Response(JSON.stringify({ version: 1, templates: [{ id: "legacy", type: "workflow", name: "Legacy", path: "workflows/legacy/workflow.md" }] }), { status: 200 });
+      }
+      return new Response(content, { status: 200 });
+    }));
+    await expect(resolveWorkflowTemplate("legacy")).rejects.toThrow(/retired identity or workspace/);
+  });
+
   it("fetches index.json, finds the workflow entry, and downloads its content", async () => {
     const index = {
       version: 1,
@@ -49,7 +63,7 @@ describe("resolveWorkflowTemplate(marketplace)", () => {
         },
       ],
     };
-    const fakeContent = "# TDD\n\nPhase 2.1 red → green → refactor.\n";
+    const fakeContent = "# TDD\n\nPhase 2.1 red → green → refactor.\nRun pnpm test from the workspace root.\nRead the SQLite write-ahead journal when diagnosing storage failures.\n";
 
     vi.stubGlobal(
       "fetch",

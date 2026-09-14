@@ -64,11 +64,12 @@ export async function* watchEvents(
     fromStart?: boolean;
     sinceSeq?: number;
     project?: string;
+    cwd?: string;
   } = {},
 ): AsyncGenerator<ChannelEvent, void, unknown> {
-  const file = eventsPath(channelName, opts.project);
-  if (!fs.existsSync(channelDir(channelName, opts.project))) {
-    await fs.promises.mkdir(channelDir(channelName, opts.project), {
+  const file = eventsPath(channelName, opts.project, opts.cwd);
+  if (!fs.existsSync(channelDir(channelName, opts.project, opts.cwd))) {
+    await fs.promises.mkdir(channelDir(channelName, opts.project, opts.cwd), {
       recursive: true,
     });
   }
@@ -102,7 +103,7 @@ export async function* watchEvents(
 
   let watcher: fs.FSWatcher | null = null;
   try {
-    watcher = fs.watch(channelDir(channelName, opts.project), () => wake());
+    watcher = fs.watch(channelDir(channelName, opts.project, opts.cwd), () => wake());
     watcher.on("error", () => {
       try {
         watcher?.close();

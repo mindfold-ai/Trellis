@@ -1,6 +1,11 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { assertActiveDataPath } from "@mindfoldhq/trellis-core";
+import {
+  resolveChannelStorageRoot,
+  resolveChannelStorageProjectDir,
+  resolveChannelStorageDir,
+} from "@mindfoldhq/trellis-core/channel";
 
 import {
   GLOBAL_PROJECT_KEY,
@@ -10,9 +15,7 @@ import {
 
 /** Top-level Trellis channels directory. */
 export function channelRoot(): string {
-  const env = process.env.TRELLIS_CHANNEL_ROOT;
-  if (env && env.length > 0) return path.resolve(env);
-  return path.join(os.homedir(), ".trellis", "channels");
+  return resolveChannelStorageRoot();
 }
 
 /**
@@ -52,7 +55,7 @@ export function currentProjectKey(): string {
 
 /** Directory holding all channels for a given project. */
 export function projectDir(project: string = currentProjectKey()): string {
-  return path.join(channelRoot(), project);
+  return resolveChannelStorageProjectDir(project);
 }
 
 /** Marker file that distinguishes a project bucket from a legacy
@@ -96,22 +99,21 @@ export function channelDir(
   name: string,
   project: string = currentProjectKey(),
 ): string {
-  assertSafeName(name);
-  return path.join(projectDir(project), name);
+  return resolveChannelStorageDir(name, project);
 }
 
 export function eventsPath(
   name: string,
   project: string = currentProjectKey(),
 ): string {
-  return path.join(channelDir(name, project), "events.jsonl");
+  return activeStorageFile(channelDir(name, project), "events.jsonl");
 }
 
 export function lockPath(
   name: string,
   project: string = currentProjectKey(),
 ): string {
-  return path.join(channelDir(name, project), `${name}.lock`);
+  return activeStorageFile(channelDir(name, project), `${name}.lock`);
 }
 
 export function workerFile(
@@ -121,7 +123,7 @@ export function workerFile(
   project: string = currentProjectKey(),
 ): string {
   assertSafeName(worker, "worker");
-  return path.join(channelDir(name, project), `${worker}.${suffix}`);
+  return activeStorageFile(channelDir(name, project), `${worker}.${suffix}`);
 }
 
 export function workerLockPath(
@@ -130,7 +132,13 @@ export function workerLockPath(
   project: string = currentProjectKey(),
 ): string {
   assertSafeName(worker, "worker");
-  return path.join(channelDir(name, project), `${worker}.spawnlock`);
+  return activeStorageFile(channelDir(name, project), `${worker}.spawnlock`);
+}
+
+function activeStorageFile(dir: string, filename: string): string {
+  const file = path.join(dir, filename);
+  assertActiveDataPath(file, process.cwd());
+  return file;
 }
 
 /**
@@ -148,7 +156,8 @@ export function workerLockPath(
 export function migrateLegacyChannels(): void {
   const root = channelRoot();
   if (!fs.existsSync(root)) return;
-  const legacy = path.join(root, "_legacy");
+  const legacy = projectDir("_legacy");
+  const legacyMarker = activeStorageFile(legacy, BUCKET_MARKER);
   let moved = 0;
   let entries: string[];
   try {
@@ -159,6 +168,13 @@ export function migrateLegacyChannels(): void {
   for (const entry of entries) {
     if (entry === "_legacy" || entry === "_default") continue;
     const dir = path.join(root, entry);
+    try {
+      resolveChannelStorageProjectDir(entry);
+      activeStorageFile(dir, BUCKET_MARKER);
+      activeStorageFile(dir, "events.jsonl");
+    } catch {
+      continue;
+    }
     let stat: fs.Stats;
     try {
       stat = fs.statSync(dir);
@@ -171,8 +187,9 @@ export function migrateLegacyChannels(): void {
     // Heuristic: a legacy channel has events.jsonl directly.
     if (!fs.existsSync(path.join(dir, "events.jsonl"))) continue;
     // It's legacy — move it to _legacy/<name>/.
-    fs.mkdirSync(legacy, { recursive: true });
     const target = path.join(legacy, entry);
+    assertActiveDataPath(target, process.cwd());
+    fs.mkdirSync(legacy, { recursive: true });
     try {
       fs.renameSync(dir, target);
       moved++;
@@ -186,7 +203,7 @@ export function migrateLegacyChannels(): void {
   }
   if (moved > 0) {
     fs.mkdirSync(legacy, { recursive: true });
-    fs.writeFileSync(path.join(legacy, BUCKET_MARKER), "");
+    fs.writeFileSync(legacyMarker, "");
     process.stderr.write(
       `[channel migrate] moved ${moved} legacy channel(s) to ${legacy}\n`,
     );
@@ -196,8 +213,8 @@ export function migrateLegacyChannels(): void {
 /** Mark a directory as a project bucket so the migrator skips it. */
 export function ensureBucketMarker(project: string): void {
   const dir = projectDir(project);
+  const marker = activeStorageFile(dir, BUCKET_MARKER);
   fs.mkdirSync(dir, { recursive: true });
-  const marker = path.join(dir, BUCKET_MARKER);
   if (!fs.existsSync(marker)) {
     fs.writeFileSync(marker, "");
   }
@@ -210,6 +227,12 @@ export function listProjects(): string[] {
   const out: string[] = [];
   for (const entry of fs.readdirSync(root)) {
     const dir = path.join(root, entry);
+    try {
+      resolveChannelStorageProjectDir(entry);
+      activeStorageFile(dir, BUCKET_MARKER);
+    } catch {
+      continue;
+    }
     try {
       if (!fs.statSync(dir).isDirectory()) continue;
     } catch {
@@ -249,7 +272,7 @@ export function resolveChannelProjectForCreate(
     name,
     scope,
     project,
-    dir: channelDir(name, project),
+    dir: resolveChannelStorageDir(name, project, opts.cwd),
   };
 }
 
@@ -257,6 +280,7 @@ export function resolveExistingChannelRef(
   name: string,
   opts: ResolveChannelOptions = {},
 ): ChannelRef {
+  resolveChannelStorageRoot(opts.cwd);
   migrateLegacyChannels();
 
   if (opts.scope) {

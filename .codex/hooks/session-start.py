@@ -125,7 +125,7 @@ def configure_project_encoding(project_dir: Path) -> None:
         pass  # Optional encoding helper; host defaults are still usable.
 
 
-def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
+def _has_curated_jsonl_entry(jsonl_path: Path, repo_root: Path) -> bool:
     """Return True iff jsonl has at least one row with a ``file`` field.
 
     A newly created jsonl is empty, and older tasks may still carry a
@@ -134,7 +134,7 @@ def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
     contract used by ``inject-subagent-context.py``.
     """
     try:
-        for line in jsonl_path.read_text(encoding="utf-8").splitlines():
+        for line in read_file(jsonl_path, repo_root).splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -149,10 +149,25 @@ def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
     return False
 
 
-def read_file(path: Path, fallback: str = "") -> str:
+def _is_active_path(path: Path, repo_root: Path) -> bool:
+    scripts_dir = repo_root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import is_active_path  # type: ignore[import-not-found]
+
+    return is_active_path(path, repo_root)
+
+
+def read_file(path: Path, repo_root: Path, fallback: str = "") -> str:
+    scripts_dir = repo_root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import RetiredDataPathError, require_active_path  # type: ignore[import-not-found]
+
     try:
+        require_active_path(path, repo_root)
         return path.read_text(encoding="utf-8")
-    except (FileNotFoundError, PermissionError):
+    except (FileNotFoundError, PermissionError, RetiredDataPathError):
         return fallback
 
 
@@ -227,6 +242,17 @@ def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
     return trellis_dir / "tasks" / path_obj
 
 
+def _load_task_data(trellis_dir: Path, task_dir: Path) -> dict:
+    """Read task metadata through the shared historical-data boundary."""
+    scripts_dir = trellis_dir / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.tasks import load_task  # type: ignore[import-not-found]
+
+    task = load_task(task_dir, trellis_dir.parent)
+    return task.raw if task is not None else {}
+
+
 def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
     active = _resolve_active_task(trellis_dir, hook_input)
     if not active.task_path:
@@ -244,13 +270,7 @@ def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
             "Next: Task directory not found. Run: python3 ./.trellis/scripts/task.py finish"
         )
 
-    task_json_path = task_dir / "task.json"
-    task_data: dict = {}
-    if task_json_path.is_file():
-        try:
-            task_data = json.loads(task_json_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, PermissionError):
-            pass  # Optional task metadata; fall back to generic status.
+    task_data = _load_task_data(trellis_dir, task_dir)
 
     task_title = task_data.get("title", task_ref)
     task_status = task_data.get("status", "unknown")
@@ -319,7 +339,7 @@ def _run_git(repo_root: Path, args: list[str]) -> str:
 def _format_git_state(repo_root: Path) -> str:
     branch = _run_git(repo_root, ["branch", "--show-current"]) or "(detached)"
     dirty_lines = [
-        line for line in _run_git(repo_root, ["status", "--porcelain"]).splitlines()
+        line for line in _run_git(repo_root, ["status", "--porcelain", "--", ".", ":(exclude).trellis/workspace", ":(exclude).trellis/agent-traces", ":(exclude).trellis/.developer", ":(exclude).trellis/.backup-*"]).splitlines()
         if line.strip()
     ]
     dirty_text = "clean" if not dirty_lines else f"dirty {len(dirty_lines)} paths"
@@ -335,8 +355,11 @@ def _repo_relative(repo_root: Path, path: Path) -> str:
 
 def _collect_spec_index_paths(trellis_dir: Path) -> list[str]:
     paths: list[str] = []
+    repo_root = trellis_dir.parent
+    if not _is_active_path(trellis_dir / "spec", repo_root):
+        return paths
     guides_index = trellis_dir / "spec" / "guides" / "index.md"
-    if guides_index.is_file():
+    if _is_active_path(guides_index, repo_root) and guides_index.is_file():
         paths.append(".trellis/spec/guides/index.md")
 
     spec_dir = trellis_dir / "spec"
@@ -344,17 +367,17 @@ def _collect_spec_index_paths(trellis_dir: Path) -> list[str]:
         return paths
 
     for sub in sorted(spec_dir.iterdir()):
-        if not sub.is_dir() or sub.name.startswith(".") or sub.name == "guides":
+        if not _is_active_path(sub, repo_root) or not sub.is_dir() or sub.name.startswith(".") or sub.name == "guides":
             continue
         index_file = sub / "index.md"
-        if index_file.is_file():
+        if _is_active_path(index_file, repo_root) and index_file.is_file():
             paths.append(f".trellis/spec/{sub.name}/index.md")
             continue
         for nested in sorted(sub.iterdir()):
-            if not nested.is_dir():
+            if not _is_active_path(nested, repo_root) or not nested.is_dir():
                 continue
             nested_index = nested / "index.md"
-            if nested_index.is_file():
+            if _is_active_path(nested_index, repo_root) and nested_index.is_file():
                 paths.append(f".trellis/spec/{sub.name}/{nested.name}/index.md")
 
     return paths
@@ -369,50 +392,32 @@ def _build_compact_current_state(
     lines: list[str] = []
 
     try:
-        from common.paths import get_active_journal_file, get_developer, get_tasks_dir, count_lines  # type: ignore[import-not-found]
+        from common.paths import get_tasks_dir  # type: ignore[import-not-found]
         from common.tasks import iter_active_tasks  # type: ignore[import-not-found]
     except Exception:
-        get_active_journal_file = None  # type: ignore[assignment]
-        get_developer = None  # type: ignore[assignment]
         get_tasks_dir = None  # type: ignore[assignment]
-        count_lines = None  # type: ignore[assignment]
         iter_active_tasks = None  # type: ignore[assignment]
 
-    developer = get_developer(repo_root) if get_developer else None
-    lines.append(f"Developer: {developer or '(not initialized)'}")
     lines.append(_format_git_state(repo_root))
 
     active = _resolve_active_task(trellis_dir, hook_input)
     if active.task_path:
         task_dir = _resolve_task_dir(trellis_dir, active.task_path)
         status = "unknown"
-        task_json = task_dir / "task.json"
-        if task_json.is_file():
-            try:
-                data = json.loads(task_json.read_text(encoding="utf-8"))
-                if isinstance(data, dict):
-                    status = str(data.get("status") or "unknown")
-            except (json.JSONDecodeError, OSError):
-                pass  # Optional task metadata; fall back to generic status.
+        data = _load_task_data(trellis_dir, task_dir)
+        status = str(data.get("status") or "unknown")
         lines.append(f"Current task: {_repo_relative(repo_root, task_dir)}; status={status}.")
     else:
         lines.append("Current task: none.")
 
     if get_tasks_dir and iter_active_tasks:
         try:
-            task_count = sum(1 for _ in iter_active_tasks(get_tasks_dir(repo_root)))
+            task_count = sum(1 for _ in iter_active_tasks(get_tasks_dir(repo_root), repo_root))
             lines.append(
-                f"Active tasks: {task_count} total. Use `python3 ./.trellis/scripts/task.py list --mine` only if needed."
+                f"Project tasks: {task_count} total. Use `python3 ./.trellis/scripts/task.py list` only if needed."
             )
         except Exception:
             pass  # Optional task summary; keep compact state available.
-
-    if get_active_journal_file and count_lines:
-        journal = get_active_journal_file(repo_root)
-        if journal:
-            lines.append(
-                f"Journal: {_repo_relative(repo_root, journal)}, {count_lines(journal)} / 2000 lines."
-            )
 
     if spec_index_paths:
         lines.append(f"Spec indexes: {len(spec_index_paths)} available.")
@@ -455,7 +460,7 @@ def _strip_breadcrumb_tag_blocks(content: str) -> str:
 
 def _build_workflow_toc(workflow_path: Path) -> str:
     """Inject only the compact Phase Index summary for SessionStart."""
-    content = read_file(workflow_path)
+    content = read_file(workflow_path, workflow_path.parent.parent)
     if not content:
         return "No workflow.md found"
 

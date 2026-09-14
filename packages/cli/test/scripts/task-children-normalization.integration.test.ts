@@ -120,6 +120,7 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
     const r = runTask(
       tmp,
       "create",
+      "--creator", "fixture-creator", "--assignee", "tester",
       "Child",
       "--description",
       "d",

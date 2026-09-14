@@ -33,6 +33,7 @@ trellis update
   [-n, --create-new]     write `.new` copies for changed files
   [--allow-downgrade]    permit CLI < project version
   [--migrate]            apply pending file migrations (renames/deletes)
+  [--assignee <name>]    explicit owner for a new migration task
 ```
 
 The action handler in `cli/index.ts` constructs `UpdateOptions` and calls `commands/update.ts:update`. There is no env override surface today — flags are the only knobs. (Note: `setupProxy()` in `commands/update.ts:update` reads `HTTP_PROXY` / `HTTPS_PROXY` for the npm version check, but that's the only env input.)
@@ -47,6 +48,7 @@ interface UpdateOptions {
   createNew?: boolean;
   allowDowngrade?: boolean;
   migrate?: boolean;
+  assignee?: string;
 }
 ```
 
@@ -142,7 +144,7 @@ Permits `cliVersion < projectVersion`. Without it, `update()` exits early with a
 Opt-in to apply file migrations (renames/deletes/dir renames). Without it: migrations are listed in the plan but not executed; a "Tip: Use --migrate" hint prints. With it:
 
 1. `commands/update.ts:executeMigrations` runs on the classified plan.
-2. The hardcoded 0.2.0 `traces-*.md → journal-*.md` rename runs via `commands/update.ts:renameTracesToJournal(workspaceDir)` (workspace/<dev>/ pattern walk; cannot live in the manifest because the path includes a variable developer slug). It never overwrites: if the `journal-*.md` target already exists, that file is left as-is and reported back in a `skipped` list instead of being renamed over — `.trellis/workspace/` is outside the backup snapshot, so an overwrite there would be unrecoverable. See [Filesystem Safety § 3](./filesystem-safety.md).
+2. Retired-data migration actions, including ancestor renames and historical trace renames, are excluded before source access. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract.
 
 `safe-file-delete` migrations are independent of `--migrate` — they always run when their hash gate passes (see Apply Phase). A historical deletion is ignored when its path is present in the current template snapshot: current template ownership takes precedence if a later release intentionally restores a retired path. Rationale in `migrations.md`.
 
@@ -208,11 +210,14 @@ Rationale: honoring `update.skip` during a breaking upgrade leaves the project p
 
 ## Apply Phase
 
-Order of operations in `commands/update.ts:update` (after the `Proceed?` confirm, when not dry-run):
+The subsystem list below describes apply responsibilities, not permission to
+advance receipts early. Required retirement conflicts and ownership are preflighted
+before backup/mutation; task creation and installed-runtime postchecks precede
+version/hash completion. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract.
 
 1. **Backup** — `commands/update.ts:createFullBackup` snapshots every `BACKUP_DIRS` (= `configurators/index.ts:ALL_MANAGED_DIRS`) entry plus `BACKUP_FILES` (= `AGENTS.md`) into `.trellis/.backup-<ISO-timestamp>/`. `commands/update.ts:shouldExcludeFromBackup` filters out previous backups, `node_modules/`, user-data dirs (`workspace/`, `tasks/`, `spec/`, `backlog/`, `agent-traces/`), and platform-native worktree dirs (`/worktrees/`, `/worktree/`). Symlinks (and Windows directory junctions) are never followed in `commands/update.ts:collectAllFiles` — a junction to an ancestor would loop forever.
 
-2. **Migrations** (only if `--migrate`) — `commands/update.ts:executeMigrations` runs `auto` items first (sorted by depth), then `confirm` items via `commands/update.ts:promptMigrationAction` (or `--force` / `--skip-all` short-circuits). Default action for prompts is `backup-rename`: leaves `<new-path>.backup` of the user's modified content alongside the rename, so users can diff inline without digging through the snapshot. Hash tracking is updated via `utils/template-hash.ts:renameHash` / `removeHash`. Empty source dirs are pruned by `commands/update.ts:cleanupEmptyDirs` (gated by `configurators/index.ts:isManagedPath` + `isManagedRootDir` — never deletes managed roots themselves, never crosses into unmanaged paths). After regular migrations, the hardcoded `traces-*.md → journal-*.md` workspace walk (`commands/update.ts:renameTracesToJournal`) runs; files whose journal target already exists are skipped (not overwritten) and printed as a yellow "Kept ... its journal target already exists" warning.
+2. **Migrations** (only if `--migrate`) — `commands/update.ts:executeMigrations` runs `auto` items first (sorted by depth), then `confirm` items via `commands/update.ts:promptMigrationAction` (or `--force` / `--skip-all` short-circuits). Default action for prompts is `backup-rename`: leaves `<new-path>.backup` of the user's modified content alongside the rename, so users can diff inline without digging through the snapshot. Hash tracking is updated via `utils/template-hash.ts:renameHash` / `removeHash`. Empty source dirs are pruned by `commands/update.ts:cleanupEmptyDirs` (gated by `configurators/index.ts:isManagedPath` + `isManagedRootDir` — never deletes managed roots themselves, never crosses into unmanaged paths). Retired-data walks and trace renames are forbidden.
 
 3. **`safe-file-delete`** — `commands/update.ts:executeSafeFileDeletes` deletes files in the `delete` action bucket (hash matched, not protected, not in `update.skip` unless bypassed), removes their hash entries, and prunes empty parent directories. `commands/update.ts:collectSafeFileDeletes` first excludes paths owned by the current template snapshot so historical cleanup cannot conflict with a reintroduced template. `migrations.md` covers the full classification matrix.
 
@@ -220,15 +225,15 @@ Order of operations in `commands/update.ts:update` (after the `Proceed?` confirm
 
 5. **Auto-update writes** — same as new files, but the file already exists.
 
-6. **Conflict resolution** — for every `changedFiles` entry, call `commands/update.ts:promptConflictResolution`. The `applyToAll` carrier object captures `[a]` / `[s]` / `[n]` "Apply to all" choices so the user only has to decide once for a batch of similar prompts. Result is `overwrite` (write + chmod), `skip` (no-op), or `create-new` (write `<path>.new`).
+6. **Apply preflight conflict decisions** — for every `changedFiles` entry, call `commands/update.ts:promptConflictResolution`. The `applyToAll` carrier object captures `[a]` / `[s]` / `[n]` "Apply to all" choices so the user only has to decide once for a batch of similar prompts. Result is `overwrite` (write + chmod), `skip` (no-op), or `create-new` (write `<path>.new`).
 
-7. **`configSectionsAdded`** — only on real upgrades (`cliVsProject > 0`, `projectVersion !== "unknown"`). `commands/update.ts:applyConfigSectionsAdded` walks entries from `migrations/index.ts:getConfigSectionsAddedBetween`, dedupes by `file::sentinel`, skips any whose sentinel is already present in the user's file (idempotent), and appends the named section extracted via `commands/update.ts:extractConfigSection`. This is the only path that can grow `.trellis/config.yaml` without going through the conflict prompt — by design, since users routinely edit other parts of `config.yaml` (`session_commit_message`, `packages`, etc.) and a hash-mismatch overwrite would either lose those edits (`y`) or starve the project of new sections (`n`). See `migrations.md` § `configSectionsAdded` for the schema.
+7. **`configSectionsAdded`** — only on real upgrades (`cliVsProject > 0`, `projectVersion !== "unknown"`). `commands/update.ts:applyConfigSectionsAdded` walks entries from `migrations/index.ts:getConfigSectionsAddedBetween`, dedupes by `file::sentinel`, skips any whose sentinel is already present in the user's file (idempotent), and appends the named section extracted via `commands/update.ts:extractConfigSection`. This is the only path that can grow `.trellis/config.yaml` without going through the conflict prompt — by design, since users routinely edit other parts of `config.yaml` (`task_auto_commit`, `packages`, etc.) and a hash-mismatch overwrite would either lose those edits (`y`) or starve the project of new sections (`n`). See `migrations.md` § `configSectionsAdded` for the schema.
 
-8. **Version stamp** — `commands/update.ts:updateVersionFile` writes `cliVersion` to `.trellis/.version`.
+8. **Migration task and postchecks** use explicit `trellis-update` creator and invocation-local assignee. Target-owned cumulative guidance replaces historical prose concatenation. Reused tasks preserve metadata/custom bytes; incompatible instructions block preflight. Validate installed enabled entry points and generated instructions before receipts. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md).
 
 9. **Hash refresh** — every newly-written file (`newFiles`, `autoUpdateFiles`, overwritten `changedFiles`, plus any `missingAgentsMdHash` entry from `collectMissingAgentsMdHash`) gets its hash recomputed and saved via `utils/template-hash.ts:updateHashes`. `.new` copies and skipped files do NOT get their hash updated — the original file's recorded hash continues to drive the next-update conflict decision.
 
-10. **Migration task creation** — only when the upgrade crosses a manifest with `breaking: true` AND a non-empty `migrationGuide` (collected via `migrations/index.ts:getMigrationMetadata`). `update()` writes `.trellis/tasks/<MM-DD>-migrate-to-<cliVersion>/` containing `task.json` (built via `utils/task-json.ts:emptyTaskJson`) and `prd.md` listing every guide and AI-instruction block. Skipped if the directory already exists. Assignee is read from `.trellis/.developer` via the strict `name=<value>` regex — DO NOT change this to a raw `.trim()` (see Common Pitfalls).
+10. **Version stamp** — only after successful task creation, postchecks and hash refresh, `commands/update.ts:updateVersionFile` writes `cliVersion` to `.trellis/.version`.
 
 11. **End-of-run banners** — breaking-change banner and `--migrate` recommendation are intentionally printed last so they don't scroll off screen on long updates.
 
@@ -317,16 +322,11 @@ Every non-trivial run creates `.trellis/.backup-<timestamp>/`. `BACKUP_EXCLUDE_P
 
 OpenCode's plugin pattern installs npm dependencies under `.opencode/`. Without `/node_modules/` in `BACKUP_EXCLUDE_PATTERNS`, every backup would snapshot the entire dependency tree (`update.integration.test.ts > #27 backup skips managed node_modules dependency trees` regression-tests this). When adding a new platform that ships dependencies, verify the pattern still catches them; if the platform uses a non-standard path, extend `BACKUP_EXCLUDE_PATTERNS`.
 
-### `.developer` raw-trim foot-gun
+### Historical Incident: Identity File Parsing
 
-`init_developer.py` writes `.trellis/.developer` as `key=value` lines:
-
-```text
-name=<developer-name>
-initialized_at=<iso8601>
-```
-
-Reading the file with `fs.readFileSync(...).trim()` and using the result as `assignee` embeds the `name=` prefix and the `initialized_at` line into the task. The migration-task creator at the end of `commands/update.ts:update` uses the strict regex `/^\s*name\s*=\s*(.+?)\s*$/m` for exactly this reason. Don't "simplify" it.
+Earlier migration-task code read a key/value identity file as a raw string and
+corrupted assignee metadata. Both parsing routes are now retired: task ownership
+is explicit and no identity file is read. See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract.
 
 ### Idempotency churn after adding a placeholder
 
@@ -403,3 +403,9 @@ What you should test when extending update:
 | Block-merge change to `workflow.md` / `AGENTS.md` | At least one test asserting both "user prose preserved" and "managed block updated" |
 
 When a test reaches into `getAllMigrations()` or `getMigrationsForVersion`, it's exercising the boundary with `migrations/index.ts` — keep those assertions narrow (e.g., "this manifest's safe-file-delete fires") so they don't break every time the manifest list grows.
+
+## Retirement Convergence
+
+See [Identity-Free Task Lifecycle](./identity-free-task-lifecycle.md) for the current retirement contract. It governs required-file skip/create-new conflicts,
+workflow compatibility, supported source intervals, failure recovery and delayed
+receipts. Historical manifest guidance is evidence, not executable target guidance.

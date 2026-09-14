@@ -159,7 +159,7 @@ def _resolve_active_task(root: Path, input_data: dict):
 
 
 def get_active_task(
-    root: Path, input_data: dict
+    root: Path, input_data: dict, active=None
 ) -> tuple[str, str, str] | None:
     """Return active task data, a task-record error, or no task pointer.
 
@@ -168,25 +168,23 @@ def get_active_task(
     that state needs a diagnostic breadcrumb rather than the normal ``no_task``
     prompt.
     """
-    active = _resolve_active_task(root, input_data)
+    if active is None:
+        active = _resolve_active_task(root, input_data)
+    if getattr(active, "error", None) or getattr(active, "stale", False):
+        task_id = Path(active.task_path).name if active.task_path else "session binding"
+        return task_id, "task_error", active.source
     if not active.task_path:
         return None
 
-    task_dir = Path(active.task_path)
-    if not task_dir.is_absolute():
-        task_dir = root / task_dir
-    if active.stale:
-        return task_dir.name, f"stale_{active.source_type}", active.source
+    task_dir = active.resolved_task_path
+    root = active.task_workspace_root
 
-    task_json = task_dir / "task.json"
-    if not task_json.is_file():
+    from common.tasks import load_task  # type: ignore[import-not-found]
+
+    task = load_task(task_dir, root)
+    if task is None:
         return task_dir.name, "task_error", active.source
-    try:
-        data = json.loads(task_json.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return task_dir.name, "task_error", active.source
-    if not isinstance(data, dict):
-        return task_dir.name, "task_error", active.source
+    data = task.raw
 
     task_id = data.get("id") or task_dir.name
     status = data.get("status", "")
@@ -216,6 +214,15 @@ def load_breadcrumbs(root: Path) -> dict[str, str]:
     workflow.md, rather than the hook silently masking the issue.
     """
     workflow = root / ".trellis" / "workflow.md"
+    scripts_dir = root / ".trellis" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from common.history_paths import RetiredDataPathError, require_active_path  # type: ignore[import-not-found]
+
+    try:
+        require_active_path(workflow, root)
+    except RetiredDataPathError:
+        return {}
     if not workflow.is_file():
         return {}
     try:
@@ -430,13 +437,15 @@ def main() -> int:
     if root is None:
         return 0  # not a Trellis project
 
-    config = _read_trellis_config(root)
+    active = _resolve_active_task(root, data)
+    task_root = getattr(active, "task_workspace_root", None) or root
+    config = _read_trellis_config(task_root)
     if prompt_has_skip_keyword(data.get("prompt", ""), _resolve_skip_keyword(config)):
         return 0  # user opted out of the per-turn breadcrumb for this turn
 
-    templates = load_breadcrumbs(root)
+    templates = load_breadcrumbs(task_root)
     platform = _detect_platform(data)
-    task = get_active_task(root, data)
+    task = get_active_task(root, data, active)
     if task is None:
         # No active task — still emit a breadcrumb nudging AI toward
         # trellis-brainstorm + task.py create when user describes real work.
@@ -451,6 +460,10 @@ def main() -> int:
         breadcrumb = build_breadcrumb(
             task_id, status, templates, source_for_breadcrumb, breadcrumb_key=status_key
         )
+        if getattr(active, "error", None):
+            breadcrumb += f"\nTask binding error: {active.error}"
+        elif active.task_workspace_root:
+            breadcrumb += f"\nTask workspace: {active.task_workspace_root}; caller workspace: {root}."
     if platform == "codex":
         parts: list[str] = []
         if task is None:

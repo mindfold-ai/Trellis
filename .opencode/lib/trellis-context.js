@@ -6,7 +6,7 @@
  */
 
 import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync } from "fs"
-import { isAbsolute, join, relative } from "path"
+import { isAbsolute, join, relative, resolve } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
 import { createHash } from "crypto"
@@ -150,12 +150,7 @@ function unquoteYaml(s) {
  */
 function readContextInjectionLimits(repoRoot) {
   const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS }
-  let text = null
-  try {
-    text = readFileSync(join(repoRoot, ".trellis", "config.yaml"), "utf-8")
-  } catch {
-    return limits
-  }
+  const text = readFileBytes(repoRoot, join(repoRoot, ".trellis", "config.yaml"))?.toString("utf-8")
   if (!text) return limits
 
   let inSection = false
@@ -236,10 +231,29 @@ function budgetedBlock(budget, header, plainPath, content, reason, sizeForIndex)
   return block
 }
 
+function isHistoricalPath(filePath, basePath) {
+  const absolute = resolve(filePath)
+  const protectedName = name => [".developer", "workspace", "agent-traces"].includes(name) || name.startsWith(".backup-")
+  const parts = absolute.split("\\").join("/").split("/")
+  if (parts.some((name, index) => name === ".trellis" && protectedName(parts[index + 1] || ""))) return true
+  if (basePath !== undefined) {
+    try {
+      const workflowRoot = realpathSync(join(basePath, ".trellis"))
+      const first = relative(workflowRoot, absolute).split("\\").join("/").split("/")[0]
+      return protectedName(first)
+    } catch {
+      return false
+    }
+  }
+  return false
+}
+
 /** Read raw file bytes, return null if file doesn't exist. */
 function readFileBytes(basePath, filePath) {
   const fullPath = isAbsolute(filePath) ? filePath : join(basePath, filePath)
+  if (isHistoricalPath(fullPath)) return null
   try {
+    if (isHistoricalPath(realpathSync(fullPath), basePath)) return null
     if (!statSync(fullPath).isFile()) return null
   } catch {
     return null
@@ -277,12 +291,14 @@ function materializeFile(basePath, filePath, reason, limits, budget) {
 function materializeDirectory(basePath, dirPath, reason, limits, budget, maxFiles = 20) {
   const blocks = []
   const fullPath = isAbsolute(dirPath) ? dirPath : join(basePath, dirPath)
+  if (isHistoricalPath(fullPath)) return blocks
 
   let files
   try {
+    if (isHistoricalPath(realpathSync(fullPath), basePath)) return blocks
     if (!statSync(fullPath).isDirectory()) return blocks
     files = readdirSync(fullPath)
-      .filter(f => f.endsWith(".md") && statSync(join(fullPath, f)).isFile())
+      .filter(f => f.endsWith(".md") && !isHistoricalPath(join(fullPath, f)) && statSync(join(fullPath, f)).isFile())
       .sort()
   } catch {
     return blocks
@@ -361,8 +377,8 @@ export class TrellisContext {
   readContext(contextKey) {
     try {
       const contextPath = join(this.directory, ".trellis", ".runtime", "sessions", `${contextKey}.json`)
-      if (!existsSync(contextPath)) return null
-      return JSON.parse(readFileSync(contextPath, "utf-8"))
+      const content = this.readFile(contextPath)
+      return content === null ? null : JSON.parse(content)
     } catch {
       return null
     }
@@ -407,6 +423,7 @@ export class TrellisContext {
    */
   _resolveSingleSessionFallback() {
     const sessionsDir = join(this.directory, ".trellis", ".runtime", "sessions")
+    if (!this.isActivePath(sessionsDir)) return null
     if (!existsSync(sessionsDir)) return null
 
     let files
@@ -422,7 +439,9 @@ export class TrellisContext {
     const sessionFile = join(sessionsDir, files[0])
     let context
     try {
-      context = JSON.parse(readFileSync(sessionFile, "utf-8"))
+      const content = this.readFile(sessionFile)
+      if (content === null) return null
+      context = JSON.parse(content)
     } catch {
       return null
     }
@@ -499,6 +518,7 @@ export class TrellisContext {
         ? join(this.directory, normalized)
         : join(this.directory, ".trellis", "tasks", normalized)
 
+    if (!this.isActivePath(candidate)) return null
     return this.containInProject(candidate)
   }
 
@@ -506,7 +526,17 @@ export class TrellisContext {
   // File Reading Utilities
   // ============================================================
 
+  isActivePath(filePath) {
+    if (isHistoricalPath(filePath)) return false
+    try {
+      return !isHistoricalPath(realpathSync(filePath), this.directory)
+    } catch {
+      return false
+    }
+  }
+
   readFile(filePath) {
+    if (!this.isActivePath(filePath)) return null
     try {
       if (existsSync(filePath)) {
         return readFileSync(filePath, "utf-8")

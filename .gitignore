@@ -149,7 +149,6 @@ vite.config.ts.timestamp-*
 .trellis/.runtime/
 .trellis/.developer
 .trellis/hooks.local.json
-.gitnexus/
 
 # Multi-agent temp files
 .session-id
@@ -189,5 +188,4 @@ smoke_test/
 tmp/
 tmp1/
 .playwright-mcp
-.gitnexus
 .codegraph/

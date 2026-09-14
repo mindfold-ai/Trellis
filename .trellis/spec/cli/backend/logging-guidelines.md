@@ -60,7 +60,7 @@ console.log(chalk.green("\n✅ Trellis initialized successfully!\n"));
 ```typescript
 console.log(chalk.yellow("Coming soon: update command"));
 console.log(chalk.yellow("No tools selected. At least one tool is required."));
-console.log(chalk.yellow(`⚠️  Failed to initialize developer: ${message}`));
+console.log(chalk.yellow(`⚠️  Optional version check unavailable: ${message}`));
 ```
 
 ### Errors (Red)
@@ -76,7 +76,7 @@ console.error(
 
 ```typescript
 // Key-value pairs
-console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
+console.log(chalk.blue("Task assignee:"), chalk.gray(assignee));
 console.log(chalk.blue("🔍 Project type:"), chalk.gray(projectDescription));
 
 // Instructions with highlighted commands
@@ -109,7 +109,7 @@ console.log(chalk.gray("\n  AI-assisted development workflow framework\n"));
 console.log(chalk.gray("Mode: Force overwrite existing files\n"));
 
 // Detection results
-console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
+console.log(chalk.blue("Task assignee:"), chalk.gray(assignee));
 console.log(chalk.blue("🔍 Project type:"), chalk.gray(description));
 
 // Configuration summary
@@ -213,7 +213,7 @@ if (options.force) {
 }
 
 // 3. Detection results
-console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
+console.log(chalk.blue("Task assignee:"), chalk.gray(assignee));
 console.log(chalk.blue("🔍 Project type:"), chalk.gray(typeDescription));
 
 // 4. Configuration summary
@@ -257,7 +257,7 @@ try {
 // Non-critical warning
 console.log(
   chalk.yellow(
-    `⚠️  Failed to initialize developer: ${message}`,
+    `⚠️  Optional version check unavailable: ${message}`,
   ),
 );
 
