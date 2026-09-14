@@ -1,0 +1,33 @@
+{
+  "title": "Keep the answer visible during recovery",
+  "summary": "Redacted project example · reconstructed from documentation.",
+  "locale": "en",
+  "evidence": [
+    {
+      "label": "Redacted source excerpt",
+      "href": "evidence.md"
+    }
+  ],
+  "why": [
+    "A delayed code attachment should not erase a useful answer."
+  ],
+  "approach": [
+    "Keep accepted answer",
+    "Retry only the failed request",
+    "Attach current code"
+  ],
+  "in_scope": [
+    "Preserve the answer during code generation",
+    "Show bounded reconsideration and explicit retry"
+  ],
+  "out_of_scope": [
+    "Changing capture or speech recognition"
+  ],
+  "acceptance": [
+    "Obsolete code never replaces a revised answer",
+    "Failure leaves the answer readable"
+  ],
+  "decisions": [
+    "Live microphone-to-overlay acceptance still needs its own evidence."
+  ]
+}

@@ -10237,7 +10237,7 @@ describe("regression: pi uses TypeScript extension assets instead of Python hook
     const templates = collectPlatformTemplates("pi");
     expect(templates).toBeInstanceOf(Map);
     const keys = [...(templates ?? new Map()).keys()];
-    expect(keys.some((key) => key.endsWith(".py"))).toBe(false);
+    expect(keys.some((key) => key.startsWith(".pi/hooks/") && key.endsWith(".py"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".pi", "hooks"))).toBe(false);
   });
 

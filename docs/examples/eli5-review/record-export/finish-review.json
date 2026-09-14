@@ -1,0 +1,35 @@
+{
+  "title": "Export only the intended record owner",
+  "summary": "Redacted project example · reconstructed from documentation.",
+  "locale": "en",
+  "evidence": [
+    {
+      "label": "Redacted source excerpt",
+      "href": "evidence.md"
+    }
+  ],
+  "before": "The reader must connect active-owner validation, export filters, and incremental state across several paragraphs.",
+  "after": "Owner validation happens before writes, and export defaults remain scoped to that same owner.",
+  "plan_basis": "unavailable",
+  "delivered": [
+    "One owner-scope flow with explicit acceptance"
+  ],
+  "deviations": [
+    "Example reconstructed from product documentation; no patient records or approved plan were used."
+  ],
+  "remaining": [
+    "Confirm behavior against a synthetic multi-owner fixture before any live use."
+  ],
+  "checks": [
+    {
+      "name": "Source documentation",
+      "status": "partial",
+      "detail": "The excerpt supports the intended behavior; documentation is not execution evidence."
+    },
+    {
+      "name": "Live acceptance",
+      "status": "not_run",
+      "detail": "No live project tests were run for this demonstration."
+    }
+  ]
+}
