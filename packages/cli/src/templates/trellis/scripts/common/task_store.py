@@ -1724,6 +1724,18 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
         _report_read_failure(child_json_path, child_reason)
         return 1
 
+    actual_parent = child_data.get("parent")
+    if actual_parent != parent_dir.name:
+        print(
+            colored(
+                f"Error: {child_dir.name} is not a child of {parent_dir.name} "
+                f"(its parent is {actual_parent or 'none'})",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
+        return 1
+
     # Remove child from parent's children list
     parent_children = _ensure_children_list(parent_data)
     child_dir_name = child_dir.name

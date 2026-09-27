@@ -94,6 +94,15 @@ function readChildren(repo: string, name: string): unknown {
   ).children;
 }
 
+function readTask(repo: string, name: string): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(
+      path.join(repo, ".trellis", "tasks", name, "task.json"),
+      "utf-8",
+    ),
+  ) as Record<string, unknown>;
+}
+
 function setChildren(repo: string, name: string, value: unknown): void {
   const file = path.join(repo, ".trellis", "tasks", name, "task.json");
   const data = JSON.parse(fs.readFileSync(file, "utf-8"));
@@ -184,5 +193,45 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
     expect(r.stderr).not.toContain("TypeError");
     expect(r.status).toBe(0);
     expect(readChildren(tmp, PARENT)).toEqual([]);
+  });
+});
+
+describe.skipIf(!hasPython())("remove-subtask parent relationship", () => {
+  let tmp: string;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-parent-test-"));
+    setupRepo(tmp);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("refuses to clear a child linked to a different parent", () => {
+    const requestedParent = "08-19-requested-parent";
+    const actualParent = "08-19-actual-parent";
+    const child = "08-19-child";
+    makeTask(tmp, requestedParent);
+    makeTask(tmp, actualParent, { children: [child] });
+    makeTask(tmp, child, { parent: actualParent });
+
+    const requestedBefore = readTask(tmp, requestedParent);
+    const actualBefore = readTask(tmp, actualParent);
+    const childBefore = readTask(tmp, child);
+    const r = runTask(
+      tmp,
+      "remove-subtask",
+      `.trellis/tasks/${requestedParent}`,
+      `.trellis/tasks/${child}`,
+    );
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain(
+      `Error: ${child} is not a child of ${requestedParent}`,
+    );
+    expect(readTask(tmp, requestedParent)).toEqual(requestedBefore);
+    expect(readTask(tmp, actualParent)).toEqual(actualBefore);
+    expect(readTask(tmp, child)).toEqual(childBefore);
   });
 });
