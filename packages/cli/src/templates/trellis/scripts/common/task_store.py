@@ -141,6 +141,25 @@ def _find_archived_task_by_dir_name(tasks_dir: Path, dir_name: str) -> Path | No
     return None
 
 
+def _find_task_dirs_by_dir_name(tasks_dir: Path, dir_name: str) -> list[Path]:
+    """Find active and archived task directories with an exact name."""
+    matches: list[Path] = []
+    active_dir = tasks_dir / dir_name
+    if active_dir.is_dir():
+        matches.append(active_dir)
+
+    archive_dir = tasks_dir / DIR_ARCHIVE
+    if archive_dir.is_dir():
+        for month_dir in sorted(archive_dir.iterdir()):
+            if not month_dir.is_dir():
+                continue
+            archived_dir = month_dir / dir_name
+            if archived_dir.is_dir():
+                matches.append(archived_dir)
+
+    return matches
+
+
 def _repo_relative_path(path: Path, repo_root: Path) -> str:
     """Format a path relative to the repo root when possible."""
     try:
@@ -1722,6 +1741,23 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
     child_data, child_reason = read_json_checked(child_json_path)
     if child_data is None:
         _report_read_failure(child_json_path, child_reason)
+        return 1
+
+    parent_matches = _find_task_dirs_by_dir_name(get_tasks_dir(repo_root), parent_dir.name)
+    if len(parent_matches) > 1:
+        print(
+            colored(
+                f"Error: Parent task name is ambiguous: {parent_dir.name}",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
+        for match in parent_matches:
+            print(f"  - {_repo_relative_path(match, repo_root)}", file=sys.stderr)
+        print(
+            "Rename or remove the duplicate task directory, then retry.",
+            file=sys.stderr,
+        )
         return 1
 
     actual_parent = child_data.get("parent")
