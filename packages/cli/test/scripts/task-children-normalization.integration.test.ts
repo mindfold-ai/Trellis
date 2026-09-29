@@ -47,12 +47,11 @@ function setupRepo(tmp: string): void {
   fs.writeFileSync(path.join(tmp, ".trellis", ".developer"), "name=tester\n");
 }
 
-function makeTask(
-  repo: string,
+function writeTask(
+  dir: string,
   name: string,
   overrides: Record<string, unknown> = {},
 ): string {
-  const dir = path.join(repo, ".trellis", "tasks", name);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "prd.md"), `${name} prd\n`);
   fs.writeFileSync(
@@ -77,6 +76,26 @@ function makeTask(
   return dir;
 }
 
+function makeTask(
+  repo: string,
+  name: string,
+  overrides: Record<string, unknown> = {},
+): string {
+  return writeTask(path.join(repo, ".trellis", "tasks", name), name, overrides);
+}
+
+function makeArchivedTask(
+  repo: string,
+  name: string,
+  overrides: Record<string, unknown> = {},
+): string {
+  return writeTask(
+    path.join(repo, ".trellis", "tasks", "archive", "2026-08", name),
+    name,
+    overrides,
+  );
+}
+
 function runTask(repo: string, ...args: string[]) {
   return spawnSync("python3", [".trellis/scripts/task.py", ...args], {
     cwd: repo,
@@ -92,6 +111,16 @@ function readChildren(repo: string, name: string): unknown {
       "utf-8",
     ),
   ).children;
+}
+
+function readTaskAt(dir: string): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(path.join(dir, "task.json"), "utf-8"),
+  ) as Record<string, unknown>;
+}
+
+function readTask(repo: string, name: string): Record<string, unknown> {
+  return readTaskAt(path.join(repo, ".trellis", "tasks", name));
 }
 
 function setChildren(repo: string, name: string, value: unknown): void {
@@ -184,5 +213,79 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
     expect(r.stderr).not.toContain("TypeError");
     expect(r.status).toBe(0);
     expect(readChildren(tmp, PARENT)).toEqual([]);
+  });
+});
+
+describe.skipIf(!hasPython())("remove-subtask parent relationship", () => {
+  let tmp: string;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-parent-test-"));
+    setupRepo(tmp);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("refuses to clear a child linked to a different parent", () => {
+    const requestedParent = "08-19-requested-parent";
+    const actualParent = "08-19-actual-parent";
+    const child = "08-19-child";
+    makeTask(tmp, requestedParent);
+    makeTask(tmp, actualParent, { children: [child] });
+    makeTask(tmp, child, { parent: actualParent });
+
+    const requestedBefore = readTask(tmp, requestedParent);
+    const actualBefore = readTask(tmp, actualParent);
+    const childBefore = readTask(tmp, child);
+    const r = runTask(
+      tmp,
+      "remove-subtask",
+      `.trellis/tasks/${requestedParent}`,
+      `.trellis/tasks/${child}`,
+    );
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain(
+      `Error: ${child} is not a child of ${requestedParent}`,
+    );
+    expect(readTask(tmp, requestedParent)).toEqual(requestedBefore);
+    expect(readTask(tmp, actualParent)).toEqual(actualBefore);
+    expect(readTask(tmp, child)).toEqual(childBefore);
+  });
+
+  it.each([
+    ["active", (parent: string) => `.trellis/tasks/${parent}`],
+    [
+      "archived",
+      (parent: string) => `.trellis/tasks/archive/2026-08/${parent}`,
+    ],
+  ])("refuses an ambiguous %s parent basename", (_label, parentPath) => {
+    const parent = "08-19-duplicate-parent";
+    const child = "08-19-child";
+    makeTask(tmp, parent, { children: [child] });
+    const archivedParentDir = makeArchivedTask(tmp, parent, {
+      children: [child],
+    });
+    makeTask(tmp, child, { parent });
+
+    const activeBefore = readTask(tmp, parent);
+    const archivedBefore = readTaskAt(archivedParentDir);
+    const childBefore = readTask(tmp, child);
+    const r = runTask(
+      tmp,
+      "remove-subtask",
+      parentPath(parent),
+      `.trellis/tasks/${child}`,
+    );
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain(
+      `Error: Parent task name is ambiguous: ${parent}`,
+    );
+    expect(readTask(tmp, parent)).toEqual(activeBefore);
+    expect(readTaskAt(archivedParentDir)).toEqual(archivedBefore);
+    expect(readTask(tmp, child)).toEqual(childBefore);
   });
 });
