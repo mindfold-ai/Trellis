@@ -28,7 +28,9 @@ warnings.filterwarnings("ignore")
 
 import json
 import os
+import queue
 import sys
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -1089,14 +1091,48 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
     return "", "", tool_input
 
 
+def _load_hook_input() -> dict:
+    """Read hook JSON without trusting host runners to close stdin.
+
+    Kiro IDE `runCommand` and similar hook runners can leave stdin open while
+    sending no payload. A plain `json.load(sys.stdin)` then blocks forever.
+    Normal hook runners write the complete JSON payload and close stdin, so the
+    short daemon read preserves that path while failing closed to `{}` for
+    non-piping hosts. The abandoned daemon thread is safe: interpreter
+    shutdown discards daemon threads outright (threading docs), so the
+    process exits without waiting for the pipe.
+    """
+    result_queue: "queue.Queue[str | Exception]" = queue.Queue(maxsize=1)
+
+    def _read() -> None:
+        """Read all of stdin onto the queue; never raises."""
+        try:
+            result_queue.put(sys.stdin.read())
+        except Exception as exc:
+            result_queue.put(exc)
+
+    reader = threading.Thread(target=_read, daemon=True)
+    reader.start()
+    try:
+        raw = result_queue.get(timeout=0.2)
+    except queue.Empty:
+        return {}
+
+    if isinstance(raw, Exception):
+        return {}
+    try:
+        data = json.loads(raw) if raw.strip() else {}
+    except (json.JSONDecodeError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def main():
+    """Rewrite the spawned sub-agent prompt with Trellis task context."""
     if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
         sys.exit(0)
 
-    try:
-        input_data = json.load(sys.stdin)
-    except json.JSONDecodeError:
-        sys.exit(0)
+    input_data = _load_hook_input()
     if not isinstance(input_data, dict):
         sys.exit(0)
 
