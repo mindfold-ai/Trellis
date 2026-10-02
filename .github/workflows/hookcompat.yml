@@ -1,0 +1,32 @@
+name: Hook compatibility
+
+on:
+  pull_request:
+    paths:
+      - ".claude/hooks/inject-subagent-context.py"
+      - ".claude/settings.json"
+      - "packages/cli/src/templates/shared-hooks/inject-subagent-context.py"
+      - "packages/cli/src/templates/claude/settings.json"
+      - "hookcompat.yml"
+      - ".github/workflows/hookcompat.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hookcompat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize shipped Claude Code configuration
+        run: |
+          cp packages/cli/src/templates/shared-hooks/inject-subagent-context.py \
+            .claude/hooks/inject-subagent-context.py
+          sed 's/{{PYTHON_CMD}}/python3/g' \
+            packages/cli/src/templates/claude/settings.json \
+            > .hookcompat-settings.json
+      - uses: k21993/hookcompat@2c0891c4cfae44f576c8dc564cbd164981b2326a # v0.1.0
+        with:
+          config: hookcompat.yml

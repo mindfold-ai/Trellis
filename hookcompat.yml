@@ -1,0 +1,5 @@
+harness: claude-code
+settings: .hookcompat-settings.json
+cases:
+  - scenario: pretooluse-trellis-research-subagent
+    expect: allow
