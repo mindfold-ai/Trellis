@@ -128,6 +128,7 @@ channel:
 #
 # codex:
 #   dispatch_mode: auto  # or "inline"; legacy alias: "sub-agent"
+#   hook_mode: project   # or "plugin" when the Trellis Codex plugin owns hooks
 
 #-------------------------------------------------------------------------------
 # Sub-agent context injection limits

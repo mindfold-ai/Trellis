@@ -1,11 +1,12 @@
 {
+  "description": "Run reviewed Trellis hook runtimes from the plugin while reading state from the active repository.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "{{PYTHON_CMD}} -X utf8 .codex/hooks/session-start.py",
+            "command": "node -e \"const p=require('node:path');require(p.join(process.env.PLUGIN_ROOT,'hooks','trellis-codex-dispatch.cjs'))\"",
             "timeout": 30
           }
         ]
@@ -16,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{PYTHON_CMD}} -X utf8 .codex/hooks/inject-workflow-state.py",
+            "command": "node -e \"const p=require('node:path');require(p.join(process.env.PLUGIN_ROOT,'hooks','trellis-codex-dispatch.cjs'))\"",
             "timeout": 15
           }
         ]
@@ -28,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{PYTHON_CMD}} -X utf8 .codex/hooks/inject-subagent-context.py",
+            "command": "node -e \"const p=require('node:path');require(p.join(process.env.PLUGIN_ROOT,'hooks','trellis-codex-dispatch.cjs'))\"",
             "timeout": 15
           }
         ]

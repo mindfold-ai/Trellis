@@ -29,7 +29,7 @@ const codexCtx: TemplateContext = {
   executorAI: "Bash scripts or tool calls",
   userActionLabel: "Skills",
   agentCapable: true,
-  hasHooks: false,
+  hasHooks: true,
   cliFlag: "codex",
 };
 
@@ -315,10 +315,10 @@ describe("resolvePlaceholders", () => {
         expect(result).not.toContain("read specs manually");
       });
 
-      it("Codex (hasHooks=false) gets manual text", () => {
+      it("Codex (hasHooks=true) gets hook text", () => {
         const result = resolvePlaceholders(template, codexCtx);
-        expect(result).not.toContain("auto-injected by hook");
-        expect(result).toContain("read specs manually");
+        expect(result).toContain("auto-injected by hook");
+        expect(result).not.toContain("read specs manually");
       });
     });
 
@@ -346,11 +346,11 @@ describe("resolvePlaceholders", () => {
         expect(result).not.toContain("No agents");
       });
 
-      it("Codex (agent, no hooks): agents + manual injection", () => {
+      it("Codex (agent+hooks): agents + hook injection", () => {
         const result = resolvePlaceholders(template, codexCtx);
         expect(result).toContain("Agents available");
-        expect(result).not.toContain("Hook injection active");
-        expect(result).toContain("No hooks, manual injection");
+        expect(result).toContain("Hook injection active");
+        expect(result).not.toContain("No hooks, manual injection");
         expect(result).not.toContain("No agents");
       });
 

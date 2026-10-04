@@ -59,7 +59,10 @@ import {
   collectPlatformTemplates,
 } from "../configurators/index.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
-import { preserveCodexAgentModelKeys } from "../configurators/codex.js";
+import {
+  filterCodexProjectHooks,
+  preserveCodexAgentModelKeys,
+} from "../configurators/codex.js";
 import { printZcodeSetupHint } from "../configurators/zcode.js";
 import { ensureGitattributes } from "../configurators/workflow.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
@@ -909,6 +912,9 @@ async function collectTemplateFiles(
   for (const platformId of platforms) {
     const platformFiles = collectPlatformTemplates(platformId);
     if (platformFiles) {
+      if (platformId === "codex") {
+        filterCodexProjectHooks(cwd, platformFiles);
+      }
       for (const [filePath, content] of platformFiles) {
         files.set(filePath, content);
       }
@@ -2212,6 +2218,7 @@ export async function update(options: UpdateOptions): Promise<void> {
       cwd,
       [...configuredPlatforms],
       hashes,
+      { persist: !options.dryRun },
     );
     if (prune.pruned.length > 0) {
       console.log(

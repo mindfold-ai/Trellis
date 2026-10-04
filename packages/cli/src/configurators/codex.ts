@@ -117,6 +117,80 @@ function isCodexAgentTomlPath(filePath: string): boolean {
   );
 }
 
+export type CodexHookMode = "project" | "plugin";
+
+/**
+ * Read the opt-in Codex hook ownership mode from a config.yaml string.
+ * Unknown or malformed values keep the existing project-local hook behavior.
+ */
+export function parseCodexHookMode(content: string): CodexHookMode {
+  let codexIndent: number | null = null;
+  let codexChildIndent: number | null = null;
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.replace(/\r$/, "");
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    const indent = line.length - line.trimStart().length;
+
+    if (indent === 0 && /^codex:\s*(?:#.*)?$/.test(trimmed)) {
+      codexIndent = indent;
+      codexChildIndent = null;
+      continue;
+    }
+    if (codexIndent === null) continue;
+    if (indent <= codexIndent) {
+      codexIndent = null;
+      codexChildIndent = null;
+      continue;
+    }
+
+    const keyMatch = trimmed.match(/^([A-Za-z0-9_-]+):(?:\s*(.*))?$/);
+    if (!keyMatch) continue;
+    codexChildIndent ??= indent;
+    if (indent !== codexChildIndent || keyMatch[1] !== "hook_mode") continue;
+
+    const match = keyMatch[2];
+    if (!match) continue;
+    const value = match
+      .replace(/\s+#.*$/, "")
+      .trim()
+      .replace(/^['"]|['"]$/g, "")
+      .toLowerCase();
+    return value === "plugin" ? "plugin" : "project";
+  }
+
+  return "project";
+}
+
+/**
+ * Remove project-local Codex hook templates when the reviewed plugin owns
+ * hook execution. All other Codex templates remain project-managed.
+ */
+export function filterCodexProjectHooks(
+  cwd: string,
+  files: Map<string, string>,
+): void {
+  let mode: CodexHookMode = "project";
+  try {
+    mode = parseCodexHookMode(
+      fs.readFileSync(path.join(cwd, ".trellis", "config.yaml"), "utf-8"),
+    );
+  } catch {
+    // Missing or unreadable config keeps the backwards-compatible default.
+  }
+  if (mode !== "plugin") return;
+
+  for (const filePath of [...files.keys()]) {
+    if (
+      filePath === ".codex/hooks.json" ||
+      filePath.startsWith(".codex/hooks/")
+    ) {
+      files.delete(filePath);
+    }
+  }
+}
+
 /**
  * Preserve any user-set `model` / `model_reasoning_effort` keys from the
  * on-disk `.codex/agents/trellis-*.toml` files (at `cwd`) into every
@@ -195,6 +269,7 @@ export async function configureCodex(cwd: string): Promise<void> {
   // rendered map too, and the two must agree. writeTemplateMap re-renders,
   // which is a no-op (replacePythonCommandLiterals is idempotent).
   const files = renderTemplateMap(collectCodexTemplates());
+  filterCodexProjectHooks(cwd, files);
   preserveCodexAgentModelKeys(cwd, files);
   await writeTemplateMap(cwd, files);
 

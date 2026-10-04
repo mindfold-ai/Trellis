@@ -459,16 +459,21 @@ describe("update() integration", () => {
     expect(classified.conflict).toHaveLength(0);
     expect(classified.auto).toHaveLength(1);
 
-    await executeMigrations(classified, tmpDir, { force: true, skipAll: false }, currentTemplates);
+    await executeMigrations(
+      classified,
+      tmpDir,
+      { force: true, skipAll: false },
+      currentTemplates,
+    );
 
     // No duplicate/leftover `.pi/skills/` directory should survive.
     expect(fs.existsSync(projectFile(".pi/skills"))).toBe(false);
 
     // `.agents/skills/` must end up with the correct, current, neutral
     // content — not the stale Pi-flavored bytes from the deleted legacy dir.
-    expect(
-      readProjectFile(".agents/skills/trellis-update-spec/SKILL.md"),
-    ).toBe(neutralContent);
+    expect(readProjectFile(".agents/skills/trellis-update-spec/SKILL.md")).toBe(
+      neutralContent,
+    );
   });
 
   it("#2 dry run makes no file changes even when changes exist", async () => {
@@ -511,6 +516,37 @@ describe("update() integration", () => {
 
     // File should NOT be re-created (user deleted it, hash still exists)
     expect(fs.existsSync(target)).toBe(false);
+  });
+
+  it("keeps removed Codex hooks absent when the plugin owns hook execution", async () => {
+    await init({ yes: true, force: true, codex: true });
+
+    const configPath = projectFile(`${DIR_NAMES.WORKFLOW}/config.yaml`);
+    fs.appendFileSync(configPath, "\ncodex:\n  hook_mode: plugin\n");
+    fs.rmSync(projectFile(".codex/hooks.json"), { force: true });
+    fs.rmSync(projectFile(".codex/hooks"), { recursive: true, force: true });
+
+    const ledgerBeforeDryRun = fs.readFileSync(hashFilePath(), "utf-8");
+    await update({ dryRun: true });
+
+    expect(fs.readFileSync(hashFilePath(), "utf-8")).toBe(ledgerBeforeDryRun);
+    expect(fs.existsSync(projectFile(".codex/hooks.json"))).toBe(false);
+    expect(fs.existsSync(projectFile(".codex/hooks"))).toBe(false);
+
+    await update({ dryRun: false });
+
+    expect(fs.existsSync(projectFile(".codex/hooks.json"))).toBe(false);
+    expect(fs.existsSync(projectFile(".codex/hooks"))).toBe(false);
+    expect(fs.existsSync(projectFile(".codex/config.toml"))).toBe(true);
+    expect(fs.existsSync(projectFile(".codex/agents/trellis-check.toml"))).toBe(
+      true,
+    );
+    const hashes = readHashesV2(hashFilePath());
+    expect(
+      Object.keys(hashes).some(
+        (key) => key === ".codex/hooks.json" || key.startsWith(".codex/hooks/"),
+      ),
+    ).toBe(false);
   });
 
   it("#4 auto-updates file when template changed but user did not modify", async () => {

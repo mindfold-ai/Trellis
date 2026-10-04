@@ -9,7 +9,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Claude Code | `--claude` | `.claude/` | `.claude/skills/` | `.claude/agents/` | `.claude/hooks/` + `.claude/settings.json` |
 | Cursor | `--cursor` | `.cursor/` | `.cursor/skills/` | `.cursor/agents/` | `.cursor/hooks.json` + `.cursor/hooks/` |
 | OpenCode | `--opencode` | `.opencode/` | `.opencode/skills/` | `.opencode/agents/` | `.opencode/plugins/` |
-| Codex | `--codex` | `.codex/` | `.agents/skills/` | `.codex/agents/` | `.codex/hooks/` + `.codex/hooks.json` |
+| Codex | `--codex` | `.codex/` | `.agents/skills/` | `.codex/agents/` | `.codex/hooks/` + `.codex/hooks.json`; optional Trellis Codex plugin |
 | Kilo | `--kilo` | `.kilocode/` | `.kilocode/skills/` | Usually none | `.kilocode/workflows/` |
 | Kiro | `--kiro` | `.kiro/` | `.kiro/skills/` | `.kiro/agents/` | `.kiro/hooks/` |
 | Gemini CLI | `--gemini` | `.gemini/` | `.agents/skills/` | `.gemini/agents/` | `.gemini/settings.json` + `.gemini/hooks/` |
@@ -75,6 +75,31 @@ When changing behavior, inspect workflows and skills first. Do not assume Trelli
 ### Shared `.agents/skills/`
 
 Codex, Gemini CLI, Pi Agent, Kimi Code, and DeepSeek Harness (dsh) write the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it. ZCode keeps Trellis-managed skills under `.zcode/skills/`.
+
+### Optional Trellis Codex plugin
+
+The repository includes a companion plugin under `plugins/codex/` and a Codex
+marketplace manifest at `.agents/plugins/marketplace.json`. On Codex App/CLI
+surfaces with plugin support, add the Trellis repository as a marketplace and
+install the plugin once:
+
+```sh
+codex plugin marketplace add https://github.com/mindfold-ai/Trellis.git
+codex plugin add trellis@trellis
+```
+
+It registers the same `SessionStart`, `UserPromptSubmit`,
+and `SubagentStart` entry points once. It runs reviewed hook runtimes from the
+plugin bundle only for repositories that set `codex.hook_mode: plugin`; the
+default `project` mode remains project-local. The plugin never executes
+`.codex/hooks/*` from the active repository; repository-local `.trellis` state
+remains authoritative. Set
+`codex.hook_mode: plugin` in `.trellis/config.yaml`, then remove
+`.codex/hooks.json` and `.codex/hooks/` once. Init/update omit those paths while
+plugin mode is active. The default `project` mode remains the fallback for
+Codex surfaces without plugins or users who do not install the bundle. Plugin
+hook review is still required, and it does not grant unrelated command,
+sandbox, or external service permissions.
 
 ## Decision Rules When Modifying Platform Files
 

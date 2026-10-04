@@ -381,9 +381,9 @@ export interface ResolvedSkillFile {
  * auto-injects the workflow overview, so a user-facing `start` would be
  * redundant.
  *
- * `agentCapable && !hasHooks` platforms (Codex, ZCode, OpenCode, Reasonix, Grok)
- * have no such hook (or use an out-of-band plugin), so they need the
- * user-invocable `trellis-start` skill / `start.md` command as fallback.
+ * `agentCapable && !hasHooks` platforms (OpenCode, Reasonix, Grok) have no
+ * such hook, so they need the user-invocable `trellis-start` skill /
+ * `start.md` command as fallback. Codex and ZCode provide SessionStart hooks.
  * Snow is class-1 (`hasHooks: true`) with auto inject + project agents.
  * Agent-less platforms (Kilo, Antigravity, Devin) also keep `start` since
  * they rely entirely on user-triggered workflows.

@@ -87,6 +87,11 @@ describe("codex native sub-agent hooks", () => {
     expect(subagentStart?.hooks[0]?.command).toContain(
       ".codex/hooks/inject-subagent-context.py",
     );
+
+    expect(config.hooks.SessionStart).toHaveLength(1);
+    expect(config.hooks.SessionStart[0]?.hooks[0]?.command).toContain(
+      ".codex/hooks/session-start.py",
+    );
   });
 });
 

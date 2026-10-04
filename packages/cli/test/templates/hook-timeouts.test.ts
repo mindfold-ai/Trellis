@@ -24,8 +24,8 @@ const TEMPLATES_ROOT = join(
 /**
  * Per-platform hook config descriptor.
  *
- * - `sessionStartEvent`: null when the platform has no SessionStart hook
- *   (codex). Used to look up entries in `parsed.hooks[event]`.
+ * - `sessionStartEvent`: null when the platform has no SessionStart hook.
+ *   Used to look up entries in `parsed.hooks[event]`.
  * - `userPromptEvent`: event key for the inject-workflow-state hook (varies:
  *   `UserPromptSubmit`, `BeforeAgent`, `userPromptSubmitted`,
  *   `beforeSubmitPrompt`).
@@ -115,8 +115,7 @@ const PLATFORM_HOOK_CONFIGS = [
     platform: "codex",
     path: "codex/hooks.json",
     schema: "nested",
-    // Codex has no SessionStart hook — only UserPromptSubmit.
-    sessionStartEvent: null,
+    sessionStartEvent: "SessionStart",
     sessionStartTimeoutField: "timeout",
     userPromptEvent: "UserPromptSubmit",
     userPromptTimeoutField: "timeout",

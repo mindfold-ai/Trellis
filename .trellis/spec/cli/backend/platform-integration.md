@@ -140,16 +140,80 @@ the build if it is really just an extra write.
 > | Layer                     | Install Path      | Template Source                           | Purpose                                                                           |
 > | ------------------------- | ----------------- | ----------------------------------------- | --------------------------------------------------------------------------------- |
 > | Shared skills             | `.agents/skills/` | Generated from `common/` templates        | Cross-platform skills (agentskills.io standard)                                   |
-> | Codex config/agents/hooks | `.codex/`         | `src/templates/codex/{agents,hooks.json}` | Config, custom agents, UserPromptSubmit hook config, and compatibility hook files |
+> | Codex config/agents/hooks | `.codex/`         | `src/templates/codex/{agents,hooks.json}` | Config, custom agents, SessionStart/UserPromptSubmit hook config, and compatibility hook files |
 >
 > **Key rules:**
 >
 > - Shared skills in `.agents/skills/` must NOT contain platform-specific references (no `--platform codex`, no `codex exec`)
 > - Agent TOML format: `name` + `description` + `developer_instructions` + optional `sandbox_mode` (NOT `[sandbox_read_only]` + `prompt`)
-> - Codex hooks require `features.hooks = true` in user config (Codex 0.129+; older versions accept legacy `codex_hooks = true`); 0.129+ also gates per-hook activation behind a one-time `/hooks` TUI review
+> - Codex hooks are enabled by default; `[features].hooks = false` disables them, `codex_hooks` is deprecated, and `/hooks` review applies only to untrusted non-managed hooks
 > - Platform detection uses `.codex/` only — `.agents/skills/` alone does NOT trigger codex detection
 > - `configDir` is `".codex"`, with `supportsAgentSkills: true` to auto-include `.agents/skills` in managed paths
->
+### Scenario: Codex plugin-owned hooks
+
+#### 1. Scope / Trigger
+
+Trigger: a project installs the companion `plugins/codex` bundle and wants one
+reviewed plugin hook definition instead of repository-local hook approvals.
+
+#### 2. Signatures
+
+```typescript
+type CodexHookMode = "project" | "plugin";
+function parseCodexHookMode(content: string): CodexHookMode;
+function filterCodexProjectHooks(cwd: string, files: Map<string, string>): void;
+```
+
+#### 3. Contracts
+
+- `codex.hook_mode` is read from `.trellis/config.yaml`; missing, malformed, or
+  unknown values resolve to `project`.
+- `project` remains the default and owns `.codex/hooks.json` plus
+  `.codex/hooks/**` through the normal configurator.
+- `plugin` removes those paths from init/update desired files and from the
+  manifest's known-key set. `.codex/config.toml`, agents, and shared skills
+  remain project-managed.
+- The plugin dispatcher executes only its bundled runtime, sets
+  `CODEX_PROJECT_DIR` to the discovered Trellis root, and never loads
+  `.codex/hooks/**` from the active repository. It exits 0 without output when
+  no Trellis root or bundled runtime is available.
+
+#### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| plugin mode + removed local hooks + `trellis update` | hooks stay absent; other Codex files update normally |
+| `trellis update --dry-run` in plugin mode | no writes, including no manifest rewrite |
+| project mode or invalid `hook_mode` | existing local-hook behavior is unchanged |
+| planted repository-local hook | never executed by the plugin dispatcher |
+| non-Trellis cwd, malformed input, missing Python/runtime | exit successfully with no context |
+
+#### 5. Good / Base / Bad Cases
+
+- Good: a reviewed plugin injects workflow state from the repository's
+  `.trellis/` while a malicious `.codex/hooks/` file is ignored.
+- Base: users without plugin support keep generated project hooks.
+- Bad: filtering only init output but not update/manifest ownership causes
+  removed hooks to be regenerated or stale hashes to be retained.
+
+#### 6. Tests Required
+
+- Parse the plugin manifest and canonical `hooks/hooks.json` registrations.
+- Black-box the dispatcher for Trellis, non-Trellis, malformed-cwd, and planted
+  local-hook cases; assert bundled output and no local-hook side effect.
+- Cover `configureCodex`, update (including dry-run), manifest pruning, and the
+  unchanged project-mode fallback.
+- Assert bundled Python runtimes remain byte-identical to shared hook templates.
+
+#### 7. Wrong vs Correct
+
+**Wrong:** choose the repository hook whenever it exists and only omit it from
+`trellis init`.
+
+**Correct:** make plugin mode remove the local hook paths at every desired-file
+and manifest-ownership boundary, while the plugin dispatcher always resolves
+and runs its own bundled runtime.
+
 > **Kimi Code is a hybrid skills platform** — workflow/bundled skills go to the shared `.agents/skills/` root via `resolveSkillsNeutral()` (byte-identical to Codex/Gemini/Pi; Kimi discovers that root natively), while the session-boundary commands (`start` / `continue` / `finish-work`, invoked as `/skill:trellis-<name>`) and the Trellis agent prompts are written as Kimi-private skills under `.kimi-code/skills/<name>/SKILL.md`. The same agent prompts are also installed as project-level custom sub-agent definitions at `.kimi-code/agents/trellis-{implement,check,research}.md` (Claude Code-compatible frontmatter), so the main session can dispatch `trellis-<name>` sub-agents directly; the skill copies stay as a guidance/fallback path. Kimi has no project-level hooks/settings file (hooks are user-level `~/.kimi-code/config.toml` only), so no hooks, settings, or extension files are written, and the agent prompts keep the pull-based prelude on implement/check (class-2).
 
 #### Rule: `.agents/skills/` writes use `resolvePlaceholdersNeutral()`
@@ -555,7 +619,7 @@ The native hook path calls this resolver with `platform="codex"`,
 
 #### 3. Contracts
 
-- Generated `.codex/hooks.json` keeps `UserPromptSubmit` and adds a
+- Generated `.codex/hooks.json` registers `SessionStart` and `UserPromptSubmit`, and adds a
   `SubagentStart` matcher for exactly `trellis-implement`, `trellis-check`,
   and `trellis-research`.
 - Codex hook input uses parent `session_id`, `agent_type`, and `cwd`. A valid
@@ -1117,16 +1181,16 @@ When creating platform templates, ensure references match the platform's interac
 
 Commands emitted by `resolveCommands(ctx)` / `resolveAllAsSkills(ctx)` / `resolveAllAsSkillsNeutral(ctx)` in `src/configurators/shared.ts`:
 
-| Command       | `agentCapable && hasHooks` (13)                                                                                                                                                                                                                | `agentCapable && !hasHooks` (5)                                                                       | `!agentCapable` (3)                                  |
+| Command       | `agentCapable && hasHooks` (14)                                                                                                                                                                                                                | `agentCapable && !hasHooks` (5)                                                                       | `!agentCapable` (3)                                  |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `start`       | ✔ filtered by the shared resolver — SessionStart-style hook injects opening context, user-facing `/start` would be redundant. Pi is the approved exception and re-adds `.pi/prompts/trellis-start.md` because `session_start` is notify-only. | ✅ emitted (skill and/or slash command per platform) — no hook fires, users need an invocable `start` | ✅ emitted — manual equivalent of session-start hook |
 | `continue`    | ✅ emitted                                                                                                                                                                                                                                     | ✅ emitted                                                                                            | ✅ emitted                                           |
 | `finish-work` | ✅ emitted                                                                                                                                                                                                                                     | ✅ emitted                                                                                            | ✅ emitted                                           |
 
-**Rule**: filter is by `ctx.agentCapable && ctx.hasHooks` — **both flags required** (changed in 0.6.4; the prior single-flag rule silently dropped `start` from Codex / ZCode / OpenCode / Reasonix). `agentCapable` alone is not a proxy for "has a session-start mechanism" because some agent-capable platforms ship without a SessionStart-equivalent hook and rely on user-invocable `start` instead.
+**Rule**: filter is by `ctx.agentCapable && ctx.hasHooks` — **both flags required** (changed in 0.6.4; the prior single-flag rule silently dropped `start` from platforms without a SessionStart-equivalent hook). `agentCapable` alone is not a proxy for "has a session-start mechanism" because some agent-capable platforms ship without one and rely on user-invocable `start` instead.
 
-- `agentCapable && hasHooks` (13): `claude-code, cursor, kiro, gemini, qoder, codebuddy, copilot, droid, pi, zcode, trae, omp, snow`
-- `agentCapable && !hasHooks` (5): `opencode, codex, reasonix, grok, kimi` — Codex has a UserPromptSubmit hook but no SessionStart; OpenCode has a `plugins/session-start.js` plugin but registry-`hasHooks` is reserved for the SessionStart-style hook protocol; Reasonix and Grok have neither; Kimi has hooks only in the user-level `~/.kimi-code/config.toml` (no project-level hook file Trellis may write).
+- `agentCapable && hasHooks` (14): `claude-code, cursor, codex, kiro, gemini, qoder, codebuddy, copilot, droid, pi, zcode, trae, omp, snow`
+- `agentCapable && !hasHooks` (5): `opencode, dsh, reasonix, grok, kimi` — OpenCode has a `plugins/session-start.js` plugin but registry-`hasHooks` is reserved for the SessionStart-style hook protocol; Reasonix and Grok have neither; Kimi has hooks only in the user-level `~/.kimi-code/config.toml` (no project-level hook file Trellis may write).
 - `!agentCapable` (3): `kilo, antigravity, devin`
 
 These three groups are computed from `AI_TOOLS[id].templateContext`; if you change a flag, recount rather than editing one line.
@@ -1703,7 +1767,7 @@ model-visible consumption is verified end to end.
 | Implementation | Injection signature | Adaptive notice? |
 | --- | --- | ---: |
 | `shared-hooks/session-start.py` | Existing shared hook output (`hookSpecificOutput.additionalContext` plus host-specific aliases, or Kiro's plain stdout context) | Yes |
-| `codex/hooks/session-start.py` | Existing Codex SessionStart payload when hooks are enabled and approved | Yes |
+| `codex/hooks/session-start.py` | Existing Codex SessionStart payload when hooks are enabled and trusted; non-managed hooks require review before they run | Yes |
 | `opencode/lib/session-utils.js` + `plugins/session-start.js` | Compact context prepended to the first user message and marked for persistence | Yes |
 | `pi/extensions/trellis/index.ts.txt` | Memoized SessionStart-equivalent context added to `before_agent_start.systemPrompt` | Yes |
 | `copilot/hooks/session-start.py` | Microsoft's documented `SessionStart.hookSpecificOutput.additionalContext` payload | No |
@@ -2050,7 +2114,7 @@ The same rule applies to every other hook that's positioned as "repeated reminde
 | Droid (Factory) | `UserPromptSubmit`                                                                                    | `.factory/settings.json`                                                                                           | Auto                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Gemini CLI      | `UserPromptSubmit`                                                                                    | `.gemini/settings.json`                                                                                            | Auto                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Copilot CLI     | `userPromptSubmitted` (camelCase)                                                                     | `.github/copilot/hooks.json`                                                                                       | `bash` + `powershell` dual field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Codex           | `UserPromptSubmit`                                                                                    | `.codex/hooks.json`                                                                                                | **Requires `features.hooks = true` in user's `~/.codex/config.toml` (Codex 0.129+; legacy: `codex_hooks = true`).** Codex 0.129+ also requires running `/hooks` once to approve the installed hook before it activates — until approved, hooks never fire (the trellis-bootstrap fallback in inject-workflow-state.py covers the gap by directing the AI to read `trellis-start` skill manually)                                                                                                                                                                                                                                                                                                                                                                                        |
+| Codex           | `SessionStart` + `UserPromptSubmit`                                                                     | `.codex/hooks.json`                                                                                                | Hooks are enabled by default; `[features].hooks = false` disables them, and `codex_hooks` is deprecated. `/hooks` review applies only to untrusted non-managed hooks.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | OpenCode        | `chat.message` (Bun plugin)                                                                           | `plugins/inject-workflow-state.js`                                                                                 | Equivalent JS implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Kiro            | CLI: `userPromptSubmit` (main `trellis` agent JSON) · IDE: `promptSubmit` (`.kiro/hooks/*.kiro.hook`) | CLI: `.kiro/agents/trellis.json` `hooks` · IDE: `.kiro/hooks/trellis-workflow-state.kiro.hook` (`then.runCommand`) | Plain stdout (NOT the `hookSpecificOutput` JSON envelope) — Kiro adds a hook's raw stdout to conversation context. `inject-workflow-state.py` has a `platform == "kiro"` branch (detected via `KIRO_PROJECT_DIR` env or `.kiro` script path) that prints the bare breadcrumb. **Activation:** CLI users must make `trellis` the active agent (`kiro-cli settings chat.defaultAgent trellis` or `/agent swap trellis`) — Kiro defaults to built-in `kiro_default`. **Real-machine note:** the plain-stdout→context contract (and whether IDE `runCommand` stdout is injected vs only `askAgent`) is per official docs, pending Kiro hardware verification; fallback is `askAgent` + static steering. Sub-agent context injection unchanged via `agentSpawn → inject-subagent-context.py` |
 | Trae IDE        | `UserPromptSubmit`                                                                                    | `.trae/hooks.json`                                                                                                 | Auto; shared Python hook written under `.trae/hooks/inject-workflow-state.py`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
