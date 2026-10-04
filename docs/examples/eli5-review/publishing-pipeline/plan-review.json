@@ -1,0 +1,33 @@
+{
+  "title": "Publish the feed only after audio is ready",
+  "summary": "Redacted project example · reconstructed from documentation.",
+  "locale": "en",
+  "evidence": [
+    {
+      "label": "Redacted source excerpt",
+      "href": "evidence.md"
+    }
+  ],
+  "why": [
+    "Subscribers should never receive a feed entry pointing to unfinished audio."
+  ],
+  "approach": [
+    "Build episode",
+    "Verify uploaded audio",
+    "Replace feed atomically"
+  ],
+  "in_scope": [
+    "Verify URL, MIME type, and byte length before feed update",
+    "Reuse the same episode identifier on same-date reruns"
+  ],
+  "out_of_scope": [
+    "Changing subscriber URLs or historical identifiers"
+  ],
+  "acceptance": [
+    "Audio failure leaves the public feed unchanged",
+    "Rerun replaces the episode instead of duplicating it"
+  ],
+  "decisions": [
+    "Use shadow mode to inspect results before public publication."
+  ]
+}

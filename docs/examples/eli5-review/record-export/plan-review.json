@@ -1,0 +1,33 @@
+{
+  "title": "Export only the intended record owner",
+  "summary": "Redacted project example · reconstructed from documentation.",
+  "locale": "en",
+  "evidence": [
+    {
+      "label": "Redacted source excerpt",
+      "href": "evidence.md"
+    }
+  ],
+  "why": [
+    "A shared store can contain records for more than one owner."
+  ],
+  "approach": [
+    "Check active owner",
+    "Apply exact filter",
+    "Export scoped records"
+  ],
+  "in_scope": [
+    "Validate owner before store mutation",
+    "Preserve owner scope for incremental exports"
+  ],
+  "out_of_scope": [
+    "Changing login or portal behavior"
+  ],
+  "acceptance": [
+    "Owner mismatch causes no store write",
+    "Empty filters do not broaden export scope"
+  ],
+  "decisions": [
+    "Portal-specific live acceptance must be verified independently."
+  ]
+}

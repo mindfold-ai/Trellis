@@ -39,6 +39,8 @@ This directory contains guidelines for backend development. Fill in each file wi
 
 ## Pre-Development Checklist
 
+For plan/finish HTML review changes, read [Human review views](./human-review-views.md).
+
 Before writing backend code, read the relevant guidelines based on your task:
 
 - Error handling → [error-handling.md](./error-handling.md)
