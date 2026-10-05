@@ -74,14 +74,18 @@ AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_RESEARCH)
 
 def find_repo_root(start_path: str) -> str | None:
     """
-    Find git repo root from start_path upwards
+    Find the nearest Trellis workspace from start_path upwards.
+
+    Git repositories may be nested inside a workspace with no root .git.
+    Match common.paths.get_repo_root by looking for a .trellis directory,
+    including a directory symlink.
 
     Returns:
-        Repo root path, or None if not found
+        Workspace root path, or None if not found
     """
     current = Path(start_path).resolve()
     while current != current.parent:
-        if (current / ".git").exists():
+        if (current / DIR_WORKFLOW).is_dir():
             return str(current)
         current = current.parent
     return None

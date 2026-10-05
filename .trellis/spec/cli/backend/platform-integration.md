@@ -1161,6 +1161,54 @@ Platform's native sub-agent-start hook delivers context before the child runs. M
 | Snow CLI      | `beforeSubAgentStart`                 | own `write-trellis-context.py subagent` (Snow bundles all three inject hooks; it is not in `SHARED_HOOKS_BY_PLATFORM`) |
 | ZCode         | `PreToolUse` + matcher `Agent|Task`   | `hookSpecificOutput.updatedInput.prompt` |
 
+#### Scenario: Shared subagent hook workspace root (#635)
+
+##### 1. Scope / Trigger
+
+The shared Python hook resolves the workspace before reading session pointers,
+task artifacts, or JSONL context. A polyrepo's `.trellis` workspace may not be a
+Git repository, and nested package repositories must not replace that workspace.
+
+##### 2. Signatures
+
+`find_repo_root(start_path: str) -> str | None` in
+`templates/shared-hooks/inject-subagent-context.py` is used by both `PreToolUse`
+and native Codex `SubagentStart` dispatch.
+
+##### 3. Contracts
+
+Resolve `start_path`, then choose the nearest ancestor containing a `.trellis`
+**directory**, matching `common.paths.get_repo_root`. `Path.is_dir()` accepts a
+`.trellis` directory symlink; a `.git` directory or worktree file is not the
+workspace boundary. Keep existing task-pointer and read-containment checks.
+
+##### 4. Validation & Error Matrix
+
+| Layout | Workspace selected |
+|---|---|
+| Ordinary Git root with `.trellis/` | That root |
+| Non-Git root with `.trellis/` and nested package `.git` | The `.trellis` root |
+| Nested `.trellis/` workspace | The nearest workspace |
+| `.trellis` directory symlink | Its containing workspace |
+| No `.trellis` directory, or only a regular `.trellis` file | `None`; no injection |
+
+##### 5. Good / Base / Bad Cases
+
+- Good: a child package receives its parent workspace's active task context.
+- Base: an ordinary Git project receives the same context as before.
+- Bad: a child `.git` marker causes the hook to search nonexistent child tasks.
+
+##### 6. Tests Required
+
+Execute generated Claude `PreToolUse` and Codex `SubagentStart` hook payloads
+against ordinary, non-Git, nested-Git, nested-Trellis, and symlinked workflows.
+Assert the selected task PRD is injected and missing-directory cases stay quiet.
+
+##### 7. Wrong vs Correct
+
+Wrong: stop at `(current / ".git").exists()`.
+Correct: stop at `(current / DIR_WORKFLOW).is_dir()`.
+
 #### OpenCode injection contract (issue #264)
 
 OpenCode is a hybrid class-1 platform: its main session uses `tool.execute.before` for sub-agent prompt mutation, but it also runs separate `chat.message` plugins (`session-start.js`, `inject-workflow-state.js`) that fire for **every** chat turn — including sub-agent child sessions. Without explicit filtering, those plugins inject 30-40KB of main-session SessionStart context into sub-agent turns and drown the parent's intended prompt injection.
