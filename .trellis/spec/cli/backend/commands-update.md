@@ -97,6 +97,23 @@ as user-managed instead of auto-updating it back to bundled native workflow.
 
 ### 3. Analyze on-disk state
 
+`.trellis/.gitignore` uses an additive merge: prepend only missing positive
+bundled patterns, then retain the existing rule/comment bytes. A UTF-8 BOM
+remains at the beginning of the file so Git still parses the first user rule.
+Existing custom rules,
+comments, and later negations keep their meaning. The exact merged result is
+safe to auto-update even when the ignore file has no tracked hash. Normal
+`update.skip` filtering and dry-run behavior still apply. Repeated updates add
+no duplicate patterns. Ignore content is not passed through Python command
+replacement, which would alter user comments or patterns on Windows.
+Apply the canonical skip matcher before reading the existing ignore file;
+an excluded unreadable path must not break a dry run.
+
+For example, upgrading an untracked pre-#633 ignore file adds `hooks.local.json`
+without a false modified-file conflict. An explicit user `!hooks.local.json`
+still wins over the prepended default. Regressions cover ordinary confirmation,
+custom rules/negations, idempotence, dry-run, and skipped paths.
+
 `commands/update.ts:analyzeChanges` walks every entry in the templates map and produces a `ChangeAnalysis`:
 
 | Bucket | Condition |

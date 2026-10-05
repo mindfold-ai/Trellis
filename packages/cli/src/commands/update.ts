@@ -113,6 +113,7 @@ interface ChangeAnalysis {
 type ConflictAction = "overwrite" | "skip" | "create-new";
 
 const CLAUDE_SETTINGS_PATH = ".claude/settings.json";
+const WORKFLOW_GITIGNORE_PATH = `${DIR_NAMES.WORKFLOW}/.gitignore`;
 const LEGACY_UNTRACKED_AGENTS_MD_BLOCK_HASHES = new Set<string>([
   // v0.5.0-beta.17 and earlier wrote AGENTS.md but did not hash-track it.
   // This hash is the pristine Trellis-managed block before the Subagents
@@ -252,6 +253,35 @@ function buildCopilotInstructionsTemplate(cwd: string): string {
     getCopilotInstructions(),
     COPILOT_INSTRUCTIONS_BLOCK_START,
     COPILOT_INSTRUCTIONS_BLOCK_END,
+  );
+}
+
+/** Add missing bundled ignore rules without changing user rules or negations. */
+function mergeTrellisGitignore(existingContent: string): string {
+  const bom = existingContent.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const existingRules = existingContent.slice(bom.length);
+  const existingLines = new Set(existingRules.split(/\r?\n/));
+  const missingPatterns = gitignoreTemplate
+    .split(/\r?\n/)
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        !line.startsWith("#") &&
+        !line.startsWith("!") &&
+        !existingLines.has(line),
+    );
+  if (missingPatterns.length === 0) return existingContent;
+  const newline = existingRules.includes("\r\n") ? "\r\n" : "\n";
+  // User negations remain later in the file, so their precedence is preserved.
+  return `${bom}# Trellis local state ignore rules${newline}${missingPatterns.join(newline)}${newline}${newline}${existingRules}`;
+}
+
+/** Match update.skip using the existing exact-path or directory-prefix rules. */
+function matchesUpdateSkipPath(filePath: string, skipPaths: string[]): boolean {
+  return skipPaths.some(
+    (skip) =>
+      filePath === skip ||
+      filePath.startsWith(skip.endsWith("/") ? skip : skip + "/"),
   );
 }
 
@@ -867,6 +897,7 @@ async function collectTemplateFiles(
   bypassUpdateSkip = false,
 ): Promise<Map<string, string>> {
   const files = new Map<string, string>();
+  const skipPaths = bypassUpdateSkip ? [] : loadUpdateSkipPaths(cwd);
   const platforms = getConfiguredPlatforms(cwd);
   if (extraPlatforms) {
     for (const p of extraPlatforms) {
@@ -892,7 +923,15 @@ async function collectTemplateFiles(
     `${DIR_NAMES.WORKFLOW}/config.yaml`,
     preserveExistingRegistryConfig(cwd, configYamlTemplate),
   );
-  files.set(`${DIR_NAMES.WORKFLOW}/.gitignore`, gitignoreTemplate);
+  if (!matchesUpdateSkipPath(WORKFLOW_GITIGNORE_PATH, skipPaths)) {
+    const gitignorePath = path.join(cwd, WORKFLOW_GITIGNORE_PATH);
+    files.set(
+      WORKFLOW_GITIGNORE_PATH,
+      fs.existsSync(gitignorePath)
+        ? mergeTrellisGitignore(fs.readFileSync(gitignorePath, "utf-8"))
+        : gitignoreTemplate,
+    );
+  }
   // workflow.md is included here because it is runtime-parsed by
   // get_context.py and shared hooks. Keep it on the normal template update
   // path: if the installed file still matches the tracked hash, update the
@@ -937,26 +976,20 @@ async function collectTemplateFiles(
   }
 
   // Apply update.skip from config.yaml (unless bypassed for breaking release)
-  if (!bypassUpdateSkip) {
-    const skipPaths = loadUpdateSkipPaths(cwd);
-    if (skipPaths.length > 0) {
-      for (const [filePath] of [...files]) {
-        if (
-          skipPaths.some(
-            (skip) =>
-              filePath === skip ||
-              filePath.startsWith(skip.endsWith("/") ? skip : skip + "/"),
-          )
-        ) {
-          files.delete(filePath);
-        }
+  if (skipPaths.length > 0) {
+    for (const [filePath] of [...files]) {
+      if (matchesUpdateSkipPath(filePath, skipPaths)) {
+        files.delete(filePath);
       }
     }
   }
 
   // Apply python3→python replacement for Windows consistency with init-time writes
   for (const [filePath, content] of files) {
-    files.set(filePath, replacePythonCommandLiterals(content));
+    // Ignore patterns and user comments are not executable command text.
+    if (filePath !== WORKFLOW_GITIGNORE_PATH) {
+      files.set(filePath, replacePythonCommandLiterals(content));
+    }
   }
 
   return files;
@@ -1016,6 +1049,8 @@ function analyzeChanges(
         const currentHash = computeHash(existingContent);
 
         if (
+          (relativePath === WORKFLOW_GITIGNORE_PATH &&
+            newContent === mergeTrellisGitignore(existingContent)) ||
           (storedHash && storedHash === currentHash) ||
           (!storedHash &&
             isKnownUntrackedTemplate(relativePath, existingContent)) ||
