@@ -1535,7 +1535,7 @@ describe("configurePlatform", () => {
     expect(extension).toContain('pi.on?.("tool_call"');
     expect(extension).toContain("ctx?.sessionManager?.getSessionId");
     expect(extension).toContain("TRELLIS_PI_CLI_JS");
-    expect(extension).toContain("function formatPiOutput");
+    expect(extension).toContain("function limitOutput");
     expect(extension).toContain('"## Trellis Agent Definition"');
     expect(extension).toContain("ctx?.ui?.notify?.(");
     expect(extension).toContain("systemPrompt:");

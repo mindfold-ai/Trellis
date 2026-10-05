@@ -93,7 +93,7 @@ const TRELLIS_AGENT_JSONL: Record<string, string> = {
   "trellis-check": "check.jsonl",
   check: "check.jsonl",
 };
-const MAX_STDOUT = 8 * 1024 * 1024;
+const MAX_FINAL_OUTPUT = 64 * 1024;
 const MAX_STDERR = 1024 * 1024;
 const MAX_TAIL = 256 * 1024;
 const MAX_LINE_BUFFER = 1024 * 1024;
@@ -1346,16 +1346,25 @@ function applyEvent(r: RunState, evt: JsonObject): boolean {
     const thinking = extractThinking(msg.content);
     if (thinking) r.thinkingTail = appendTail("", thinking, MAX_TAIL);
     const text = extractText(msg.content);
-    if (text) {
-      r.finalText = text;
-      r.textTail = appendTail("", text, MAX_TAIL);
-    }
+    if (text) r.textTail = appendTail("", text, MAX_TAIL);
     if (typeof msg.model === "string") {
       const parsed = splitModelThinking(msg.model, r.thinking);
       r.model = parsed.model;
       r.thinking = parsed.thinking;
     }
-    if (typeof msg.errorMessage === "string") r.errorMessage = msg.errorMessage;
+    const error =
+      typeof msg.errorMessage === "string" ? msg.errorMessage.trim() : "";
+    if (error || msg.stopReason === "error" || msg.stopReason === "aborted") {
+      r.errorMessage = limitOutput(error || `Pi subagent ${msg.stopReason}`);
+      r.status = msg.stopReason === "aborted" ? "cancelled" : "failed";
+      r.finalText = "";
+    } else {
+      // A later successful assistant message can recover a transient error.
+      r.errorMessage = undefined;
+      if (r.status === "failed" || r.status === "cancelled")
+        r.status = "running";
+      r.finalText = msg.stopReason === "toolUse" ? "" : limitOutput(text);
+    }
     return true;
   }
   if (type === "tool_execution_start") {
@@ -1394,30 +1403,28 @@ function applyEvent(r: RunState, evt: JsonObject): boolean {
   if (type === "agent_end") {
     r.finishedAt = Date.now();
     if (r.status === "running" || r.status === "pending")
-      r.status = "succeeded";
+      r.status = r.errorMessage ? "failed" : "succeeded";
     return true;
   }
   return false;
 }
 
-function finalize(r: RunState, fallback: string): string {
-  return r.finalText || fallback.trim() || r.stderrTail.trim();
+function limitOutput(text: string): string {
+  const bytes = Buffer.from(text, "utf-8");
+  if (bytes.length <= MAX_FINAL_OUTPUT) return text;
+  const notice = "\n[Subagent output truncated to 64 KiB]";
+  return (
+    truncateUtf8(bytes, MAX_FINAL_OUTPUT - Buffer.byteLength(notice)).toString("utf-8") +
+    notice
+  );
 }
-function formatPiOutput(stdout: string, stderr: string): string {
-  let ft = "";
-  for (const line of stdout.split(/\r?\n/)) {
-    const t = line.trim();
-    if (!t) continue;
-    try {
-      const evt = JSON.parse(t) as JsonObject;
-      const msg = isObj(evt.message) ? evt.message : null;
-      if (msg?.role === "assistant") {
-        const txt = extractText(msg.content);
-        if (txt) ft = txt;
-      }
-    } catch {}
-  }
-  return ft || stdout || stderr;
+function finalize(r: RunState, fallback: string): string {
+  const diagnostic = fallback.trim() || r.stderrTail.trim();
+  return limitOutput(
+    r.status === "failed" || r.status === "cancelled"
+      ? diagnostic || r.errorMessage || `Pi subagent ${r.status}`
+      : r.finalText || diagnostic || "Subagent completed without a final assistant response.",
+  );
 }
 
 // ── Permission-forwarding parent session (issue #610) ───────────
@@ -1535,11 +1542,11 @@ function runPi(
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
     });
-    const stdout = new BBC(MAX_STDOUT);
     const stderr = new BBC(MAX_STDERR);
     let buf = "";
     let settled = false;
     let aborted = false;
+    let agentEnded = false;
     let killTimer: ReturnType<typeof setTimeout> | null = null;
     const abort = () => {
       aborted = true;
@@ -1554,8 +1561,9 @@ function runPi(
       settled = true;
       if (killTimer) clearTimeout(killTimer);
       signal?.removeEventListener("abort", abort);
+      if (v.failed && state.status !== "cancelled") state.status = "failed";
       emit();
-      resolve(v);
+      resolve({ ...v, output: limitOutput(v.output) });
     };
     signal?.addEventListener("abort", abort, { once: true });
     state.status = "running";
@@ -1563,10 +1571,11 @@ function runPi(
     emit();
     const processLine = (line: string) => {
       const evt = parseJsonEvent(line);
+      if (evt?.type === "agent_start") agentEnded = false;
+      if (evt?.type === "agent_end") agentEnded = true;
       if (evt && applyEvent(state, evt)) emit();
     };
     cli.stdout?.on("data", (d: Buffer) => {
-      stdout.append(d);
       buf += d.toString("utf-8");
       if (buf.length > MAX_LINE_BUFFER) buf = buf.slice(-MAX_LINE_BUFFER);
       const lines = buf.split(/\r?\n/);
@@ -1593,7 +1602,6 @@ function runPi(
     });
     cli.on("close", (code) => {
       if (buf.trim()) processLine(buf);
-      const out = stdout.toString();
       const err = stderr.toString();
       state.stderrTail = appendTail("", err, MAX_TAIL);
       state.finishedAt = Date.now();
@@ -1604,16 +1612,32 @@ function runPi(
         return;
       }
       if (code === 0) {
-        if (state.status === "pending" || state.status === "running")
-          state.status = "succeeded";
+        if (
+          state.status === "failed" || state.status === "cancelled" || state.errorMessage
+        ) {
+          if (state.status !== "cancelled") state.status = "failed";
+          done({
+            output: finalize(state, state.errorMessage || `Pi subagent ${state.status}`),
+            failed: true,
+          });
+          return;
+        }
+        if (!agentEnded) {
+          state.status = "failed";
+          state.errorMessage = "Pi child exited before agent_end.";
+          done({ output: finalize(state, state.errorMessage), failed: true });
+          return;
+        }
+        state.status = "succeeded";
         done({
-          output: finalize(state, formatPiOutput(out, err)),
+          output: finalize(state, ""),
           failed: false,
         });
         return;
       }
       state.status = "failed";
-      state.errorMessage = err || out || `exit ${code ?? "?"}`;
+      state.errorMessage =
+        state.errorMessage || err.trim() || `Pi child exited with code ${code ?? "?"}.`;
       done({ output: finalize(state, state.errorMessage), failed: true });
     });
     cli.stdin?.end(prompt);
@@ -1677,7 +1701,11 @@ async function runSubagent(
     closed = true;
     details.final = true;
     details.updatedAt = Date.now();
-    return { output, details: cloneProgress(details), failed };
+    return {
+      output: limitOutput(output),
+      details: cloneProgress(details),
+      failed,
+    };
   };
 
   try {

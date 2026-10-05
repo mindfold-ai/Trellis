@@ -950,7 +950,7 @@ Nested launch:
 ```typescript
 spawn(
   invocation.command,
-  [...invocation.argsPrefix, "--mode", "text", "-p", "--no-session"],
+  [...invocation.argsPrefix, "--mode", "json", "-p", "--no-session"],
   {
     cwd: projectRoot,
     env: { ...process.env, TRELLIS_CONTEXT_ID: contextKey },
@@ -968,13 +968,13 @@ spawn(
 | `command`           | `process.execPath` when a CLI JS entrypoint is resolved; otherwise `"pi"` fallback                                                                                                                                   |
 | `argsPrefix`        | `[cliJs]` for resolved JS entrypoint; `[]` for fallback                                                                                                                                                              |
 | Prompt transport    | Write delegated prompt to `child.stdin`, never as a positional argv prompt                                                                                                                                           |
-| Output mode         | Use `--mode text`; keep final-output formatter tolerant of structured or diagnostic output                                                                                                                           |
+| Output mode         | Use `--mode json`; parse events into run state and never return raw event stdout                                                                                                                           |
 | Context             | Forward `TRELLIS_CONTEXT_ID` into the child env when available                                                                                                                                                       |
 | Agent config        | Parse `model`, `thinking`, and `fallbackModels` from `.pi/agents/*.md` frontmatter                                                                                                                                   |
 | Per-call overrides  | `trellis_subagent` tool input may override frontmatter with `model` and `thinking`                                                                                                                                   |
 | Agent validation    | `isTrellisAgent()` checks `existsSync(.pi/agents/trellis-{agent}.md)` before spawn; invalid → returns error text listing community alternatives                                                                      |
 | Model/thinking args | If model and thinking are present and model has no thinking suffix, pass `--model <model>:<thinking>`; if model already has a suffix, pass it unchanged; if thinking exists without model, pass `--thinking <level>` |
-| Output buffers      | Bound stdout and stderr collection separately; keep the tail plus truncation notice                                                                                                                                  |
+| Output buffers      | Bound stdout event-line buffering and stderr collection; cap final results at 64 KiB of valid UTF-8                                                                                                                                  |
 
 Candidate JS entrypoint lookup should cover:
 
@@ -989,14 +989,41 @@ PATH entries, their parent directories, and parent/lib variants
 
 | Condition                                      | Behavior                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `TRELLIS_PI_CLI_JS` points to an existing file | Launch with `process.execPath` and `[cliJs, "--mode", "text", "-p", "--no-session"]` |
+| `TRELLIS_PI_CLI_JS` points to an existing file | Launch with `process.execPath` and `[cliJs, "--mode", "json", "-p", "--no-session"]` |
 | `TRELLIS_PI_CLI_JS` points to a missing file   | Reject with an error naming `TRELLIS_PI_CLI_JS` and the resolved missing path        |
 | A candidate CLI JS entrypoint exists           | Launch with `process.execPath` and the candidate path                                |
-| No candidate CLI JS entrypoint exists          | Fall back to `spawn("pi", ["--mode", "text", "-p", "--no-session"])`                 |
+| No candidate CLI JS entrypoint exists          | Fall back to `spawn("pi", ["--mode", "json", "-p", "--no-session"])`                 |
 | `AbortSignal` is already aborted               | Reject before spawning                                                               |
 | `AbortSignal` fires after spawn                | Kill the child and reject with `pi subagent cancelled`                               |
-| Child exits non-zero                           | Reject with stderr, else stdout, else an exit-code message                           |
-| stdout/stderr exceed limits                    | Keep the most recent bytes and prefix output with a truncation notice                |
+| Child exits non-zero                           | Fail with the assistant error, stderr, or an exit-code diagnostic; never stdout                           |
+| stdout event lines / stderr exceed limits                    | Keep bounded parser/diagnostic buffers; raw events remain internal                |
+
+#### Pi result boundary (#625, #626, #636)
+
+- `runPi(...) -> Promise<{ output: string; failed: boolean }>` accepts success
+  only after exit code zero, an observed `agent_end`, and no unrecovered
+  assistant `error` / `aborted` stop reason or non-empty `errorMessage`.
+- Assistant `error` sets run status `failed`; `aborted` sets `cancelled`.
+  `agent_end` preserves those states. A later non-error assistant message
+  clears a transient error, so a successful retry can recover.
+- Assistant `toolUse` text remains progress text and never becomes `finalText`.
+  Missing `agent_end` is a failure even if earlier assistant text exists.
+- Failure diagnostics take precedence over earlier assistant text. Neither
+  zero nor nonzero exits may expose raw JSON event stdout. Failed/cancelled
+  run details cause the existing `tool_result` hook to return `isError: true`,
+  and chain execution stops.
+- `limitOutput(text: string) -> string` caps final text and tool content at
+  65,536 bytes including its truncation notice, backing off at UTF-8 boundaries.
+  `runSubagent` caps the aggregate parallel result as well as individual runs.
+- Base: terminal assistant text plus `agent_end` returns that text. Good:
+  an intermediate error followed by a successful final turn returns success.
+  Bad: exit zero after a tool call without `agent_end` must not return success
+  or preliminary text.
+- Regression fixtures: real child processes cover missing `agent_end`,
+  error/abort at exit zero, recovered retries, nonzero exit without stderr,
+  tool-use text, chain termination, and single/parallel UTF-8 output limits.
+  Compare only the changed result-boundary regions between template and
+  dogfood copies; preserve pre-existing unrelated differences.
 
 ### 5. Good / Base / Bad Cases
 
@@ -1006,7 +1033,7 @@ Good:
 const invocation = resolvePiInvocation();
 const child = spawn(
   invocation.command,
-  [...invocation.argsPrefix, "--mode", "text", "-p", "--no-session"],
+  [...invocation.argsPrefix, "--mode", "json", "-p", "--no-session"],
   { stdio: ["pipe", "pipe", "pipe"] },
 );
 child.stdin?.end(prompt);
@@ -1057,7 +1084,7 @@ This depends on direct executable lookup for `pi` and uses argv for an unbounded
 const invocation = resolvePiInvocation();
 const child = spawn(
   invocation.command,
-  [...invocation.argsPrefix, "--mode", "text", "-p", "--no-session"],
+  [...invocation.argsPrefix, "--mode", "json", "-p", "--no-session"],
   { stdio: ["pipe", "pipe", "pipe"], windowsHide: true },
 );
 
