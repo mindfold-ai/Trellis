@@ -1722,13 +1722,66 @@ wide scope.
 | Helper | Source | Purpose |
 |---|---|---|
 | `safe_trellis_paths_to_add(repo_root, task_name=None)` | `templates/trellis/scripts/common/safe_commit.py:safe_trellis_paths_to_add` | Path whitelist for `add_session.py` — current developer's journal files + index.md, and (when `task_name` is passed) ONLY the current task dir. Callers MUST pass `task_name` so parallel-window dirty task dirs never leak into the session commit (#303). |
-| `safe_archive_paths_to_add(repo_root, task_name=None, modified_children=None)` | `templates/trellis/scripts/common/safe_commit.py:safe_archive_paths_to_add` | Path whitelist for `task.py archive` — archive subtree + explicitly-passed `modified_children` task dirs (parent/child relationship updates). Callers MUST pass `task_name`. |
+| `safe_archive_paths_to_add(repo_root, task_name=None, modified_children=None, archived_task_dir=None)` | `templates/trellis/scripts/common/safe_commit.py:safe_archive_paths_to_add` | Path whitelist for `task.py archive` — exact archive destination + explicitly-passed `modified_children` task dirs (parent/child relationship updates). Callers MUST pass `task_name` and `archived_task_dir`. |
 | `safe_git_add(paths, repo_root)` | `templates/trellis/scripts/common/safe_commit.py:safe_git_add` | Plain `git add -- <paths>`; never `-f`. Returns `(success, used_force=False, stderr)` |
 | `print_gitignore_warning(paths)` | `templates/trellis/scripts/common/safe_commit.py:print_gitignore_warning` | Single source of truth for the "ignored by .gitignore" warning, including the AI-defense negative example |
 | `get_session_auto_commit(repo_root)` | `templates/trellis/scripts/common/config.py:get_session_auto_commit` | Reads `session_auto_commit` from `.trellis/config.yaml` (default `True`) |
 
 Callers using this contract: `add_session.py:_auto_commit_workspace` and
 `task_store.py:_auto_commit_archive` (invoked from `task.py archive`).
+
+### Scenario: Archive destination scope (#630)
+
+#### 1. Scope / Trigger
+
+`task.py archive` must preserve edits in every other archived task, including
+edits already staged by the developer. A pathspec-scoped commit still leaks
+unrelated edits if the pathspec names the whole archive root.
+
+#### 2. Signatures
+
+`safe_archive_paths_to_add(repo_root, task_name=None, modified_children=None,
+archived_task_dir=None) -> list[str]` accepts the destination `Path` returned by
+the archive move. `_auto_commit_archive(task_name, repo_root,
+archived_task_dir, modified_children=None) -> bool` forwards that path.
+
+#### 3. Contracts
+
+With `task_name`, stage only `archived_task_dir` plus explicitly modified child
+task directories. The destination is converted to a repo-relative POSIX
+pathspec. Source deletions remain the caller's responsibility. The legacy
+no-`task_name` mode retains its wider scope; live archive callers pass both
+the task name and destination. Never infer the destination month by reading
+the clock again after the move.
+
+#### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Another archived task has staged edits | Excluded from archive commit; edits remain staged |
+| Another archived task has unstaged edits | Excluded from staging and commit; edits remain unstaged |
+| Source task was tracked | Source deletions and exact destination land together |
+| Source task was never tracked | Commit only destination paths; no moved-away source pathspec (#629) |
+| No destination passed in scoped helper mode | Do not fall back to staging the archive root |
+
+#### 5. Good / Base / Bad Cases
+
+Base: archiving task-a commits its move and updated task metadata. Good:
+task-b's archived PRD stays dirty with its original index state. Bad: staging
+`.trellis/tasks/archive` also captures task-b's unrelated PRD edits.
+
+#### 6. Tests Required
+
+`task-archive-scope.integration.test.ts` uses real temporary git repositories
+to assert that both staged and unstaged archived-task edits stay outside HEAD
+and retain their index state, and that a never-tracked task still auto-commits.
+Existing archive tests cover tracked source deletions and active task scope.
+
+#### 7. Wrong vs Correct
+
+Wrong: append `.trellis/tasks/archive` when `task_name` is known. Correct:
+append `archived_task_dir.relative_to(repo_root).as_posix()` using the concrete
+destination already returned by the move.
 
 ### Anti-pattern: AI-invented `git add -f .trellis/`
 

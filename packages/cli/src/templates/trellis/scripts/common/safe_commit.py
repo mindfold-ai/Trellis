@@ -14,7 +14,7 @@ agent driving the workflow "fixed" it by retrying with
 Design
 ------
 - Scripts only stage SPECIFIC product paths (journal files, index.md, the
-  current task dir, the archive dir). Never the whole `.trellis/` tree.
+  current task dir, the archived task dir). Never the whole `.trellis/` tree.
 - If plain `git add <specific>` fails with "ignored by", DO NOT retry with
   ``-f``. The presence of `.trellis/` in `.gitignore` is treated as user
   intent ("keep .trellis/ local-only"). The script warns and skips the
@@ -145,12 +145,13 @@ def safe_archive_paths_to_add(
     repo_root: Path,
     task_name: str | None = None,
     modified_children: list[str] | None = None,
+    archived_task_dir: Path | None = None,
 ) -> list[str]:
     """Return paths to stage after `task.py archive`.
 
     Scoped to ONLY the paths the archive operation actually touched:
 
-      - the archive subtree (where the freshly-moved task lives)
+      - the exact ``archived_task_dir`` returned by the archive move
       - the source task directory (for source-side deletes; caller pairs
         this with `git rm --cached` since `git add` won't stage deletes
         for a path that no longer exists in the working tree)
@@ -158,13 +159,13 @@ def safe_archive_paths_to_add(
         the archived parent (parent-children relationship update)
 
     This narrow scope avoids "scope creep" — dirty changes in OTHER
-    active task dirs (parallel-window edits) are NOT bundled into the
-    archive commit. Callers handle each kind of change in its own
+    active or archived task dirs (parallel-window edits) are NOT bundled into
+    the archive commit. Callers handle each kind of change in its own
     commit boundary.
 
     Backwards-compat: with no arguments, the function walks the whole
     `.trellis/tasks/` subtree the old way (active tasks + archive). New
-    callers should always pass `task_name`.
+    callers should always pass `task_name` and `archived_task_dir`.
     """
     paths: list[str] = []
     tasks_dir = repo_root / DIR_WORKFLOW / DIR_TASKS
@@ -178,10 +179,8 @@ def safe_archive_paths_to_add(
         # `git add` doesn't choke on the moved-away source). The caller
         # handles the source-side deletes via `git rm --cached`
         # explicitly.
-        if archive_dir.is_dir():
-            paths.append(
-                f"{DIR_WORKFLOW}/{DIR_TASKS}/{DIR_ARCHIVE}"
-            )
+        if archived_task_dir is not None and archived_task_dir.is_dir():
+            paths.append(archived_task_dir.relative_to(repo_root).as_posix())
         for child_name in modified_children or []:
             paths.append(f"{DIR_WORKFLOW}/{DIR_TASKS}/{child_name}")
         return paths
