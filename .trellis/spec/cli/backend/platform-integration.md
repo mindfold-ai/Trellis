@@ -1161,6 +1161,38 @@ Platform's native sub-agent-start hook delivers context before the child runs. M
 | Snow CLI      | `beforeSubAgentStart`                 | own `write-trellis-context.py subagent` (Snow bundles all three inject hooks; it is not in `SHARED_HOOKS_BY_PLATFORM`) |
 | ZCode         | `PreToolUse` + matcher `Agent|Task`   | `hookSpecificOutput.updatedInput.prompt` |
 
+#### Research output prompt contract (issue #634)
+
+**Scope**: Shared Python `Task` / `Agent` research dispatch rewrites the prompt.
+It must preserve the research agent definition's task-local persistence rules.
+
+**Signature**: `build_research_prompt(original_prompt: str, context: str,
+task_dir: str | None = None) -> str`.
+
+**Contract**: With a contained, existing task pointer, allow creating
+`<task_dir>/research/` and writing `<task_dir>/research/<topic-slug>.md`.
+Forbid writes outside that directory and git operations. Return written paths,
+one-line summaries, and critical caveats instead of the full report content.
+This is a prompt contract; it does not install a filesystem sandbox or change
+the agent's tool permissions.
+
+**Validation / errors**: No task → resolve `task.py current --source`, then ask
+for a destination rather than guessing. An outside-repository or missing task
+pointer → silent hook no-op, without issuing a research write grant. Existing
+`.trellis` symlink containment rules still apply.
+
+**Cases**: Normal → topic markdown inside the active task's research directory.
+No task → request an output destination. Invalid pointer → no rewritten prompt.
+Implement/check/finish dispatch behavior stays unchanged.
+
+**Tests**: Execute the generated Claude hook for both registered `Task` and
+`Agent` payloads; assert the allowed output path, outside-write prohibition,
+and path-only reply contract. Cover absent, outside, and deleted task pointers.
+
+**Wrong**: Replacing the research prompt with `- Modify any files` while its
+agent definition requires persisting reports. **Correct**: Pass the resolved
+task directory into the builder and preserve the narrow research output scope.
+
 #### OpenCode injection contract (issue #264)
 
 OpenCode is a hybrid class-1 platform: its main session uses `tool.execute.before` for sub-agent prompt mutation, but it also runs separate `chat.message` plugins (`session-start.js`, `inject-workflow-state.js`) that fire for **every** chat turn — including sub-agent child sessions. Without explicit filtering, those plugins inject 30-40KB of main-session SessionStart context into sub-agent turns and drown the parent's intended prompt injection.

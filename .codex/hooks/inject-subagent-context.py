@@ -805,15 +805,35 @@ To get structured package info, run: `python3 ./{DIR_WORKFLOW}/scripts/get_conte
     return "\n\n".join(context_parts)
 
 
-def build_research_prompt(original_prompt: str, context: str) -> str:
-    """Build complete prompt for Research"""
+def build_research_prompt(
+    original_prompt: str, context: str, task_dir: str | None = None
+) -> str:
+    """Build the research prompt with task-scoped output instructions."""
+    if task_dir:
+        research_dir = f"{task_dir}/research"
+        write_scope = f"""**Allowed writes**: Create `{research_dir}/` if needed and write
+one markdown file per topic under `{research_dir}/*.md`.
+**Forbidden writes**: Any file outside `{research_dir}/`, including code,
+specs, platform configuration, and other task directories. Do not run git operations."""
+        report_delivery = f"""Persist the results to `{research_dir}/<topic-slug>.md`.
+Reply with only the written paths and a one-line summary per file, plus critical caveats.
+Do not paste the full research content into the reply."""
+    else:
+        write_scope = """**No active task directory**: Run `.trellis/scripts/task.py current --source`
+with the platform's Python command to resolve the task. If no task is active, ask the user where to write output.
+Do not guess a destination or write files until the output directory is resolved.
+Once resolved, write only topic markdown under that task's `research/` directory;
+all files outside it and git operations remain forbidden."""
+        report_delivery = """Resolve the output directory before persisting results.
+Then reply with written paths and one-line summaries, plus critical caveats,
+instead of the full research content."""
     return f"""# Research Agent Task
 
 You are the Research Agent in the Multi-Agent Pipeline (search researcher).
 
 ## Core Principle
 
-**You do one thing: find and explain information.**
+**You do one thing: find, explain, and persist information.**
 
 You are a documenter, not a reviewer.
 
@@ -834,7 +854,8 @@ You are a documenter, not a reviewer.
 1. **Understand query** - Determine search type (internal/external) and scope
 2. **Plan search** - List search steps for complex queries
 3. **Execute search** - Execute multiple independent searches in parallel
-4. **Organize results** - Output structured report
+4. **Persist results** - Write one markdown report per topic in the allowed output directory
+5. **Report** - Return written file paths and short summaries
 
 ## Search Tools
 
@@ -843,18 +864,20 @@ You are a documenter, not a reviewer.
 | Glob | Search by filename pattern |
 | Grep | Search by content |
 | Read | Read file content |
+| Write | Persist topic markdown in the allowed output directory |
 | mcp__exa__web_search_exa | External web search |
 | mcp__exa__get_code_context_exa | External code/doc search |
 
 ## Strict Boundaries
 
-**Only allowed**: Describe what exists, where it is, how it works
+**Only allowed**: Describe what exists, where it is, how it works, and persist those findings
+
+{write_scope}
 
 **Forbidden** (unless explicitly asked):
 - Suggest improvements
 - Criticize implementation
 - Recommend refactoring
-- Modify any files
 
 ## Report Format
 
@@ -862,7 +885,9 @@ Provide structured search results including:
 - List of files found (with paths)
 - Code pattern analysis (if applicable)
 - Related spec documents
-- External references (if any)"""
+- External references (if any)
+
+{report_delivery}"""
 
 
 def _string_value(value: Any) -> str:
@@ -1122,12 +1147,18 @@ def main():
         sys.exit(0)
 
     # Get current task directory (research doesn't require it)
-    task_dir = get_current_task(repo_root, input_data)
+    task_dir = get_current_task(
+        repo_root,
+        input_data,
+        allow_single_session_fallback=True,
+    )
 
     # implement/check need task directory
-    if subagent_type in AGENTS_REQUIRE_TASK:
-        if not task_dir:
-            sys.exit(0)
+    if subagent_type in AGENTS_REQUIRE_TASK and not task_dir:
+        sys.exit(0)
+
+    # Research output must use the same contained task pointer as other agents.
+    if task_dir:
         # Contain the pointer before reading anything through it. `task.py` now
         # refuses to store a ref that leaves the repo, but a session file
         # written before that fix can still hold one, and `trellis update`
@@ -1170,7 +1201,7 @@ def main():
     elif subagent_type == AGENT_RESEARCH:
         # Research can work without task directory
         context = get_research_context(repo_root, task_dir)
-        new_prompt = build_research_prompt(original_prompt, context)
+        new_prompt = build_research_prompt(original_prompt, context, task_dir)
     else:
         sys.exit(0)
 
