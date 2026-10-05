@@ -940,7 +940,8 @@ fallbackModels:
         'const { writeFileSync } = require("node:fs");',
         `writeFileSync(${JSON.stringify(capturedArgs)}, JSON.stringify(process.argv.slice(2)));`,
         `writeFileSync(${JSON.stringify(capturedCwd)}, process.cwd());`,
-        'process.stdout.write(JSON.stringify({ message: { role: "assistant", content: [{ type: "text", text: "fake child ok" }] } }) + "\\n");',
+        'console.log(JSON.stringify({ type: "message_end", message: { role: "assistant", stopReason: "stop", content: [{ type: "text", text: "fake child ok" }] } }));',
+        'console.log(JSON.stringify({ type: "agent_end" }));',
         "",
       ].join("\n"),
     );
@@ -1113,7 +1114,8 @@ fallbackModels:
         "  PI_SESSION_ID: process.env.PI_SESSION_ID ?? null,",
         "  PI_SESSIONID: process.env.PI_SESSIONID ?? null,",
         "}));",
-        'process.stdout.write(JSON.stringify({ message: { role: "assistant", content: [{ type: "text", text: "fake child ok" }] } }) + "\\n");',
+        'console.log(JSON.stringify({ type: "message_end", message: { role: "assistant", stopReason: "stop", content: [{ type: "text", text: "fake child ok" }] } }));',
+        'console.log(JSON.stringify({ type: "agent_end" }));',
         "",
       ].join("\n"),
     );
