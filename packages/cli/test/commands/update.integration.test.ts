@@ -304,6 +304,85 @@ describe("update() integration", () => {
     expect(fs.statSync(projectFile(ignorePath)).isDirectory()).toBe(true);
   });
 
+  it.skipIf(process.platform === "win32").each(["existing", "dangling"])(
+    "[issue-633] preserves a %s ignore symlink and its unrelated target",
+    async (kind) => {
+      await setupProject();
+      const externalDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "trellis-ignore-owner-"),
+      );
+      try {
+        const target = path.join(externalDir, "user-ignore");
+        const original = Buffer.from("UNRELATED USER CONTENT\r\n!keep.local\r\n");
+        if (kind === "existing") fs.writeFileSync(target, original);
+        const ignorePath = projectFile(`${DIR_NAMES.WORKFLOW}/.gitignore`);
+        fs.unlinkSync(ignorePath);
+        fs.symlinkSync(target, ignorePath, "file");
+        fs.writeFileSync(versionFilePath(), "0.6.16");
+
+        await update({ skipAll: true });
+
+        expect(fs.lstatSync(ignorePath).isSymbolicLink()).toBe(true);
+        expect(fs.readlinkSync(ignorePath)).toBe(target);
+        if (kind === "existing") {
+          expect(fs.readFileSync(target)).toEqual(original);
+        } else {
+          expect(fs.existsSync(target)).toBe(false);
+        }
+      } finally {
+        fs.rmSync(externalDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "[issue-633] does not merge ignore rules through a linked workflow directory",
+    async () => {
+      await setupProject();
+      const externalDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "trellis-workflow-owner-"),
+      );
+      try {
+        const workflowPath = projectFile(DIR_NAMES.WORKFLOW);
+        const externalWorkflow = path.join(externalDir, "workflow");
+        fs.renameSync(workflowPath, externalWorkflow);
+        fs.symlinkSync(externalWorkflow, workflowPath, "dir");
+        const externalIgnore = path.join(externalWorkflow, ".gitignore");
+        const original = Buffer.from("UNRELATED USER IGNORE RULES\n");
+        fs.writeFileSync(externalIgnore, original);
+        fs.writeFileSync(versionFilePath(), "0.6.16");
+
+        await update({ skipAll: true });
+
+        expect(fs.lstatSync(workflowPath).isSymbolicLink()).toBe(true);
+        expect(fs.readlinkSync(workflowPath)).toBe(externalWorkflow);
+        expect(fs.readFileSync(externalIgnore)).toEqual(original);
+      } finally {
+        fs.rmSync(externalDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(["dry-run", "skip-all"])(
+    "[issue-633] preserves a non-regular ignore path during %s",
+    async (mode) => {
+      await setupProject();
+      const ignorePath = projectFile(`${DIR_NAMES.WORKFLOW}/.gitignore`);
+      fs.unlinkSync(ignorePath);
+      fs.mkdirSync(ignorePath);
+      fs.writeFileSync(path.join(ignorePath, "user-file"), "KEEP");
+
+      await expect(
+        update(mode === "dry-run" ? { dryRun: true } : { skipAll: true }),
+      ).resolves.toBeUndefined();
+
+      expect(fs.lstatSync(ignorePath).isDirectory()).toBe(true);
+      expect(fs.readFileSync(path.join(ignorePath, "user-file"), "utf-8")).toBe(
+        "KEEP",
+      );
+    },
+  );
+
   it("#1 same version update is a true no-op (zero file changes, no backup)", async () => {
     await setupProject();
 

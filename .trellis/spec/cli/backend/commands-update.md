@@ -70,6 +70,8 @@ Note that `force` / `skipAll` / `createNew` are mutually exclusive in spirit but
 | Per-platform files | `configurators/index.ts:collectPlatformTemplates` for each detected platform via `configurators/index.ts:getConfiguredPlatforms` |
 | `.claude/settings.json` `statusLine` | preserved through `commands/update.ts:preserveExistingClaudeStatusLine` |
 
+The bundled `.trellis/.gitignore` rules are added only when `.trellis/` is a real directory and the ignore path is absent or a regular file. A symbolic-link workflow directory, symbolic-link ignore file (including a dangling link), or other non-regular ignore path is preserved; the additive update must not follow it and write into an unrelated target. This guard applies to the ignore-file addition, without changing other template ownership policies.
+
 Platforms are auto-discovered by directory existence in `cwd`. There is one exception: if `commands/update.ts:needsCodexUpgrade` returns true (legacy Trellis tracked `.agents/skills/` but no `.codex/` exists yet), `commands/update.ts:update` passes `extraPlatforms: new Set(["codex"])` to force Codex template collection so the upgrade can create `.codex/`.
 
 After collection, `collectTemplateFiles` runs two final passes:

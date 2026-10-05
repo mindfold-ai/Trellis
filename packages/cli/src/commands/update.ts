@@ -925,12 +925,25 @@ async function collectTemplateFiles(
   );
   if (!matchesUpdateSkipPath(WORKFLOW_GITIGNORE_PATH, skipPaths)) {
     const gitignorePath = path.join(cwd, WORKFLOW_GITIGNORE_PATH);
-    files.set(
-      WORKFLOW_GITIGNORE_PATH,
-      fs.existsSync(gitignorePath)
-        ? mergeTrellisGitignore(fs.readFileSync(gitignorePath, "utf-8"))
-        : gitignoreTemplate,
-    );
+    // Additive rules belong only to an ordinary project-local ignore file.
+    // lstat also preserves dangling links; neither a linked workflow directory
+    // nor a non-regular ignore path authorizes modifying its external target.
+    const workflowStat = fs.lstatSync(path.dirname(gitignorePath), {
+      throwIfNoEntry: false,
+    });
+    if (workflowStat?.isDirectory()) {
+      const ignoreStat = fs.lstatSync(gitignorePath, {
+        throwIfNoEntry: false,
+      });
+      if (!ignoreStat || ignoreStat.isFile()) {
+        files.set(
+          WORKFLOW_GITIGNORE_PATH,
+          ignoreStat
+            ? mergeTrellisGitignore(fs.readFileSync(gitignorePath, "utf-8"))
+            : gitignoreTemplate,
+        );
+      }
+    }
   }
   // workflow.md is included here because it is runtime-parsed by
   // get_context.py and shared hooks. Keep it on the normal template update
