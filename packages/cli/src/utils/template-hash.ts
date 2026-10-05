@@ -323,8 +323,9 @@ export interface InitializeHashesOptions {
   /**
    * POSIX-style relative paths trellis actually wrote during the init run
    * (captured via `startRecordingWrites` in `file-writer.ts`). Only these
-   * paths are hashed for the platform/root-level coverage; anything else
-   * under `.codex/` / `.claude/` / etc. is left alone, even if it exists
+   * paths are hashed for platform/root coverage and, in merge mode, workflow
+   * coverage. Other files under `.codex/` / `.claude/` / etc. are left alone,
+   * even if they exist
    * on disk. Setting this to `undefined` or an empty set means "no
    * platform/root coverage this run" — historical hashes from earlier
    * runs are preserved via `merge`.
@@ -334,7 +335,9 @@ export interface InitializeHashesOptions {
    * When true, merge `trackedPaths`-derived hashes into the EXISTING manifest
    * instead of replacing it. Used by `handleReinit` "add platform" flow so
    * previously-tracked platforms aren't wiped from the manifest when only
-   * a new platform's writes are recorded. Defaults to false (replace).
+   * a new platform's writes are recorded. Existing `.trellis/` baselines
+   * are preserved unless that path was written this run.
+   * Defaults to false (replace).
    */
   merge?: boolean;
 }
@@ -348,10 +351,9 @@ export interface InitializeHashesOptions {
  * where a blind directory walk of `.codex/` / `.claude/` swept up
  * user-owned runtime data (chat history, session JSONLs).
  *
- * `.trellis/` is still walked recursively (with `EXCLUDE_FROM_HASH`) because
- * uninstall removes `.trellis/` wholesale via `rm -rf` regardless of manifest
- * content — accuracy there doesn't affect data-loss, only `trellis update`
- * 3-way-merge fidelity (preserved by the existing walk).
+ * Fresh init still walks `.trellis/` recursively (with `EXCLUDE_FROM_HASH`).
+ * Merge mode only hashes recorded workflow writes: re-hashing untouched
+ * local edits would erase the baseline that protects them during update.
  *
  * @returns Number of files hashed in the final manifest.
  */
@@ -365,7 +367,7 @@ export function initializeHashes(
   // Platform + root files: hash only paths actually written this run.
   if (trackedPaths) {
     for (const relativePath of trackedPaths) {
-      // `.trellis/` paths are handled by the walk below — don't double-track.
+      // `.trellis/` paths are handled below — don't double-track.
       if (relativePath.startsWith(".trellis/") || relativePath === ".trellis") {
         continue;
       }
@@ -380,11 +382,15 @@ export function initializeHashes(
     }
   }
 
-  // .trellis/ workflow tree: still walked recursively. Accuracy here is for
-  // `trellis update`'s 3-way merge of workflow.md / config.yaml / scripts;
-  // uninstall removes .trellis/ wholesale so it does not matter for the
-  // data-loss bug this contract addresses.
-  const files = collectFiles(cwd, ".trellis");
+  // Adding a platform must not bless customized workflow files, or adopt a
+  // deliberately untracked custom workflow, as the new template baseline.
+  const files = merge
+    ? [...(trackedPaths ?? [])].filter(
+        (relativePath) =>
+          relativePath.startsWith(".trellis/") &&
+          !shouldExcludeFromHash(relativePath),
+      )
+    : collectFiles(cwd, ".trellis");
   for (const relativePath of files) {
     const fullPath = path.join(cwd, relativePath);
     try {

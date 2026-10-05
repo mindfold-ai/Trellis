@@ -428,6 +428,73 @@ describe("initializeHashes", () => {
     expect(hashes).toHaveProperty(".claude/commands/start.md");
   });
 
+  it.each(["config.yaml", "workflow.md", "scripts/task.py"])(
+    "preserves the %s baseline when adding a platform (#620)",
+    (relativePath) => {
+      const workflowPath = `.trellis/${relativePath}`;
+      const fullPath = path.join(tmpDir, workflowPath);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, "original template\n");
+      initializeHashes(tmpDir);
+      const baseline = loadHashes(tmpDir)[workflowPath];
+
+      fs.writeFileSync(fullPath, "user customization\n");
+      const platformPath = ".codex/config.toml";
+      fs.mkdirSync(path.join(tmpDir, ".codex"));
+      fs.writeFileSync(
+        path.join(tmpDir, platformPath),
+        "new platform template\n",
+      );
+      initializeHashes(tmpDir, {
+        trackedPaths: new Set([platformPath]),
+        merge: true,
+      });
+
+      const hashes = loadHashes(tmpDir);
+      expect(hashes[workflowPath]).toBe(baseline);
+      expect(isTemplateModified(tmpDir, workflowPath, hashes)).toBe(true);
+      expect(hashes[platformPath]).toBe(computeHash("new platform template\n"));
+    },
+  );
+
+  it("does not adopt untracked workflow files when merging (#620)", () => {
+    fs.mkdirSync(path.join(tmpDir, ".trellis"));
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", "workflow.md"),
+      "custom workflow\n",
+    );
+    fs.writeFileSync(path.join(tmpDir, ".trellis", "hooks.local.json"), "{}\n");
+    saveHashes(tmpDir, { ".claude/commands/continue.md": "existing-baseline" });
+
+    initializeHashes(tmpDir, { trackedPaths: new Set(), merge: true });
+
+    expect(loadHashes(tmpDir)).toEqual({
+      ".claude/commands/continue.md": "existing-baseline",
+    });
+  });
+
+  it("tracks recorded workflow writes and retains exclusions when merging", () => {
+    const writes = new Map([
+      [".trellis/scripts/new.py", "print('new')\n"],
+      [".trellis/spec/backend/index.md", "user spec\n"],
+      [".trellis/tasks/demo/task.json", "{}\n"],
+    ]);
+    for (const [relativePath, content] of writes) {
+      const fullPath = path.join(tmpDir, relativePath);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, content);
+    }
+
+    initializeHashes(tmpDir, {
+      trackedPaths: new Set(writes.keys()),
+      merge: true,
+    });
+
+    expect(loadHashes(tmpDir)).toEqual({
+      ".trellis/scripts/new.py": computeHash("print('new')\n"),
+    });
+  });
+
   it("does NOT hash platform-dir files that are not in trackedPaths", () => {
     // Regression: blind directory walks swept user-owned runtime data
     // (.codex/sessions/*, .claude/projects/*, user-added skills, pre-existing

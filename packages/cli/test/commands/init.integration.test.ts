@@ -50,7 +50,12 @@ import { init } from "../../src/commands/init.js";
 import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { collectPlatformTemplates } from "../../src/configurators/index.js";
-import { computeHash } from "../../src/utils/template-hash.js";
+import {
+  computeHash,
+  isTemplateModified,
+  loadHashes,
+  removeHash,
+} from "../../src/utils/template-hash.js";
 import {
   COPILOT_INSTRUCTIONS_PATH,
   getCopilotInstructions,
@@ -1583,6 +1588,58 @@ describe("init() integration", () => {
     expect(fs.readFileSync(nativeSettingsPath, "utf-8")).toBe(
       '{"permissions":{"allow":[]}}\n',
     );
+  });
+
+  it("#620 add-platform init preserves custom workflow and config baselines", async () => {
+    await init({ yes: true, cursor: true, user: "alice" });
+    const originals = loadHashes(tmpDir);
+    const paths = [
+      ".trellis/config.yaml",
+      ".trellis/workflow.md",
+      ".trellis/scripts/task.py",
+    ];
+    for (const relativePath of paths) {
+      fs.appendFileSync(
+        path.join(tmpDir, relativePath),
+        "\n# local customization\n",
+      );
+      expect(isTemplateModified(tmpDir, relativePath, originals)).toBe(true);
+    }
+
+    await init({ yes: true, dsh: true });
+
+    const hashes = loadHashes(tmpDir);
+    for (const relativePath of paths) {
+      expect(hashes[relativePath]).toBe(originals[relativePath]);
+      expect(isTemplateModified(tmpDir, relativePath, hashes)).toBe(true);
+      expect(
+        fs.readFileSync(path.join(tmpDir, relativePath), "utf-8"),
+      ).toContain("# local customization");
+    }
+    for (const [relativePath, content] of collectPlatformTemplates("dsh")) {
+      expect(hashes[relativePath]).toBe(computeHash(content));
+    }
+    expect(hashes[".cursor/hooks.json"]).toBe(originals[".cursor/hooks.json"]);
+  });
+
+  it("#620 add-platform init leaves a custom workflow deliberately untracked", async () => {
+    await init({ yes: true, cursor: true, user: "alice" });
+    removeHash(tmpDir, ".trellis/workflow.md");
+    fs.writeFileSync(
+      path.join(tmpDir, ".trellis", "workflow.md"),
+      "# Custom workflow\n",
+    );
+
+    await init({ yes: true, dsh: true });
+
+    const hashes = loadHashes(tmpDir);
+    expect(hashes).not.toHaveProperty(".trellis/workflow.md");
+    expect(isTemplateModified(tmpDir, ".trellis/workflow.md", hashes)).toBe(
+      true,
+    );
+    expect(
+      fs.readFileSync(path.join(tmpDir, ".trellis", "workflow.md"), "utf-8"),
+    ).toBe("# Custom workflow\n");
   });
 
   it("#29 reinit add-platform: no confirm when claude is already configured", async () => {
