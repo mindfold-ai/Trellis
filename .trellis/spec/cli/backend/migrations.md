@@ -225,9 +225,53 @@ And **does NOT record** when:
 
 Every configurator that wants its writes tracked must funnel through `writeFile()` — direct `fs.writeFileSync` bypasses the recorder.
 
-#### `.trellis/` walk exemption
+#### Scenario: `.trellis/` baselines during add-platform init (#620)
 
-`.trellis/` files are still hashed via recursive walk (existing `collectFiles` behavior + `EXCLUDE_FROM_HASH` filters). Rationale: `trellis uninstall` step 3 does `fs.rmSync('.trellis/', { recursive: true, force: true })` regardless of manifest content, so the walk's blast radius is contained. Over-hashing inside `.trellis/` only affects `trellis update` 3-way-merge accuracy, not uninstall safety.
+##### 1. Scope / Trigger
+
+Adding a platform must preserve the template baseline used by `trellis update`
+to detect local edits. Re-hashing untouched customized files makes those edits
+look unmodified and allows a later update to overwrite them silently.
+
+##### 2. Signatures
+
+`initializeHashes(cwd, { trackedPaths?: ReadonlySet<string>, merge?: boolean })`
+returns the number of final manifest entries. `handleReinit` passes recorded
+platform writes with `merge: true`; fresh init uses the default replace mode.
+
+##### 3. Contracts
+
+Fresh init walks `.trellis/` using `collectFiles` and `EXCLUDE_FROM_HASH`.
+Merge mode hashes only recorded `.trellis/` writes with the same exclusions.
+Existing baseline entries and deliberately absent custom-workflow entries are
+preserved when the corresponding files were not written this run.
+
+##### 4. Validation & Error Matrix
+
+| Invocation / path | Baseline behavior |
+|---|---|
+| Fresh initialization | Existing recursive workflow coverage |
+| Merge; workflow path was written | Record its current hash unless excluded |
+| Merge; workflow path was not written | Preserve its existing hash or absence |
+| Merge; no recorded workflow paths | Do not scan or adopt workflow files |
+
+##### 5. Good / Base / Bad Cases
+
+- Good: adding DSH keeps custom config/workflow/scripts marked modified.
+- Base: a newly written platform file receives its installation hash.
+- Bad: adding a platform replaces a customized config's baseline with its local hash.
+
+##### 6. Tests Required
+
+Unit tests preserve modified baselines, intentionally absent entries, and
+workflow exclusions while tracking recorded writes. Real init integration
+tests add a second platform and assert `isTemplateModified` remains true for
+custom workflow files and the new platform's manifest entries are correct.
+
+##### 7. Wrong vs Correct
+
+Wrong: recursively hash every current `.trellis/` file while merging.
+Correct: merge recorded writes into the existing receipt without rebasing untouched files.
 
 #### Self-heal contract: `pruneOrphanManifestKeys`
 
