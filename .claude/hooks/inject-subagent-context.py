@@ -144,20 +144,29 @@ def get_current_task(
     allow_single_session_fallback: bool = True,
     allow_environment_context: bool = True,
     require_existing: bool = False,
+    fallback_requires_missing_identity: bool = False,
 ) -> str | None:
     """Resolve current task directory through the unified active task resolver."""
     scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     try:
-        from common.active_task import resolve_active_task  # type: ignore[import-not-found]
+        from common.active_task import resolve_active_task, resolve_context_key  # type: ignore[import-not-found]
     except Exception:
         return None
+
+    resolved_platform = platform or _detect_platform(input_data)
+    if fallback_requires_missing_identity and resolve_context_key(
+        input_data,
+        resolved_platform,
+        allow_environment_context=allow_environment_context,
+    ) is not None:
+        allow_single_session_fallback = False
 
     active = resolve_active_task(
         Path(repo_root),
         input_data,
-        platform=platform or _detect_platform(input_data),
+        platform=resolved_platform,
         allow_single_session_fallback=allow_single_session_fallback,
         allow_environment_context=allow_environment_context,
     )
@@ -1151,6 +1160,7 @@ def main():
         repo_root,
         input_data,
         allow_single_session_fallback=True,
+        fallback_requires_missing_identity=subagent_type == AGENT_RESEARCH,
     )
 
     # implement/check need task directory

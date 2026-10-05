@@ -1180,6 +1180,10 @@ the agent's tool permissions.
 for a destination rather than guessing. An outside-repository or missing task
 pointer → silent hook no-op, without issuing a research write grant. Existing
 `.trellis` symlink containment rules still apply.
+Research uses the canonical `resolve_context_key` to gate compatibility fallback:
+an explicit but unmatched parent identity receives the no-task prompt, even if
+another window is the sole remaining session. Single-session fallback is allowed
+only when no usable identity exists. Implement/check retain their existing policy.
 
 **Cases**: Normal → topic markdown inside the active task's research directory.
 No task → request an output destination. Invalid pointer → no rewritten prompt.

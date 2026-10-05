@@ -28,14 +28,23 @@ describe("research prompt output scope (#634)", () => {
     );
   }
 
-  function dispatch(toolName: string): string {
+  function dispatch(
+    toolName: string,
+    contextKey = "claude_research-test",
+    sessionId: string | null = "research-test",
+  ): string {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      TRELLIS_CONTEXT_ID: contextKey,
+    };
+    if (sessionId === null) delete env.CLAUDE_CODE_SESSION_ID;
     const result = spawnSync(pythonCmd, [path.join(tmpDir, HOOK)], {
       cwd: tmpDir,
       encoding: "utf-8",
-      env: { ...process.env, TRELLIS_CONTEXT_ID: "claude_research-test" },
+      env,
       input: JSON.stringify({
         cwd: tmpDir,
-        session_id: "research-test",
+        ...(sessionId === null ? {} : { session_id: sessionId }),
         hook_event_name: "PreToolUse",
         tool_name: toolName,
         tool_input: {
@@ -118,6 +127,24 @@ describe("research prompt output scope (#634)", () => {
     );
     expect(prompt).not.toContain("**Allowed writes**");
     expect(prompt).not.toContain(`${TASK_DIR}/research`);
+  });
+
+  it("does not borrow another window's task for an unmatched parent identity", () => {
+    const prompt = promptFrom(dispatch("Agent", "claude_other-parent"));
+    expect(prompt).toContain("ask the user where to write output");
+    expect(prompt).not.toContain("**Allowed writes**");
+    expect(prompt).not.toContain(`${TASK_DIR}/research`);
+  });
+
+  it("does not borrow another window's task for an unmatched payload session", () => {
+    const prompt = promptFrom(dispatch("Task", "", "other-parent"));
+    expect(prompt).not.toContain("**Allowed writes**");
+    expect(prompt).not.toContain(`${TASK_DIR}/research`);
+  });
+
+  it("retains single-session fallback for an identity-less caller", () => {
+    const prompt = promptFrom(dispatch("Task", "", null));
+    expect(prompt).toContain(`${TASK_DIR}/research/*.md`);
   });
 
   it("does not grant writes through an outside-repository task pointer", () => {
