@@ -272,6 +272,60 @@ describe("update() integration", () => {
     },
   );
 
+  it.each(["keep", "nested/keep"])(
+    "[issue-633] preserves Git visibility for a user exception inside a newly ignored directory: %s",
+    async (keptPath) => {
+      await setupProject();
+      const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+      const existing = `# User exception\n!.runtime/${keptPath}\n`;
+      writeProjectFile(ignorePath, existing);
+      writeProjectFile(`${DIR_NAMES.WORKFLOW}/.runtime/${keptPath}`, "keep\n");
+      writeProjectFile(`${DIR_NAMES.WORKFLOW}/.runtime/private`, "ignore\n");
+      writeProjectFile(
+        `${DIR_NAMES.WORKFLOW}/.runtime/nested/private`,
+        "ignore\n",
+      );
+      const { spawnSync } =
+        await vi.importActual<typeof import("node:child_process")>(
+          "node:child_process",
+        );
+      expect(
+        spawnSync("git", ["init", "--quiet"], { cwd: tmpDir }).status,
+      ).toBe(0);
+
+      await update({ skipAll: true });
+
+      const updated = readProjectFile(ignorePath);
+      expect(updated.endsWith(existing)).toBe(true);
+      expect(
+        spawnSync(
+          "git",
+          [
+            "check-ignore",
+            "--quiet",
+            `${DIR_NAMES.WORKFLOW}/.runtime/${keptPath}`,
+          ],
+          { cwd: tmpDir },
+        ).status,
+      ).toBe(1);
+      for (const privatePath of ["private", "nested/private"]) {
+        expect(
+          spawnSync(
+            "git",
+            [
+              "check-ignore",
+              "--quiet",
+              `${DIR_NAMES.WORKFLOW}/.runtime/${privatePath}`,
+            ],
+            { cwd: tmpDir },
+          ).status,
+        ).toBe(0);
+      }
+      await update({ skipAll: true });
+      expect(readProjectFile(ignorePath)).toBe(updated);
+    },
+  );
+
   it("[issue-633] retains a UTF-8 BOM before prepended rules and preserves the first negation", async () => {
     await setupProject();
     const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
@@ -313,7 +367,9 @@ describe("update() integration", () => {
       );
       try {
         const target = path.join(externalDir, "user-ignore");
-        const original = Buffer.from("UNRELATED USER CONTENT\r\n!keep.local\r\n");
+        const original = Buffer.from(
+          "UNRELATED USER CONTENT\r\n!keep.local\r\n",
+        );
         if (kind === "existing") fs.writeFileSync(target, original);
         const ignorePath = projectFile(`${DIR_NAMES.WORKFLOW}/.gitignore`);
         fs.unlinkSync(ignorePath);

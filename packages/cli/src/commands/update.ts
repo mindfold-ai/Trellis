@@ -268,8 +268,24 @@ function mergeTrellisGitignore(existingContent: string): string {
         line.length > 0 &&
         !line.startsWith("#") &&
         !line.startsWith("!") &&
-        !existingLines.has(line),
-    );
+        !existingLines.has(line) &&
+        !(line.endsWith("/") && existingLines.has(`${line}**`)),
+    )
+    .flatMap((line) => {
+      if (
+        line.endsWith("/") &&
+        [...existingLines].some(
+          (rule) =>
+            rule.startsWith("!") &&
+            rule.slice(1).replace(/^\//, "").startsWith(line),
+        )
+      ) {
+        // Ignore contents while keeping directories traversable: Git cannot
+        // honor a descendant negation when its parent directory is excluded.
+        return [`${line}**`, `!${line}**/`];
+      }
+      return [line];
+    });
   if (missingPatterns.length === 0) return existingContent;
   const newline = existingRules.includes("\r\n") ? "\r\n" : "\n";
   // User negations remain later in the file, so their precedence is preserved.
