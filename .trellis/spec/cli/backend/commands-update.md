@@ -70,6 +70,8 @@ Note that `force` / `skipAll` / `createNew` are mutually exclusive in spirit but
 | Per-platform files | `configurators/index.ts:collectPlatformTemplates` for each detected platform via `configurators/index.ts:getConfiguredPlatforms` |
 | `.claude/settings.json` `statusLine` | preserved through `commands/update.ts:preserveExistingClaudeStatusLine` |
 
+The bundled `.trellis/.gitignore` rules are added only when `.trellis/` is a real directory and the ignore path is absent or a regular file. A symbolic-link workflow directory, symbolic-link ignore file (including a dangling link), or other non-regular ignore path is preserved; the additive update must not follow it and write into an unrelated target. This guard applies to the ignore-file addition, without changing other template ownership policies.
+
 Platforms are auto-discovered by directory existence in `cwd`. There is one exception: if `commands/update.ts:needsCodexUpgrade` returns true (legacy Trellis tracked `.agents/skills/` but no `.codex/` exists yet), `commands/update.ts:update` passes `extraPlatforms: new Set(["codex"])` to force Codex template collection so the upgrade can create `.codex/`.
 
 After collection, `collectTemplateFiles` runs two final passes:
@@ -96,6 +98,30 @@ Non-native workflow variants selected through `trellis workflow --template` or
 as user-managed instead of auto-updating it back to bundled native workflow.
 
 ### 3. Analyze on-disk state
+
+`.trellis/.gitignore` uses an additive merge: prepend only missing positive
+bundled patterns, then retain the existing rule/comment bytes. A UTF-8 BOM
+remains at the beginning of the file so Git still parses the first user rule.
+Existing custom rules,
+comments, and later negations keep their meaning.
+When existing rules contain negations, missing directory rules use a recursive
+contents rule with a directory traversal exception instead of excluding the
+parent. This keeps direct, nested, basename, and glob exceptions effective while other
+files in that directory remain ignored. Slashless directory patterns retain basename matching at every depth by adding a
+`**/` prefix to both generated traversal rules. The equivalent generated contents rule
+is recognized on later updates, so the merge remains idempotent.
+The exact merged result is safe to auto-update even when the ignore file has no
+tracked hash. Normal
+`update.skip` filtering and dry-run behavior still apply. Repeated updates add
+no duplicate patterns. Ignore content is not passed through Python command
+replacement, which would alter user comments or patterns on Windows.
+Apply the canonical skip matcher before reading the existing ignore file;
+an excluded unreadable path must not break a dry run.
+
+For example, upgrading an untracked pre-#633 ignore file adds `hooks.local.json`
+without a false modified-file conflict. An explicit user `!hooks.local.json`
+still wins over the prepended default. Regressions cover ordinary confirmation,
+custom rules/negations, idempotence, dry-run, and skipped paths.
 
 `commands/update.ts:analyzeChanges` walks every entry in the templates map and produces a `ChangeAnalysis`:
 

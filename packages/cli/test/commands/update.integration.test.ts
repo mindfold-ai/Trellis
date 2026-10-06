@@ -199,6 +199,281 @@ describe("update() integration", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  it("[issue-633] normal update adds the missing local-hook ignore rule without a conflict", async () => {
+    await setupProject();
+    const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+    const oldContent = readProjectFile(ignorePath).replace(
+      "# Machine-local hook configuration\nhooks.local.json\n\n",
+      "",
+    );
+    writeProjectFile(ignorePath, oldContent);
+    fs.writeFileSync(versionFilePath(), "0.6.16");
+    expect(readHashesV2(hashFilePath())[ignorePath]).toBeUndefined();
+    vi.mocked(inquirer.prompt).mockClear();
+    vi.mocked(inquirer.prompt).mockResolvedValue({
+      proceed: true,
+      choice: "skip",
+    });
+
+    await update({});
+
+    const updated = readProjectFile(ignorePath);
+    expect(updated).toContain("hooks.local.json\n");
+    expect(updated.endsWith(oldContent)).toBe(true);
+    expect(fs.readFileSync(versionFilePath(), "utf-8")).toBe(VERSION);
+    // The ordinary confirmation is required, but no false modified-file prompt.
+    expect(inquirer.prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it("[issue-633] additive ignore updates preserve custom bytes, negations, and idempotence", async () => {
+    await setupProject();
+    const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+    const oldContent =
+      readProjectFile(ignorePath)
+        .replace("# Machine-local hook configuration\nhooks.local.json\n\n", "")
+        .replace(/\n/g, "\r\n") +
+      "# Custom: python3 ./local.py\r\n!hooks.local.json\r\ncustom-local/\r\n";
+    writeProjectFile(ignorePath, oldContent);
+
+    await update({ skipAll: true });
+
+    const updated = readProjectFile(ignorePath);
+    expect(updated.endsWith(oldContent)).toBe(true);
+    expect(updated.indexOf("hooks.local.json\r\n")).toBeLessThan(
+      updated.indexOf("!hooks.local.json\r\n"),
+    );
+    expect(updated).toContain("custom-local/\r\n");
+    await update({ skipAll: true });
+    expect(readProjectFile(ignorePath)).toBe(updated);
+  });
+
+  it.each(["dry-run", "configured-skip"])(
+    "[issue-633] %s leaves the existing ignore file unchanged",
+    async (mode) => {
+      await setupProject();
+      const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+      const oldContent = readProjectFile(ignorePath).replace(
+        "# Machine-local hook configuration\nhooks.local.json\n\n",
+        "",
+      );
+      writeProjectFile(ignorePath, oldContent);
+      if (mode === "configured-skip") {
+        const configPath = `${DIR_NAMES.WORKFLOW}/config.yaml`;
+        writeProjectFile(
+          configPath,
+          readProjectFile(configPath) +
+            `\nupdate:\n  skip:\n    - ${ignorePath}\n`,
+        );
+      }
+
+      await update(mode === "dry-run" ? { dryRun: true } : { skipAll: true });
+
+      expect(readProjectFile(ignorePath)).toBe(oldContent);
+    },
+  );
+
+  it.each([
+    { directory: ".runtime", keptPath: "keep", exception: "!.runtime/keep" },
+    {
+      directory: ".runtime",
+      keptPath: "nested/keep",
+      exception: "!.runtime/nested/keep",
+    },
+    {
+      directory: "__pycache__",
+      keptPath: "keep.txt",
+      exception: "!__pycache__/keep.txt",
+    },
+    {
+      directory: "nested/__pycache__",
+      keptPath: "keep.txt",
+      exception: "!nested/__pycache__/keep.txt",
+    },
+    { directory: ".runtime", keptPath: "nested/keep", exception: "!**/keep" },
+    { directory: ".runtime", keptPath: "keep", exception: "!keep" },
+    {
+      directory: "nested/.runtime",
+      keptPath: "keep",
+      exception: "!nested/.runtime/keep",
+    },
+    {
+      directory: "nested/.runtime",
+      keptPath: "nested/keep",
+      exception: "!keep",
+    },
+  ])(
+    "[issue-633] preserves Git visibility for a user exception inside a newly ignored directory: $exception",
+    async ({ directory, keptPath, exception }) => {
+      await setupProject();
+      const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+      const existing = `# User exception\n${exception}\n`;
+      writeProjectFile(ignorePath, existing);
+      writeProjectFile(
+        `${DIR_NAMES.WORKFLOW}/${directory}/${keptPath}`,
+        "keep\n",
+      );
+      writeProjectFile(
+        `${DIR_NAMES.WORKFLOW}/${directory}/private`,
+        "ignore\n",
+      );
+      writeProjectFile(
+        `${DIR_NAMES.WORKFLOW}/${directory}/nested/private`,
+        "ignore\n",
+      );
+      const { spawnSync } =
+        await vi.importActual<typeof import("node:child_process")>(
+          "node:child_process",
+        );
+      expect(
+        spawnSync("git", ["init", "--quiet"], { cwd: tmpDir }).status,
+      ).toBe(0);
+
+      await update({ skipAll: true });
+
+      const updated = readProjectFile(ignorePath);
+      expect(updated.endsWith(existing)).toBe(true);
+      expect(
+        spawnSync(
+          "git",
+          [
+            "check-ignore",
+            "--quiet",
+            `${DIR_NAMES.WORKFLOW}/${directory}/${keptPath}`,
+          ],
+          { cwd: tmpDir },
+        ).status,
+      ).toBe(1);
+      for (const privatePath of ["private", "nested/private"]) {
+        expect(
+          spawnSync(
+            "git",
+            [
+              "check-ignore",
+              "--quiet",
+              `${DIR_NAMES.WORKFLOW}/${directory}/${privatePath}`,
+            ],
+            { cwd: tmpDir },
+          ).status,
+        ).toBe(0);
+      }
+      await update({ skipAll: true });
+      expect(readProjectFile(ignorePath)).toBe(updated);
+    },
+  );
+
+  it("[issue-633] retains a UTF-8 BOM before prepended rules and preserves the first negation", async () => {
+    await setupProject();
+    const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+    const existing = "\uFEFF!hooks.local.json\r\n# Keep user rules\r\n";
+    writeProjectFile(ignorePath, existing);
+
+    await update({ skipAll: true });
+
+    const updated = readProjectFile(ignorePath);
+    expect(updated.startsWith("\uFEFF")).toBe(true);
+    expect(updated.endsWith(existing.slice(1))).toBe(true);
+    expect(updated).not.toContain("\r\n\uFEFF");
+    await update({ skipAll: true });
+    expect(readProjectFile(ignorePath)).toBe(updated);
+  });
+
+  it("[issue-633] does not read a skipped ignore path during dry-run", async () => {
+    await setupProject();
+    const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
+    fs.unlinkSync(projectFile(ignorePath));
+    fs.mkdirSync(projectFile(ignorePath));
+    const configPath = `${DIR_NAMES.WORKFLOW}/config.yaml`;
+    writeProjectFile(
+      configPath,
+      readProjectFile(configPath) + `\nupdate:\n  skip:\n    - ${ignorePath}\n`,
+    );
+
+    await expect(update({ dryRun: true })).resolves.toBeUndefined();
+
+    expect(fs.statSync(projectFile(ignorePath)).isDirectory()).toBe(true);
+  });
+
+  it.skipIf(process.platform === "win32").each(["existing", "dangling"])(
+    "[issue-633] preserves a %s ignore symlink and its unrelated target",
+    async (kind) => {
+      await setupProject();
+      const externalDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "trellis-ignore-owner-"),
+      );
+      try {
+        const target = path.join(externalDir, "user-ignore");
+        const original = Buffer.from(
+          "UNRELATED USER CONTENT\r\n!keep.local\r\n",
+        );
+        if (kind === "existing") fs.writeFileSync(target, original);
+        const ignorePath = projectFile(`${DIR_NAMES.WORKFLOW}/.gitignore`);
+        fs.unlinkSync(ignorePath);
+        fs.symlinkSync(target, ignorePath, "file");
+        fs.writeFileSync(versionFilePath(), "0.6.16");
+
+        await update({ skipAll: true });
+
+        expect(fs.lstatSync(ignorePath).isSymbolicLink()).toBe(true);
+        expect(fs.readlinkSync(ignorePath)).toBe(target);
+        if (kind === "existing") {
+          expect(fs.readFileSync(target)).toEqual(original);
+        } else {
+          expect(fs.existsSync(target)).toBe(false);
+        }
+      } finally {
+        fs.rmSync(externalDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "[issue-633] does not merge ignore rules through a linked workflow directory",
+    async () => {
+      await setupProject();
+      const externalDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "trellis-workflow-owner-"),
+      );
+      try {
+        const workflowPath = projectFile(DIR_NAMES.WORKFLOW);
+        const externalWorkflow = path.join(externalDir, "workflow");
+        fs.renameSync(workflowPath, externalWorkflow);
+        fs.symlinkSync(externalWorkflow, workflowPath, "dir");
+        const externalIgnore = path.join(externalWorkflow, ".gitignore");
+        const original = Buffer.from("UNRELATED USER IGNORE RULES\n");
+        fs.writeFileSync(externalIgnore, original);
+        fs.writeFileSync(versionFilePath(), "0.6.16");
+
+        await update({ skipAll: true });
+
+        expect(fs.lstatSync(workflowPath).isSymbolicLink()).toBe(true);
+        expect(fs.readlinkSync(workflowPath)).toBe(externalWorkflow);
+        expect(fs.readFileSync(externalIgnore)).toEqual(original);
+      } finally {
+        fs.rmSync(externalDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(["dry-run", "skip-all"])(
+    "[issue-633] preserves a non-regular ignore path during %s",
+    async (mode) => {
+      await setupProject();
+      const ignorePath = projectFile(`${DIR_NAMES.WORKFLOW}/.gitignore`);
+      fs.unlinkSync(ignorePath);
+      fs.mkdirSync(ignorePath);
+      fs.writeFileSync(path.join(ignorePath, "user-file"), "KEEP");
+
+      await expect(
+        update(mode === "dry-run" ? { dryRun: true } : { skipAll: true }),
+      ).resolves.toBeUndefined();
+
+      expect(fs.lstatSync(ignorePath).isDirectory()).toBe(true);
+      expect(fs.readFileSync(path.join(ignorePath, "user-file"), "utf-8")).toBe(
+        "KEEP",
+      );
+    },
+  );
+
   it("#1 same version update is a true no-op (zero file changes, no backup)", async () => {
     await setupProject();
 
@@ -459,16 +734,21 @@ describe("update() integration", () => {
     expect(classified.conflict).toHaveLength(0);
     expect(classified.auto).toHaveLength(1);
 
-    await executeMigrations(classified, tmpDir, { force: true, skipAll: false }, currentTemplates);
+    await executeMigrations(
+      classified,
+      tmpDir,
+      { force: true, skipAll: false },
+      currentTemplates,
+    );
 
     // No duplicate/leftover `.pi/skills/` directory should survive.
     expect(fs.existsSync(projectFile(".pi/skills"))).toBe(false);
 
     // `.agents/skills/` must end up with the correct, current, neutral
     // content — not the stale Pi-flavored bytes from the deleted legacy dir.
-    expect(
-      readProjectFile(".agents/skills/trellis-update-spec/SKILL.md"),
-    ).toBe(neutralContent);
+    expect(readProjectFile(".agents/skills/trellis-update-spec/SKILL.md")).toBe(
+      neutralContent,
+    );
   });
 
   it("#2 dry run makes no file changes even when changes exist", async () => {
