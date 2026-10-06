@@ -104,9 +104,9 @@ bundled patterns, then retain the existing rule/comment bytes. A UTF-8 BOM
 remains at the beginning of the file so Git still parses the first user rule.
 Existing custom rules,
 comments, and later negations keep their meaning.
-If a missing directory rule has an existing descendant negation, add a recursive
+When existing rules contain negations, missing directory rules use a recursive
 contents rule with a directory traversal exception instead of excluding the
-parent. This keeps direct and nested user file exceptions effective while other
+parent. This keeps direct, nested, basename, and glob exceptions effective while other
 files in that directory remain ignored. The equivalent generated contents rule
 is recognized on later updates, so the merge remains idempotent.
 The exact merged result is safe to auto-update even when the ignore file has no

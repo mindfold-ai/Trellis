@@ -272,17 +272,42 @@ describe("update() integration", () => {
     },
   );
 
-  it.each(["keep", "nested/keep"])(
-    "[issue-633] preserves Git visibility for a user exception inside a newly ignored directory: %s",
-    async (keptPath) => {
+  it.each([
+    { directory: ".runtime", keptPath: "keep", exception: "!.runtime/keep" },
+    {
+      directory: ".runtime",
+      keptPath: "nested/keep",
+      exception: "!.runtime/nested/keep",
+    },
+    {
+      directory: "__pycache__",
+      keptPath: "keep.txt",
+      exception: "!__pycache__/keep.txt",
+    },
+    {
+      directory: "nested/__pycache__",
+      keptPath: "keep.txt",
+      exception: "!nested/__pycache__/keep.txt",
+    },
+    { directory: ".runtime", keptPath: "nested/keep", exception: "!**/keep" },
+    { directory: ".runtime", keptPath: "keep", exception: "!keep" },
+  ])(
+    "[issue-633] preserves Git visibility for a user exception inside a newly ignored directory: $exception",
+    async ({ directory, keptPath, exception }) => {
       await setupProject();
       const ignorePath = `${DIR_NAMES.WORKFLOW}/.gitignore`;
-      const existing = `# User exception\n!.runtime/${keptPath}\n`;
+      const existing = `# User exception\n${exception}\n`;
       writeProjectFile(ignorePath, existing);
-      writeProjectFile(`${DIR_NAMES.WORKFLOW}/.runtime/${keptPath}`, "keep\n");
-      writeProjectFile(`${DIR_NAMES.WORKFLOW}/.runtime/private`, "ignore\n");
       writeProjectFile(
-        `${DIR_NAMES.WORKFLOW}/.runtime/nested/private`,
+        `${DIR_NAMES.WORKFLOW}/${directory}/${keptPath}`,
+        "keep\n",
+      );
+      writeProjectFile(
+        `${DIR_NAMES.WORKFLOW}/${directory}/private`,
+        "ignore\n",
+      );
+      writeProjectFile(
+        `${DIR_NAMES.WORKFLOW}/${directory}/nested/private`,
         "ignore\n",
       );
       const { spawnSync } =
@@ -303,7 +328,7 @@ describe("update() integration", () => {
           [
             "check-ignore",
             "--quiet",
-            `${DIR_NAMES.WORKFLOW}/.runtime/${keptPath}`,
+            `${DIR_NAMES.WORKFLOW}/${directory}/${keptPath}`,
           ],
           { cwd: tmpDir },
         ).status,
@@ -315,7 +340,7 @@ describe("update() integration", () => {
             [
               "check-ignore",
               "--quiet",
-              `${DIR_NAMES.WORKFLOW}/.runtime/${privatePath}`,
+              `${DIR_NAMES.WORKFLOW}/${directory}/${privatePath}`,
             ],
             { cwd: tmpDir },
           ).status,
