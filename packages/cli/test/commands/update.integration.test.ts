@@ -291,6 +291,16 @@ describe("update() integration", () => {
     },
     { directory: ".runtime", keptPath: "nested/keep", exception: "!**/keep" },
     { directory: ".runtime", keptPath: "keep", exception: "!keep" },
+    {
+      directory: "nested/.runtime",
+      keptPath: "keep",
+      exception: "!nested/.runtime/keep",
+    },
+    {
+      directory: "nested/.runtime",
+      keptPath: "nested/keep",
+      exception: "!keep",
+    },
   ])(
     "[issue-633] preserves Git visibility for a user exception inside a newly ignored directory: $exception",
     async ({ directory, keptPath, exception }) => {

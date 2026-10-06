@@ -264,6 +264,8 @@ function mergeTrellisGitignore(existingContent: string): string {
   const hasUserNegations = [...existingLines].some((rule) =>
     rule.startsWith("!"),
   );
+  const directoryContentsRule = (line: string): string =>
+    `${line.slice(0, -1).includes("/") ? "" : "**/"}${line}**`;
   const missingPatterns = gitignoreTemplate
     .split(/\r?\n/)
     .filter(
@@ -272,7 +274,7 @@ function mergeTrellisGitignore(existingContent: string): string {
         !line.startsWith("#") &&
         !line.startsWith("!") &&
         !existingLines.has(line) &&
-        !(line.endsWith("/") && existingLines.has(`${line}**`)),
+        !(line.endsWith("/") && existingLines.has(directoryContentsRule(line))),
     )
     .flatMap((line) => {
       if (line.endsWith("/") && hasUserNegations) {
@@ -280,7 +282,8 @@ function mergeTrellisGitignore(existingContent: string): string {
         // honor a descendant negation when its parent directory is excluded.
         // This also permits basename/glob exceptions, without guessing which
         // directories their patterns will match.
-        return [`${line}**`, `!${line}**/`];
+        const contentsRule = directoryContentsRule(line);
+        return [contentsRule, `!${contentsRule}/`];
       }
       return [line];
     });

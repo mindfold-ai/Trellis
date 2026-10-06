@@ -107,7 +107,8 @@ comments, and later negations keep their meaning.
 When existing rules contain negations, missing directory rules use a recursive
 contents rule with a directory traversal exception instead of excluding the
 parent. This keeps direct, nested, basename, and glob exceptions effective while other
-files in that directory remain ignored. The equivalent generated contents rule
+files in that directory remain ignored. Slashless directory patterns retain basename matching at every depth by adding a
+`**/` prefix to both generated traversal rules. The equivalent generated contents rule
 is recognized on later updates, so the merge remains idempotent.
 The exact merged result is safe to auto-update even when the ignore file has no
 tracked hash. Normal
