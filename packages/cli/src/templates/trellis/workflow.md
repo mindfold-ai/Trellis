@@ -44,7 +44,7 @@ Every task has its own directory under `.trellis/tasks/{MM-DD-name}/` holding `t
 ```bash
 # Task lifecycle
 python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>] [--parent <dir>]
-python3 ./.trellis/scripts/task.py start <name>          # set active task (session-scoped when available)
+python3 ./.trellis/scripts/task.py start <name> [--switch] # start; --switch explicitly replaces unfinished active work
 python3 ./.trellis/scripts/task.py current --source      # show active task and source
 python3 ./.trellis/scripts/task.py finish                # clear active task (triggers after_finish hooks)
 python3 ./.trellis/scripts/task.py archive <name>        # move to archive/{year-month}/
@@ -75,7 +75,9 @@ python3 ./.trellis/scripts/task.py create-pr [name] [--dry-run]
 
 > Run `python3 ./.trellis/scripts/task.py --help` to see the authoritative, up-to-date list.
 
-**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.trellis/.runtime/sessions/`. If no context key is available from hook input, `TRELLIS_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
+**Current-task mechanism**: `task.py create` creates the task directory and auto-sets the per-session active-task pointer when session identity is available and no unfinished task would be displaced. If an unfinished task is already active, it preserves that pointer and prints switching guidance. `task.py start` writes the same pointer and flips `task.json.status` from `planning` to `in_progress`. Restarting the same task needs no flag; replacing a different unfinished task requires `--switch`. Only pass that flag when the user has authorized switching tasks; do not automatically retry a rejected start with it.
+
+State is stored under `.trellis/.runtime/sessions/`. Without session identity, `create` does not persist a pointer and `start` runs in degraded mode: it updates the target task's status/branch and runs its hooks without persisting a pointer. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
 
 ### Workspace System
 
@@ -322,7 +324,7 @@ Goal: classify the request, get task-creation consent when a task is needed, and
 
 #### 1.0 Create task `[required · once]`
 
-Create the task directory only after task-creation consent. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
+Create the task directory only after task-creation consent. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available and no unfinished task would be displaced:
 
 ```bash
 python3 ./.trellis/scripts/task.py create "<task title>" --slug <name>
@@ -332,11 +334,11 @@ python3 ./.trellis/scripts/task.py create "<task title>" --slug <name>
 
 For task trees, create the parent task first and then create each child with `--parent <parent-dir>`. Do not start the parent just because children exist; start the child that owns the next independently verifiable deliverable.
 
-After this command succeeds, the per-turn breadcrumb auto-switches to `[workflow-state:planning]`, telling the AI to stay in planning.
+If the command activates the new task, the per-turn breadcrumb switches to `[workflow-state:planning]`. If an unfinished task remains active, its pointer and breadcrumb stay unchanged. Select the newly created directory as the planning target and read/write that directory's planning artifacts by path; do not infer the new task's phase or artifact paths from the active task's breadcrumb. For a child task, keep the parent's pointer until the child's planning artifacts have been reviewed and the user authorizes `start <child-dir> --switch` at step 1.4.
 
 Run only `create` here — do not also run `start`. `start` flips status to `in_progress`, which switches the breadcrumb to the implementation phase before planning artifacts are reviewed. Save `start` for step 1.4.
 
-Skip when `python3 ./.trellis/scripts/task.py current --source` already points to a task.
+Skip creation only when the intended task already exists; use its directory as the planning target. Another active task, including a parent, is not a reason to skip creating the intended task.
 
 #### 1.1 Requirement exploration `[required · repeatable]`
 
@@ -452,11 +454,11 @@ After artifact review, flip the task status to `in_progress`:
 python3 ./.trellis/scripts/task.py start <task-dir>
 ```
 
+If another unfinished task is active, this command refuses without changing either task or the session pointer. Use `start <task-dir> --switch` only when the user has authorized replacing that active task; do not add the flag merely to bypass the refusal. Restarting the same task does not require it.
+
 For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed before start. On sub-agent-dispatch platforms, `implement.jsonl` and `check.jsonl` must both have real curated entries before start. Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
 
-After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows.
-
-If `task.py start` errors with a session-identity message (no context key from hook input, `TRELLIS_CONTEXT_ID`, or platform-native session env), follow the hint in the error to set up session identity, then retry.
+With session identity available, a successful start changes the breadcrumb to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows. If the command reports degraded mode, it has updated the task but cannot persist an active-task pointer; follow its session-identity hint before relying on automatic context injection.
 
 #### 1.5 Completion criteria
 

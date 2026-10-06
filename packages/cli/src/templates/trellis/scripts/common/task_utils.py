@@ -19,7 +19,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .paths import get_repo_root, get_tasks_dir
+from .active_task import resolve_active_task, resolve_task_ref
+from .io import read_json_checked
+from .paths import FILE_TASK_JSON, get_repo_root, get_tasks_dir
 
 if TYPE_CHECKING:
     import subprocess
@@ -55,6 +57,27 @@ def is_within_tasks_dir(task_dir_abs: Path, repo_root: Path | None = None) -> bo
 # =============================================================================
 # Task Lookup
 # =============================================================================
+
+def active_task_conflict(task_dir: Path, repo_root: Path) -> str | None:
+    """Return the unfinished session task that switching would displace.
+
+    This is a read-only CLI guard, not a change to pointer resolution. Only
+    known terminal statuses release an existing task; missing or unreadable
+    metadata must not silently discard its context.
+    """
+    active = resolve_active_task(repo_root)
+    if not active.task_path or active.stale:
+        return None
+    current_dir = resolve_task_ref(active.task_path, repo_root)
+    if current_dir is None:
+        return None
+    if current_dir.resolve() == task_dir.resolve():
+        return None
+    data, _ = read_json_checked(current_dir / FILE_TASK_JSON)
+    if data is not None and data.get("status") in ("completed", "done"):
+        return None
+    return active.task_path
+
 
 def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
     """Find task directory by name (exact or suffix match).

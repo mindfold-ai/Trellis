@@ -8,7 +8,7 @@ Usage:
     python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
     python3 task.py validate <dir>              # Validate jsonl files
     python3 task.py list-context <dir>          # List jsonl entries
-    python3 task.py start <dir>                 # Set active task, record current branch
+    python3 task.py start <dir> [--switch]      # Start task; --switch replaces unfinished active task
     python3 task.py current [--source] [--json] # Show active task
     python3 task.py finish                      # Clear active task
     python3 task.py set-branch <dir> <branch>   # Set git branch
@@ -53,7 +53,7 @@ from common.io import (
     read_json_checked,
     write_json,
 )
-from common.task_utils import resolve_task_dir, run_task_hooks
+from common.task_utils import active_task_conflict, resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
 
 # Import command handlers from split modules (also re-exports for plan.py compatibility)
@@ -232,6 +232,19 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     task_json_path = full_path / FILE_TASK_JSON
 
+    previous_task = active_task_conflict(full_path, repo_root)
+    if previous_task and not getattr(args, "switch", False):
+        print(colored(
+            f"Error: unfinished task is already active: {previous_task}",
+            Colors.RED,
+        ), file=sys.stderr)
+        print(
+            f"To switch explicitly, run: python3 {DIR_WORKFLOW}/scripts/task.py "
+            f'start "{task_dir}" --switch',
+            file=sys.stderr,
+        )
+        return 1
+
     if not resolve_context_key():
         # Degraded mode: no session identity available.
         # Hook didn't inject TRELLIS_CONTEXT_ID (common on Windows + Claude Code,
@@ -256,6 +269,11 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     active = set_active_task(task_dir, repo_root)
     if active:
+        if previous_task:
+            print(colored(
+                f"✓ Switched active task: {previous_task} → {task_dir}",
+                Colors.GREEN,
+            ))
         print(colored(f"✓ Current task set to: {task_dir}", Colors.GREEN))
         print(f"Source: {active.source}")
 
@@ -534,7 +552,7 @@ Usage:
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
-  python3 task.py start <dir>                        Set active task; records the checked-out branch when unset
+  python3 task.py start <dir> [--switch]             Set active task; explicitly switch unfinished work
   python3 task.py current [--source]                 Show active task
   python3 task.py finish                             Clear active task
   python3 task.py set-branch <dir> <branch>          Set git branch
@@ -684,6 +702,11 @@ def main() -> int:
     # start
     p_start = subparsers.add_parser("start", help="Set active task")
     p_start.add_argument("dir", help="Task directory")
+    p_start.add_argument(
+        "--switch",
+        action="store_true",
+        help="Explicitly replace a different unfinished task active in this session",
+    )
     p_start.add_argument(
         "--allow-empty-context",
         action="store_true",

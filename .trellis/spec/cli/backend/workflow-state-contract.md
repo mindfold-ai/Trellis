@@ -256,7 +256,7 @@ a new writer requires updating this spec.**
 
 | # | Writer | File:Line | Value | Trigger |
 |---|--------|-----------|-------|---------|
-| 1 | `cmd_create` | `packages/cli/src/templates/trellis/scripts/common/task_store.py:206` | `"planning"` | `task.py create "<title>"` (also visibly auto-sets the session active-task pointer when session identity is available; `--no-start` skips pointer movement for backlog batching — see R7 in 04-30-workflow-state-commit-gap PRD) |
+| 1 | `cmd_create` | `packages/cli/src/templates/trellis/scripts/common/task_store.py:206` | `"planning"` | `task.py create "<title>"` (also visibly auto-sets the session active-task pointer when identity is available and no unfinished task would be displaced; `--no-start` skips pointer movement for backlog batching — see explicit switching below) |
 | 2 | `_record_start_state` (called from both `cmd_start` branches) | `packages/cli/src/templates/trellis/scripts/task.py:111` | `"in_progress"` (gated on prior `"planning"`; the same write also records `task.json.branch` when empty) | `task.py start <dir>` |
 | 3 | `cmd_archive` | `packages/cli/src/templates/trellis/scripts/common/task_store.py:1275` | `"completed"` (flip + archive `mv`, but only after `_validate_branch_metadata` passes) | `task.py archive <dir>` |
 | 4 | `emptyTaskJson` factory | `packages/cli/src/utils/task-json.ts:54` | `"planning"` (default) | TS callers (init, update) |
@@ -267,6 +267,51 @@ a new writer requires updating this spec.**
 **No other writer exists.** No hook script writes `task.json.status` — verified
 by `grep -rn '"status"' .trellis/scripts/`. Linear-sync hook (`linear_sync.py`)
 writes `meta.linear_issue` only.
+
+---
+
+## Explicit task switching (#511)
+
+### Scope and signatures
+
+`task.py create` may activate its new planning task; `task.py start <dir>
+[--switch] [--allow-empty-context]` starts an existing task. Both consult the
+read-only `common.task_utils.active_task_conflict(task_dir: Path, repo_root:
+Path) -> str | None` before replacing the current session pointer.
+
+### Contracts and error matrix
+
+| Current session state | `create` | `start <different-task>` |
+|---|---|---|
+| Existing task, status other than `completed` / `done` | Create succeeds; preserve pointer and print `start ... --switch` guidance | Exit 1 with guidance; pointer, task metadata, and `after_start` hooks unchanged |
+| Missing, invalid, or unreadable current task metadata | Preserve pointer, as above | Refuse, as above; unknown state is not completion |
+| No pointer, stale pointer (directory absent), or terminal task | Activate new planning task | Start normally |
+| No session identity | Create without persisting a pointer | Existing degraded mode: update target status/branch and run hooks without a pointer |
+
+- `--switch` explicitly permits displacement and reports previous and next
+  task paths. It leaves the old task's status untouched and still enforces
+  target/path/context validation before pointer or metadata writes.
+- Canonically equivalent paths refer to the same task: restarting it does
+  not need `--switch` and retains the existing status/branch/hook behavior.
+- `create --no-start` always skips activation. `create --force` governs
+  creation collisions; it does not grant permission to switch tasks.
+- Each session only consults its own pointer; no single-session fallback.
+  These guards do not serialize concurrent commands within one session.
+
+### Cases and required tests
+
+Good: A is in progress; creating B retains A; `start B --switch` then visibly
+selects B. Base: starting a task with no active pointer works as before.
+Bad: treating a custom `review` status or unreadable `task.json` as finished.
+
+`test/scripts/task-switch.integration.test.ts` must exercise the real CLI,
+compare pointer/task bytes on rejection, verify hook absence/presence, and
+cover terminal/stale states, canonical paths, session isolation, no identity,
+`--no-start`, and context validation with `--switch`.
+
+Wrong: call `set_active_task()` before deciding whether replacement is allowed.
+Correct: inspect the current task without writes, refuse an implicit switch,
+then persist and run lifecycle effects only after all gates pass.
 
 ---
 
@@ -297,7 +342,7 @@ Which breadcrumbs actually fire in normal flow:
 |--------|--------------|-------|
 | `no_task` | ✅ reachable | Pseudo-status; emitted when `resolve_active_task()` returns no pointer. |
 | `task_error` | ✅ reachable | Pseudo-status; emitted when a session task pointer resolves to a directory whose `task.json` cannot be read or has no usable `status`. |
-| `planning` | ✅ reachable | After `cmd_create` (which now auto-sets the session pointer when available) and before `cmd_start`. `planning-inline` is the Codex inline-mode breadcrumb body for the same task status. |
+| `planning` | ✅ reachable | After `cmd_create` activates the new task (without displacing unfinished work) and before `cmd_start`. `planning-inline` is the Codex inline-mode breadcrumb body for the same task status. |
 | `in_progress` | ✅ reachable | After `cmd_start`, until `cmd_archive`. `in_progress-inline` is the Codex inline-mode breadcrumb body for the same task status. |
 | `completed` | ❌ DEAD in normal flow | `cmd_archive` writes `status="completed"` and immediately moves the task dir to `archive/`. The session-pointer cleanup in `clear_task_from_sessions` runs before the move, so the resolver loses the pointer in the same call. The block body in workflow.md is preserved for a future status-transition redesign (e.g. an explicit `in_progress → completed` command) but no current code path produces it. |
 | `stale_<source_type>` | ✅ reachable (rare) | Synthesized when the session pointer references a deleted task directory. Emits the generic body via `build_breadcrumb` because no `stale_*` tag is shipped. |
