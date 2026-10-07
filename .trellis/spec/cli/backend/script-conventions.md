@@ -2831,6 +2831,11 @@ Contracts added by task `07-22-script-qol-batch` (#394, #402, meta access):
   source when `--change` is absent.
 - `task.py list` renders children indented under their parent; a dangling
   `parent` ref falls back to flat display (never crash, never hide the task).
+  `--mine` and `--status` filter individual tasks, not entire subtrees: keep
+  visiting descendants of a nonmatching task without adding indentation for
+  that hidden ancestor. Count only printed tasks; the matching task set must
+  agree with `--json`. Regression coverage lives in
+  `test/scripts/task-list-tree.integration.test.ts`.
 - `task.py create --meta key=value` (repeatable) populates `task.json`'s `meta`
   object; validation runs BEFORE `mkdir` so malformed input leaves no
   half-created directory. `task.py set-meta <dir> <key> <value>` sets/overwrites

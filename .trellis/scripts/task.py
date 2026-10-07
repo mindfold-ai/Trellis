@@ -429,15 +429,20 @@ def cmd_list(args: argparse.Namespace) -> int:
     count = 0
 
     def _print_task(dir_name: str, indent: int = 0) -> None:
+        """Print and count matching tasks, recursing through hidden ancestors.
+
+        Increase indentation only for visible ancestors in the task tree.
+        """
         nonlocal count
         t = all_tasks[dir_name]
 
-        # Apply --mine filter
-        if filter_mine and (t.assignee or "-") != developer:
-            return
-
-        # Apply --status filter
-        if filter_status and t.status != filter_status:
+        # Hidden ancestors must not hide matching descendants or add indentation.
+        if (filter_mine and (t.assignee or "-") != developer) or (
+            filter_status and t.status != filter_status
+        ):
+            for child_name in t.children:
+                if child_name in all_tasks:
+                    _print_task(child_name, indent)
             return
 
         relative_path = f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}"

@@ -121,6 +121,110 @@ describe.skipIf(!hasPython())("task.py list tree view (#402)", () => {
     expect(r.stdout).toContain("07-05-flat-task/");
   });
 
+  describe("filtered descendants (#631)", () => {
+    const filters = [
+      {
+        label: "--mine",
+        args: ["--mine"],
+        excluded: [
+          { assignee: "other", status: "in_progress" },
+          { assignee: "other", status: "in_progress" },
+        ],
+      },
+      {
+        label: "--status",
+        args: ["--status", "in_progress"],
+        excluded: [
+          { assignee: "tester", status: "planning" },
+          { assignee: "tester", status: "planning" },
+        ],
+      },
+      {
+        label: "--mine --status",
+        args: ["--mine", "--status", "in_progress"],
+        excluded: [
+          { assignee: "other", status: "in_progress" },
+          { assignee: "tester", status: "planning" },
+        ],
+      },
+    ];
+
+    beforeEach(() => {
+      fs.writeFileSync(path.join(tmp, ".trellis", ".developer"), "name=tester\n");
+    });
+
+    it.each(filters)(
+      "$label preserves matches across hidden ancestors and their indentation",
+      ({ args, excluded }) => {
+        const names = ["root", "parent", "match", "bridge", "leaf"];
+        const overrides = [excluded[0], excluded[1], {}, excluded[0], {}];
+        names.forEach((name, index) => {
+          makeTask(tmp, name, {
+            status: "in_progress",
+            parent: names[index - 1] ?? null,
+            children: names.slice(index + 1, index + 2),
+            ...overrides[index],
+          });
+        });
+        const taskFiles = names.map((name) =>
+          path.join(tmp, ".trellis", "tasks", name, "task.json"),
+        );
+        const before = taskFiles.map((file) => fs.readFileSync(file));
+
+        const text = runTask(tmp, "list", ...args);
+        const json = runTask(tmp, "list", ...args, "--json");
+        expect(text.status).toBe(0);
+        expect(text.stderr).toBe("");
+        expect(json.status).toBe(0);
+        expect(json.stderr).toBe("");
+        const rows = [...text.stdout.matchAll(/^([ \t]*)- ([^/\r\n]+)\//gm)].map(
+          ([, indent, name]) => ({ name, indent: indent.length }),
+        );
+        expect(rows).toEqual([
+          { name: "match", indent: 2 },
+          { name: "leaf", indent: 4 },
+        ]);
+        const data = JSON.parse(json.stdout) as {
+          tasks: { dir: string; parent: string; children: string[] }[];
+        };
+        expect(rows.map((row) => row.name).sort()).toEqual(
+          data.tasks.map((task) => task.dir.split("/").pop()).sort(),
+        );
+        expect(text.stdout).toContain(`Total: ${data.tasks.length} task(s)`);
+        expect(data.tasks.find((task) => task.dir.endsWith("/match"))).toMatchObject({
+          parent: "parent",
+          children: ["bridge"],
+        });
+        expect(taskFiles.map((file) => fs.readFileSync(file))).toEqual(before);
+
+        const unfiltered = runTask(tmp, "list");
+        expect(unfiltered.status).toBe(0);
+        expect(
+          [...unfiltered.stdout.matchAll(/^([ \t]*)- ([^/\r\n]+)\//gm)].map(
+            ([, indent, name]) => ({ name, indent: indent.length }),
+          ),
+        ).toEqual(names.map((name, index) => ({ name, indent: 2 * (index + 1) })));
+        expect(unfiltered.stdout).toContain(`Total: ${names.length} task(s)`);
+      },
+    );
+
+    it.each(filters)("$label reports no matches", ({ args, excluded }) => {
+      makeTask(tmp, "parent", { ...excluded[0], children: ["child"] });
+      makeTask(tmp, "child", { ...excluded[1], parent: "parent" });
+
+      const text = runTask(tmp, "list", ...args);
+      const json = runTask(tmp, "list", ...args, "--json");
+      expect(text.status).toBe(0);
+      expect(text.stdout).not.toMatch(/^\s*- /m);
+      expect(text.stdout).toContain(
+        args.includes("--mine") ? "(no tasks assigned to you)" : "(no active tasks)",
+      );
+      expect(text.stdout).toContain("Total: 0 task(s)");
+      expect(json.status).toBe(0);
+      expect(JSON.parse(json.stdout)).toEqual({ tasks: [] });
+    });
+  });
+
   it("renders a dangling parent ref flat without erroring (orphan safety)", () => {
     makeTask(tmp, "07-06-orphan", {
       status: "planning",
