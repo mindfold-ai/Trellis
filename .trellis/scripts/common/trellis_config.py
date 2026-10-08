@@ -225,9 +225,12 @@ def parse_simple_yaml(content: str, source: str = "config.yaml") -> dict:
 
 
 def read_trellis_config(repo_root: Optional[Path] = None) -> dict:
-    """Read .trellis/config.yaml. Returns {} on missing or malformed file."""
+    """Read active config; parsing alone remains usable as a standalone module."""
+    from .path_boundary import require_project_path
+
     root = repo_root or Path.cwd()
     config_file = root / CONFIG_REL_PATH
+    require_project_path(config_file, root)
     try:
         content = config_file.read_text(encoding="utf-8")
     except (FileNotFoundError, OSError):

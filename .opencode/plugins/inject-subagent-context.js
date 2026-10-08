@@ -23,7 +23,7 @@ const AGENTS_REQUIRE_TASK = ["implement", "check"]
 // Match `Active task: <path>` on the first non-empty line of the dispatch
 // prompt. Mirrors the contract in workflow.md's [workflow-state:in_progress]
 // breadcrumb so multi-window users can disambiguate which task is targeted.
-const ACTIVE_TASK_HINT_RE = /^\s*Active task:\s*(\S+)\s*$/m
+const ACTIVE_TASK_HINT_RE = /^[ \t]*Active task:[ \t]*(.+?)[ \t]*$/m
 
 function extractActiveTaskHint(prompt) {
   if (typeof prompt !== "string" || !prompt) return null
@@ -467,25 +467,19 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
             return
           }
 
-          // Resolve active task in this priority order (only later steps
-          // run when earlier ones miss):
-          //   1. Exact session runtime context lookup for input.sessionID
-          //   2. `Active task: <path>` hint in the dispatch prompt
-          //      (explicit per-dispatch override — beats single-session
-          //      inference so multi-window users can disambiguate)
-          //   3. Single-session fallback — only when exactly 1 session
-          //      runtime file exists locally
+          // Explicit task hints remain local. Only identity-less children may
+          // use the checkout-local compatibility fallback; errors never fall back.
           let taskDir = null
-          let taskSource = null
-
+          let taskCtx = ctx
           const contextKey = ctx.getContextKey(input)
-          if (contextKey) {
-            const context = ctx.readContext(contextKey)
-            const exactRef = ctx.normalizeTaskRef(context?.current_task || "")
-            if (exactRef) {
-              taskDir = exactRef
-              taskSource = `session:${contextKey}`
-            }
+          const active = ctx.getActiveTask(input)
+          if (active.error || active.stale) {
+            args.prompt = `${originalPrompt}\n\nTrellis task binding error: ${active.error || "stale binding"}. No task context was loaded.`
+            return
+          }
+          if (active.resolvedTaskPath) {
+            taskDir = active.taskPath
+            taskCtx = new TrellisContext(active.taskWorkspaceRoot)
           }
 
           if (!taskDir) {
@@ -496,21 +490,20 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
                 const hintDir = ctx.resolveTaskDir(hintNormalized)
                 if (hintDir && existsSync(hintDir)) {
                   taskDir = hintNormalized
-                  taskSource = "prompt-hint"
                   debugLog("inject", "Resolved task from Active task: hint:", hintNormalized)
                 }
               }
             }
           }
 
-          if (!taskDir) {
+          if (!taskDir && !contextKey) {
             const fallback = ctx._resolveSingleSessionFallback()
             if (fallback?.taskPath) {
-              const fallbackDir = ctx.resolveTaskDir(fallback.taskPath)
+              const fallbackDir = fallback.resolvedTaskPath
               if (fallbackDir && existsSync(fallbackDir)) {
                 taskDir = fallback.taskPath
-                taskSource = fallback.source
-                debugLog("inject", "Resolved task via single-session fallback:", taskDir, "source:", taskSource)
+                taskCtx = new TrellisContext(fallback.taskWorkspaceRoot)
+                debugLog("inject", "Resolved task via single-session fallback:", taskDir, "source:", fallback.source)
               }
             }
           }
@@ -522,7 +515,7 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
               debugLog("inject", "Skipping - no current task")
               return
             }
-            const taskDirFull = ctx.resolveTaskDir(taskDir)
+            const taskDirFull = taskCtx.resolveTaskDir(taskDir)
             if (!taskDirFull || !existsSync(taskDirFull)) {
               debugLog("inject", "Skipping - task directory not found")
               return
@@ -536,15 +529,15 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
           let context = ""
           switch (subagentType) {
             case "implement":
-              context = getImplementContext(ctx, taskDir)
+              context = getImplementContext(taskCtx, taskDir)
               break
             case "check":
               context = isFinish
-                ? getFinishContext(ctx, taskDir)
-                : getCheckContext(ctx, taskDir)
+                ? getFinishContext(taskCtx, taskDir)
+                : getCheckContext(taskCtx, taskDir)
               break
             case "research":
-              context = getResearchContext(ctx, taskDir)
+              context = getResearchContext(taskCtx, taskDir)
               break
           }
 
@@ -553,7 +546,8 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
             return
           }
 
-          const newPrompt = buildPrompt(subagentType, originalPrompt, context, isFinish)
+          const workspaceContext = `Caller workspace: ${directory}\nTask workspace: ${taskCtx.directory}\n\n${context}`
+          const newPrompt = buildPrompt(subagentType, originalPrompt, workspaceContext, isFinish)
 
           // Mutate args in-place — whole-object replacement does NOT work for the task tool
           // because the runtime holds a local reference to the same args object.
@@ -563,6 +557,9 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
 
         } catch (error) {
           debugLog("inject", "Error in tool.execute.before:", error.message, error.stack)
+          if (output?.args && typeof output.args.prompt === "string") {
+            output.args.prompt += `\n\nTrellis task context error: ${error.message}. No task context was loaded.`
+          }
         }
       }
     }

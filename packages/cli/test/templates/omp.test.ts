@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { execFileSync } from "node:child_process";
 import vm from "node:vm";
 import ts from "typescript";
 import {
@@ -11,6 +12,7 @@ import {
   getExtensionTemplate,
 } from "../../src/templates/omp/index.js";
 import { collectOmpTemplates } from "../../src/configurators/omp.js";
+import { emptyTaskRecord } from "@mindfoldhq/trellis-core/task";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.resolve(__dirname, "../../src/templates/omp");
@@ -32,8 +34,8 @@ function loadOmpExtension(): OmpExtension {
   const require = createRequire(import.meta.url);
   const moduleObject: { exports: { default?: OmpExtension } } = { exports: {} };
   const sandboxProcess = Object.create(process) as NodeJS.Process;
-  const sandboxEnv = { ...process.env };
-  delete sandboxEnv.TRELLIS_CONTEXT_ID;
+  const sandboxEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) =>
+    !/^(TRELLIS_|CODEX_|CLAUDE_|PI_SESSION|OMP_SESSION|GIT_)/.test(name)));
   Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
   const sandbox = vm.createContext({
     Buffer,
@@ -57,16 +59,32 @@ function captureOmpHandlers(): Map<string, OmpEventHandler> {
   return handlers;
 }
 
+function installTaskRuntime(root: string): void {
+  fs.cpSync(
+    path.resolve(__dirname, "../../src/templates/trellis/scripts"),
+    path.join(root, ".trellis", "scripts"),
+    { recursive: true, filter: (source) => !source.includes("__pycache__") },
+  );
+}
+
 function makeOmpProject(): { root: string; taskDir: string; sessionId: string } {
   const root = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "trellis-omp-") );
+  installTaskRuntime(root);
   const taskDir = path.join(root, ".trellis", "tasks", "08-13-context-limits");
   const sessionId = "context_limits";
   fs.mkdirSync(path.join(root, ".trellis", ".runtime", "sessions"), { recursive: true });
   fs.mkdirSync(taskDir, { recursive: true });
-  fs.writeFileSync(path.join(taskDir, "task.json"), JSON.stringify({ status: "in_progress", title: "Context limits" }));
+  fs.writeFileSync(path.join(taskDir, "task.json"), JSON.stringify({
+    ...emptyTaskRecord({ id: "08-13-context-limits" }),
+    id: "08-13-context-limits",
+    lifecycle_generation: 0,
+    children: [],
+    status: "in_progress",
+    title: "Context limits",
+  }));
   fs.writeFileSync(
     path.join(root, ".trellis", ".runtime", "sessions", "omp_context_limits.json"),
-    JSON.stringify({ current_task: ".trellis/tasks/08-13-context-limits" }),
+    JSON.stringify({ schema_version: 2, task_id: "08-13-context-limits", lifecycle_generation: 0 }),
   );
   return { root, taskDir, sessionId };
 }
@@ -89,6 +107,256 @@ async function runSessionStart(root: string, sessionId: string): Promise<string>
   });
   return messages.find((message) => message.customType === "trellis-task-context")?.content ?? "";
 }
+
+function taskContextWrapperBytes(context: string): number {
+  const firstSection = context.search(/^#{2,3} /m);
+  const suffix = "\n</task-context>";
+  if (firstSection < 0 || !context.endsWith(suffix)) throw new Error("Missing task-context wrapper");
+  return Buffer.byteLength(context.slice(0, firstSection) + suffix, "utf-8");
+}
+
+describe("omp cross-worktree callbacks", () => {
+  const noTaskWorkflow = "[workflow-state:no_task]\nNO TASK\n[/workflow-state:no_task]\n";
+
+  async function invoke(root: string, sessionId = "binding"): Promise<string> {
+    const handlers = new Map<string, OmpEventHandler>();
+    const messages: unknown[] = [];
+    loadOmpExtension()({
+      on: (event, handler) => handlers.set(event, handler),
+      sendMessage: async (message) => { messages.push(message); },
+    });
+    const sessionStart = handlers.get("session_start");
+    const beforeAgentStart = handlers.get("before_agent_start");
+    const context = handlers.get("context");
+    const input = handlers.get("input");
+    if (!sessionStart || !beforeAgentStart || !context || !input) throw new Error("Missing OMP callbacks");
+    const ctx = { cwd: root, sessionManager: { getSessionId: () => sessionId }, ui: { notify: () => undefined } };
+    await sessionStart({}, ctx);
+    await input({ text: "Continue" }, ctx);
+    const turn = await beforeAgentStart({}, ctx);
+    const projected = await context({ messages: [] }, ctx);
+    return JSON.stringify({ messages, turn, projected });
+  }
+
+  async function fixture(): Promise<{
+    root: string;
+    primary: string;
+    linked: string;
+    common: string;
+    git: (cwd: string, ...args: string[]) => string;
+    bind: (workspace: string, key?: string) => string;
+  }> {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "trellis omp worktrees ")));
+    const primary = path.join(root, "primary checkout");
+    const linked = path.join(root, "linked checkout");
+    fs.mkdirSync(primary);
+    const env = Object.fromEntries(Object.entries(process.env).filter(([name]) =>
+      !/^(GIT_|TRELLIS_|CODEX_|CLAUDE_|PI_SESSION|OMP_SESSION)/.test(name)));
+    const git = (cwd: string, ...args: string[]): string => execFileSync("git", [
+      "-c", `core.hooksPath=${path.join(root, "no-hooks")}`, "-c", "commit.gpgsign=false",
+      "-c", "user.name=Trellis Test", "-c", "user.email=trellis@example.invalid", ...args,
+    ], { cwd, env, encoding: "utf8" }).trim();
+    git(primary, "init");
+    git(primary, "commit", "--allow-empty", "-m", "fixture");
+    installTaskRuntime(primary);
+    fs.writeFileSync(path.join(primary, ".trellis/workflow.md"), noTaskWorkflow);
+    // Establish the native session before adding the linked worktree.
+    expect(await invoke(primary)).toContain("NO TASK");
+    git(primary, "worktree", "add", "--detach", linked, "HEAD");
+    for (const [workspace, label] of [[primary, "PRIMARY"], [linked, "LINKED"]] as const) {
+      installTaskRuntime(workspace);
+      const task = path.join(workspace, ".trellis/tasks/same-name");
+      fs.mkdirSync(task, { recursive: true });
+      fs.writeFileSync(path.join(task, "task.json"), JSON.stringify({
+        ...emptyTaskRecord({ id: `${label.toLowerCase()}-task` }),
+        id: `${label.toLowerCase()}-task`,
+        lifecycle_generation: 0,
+        children: [],
+        status: "in_progress",
+      }));
+      fs.writeFileSync(path.join(task, "prd.md"), `${label} PRD`);
+      fs.writeFileSync(path.join(task, "implement.jsonl"), JSON.stringify({ file: label === "PRIMARY" ? "primary-only.md" : "context.md" }));
+      fs.writeFileSync(path.join(workspace, "context.md"), `${label} SPEC`);
+      fs.writeFileSync(path.join(workspace, "primary-only.md"), "PRIMARY SPEC");
+      fs.writeFileSync(path.join(workspace, ".trellis/workflow.md"), `${noTaskWorkflow}[workflow-state:in_progress]\n${label} FLOW\n[/workflow-state:in_progress]\n`);
+    }
+    const common = fs.realpathSync(path.join(primary, ".git"));
+    const bind = (workspace: string, key = "omp_binding"): string => {
+      const file = path.join(common, "trellis/sessions", `${key}.json`);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify({
+        schema_version: 2,
+        task_id: workspace === primary ? "primary-task" : "linked-task",
+        lifecycle_generation: 0,
+      }));
+      return file;
+    };
+    return { root, primary, linked, common, git, bind };
+  }
+
+  it("#1 uses linked task/context/workflow despite conflicting primary content", async () => {
+    const f = await fixture();
+    try {
+      f.bind(f.linked);
+      const output = await invoke(f.primary);
+      for (const label of ["PRD", "SPEC", "FLOW"]) {
+        expect(output).toContain(`LINKED ${label}`);
+        expect(output).not.toContain(`PRIMARY ${label}`);
+      }
+      f.bind(f.primary, "omp_other");
+      expect(await invoke(f.linked, "other")).toContain("PRIMARY SPEC");
+      expect(await invoke(f.primary, "unknown")).toContain("NO TASK");
+      const independent = path.join(f.root, "independent");
+      fs.mkdirSync(independent);
+      f.git(independent, "init");
+      installTaskRuntime(independent);
+      fs.writeFileSync(path.join(independent, ".trellis/workflow.md"), noTaskWorkflow);
+      expect(await invoke(independent)).toContain("NO TASK");
+    } finally {
+      fs.rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { label: "missing", status: undefined },
+    { label: "null", status: null },
+    { label: "number", status: 42 },
+    { label: "boolean", status: false },
+    { label: "object", status: {} },
+    { label: "array", status: [] },
+    { label: "empty", status: "" },
+    { label: "whitespace", status: " \t\n" },
+  ])("#5 rejects $label task status without planning or task-context fallback", async ({ status }) => {
+    const f = await fixture();
+    try {
+      f.bind(f.linked);
+      fs.writeFileSync(path.join(f.linked, ".trellis/tasks/same-name/task.json"), JSON.stringify({
+        ...emptyTaskRecord({ id: "linked-task" }),
+        id: "linked-task",
+        lifecycle_generation: 0,
+        children: [],
+        status,
+      }));
+      const output = await invoke(f.primary);
+      expect(output).toContain("invalid_task");
+      expect(output).toContain(typeof status === "string" ? "Invalid task status" : "task_metadata_invalid-task-schema");
+      expect(output).not.toContain("workflow-state:planning");
+      expect(output).not.toContain("NO TASK");
+      expect(output).not.toContain("LINKED PRD");
+      expect(output).not.toContain("LINKED SPEC");
+    } finally {
+      fs.rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it("#6 preserves custom status and selects its linked workflow block", async () => {
+    const f = await fixture();
+    try {
+      f.bind(f.linked);
+      fs.writeFileSync(path.join(f.linked, ".trellis/tasks/same-name/task.json"), JSON.stringify({
+        ...emptyTaskRecord({ id: "linked-task" }),
+        id: "linked-task",
+        lifecycle_generation: 0,
+        children: [],
+        status: "in-review",
+      }));
+      fs.writeFileSync(path.join(f.linked, ".trellis/workflow.md"), "[workflow-state:in-review]\nLINKED CUSTOM FLOW\n[/workflow-state:in-review]\n");
+      const output = await invoke(f.primary);
+      expect(output).toContain("workflow-state:in-review");
+      expect(output).toContain("LINKED CUSTOM FLOW");
+      expect(output).toContain("LINKED SPEC");
+      expect(output).not.toContain("invalid_task");
+    } finally {
+      fs.rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it("#7 retains the linked workspace as the read-path base in bounded context", async () => {
+    const f = await fixture();
+    try {
+      f.bind(f.linked);
+      fs.writeFileSync(path.join(f.linked, "context.md"), `LINKED SPEC\n${"x".repeat(2000)}`);
+      fs.writeFileSync(path.join(f.linked, "omitted.md"), Buffer.from([0xff]));
+      fs.writeFileSync(path.join(f.linked, ".trellis/tasks/same-name/implement.jsonl"), [
+        JSON.stringify({ file: "context.md" }),
+        JSON.stringify({ file: "omitted.md" }),
+      ].join("\n"));
+      const unbounded = await runSessionStart(f.primary, "binding");
+      const wrapperBytes = taskContextWrapperBytes(unbounded);
+      const maxTotalBytes = wrapperBytes + 600;
+      fs.writeFileSync(path.join(f.linked, ".trellis/config.yaml"), `context_injection:\n  max_file_bytes: 16\n  max_total_bytes: ${maxTotalBytes}\n`);
+      const context = await runSessionStart(f.primary, "binding");
+      expect(context).toContain(`Task workspace: ${f.linked}\n`);
+      expect(context).toContain("All relative paths below, including required_read paths, are based on this task workspace.");
+      expect(context).toContain("context.md [truncated]");
+      expect(context).toContain("read context.md for the full content");
+      expect(context).toContain("required_read: omitted.md");
+      expect(context).not.toContain(`Task workspace: ${f.primary}`);
+      expect(Buffer.byteLength(context, "utf-8")).toBeLessThanOrEqual(maxTotalBytes);
+
+      fs.writeFileSync(path.join(f.linked, ".trellis/config.yaml"), `context_injection:\n  max_total_bytes: ${wrapperBytes - 1}\n`);
+      expect(await runSessionStart(f.primary, "binding")).toBe("");
+    } finally {
+      fs.rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it("#4 invalidates the turn cache and refreshes workspace context after rebind", async () => {
+    const f = await fixture();
+    try {
+      f.bind(f.linked);
+      const handlers = new Map<string, OmpEventHandler>();
+      loadOmpExtension()({ on: (event, handler) => handlers.set(event, handler), sendMessage: async () => undefined });
+      const ctx = { cwd: f.primary, sessionManager: { getSessionId: () => "binding" }, ui: { notify: () => undefined } };
+      const start = handlers.get("session_start");
+      const input = handlers.get("input");
+      const before = handlers.get("before_agent_start");
+      const context = handlers.get("context");
+      if (!start || !input || !before || !context) throw new Error("Missing OMP callbacks");
+      await start({}, ctx);
+      const turn = async (): Promise<string> => {
+        await input({ text: "Continue" }, ctx);
+        return JSON.stringify({ workflow: await before({}, ctx), context: await context({ messages: [] }, ctx) });
+      };
+      expect(await turn()).toContain("LINKED FLOW");
+      f.bind(f.primary);
+      const rebound = await turn();
+      expect(rebound).toContain("PRIMARY FLOW");
+      expect(rebound).toContain("PRIMARY SPEC");
+      expect(rebound).not.toContain("LINKED FLOW");
+      fs.writeFileSync(path.join(f.common, "trellis/sessions/omp_binding.json"), "{");
+      expect(await turn()).toContain("invalid_task");
+    } finally {
+      fs.rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it.each(["malformed", "schema", "common", "unregistered", "metadata", "path"] as const)(
+    "#3 rejects %s before task reads and never substitutes no_task", async (failure) => {
+      const f = await fixture();
+      try {
+        const binding = f.bind(f.linked);
+        const data = JSON.parse(fs.readFileSync(binding, "utf8")) as Record<string, unknown>;
+        if (failure === "malformed") fs.writeFileSync(binding, "{");
+        if (failure === "schema") fs.writeFileSync(binding, JSON.stringify({ ...data, schema_version: 1 }));
+        if (failure === "common") fs.writeFileSync(binding, JSON.stringify({ ...data, repository_common_dir: f.linked }));
+        if (failure === "unregistered") f.git(f.primary, "worktree", "remove", "--force", f.linked);
+        if (failure === "metadata") fs.writeFileSync(path.join(f.linked, ".trellis/tasks/same-name/task.json"), "[]");
+        if (failure === "path") fs.writeFileSync(binding, JSON.stringify({ ...data, current_task: "../outside" }));
+        const reads = vi.spyOn(fs, "readFileSync");
+        const output = await invoke(f.primary);
+        expect(output).toContain("invalid_task");
+        expect(output).not.toContain("NO TASK");
+        expect(output).not.toContain("PRIMARY PRD");
+        expect(output).not.toContain("LINKED PRD");
+        expect(reads.mock.calls.filter(([file]) => String(file).endsWith("prd.md"))).toEqual([]);
+      } finally {
+        vi.restoreAllMocks();
+        fs.rmSync(f.root, { recursive: true, force: true });
+      }
+    },
+  );
+});
 
 describe("omp templates", () => {
   it("provides the three Trellis sub-agent definitions", () => {
@@ -131,16 +399,18 @@ describe("omp templates", () => {
     expect(extension).toContain("readFilePrefix(targetPath");
     expect(extension).toContain("if (!key) return null;");
     expect(extension).toContain("return key;");
-    expect(extension).toContain(`if (existsSync(candidate)) {
-         sessionFilePath = candidate;
-      } else {
-         return { status: "no_task", taskDir: null, taskTitle: null };
-      }
-   } else {`);
-    expect(extension).toContain(
-      "No identity: use single-session fallback only when there is exactly one session file.",
-    );
     expect(extension).not.toContain("currentContextKey");
+  });
+
+  it("does not infer identity from a sole local session record", async () => {
+    const project = makeOmpProject();
+    try {
+      fs.writeFileSync(path.join(project.taskDir, "prd.md"), "OTHER SESSION TASK");
+      expect(await runSessionStart(project.root, "")).toBe("");
+      expect(await runSessionStart(project.root, project.sessionId)).toContain("OTHER SESSION TASK");
+    } finally {
+      fs.rmSync(project.root, { recursive: true, force: true });
+    }
   });
 
   it("injects the derived context key into the original Bash params", () => {
@@ -228,16 +498,20 @@ describe("omp templates", () => {
     const sharedFile = path.join(projectRoot, "docs", "shared.md");
     const checkOnlyFile = path.join(projectRoot, "docs", "check-only.md");
     const contextKey = "omp_session_dedupe";
-    const taskRef = ".trellis/tasks/demo-task";
     const messages: { customType?: string; content?: string }[] = [];
 
     try {
+      installTaskRuntime(projectRoot);
       fs.mkdirSync(path.join(taskDir, "research"), { recursive: true });
       fs.mkdirSync(sessionDir, { recursive: true });
       fs.mkdirSync(path.dirname(sharedFile), { recursive: true });
       fs.writeFileSync(
         path.join(taskDir, "task.json"),
         JSON.stringify({
+          ...emptyTaskRecord({ id: "demo-task" }),
+          id: "demo-task",
+          lifecycle_generation: 0,
+          children: [],
           title: "OMP context dedupe",
           status: "in_progress",
         }),
@@ -254,7 +528,7 @@ describe("omp templates", () => {
       );
       fs.writeFileSync(
         path.join(sessionDir, `${contextKey}.json`),
-        JSON.stringify({ current_task: taskRef }),
+        JSON.stringify({ schema_version: 2, task_id: "demo-task", lifecycle_generation: 0 }),
       );
 
       const handlers = new Map<string, OmpEventHandler>();
@@ -298,10 +572,17 @@ describe("omp templates", () => {
     const messages: { customType?: string; content?: string }[] = [];
 
     try {
+      installTaskRuntime(projectRoot);
       fs.mkdirSync(taskDir, { recursive: true });
       fs.mkdirSync(sessionsDir, { recursive: true });
       fs.mkdirSync(path.dirname(referencedFile), { recursive: true });
-      fs.writeFileSync(path.join(taskDir, "task.json"), JSON.stringify({ status: "in_progress" }));
+      fs.writeFileSync(path.join(taskDir, "task.json"), JSON.stringify({
+        ...emptyTaskRecord({ id: "demo-task" }),
+        id: "demo-task",
+        lifecycle_generation: 0,
+        children: [],
+        status: "in_progress",
+      }));
       fs.writeFileSync(referencedFile, "old context body");
       fs.writeFileSync(
         path.join(taskDir, "implement.jsonl"),
@@ -309,7 +590,7 @@ describe("omp templates", () => {
       );
       fs.writeFileSync(
         path.join(sessionsDir, "omp_session_refresh.json"),
-        JSON.stringify({ current_task: ".trellis/tasks/demo-task" }),
+        JSON.stringify({ schema_version: 2, task_id: "demo-task", lifecycle_generation: 0 }),
       );
 
       const handlers = new Map<string, OmpEventHandler>();
@@ -363,10 +644,6 @@ describe("omp templates", () => {
     const messages: { customType?: string; content?: string }[] = [];
 
     try {
-      fs.writeFileSync(
-        path.join(project.root, ".trellis", "config.yaml"),
-        "context_injection:\n  max_file_bytes: 0\n  max_artifact_bytes: 64\n  max_total_bytes: 900\n",
-      );
       const earlierFile = path.join(project.root, "earlier.md");
       fs.writeFileSync(earlierFile, "a".repeat(450));
       fs.writeFileSync(path.join(project.root, "later.md"), "later content ".repeat(25));
@@ -376,6 +653,12 @@ describe("omp templates", () => {
           JSON.stringify({ file: "earlier.md", reason: "earlier budget consumer" }),
           JSON.stringify({ file: "later.md", reason: "later candidate" }),
         ].join("\n") + "\n",
+      );
+      const wrapperBytes = taskContextWrapperBytes(await runSessionStart(project.root, project.sessionId));
+      const maxTotalBytes = wrapperBytes + 700;
+      fs.writeFileSync(
+        path.join(project.root, ".trellis", "config.yaml"),
+        `context_injection:\n  max_file_bytes: 0\n  max_artifact_bytes: 64\n  max_total_bytes: ${maxTotalBytes}\n`,
       );
 
       const handlers = new Map<string, OmpEventHandler>();
@@ -400,6 +683,7 @@ describe("omp templates", () => {
       );
       expect(initial?.content).toContain("earlier.md [inline]");
       expect(initial?.content).toContain("later.md [omitted]");
+      expect(Buffer.byteLength(initial?.content ?? "", "utf-8")).toBeLessThanOrEqual(maxTotalBytes);
 
       fs.writeFileSync(earlierFile, "short earlier content");
       const result = (await context(
@@ -430,6 +714,7 @@ describe("omp templates", () => {
       expect(refreshed?.[0]?.content).toContain("later.md [inline]");
       expect(refreshed?.[0]?.content).toContain("later content");
       expect(refreshed?.[0]?.content).not.toContain("later.md [omitted]");
+      expect(Buffer.byteLength(refreshed?.[0]?.content ?? "", "utf-8")).toBeLessThanOrEqual(maxTotalBytes);
     } finally {
       fs.rmSync(project.root, { recursive: true, force: true });
     }
@@ -458,10 +743,6 @@ describe("omp templates", () => {
   it("continues with later files after an earlier file is omitted by the total budget", async () => {
     const project = makeOmpProject();
     try {
-      fs.writeFileSync(
-        path.join(project.root, ".trellis", "config.yaml"),
-        "context_injection:\n  max_file_bytes: 0\n  max_total_bytes: 500\n",
-      );
       fs.writeFileSync(path.join(project.root, "large.md"), "x".repeat(800));
       fs.writeFileSync(path.join(project.root, "small.md"), "small reference");
       fs.writeFileSync(
@@ -471,12 +752,19 @@ describe("omp templates", () => {
           JSON.stringify({ file: "small.md", reason: "small later" }),
         ].join("\n") + "\n",
       );
+      const wrapperBytes = taskContextWrapperBytes(await runSessionStart(project.root, project.sessionId));
+      const maxTotalBytes = wrapperBytes + 300;
+      fs.writeFileSync(
+        path.join(project.root, ".trellis", "config.yaml"),
+        `context_injection:\n  max_file_bytes: 0\n  max_total_bytes: ${maxTotalBytes}\n`,
+      );
 
       const context = await runSessionStart(project.root, project.sessionId);
       expect(context).toContain("large.md [omitted]");
       expect(context).toContain("required_read: large.md");
       expect(context).toContain("small.md [inline]");
       expect(context).toContain("small reference");
+      expect(Buffer.byteLength(context, "utf-8")).toBeLessThanOrEqual(maxTotalBytes);
     } finally {
       fs.rmSync(project.root, { recursive: true, force: true });
     }

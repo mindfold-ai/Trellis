@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { assertProjectPath } from "../utils/path-boundary.js";
 import { AI_TOOLS } from "../types/ai-tools.js";
 import {
   getAllAgents,
@@ -131,6 +132,7 @@ export function preserveCodexAgentModelKeys(
 ): void {
   for (const [filePath, freshContent] of files) {
     if (!isCodexAgentTomlPath(filePath)) continue;
+    assertProjectPath(path.join(cwd, filePath), cwd);
     let existingContent = "";
     try {
       existingContent = fs.readFileSync(path.join(cwd, filePath), "utf-8");

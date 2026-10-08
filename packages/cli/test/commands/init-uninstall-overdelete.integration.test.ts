@@ -7,7 +7,7 @@
  *   - init's manifest only contains paths trellis actually wrote
  *   - uninstall does not touch user-owned files under platform-managed dirs
  *   - homedir guard refuses init/uninstall in $HOME
- *   - poisoned-manifest self-heal works on both update and uninstall entry
+ *   - uninstall preserves files outside current managed ownership
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -33,7 +33,6 @@ vi.mock("node:child_process", () => ({
 
 import { init } from "../../src/commands/init.js";
 import { uninstall } from "../../src/commands/uninstall.js";
-import { update } from "../../src/commands/update.js";
 import { loadHashes, saveHashes } from "../../src/utils/template-hash.js";
 import { agentsMdContent } from "../../src/templates/markdown/index.js";
 
@@ -203,38 +202,10 @@ describe("init + uninstall: manifest accuracy + homedir guard", () => {
     expect(fs.existsSync(agentsPath)).toBe(false);
   });
 
-  // ----- R3: poisoned-manifest self-heal -----
+  // ----- R3: unknown manifest ownership -----
 
-  it("#R3.1 update silently prunes orphan manifest entries", async () => {
-    // First, run a clean init.
-    await init({ yes: true, claude: true, force: true });
-
-    // Then poison the manifest by hand: add an entry for a user-owned file
-    // that no platform configurator owns. This simulates the state created
-    // by a buggy pre-fix init version.
-    const userFile = path.join(tmpDir, ".codex", "sessions", "user.jsonl");
-    fs.mkdirSync(path.dirname(userFile), { recursive: true });
-    fs.writeFileSync(userFile, "user data\n");
-
-    const hashes = loadHashes(tmpDir);
-    hashes[".codex/sessions/user.jsonl"] = "fake-hash";
-    saveHashes(tmpDir, hashes);
-
-    expect(loadHashes(tmpDir)).toHaveProperty(".codex/sessions/user.jsonl");
-
-    await update({});
-
-    // The orphan entry is silently pruned; user file is untouched.
-    expect(loadHashes(tmpDir)).not.toHaveProperty(
-      ".codex/sessions/user.jsonl",
-    );
-    expect(fs.existsSync(userFile)).toBe(true);
-  });
-
-  it("#R3.2 uninstall self-heals + preserves user file even without prior update", async () => {
-    // Most catastrophic path: user has poisoned manifest from old install
-    // and runs `trellis uninstall` directly. Prune must fire before plan
-    // build, otherwise the user file gets unlinked.
+  it("#R3.2 uninstall preserves unknown file despite an unowned manifest entry", async () => {
+    // Prune must fire before plan build, otherwise the unknown file is unlinked.
     await init({ yes: true, claude: true, force: true });
 
     const userFile = path.join(
@@ -258,7 +229,7 @@ describe("init + uninstall: manifest accuracy + homedir guard", () => {
     expect(fs.readFileSync(userFile, "utf-8")).toBe("chat history\n");
   });
 
-  it("#R3.2b uninstall self-heals poisoned pre-existing AGENTS.md", async () => {
+  it("#R3.2b uninstall preserves AGENTS.md without a managed block", async () => {
     await init({ yes: true, claude: true, force: true });
 
     const agentsPath = path.join(tmpDir, "AGENTS.md");
@@ -272,27 +243,6 @@ describe("init + uninstall: manifest accuracy + homedir guard", () => {
 
     expect(fs.existsSync(agentsPath)).toBe(true);
     expect(fs.readFileSync(agentsPath, "utf-8")).toBe("my own AGENTS.md\n");
-  });
-
-  it("#R3.3 prune keeps migration-referenced paths even if not in collectTemplates", async () => {
-    // Some migration manifests reference old paths that no current
-    // configurator owns (they're being renamed/deleted). The prune helper
-    // must not strip those, otherwise legitimate pending migrations lose
-    // their hash records and the migration logic regresses.
-    await init({ yes: true, claude: true, force: true });
-
-    // We can't easily fabricate a real migration entry in this test, but we
-    // CAN assert the prune behavior preserves .trellis/ entries which is the
-    // most common "not-in-collectTemplates-but-important" case. (Migration
-    // paths share the same preservation logic in pruneOrphanManifestKeys.)
-    const hashes = loadHashes(tmpDir);
-    hashes[".trellis/workflow.md"] = "ok";
-    saveHashes(tmpDir, hashes);
-
-    await update({});
-
-    // .trellis/* entries are kept.
-    expect(loadHashes(tmpDir)).toHaveProperty(".trellis/workflow.md");
   });
 
   // ----- R2: homedir guard -----

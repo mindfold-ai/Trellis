@@ -30,7 +30,7 @@ Shows the Phase Index (Plan / Execute / Finish) with routing + skill mapping.
 - `status=in_progress` + implementation not started → **2.1**
 - `status=in_progress` + implementation done, not yet checked → **2.2**
 - `status=in_progress` + check passed → **3.1**
-- `status=completed` (rare; usually archived immediately) → archive flow
+- `status=completed` → load the completion route from the current `.trellis/workflow.md`; do not assume an archive step outside the selected workflow
 
 Phase rules (full detail in `.trellis/workflow.md`):
 

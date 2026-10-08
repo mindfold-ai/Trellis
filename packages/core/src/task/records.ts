@@ -4,7 +4,6 @@ import path from "node:path";
 import {
   TASK_RECORD_FIELD_ORDER,
   emptyTaskRecord,
-  isPlainObject,
   taskRecordSchema,
   type TrellisTaskRecord,
 } from "./schema.js";
@@ -21,7 +20,7 @@ export interface LoadTaskRecordOptions {
 export interface WriteTaskRecordOptions {
   /** Absolute or repo-relative directory containing `task.json`. */
   taskDir: string;
-  /** Canonical record to persist. Unknown fields on disk are preserved. */
+  /** Canonical record to persist. */
   record: TrellisTaskRecord;
   /** Optional repo root used to resolve relative `taskDir` values. */
   cwd?: string;
@@ -30,11 +29,7 @@ export interface WriteTaskRecordOptions {
 /**
  * Read a task.json file and return a canonicalized record.
  *
- * Unknown fields on disk that are not part of the canonical 24-field
- * shape are NOT returned — `loadTaskRecord` is the structured public API.
- * To preserve unknown fields across a load/write cycle, callers should
- * use {@link writeTaskRecord}, which merges canonical updates on top of
- * the on-disk JSON object instead of overwriting it.
+ * Records containing unsupported top-level fields are rejected.
  */
 export function loadTaskRecord(
   options: LoadTaskRecordOptions,
@@ -53,13 +48,8 @@ export function loadTaskRecord(
 }
 
 /**
- * Write a task.json file with canonical field ordering. Unknown fields
- * already present on disk are preserved verbatim — only the canonical
- * fields are overwritten by `record`. Field order: canonical fields
- * first (in `TASK_RECORD_FIELD_ORDER`), then any preserved unknown
- * fields in their original insertion order. If an existing `task.json` is
- * present but cannot be parsed as a JSON object, the write is rejected instead
- * of silently replacing potentially recoverable local data.
+ * Write a task.json file with canonical field ordering. An existing file
+ * must satisfy the current schema before it can be replaced.
  *
  * The directory containing `task.json` is created if it does not exist.
  */
@@ -68,31 +58,30 @@ export function writeTaskRecord(options: WriteTaskRecordOptions): void {
   const file = resolveTaskJsonPath(options.taskDir, options.cwd);
   fs.mkdirSync(path.dirname(file), { recursive: true });
 
-  const existing = readExistingObject(file);
+  readExistingRecord(file);
+  fs.writeFileSync(file, serializeTaskRecord(record), "utf-8");
+}
+
+/** Current record serialization shared by normal writes and explicit migration. */
+export function serializeTaskRecord(input: TrellisTaskRecord): string {
+  const record = taskRecordSchema.parse(input);
   const out: Record<string, unknown> = {};
 
   const recordBag = record as unknown as Record<string, unknown>;
   for (const field of TASK_RECORD_FIELD_ORDER) {
     out[field] = recordBag[field];
   }
-  if (existing) {
-    for (const key of Object.keys(existing)) {
-      if (!(key in out)) {
-        out[key] = existing[key];
-      }
-    }
-  }
+  if ("branch" in record) out.branch = record.branch;
 
-  const json = JSON.stringify(out, null, 2) + "\n";
-  fs.writeFileSync(file, json, "utf-8");
+  return JSON.stringify(out, null, 2) + "\n";
 }
 
-function readExistingObject(file: string): Record<string, unknown> | null {
+function readExistingRecord(file: string): void {
   let raw: string;
   try {
     raw = fs.readFileSync(file, "utf-8");
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
     throw err;
   }
   let parsed: unknown;
@@ -105,10 +94,13 @@ function readExistingObject(file: string): Record<string, unknown> | null {
       }`,
     );
   }
-  if (!isPlainObject(parsed)) {
-    throw new Error(`Refusing to overwrite non-object task record at ${file}`);
+  try {
+    taskRecordSchema.parse(parsed);
+  } catch (err) {
+    throw new Error(
+      `Refusing to overwrite invalid task record at ${file}: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
-  return parsed;
 }
 
 function resolveTaskJsonPath(taskDir: string, cwd?: string): string {

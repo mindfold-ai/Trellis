@@ -167,7 +167,7 @@ The following slash commands are for users (not AI):
 |---------|-------------|
 | `/` | Start Multi-Agent Pipeline (this command) |
 | `/` | Start normal development mode (single process) |
-| `/` | Record session progress |
+| `/` | Record task progress in task artifacts |
 | `/` | Pre-completion checklist |
 
 ---

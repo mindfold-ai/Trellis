@@ -19,10 +19,7 @@ Configuration:
     {
       "linear": {
         "team": "TEAM_KEY",
-        "project": "Project Name",
-        "assignees": {
-          "dev-name": "linear-user-id"
-        }
+        "project": "Project Name"
       }
     }
 """
@@ -67,7 +64,6 @@ LINEAR_CFG = CONFIG.get("linear", {})
 
 TEAM = LINEAR_CFG.get("team", "")
 PROJECT = LINEAR_CFG.get("project", "")
-ASSIGNEE_MAP = LINEAR_CFG.get("assignees", {})
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -138,11 +134,6 @@ def cmd_create() -> None:
     if PROJECT:
         args.extend(["--project", PROJECT])
 
-    # Assign to Linear user
-    assignee = task.get("assignee", "")
-    linear_user_id = ASSIGNEE_MAP.get(assignee)
-    if linear_user_id:
-        args.extend(["--assignee", linear_user_id])
 
     # Link to parent's Linear issue if available
     parent_issue = _resolve_parent_linear_issue(task)

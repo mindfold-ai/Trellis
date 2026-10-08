@@ -245,7 +245,6 @@ export async function resolveWorkflowTemplate(
 
   const backend = fetched.backend;
   const content = await fetchWorkflowFile(entry.path, registry, backend);
-
   return {
     id: entry.id,
     type: "workflow",

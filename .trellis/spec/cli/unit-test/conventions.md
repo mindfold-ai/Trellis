@@ -109,7 +109,6 @@ should set the env explicitly inside the test (`process.env.X = "..."` in a
 | Change Type | Reason |
 |-------------|--------|
 | Template text / doc content changes | No logic change |
-| New migration manifest JSON | `registry-invariants.test.ts` auto-validates format |
 | CLI flag description text | Display-only |
 
 ### Must update existing tests
@@ -388,22 +387,22 @@ Before writing a test, ask:
 ```typescript
 // Bad: convenience flag bypasses the very guard the bug lives behind
 it("#2b issue #204: empty tasks/ → bootstrap", async () => {
-  await init({ yes: true, user: "alice", force: true });
+  await init({ yes: true, force: true });
   // ↑ `force: true` skips the `if (!options.force) handleReinit(...)` guard
   //   in init.ts:1081 (handleReinit defined at init.ts:740). Test green even
-  //   though the user's `--yes` alone hits handleReinit and mis-routes to joiner.
+  //   though the reported `--yes` alone hits the reinit path.
   expect(fs.existsSync(bootstrapPath)).toBe(true);
 });
 
 // Good: args match exactly what the issue reporter typed
 it("#2b issue #204: empty tasks/ + --yes alone → bootstrap", async () => {
-  await init({ yes: true, user: "alice" });  // user's literal command
+  await init({ yes: true });  // reported flag combination
   expect(fs.existsSync(bootstrapPath)).toBe(true);
 });
 
 // Optional sibling for the parallel happy path
 it("#2c issue #204: empty tasks/ + --yes --force → bootstrap", async () => {
-  await init({ yes: true, user: "alice", force: true });
+  await init({ yes: true, force: true });
   expect(fs.existsSync(bootstrapPath)).toBe(true);
 });
 ```

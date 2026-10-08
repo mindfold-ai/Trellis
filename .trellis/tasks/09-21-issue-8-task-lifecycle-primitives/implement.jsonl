@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/cli/backend/identity-free-task-lifecycle.md", "reason": "Task/session lifecycle authority and cross-worktree behavior"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Atomic writes, task path safety, and dogfood twin requirements"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python script structure, compatibility, and template parity"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Fail-closed diagnostics and checked metadata reads"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "CLI implementation quality and static-check expectations"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Filesystem and command integration test patterns"}
+{"file": ".trellis/tasks/09-21-issue-8-task-lifecycle-primitives/research/current-state.md", "reason": "Issue-specific code map, historical scan, and design conclusions"}

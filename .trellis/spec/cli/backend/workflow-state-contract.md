@@ -1,5 +1,14 @@
 # Workflow-State Breadcrumb Contract
 
+## Cross-Worktree Resolution
+
+Resolve the session before reading task-specific workflow state. Task metadata,
+workflow blocks, manifest files and relative context references belong to the
+validated task workspace, not necessarily the invocation checkout. Invalid
+bindings produce explicit error/stale breadcrumbs, never normal no_task.
+See task-lifecycle.md, Cross-Worktree Session Contract, for storage,
+live Git membership, legacy precedence and lifecycle rules.
+
 > Runtime contract for the per-turn `<workflow-state>` breadcrumb that
 > `inject-workflow-state.py` / `inject-workflow-state.js` inject into
 > every UserPromptSubmit.
@@ -227,6 +236,34 @@ an obvious bug they can fix, rather than being silently masked.
 To customize breadcrumb wording, edit the `[workflow-state:STATUS]` block in
 `.trellis/workflow.md`. No script change required.
 
+## Continuation boundary
+
+`[workflow-state:STATUS]` remains a broad lifecycle breadcrumb. It may remind
+the AI to load the active workflow's continuation contract, but it must not
+duplicate the detailed status/artifact/owner route graph.
+
+For an exact current-session task binding, active-task resume semantics live in
+one separate workflow block:
+
+```text
+[trellis-continuation]
+<workflow-owned continuation rules>
+[/trellis-continuation]
+```
+
+The continuation block owns lifecycle interpretation, next-owner selection,
+public DTO consumers, producer-owned recovery, fresh semantic reruns, drift
+handling, and fail-closed stops. `task.json.status` remains only a broad
+lifecycle fact; it cannot by itself prove implementation, check, commit,
+review, publication, or finish completion.
+
+`get_context.py --mode continuation` reads the invocation repository's current
+`.trellis/workflow.md`, validates exactly one non-empty block, and returns its
+body verbatim. It does not select a task or workflow step and does not generate
+semantic pass, finding, typed-exit, readiness, completion, or authorization
+conclusions. The active-task resolver remains the sole authority for task,
+workspace, and repository identity.
+
 ### Update boundary
 
 The `[workflow-state:STATUS]` blocks are not the only runtime-sensitive
@@ -256,13 +293,11 @@ a new writer requires updating this spec.**
 
 | # | Writer | File:Line | Value | Trigger |
 |---|--------|-----------|-------|---------|
-| 1 | `cmd_create` | `packages/cli/src/templates/trellis/scripts/common/task_store.py:206` | `"planning"` | `task.py create "<title>"` (also visibly auto-sets the session active-task pointer when session identity is available; `--no-start` skips pointer movement for backlog batching — see R7 in 04-30-workflow-state-commit-gap PRD) |
-| 2 | `_record_start_state` (called from both `cmd_start` branches) | `packages/cli/src/templates/trellis/scripts/task.py:111` | `"in_progress"` (gated on prior `"planning"`; the same write also records `task.json.branch` when empty) | `task.py start <dir>` |
-| 3 | `cmd_archive` | `packages/cli/src/templates/trellis/scripts/common/task_store.py:1275` | `"completed"` (flip + archive `mv`, but only after `_validate_branch_metadata` passes) | `task.py archive <dir>` |
+| 1 | `cmd_create` | `packages/cli/src/templates/trellis/scripts/common/task_store.py` | `"planning"` | `task.py create "<title>" --description "<summary>"` (also visibly auto-sets the session active-task pointer when session identity is available; `--no-start` skips pointer movement for backlog batching — see R7 in 04-30-workflow-state-commit-gap PRD) |
+| 2 | `_record_start_state` (called from both `cmd_start` branches) | `packages/cli/src/templates/trellis/scripts/task.py` | `"in_progress"` (gated on prior `"planning"`; does not infer branch identity) | `task.py start <dir>` |
+| 3 | `cmd_archive` | `packages/cli/src/templates/trellis/scripts/common/task_store.py` | `"completed"` (flip + archive `mv`; preserves TaskId, source and generation without branch gating) | `task.py archive <dir>` |
 | 4 | `emptyTaskJson` factory | `packages/cli/src/utils/task-json.ts:54` | `"planning"` (default) | TS callers (init, update) |
-| 5 | `getBootstrapTaskJson` | `packages/cli/src/commands/init.ts:535` | `"in_progress"` (override) | `trellis init` (creator path) |
-| 6 | `getJoinerTaskJson` | `packages/cli/src/commands/init.ts:587` | `"in_progress"` (override) | `trellis init` (joiner path) |
-| 7 | migration-task via `emptyTaskJson` | `packages/cli/src/commands/update.ts:2483-2494` | `"planning"` (override on factory) | `trellis update --migrate` for breaking-change manifest |
+| 5 | `getBootstrapTaskJson` | `packages/cli/src/commands/init.ts:535` | `"in_progress"` (override) | `trellis init` |
 
 **No other writer exists.** No hook script writes `task.json.status` — verified
 by `grep -rn '"status"' .trellis/scripts/`. Linear-sync hook (`linear_sync.py`)
@@ -371,6 +406,8 @@ nested Trellis sub-agents.
 - When adding a `[required · once]` step to the workflow walkthrough, add a
   matching enforcement line to that phase's breadcrumb tag block in the
   same commit.
+- Keep active-task breadcrumbs broad and route detailed recovery through the
+  single `[trellis-continuation]` block.
 
 ## DON'T
 
@@ -388,6 +425,8 @@ nested Trellis sub-agents.
 - Don't rely on sub-agents not seeing the breadcrumb. If guidance is sub-agent
   relevant, propagate it via the appropriate channel above and keep the
   breadcrumb wording self-exempting.
+- Don't copy the continuation route graph into `[workflow-state:*]`, platform
+  start/continue entries, hooks, or scripts.
 
 ---
 
@@ -400,6 +439,7 @@ nested Trellis sub-agents.
 - New `task.json.status` writer (any path that mutates the field)
 - Breadcrumb body that changes the contract (e.g. removing a `[required ·
   once]` enforcement line — flag in PR description)
+- Continuation marker syntax, ownership, or its breadcrumb handoff wording
 - New lifecycle event added to `run_task_hooks`
 - Reachability changes (e.g. wiring a new status transition that makes
   `completed` reachable)

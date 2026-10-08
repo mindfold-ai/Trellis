@@ -968,8 +968,8 @@ describe("configurePlatform", () => {
     // CodeRabbit hardening: short child timeout, session isolation, UTF-8 bytes, full log preserve
     expect(hookPy).toContain("timeout=5");
     expect(hookPy).not.toContain("timeout=15");
-    expect(hookPy).toContain("_current_session_ids");
-    expect(hookPy).toContain("never pick by mtime");
+    expect(hookPy).toContain("return resolve_active_task(repo");
+    expect(hookPy).toContain("task_workspace_root");
     expect(hookPy).not.toContain("st_mtime");
     expect(hookPy).toContain('encoded = text.encode("utf-8")');
     expect(hookPy).toContain("full_context = build_context");
@@ -1054,7 +1054,7 @@ describe("configurePlatform", () => {
         path.join(tmpDir, ".dsh", "skills", "trellis-start", "SKILL.md"),
         "utf-8",
       ),
-    ).toContain("--platform dsh");
+    ).toContain("get_context.py --mode continuation");
 
     // Shared workflow skills land in .agents/skills/, entry skills stay private
     expect(

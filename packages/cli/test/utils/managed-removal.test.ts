@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   assertSafeManagedPath,
   buildManagedRemovalPlan,
+  executeManagedRemovalPlan,
   validateManagedRelativePath,
 } from "../../src/utils/managed-removal.js";
 
@@ -17,7 +18,46 @@ describe("managed-removal strict planning", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("preserves unknown files outside the managed inventory", () => {
+    const root = path.join(tmpDir, ".trellis");
+    fs.mkdirSync(path.join(root, "custom", "arbitrary"), {
+      recursive: true,
+    });
+    const unknown = [
+      "custom/index.md",
+      "custom/arbitrary/data.bin",
+    ];
+    for (const file of unknown)
+      fs.writeFileSync(path.join(root, file), `keep:${file}`);
+    fs.writeFileSync(path.join(root, "workflow.md"), "active");
+    const read = vi.spyOn(fs, "readFileSync");
+    const list = vi.spyOn(fs, "readdirSync");
+    const plan = buildManagedRemovalPlan(
+      tmpDir,
+      Object.fromEntries(
+        [[".trellis/workflow.md", "hash"]],
+      ),
+    );
+    executeManagedRemovalPlan(tmpDir, plan);
+    expect(read.mock.calls).toEqual([]);
+    expect(
+      list.mock.calls.every(
+        ([dir]) =>
+          !unknown.some((file) =>
+            String(dir).startsWith(path.join(root, file)),
+          ),
+      ),
+    ).toBe(true);
+    vi.restoreAllMocks();
+    for (const file of unknown)
+      expect(fs.readFileSync(path.join(root, file), "utf-8")).toBe(
+        `keep:${file}`,
+      );
+    expect(fs.existsSync(path.join(root, "workflow.md"))).toBe(false);
   });
 
   it.each([
@@ -40,6 +80,21 @@ describe("managed-removal strict planning", () => {
       validateManagedRelativePath(".codex/hooks/session-start.py"),
     ).not.toThrow();
   });
+
+  it.skipIf(process.platform === "win32")(
+    "refuses a linked whole root before planning reads or mutations",
+    () => {
+      const external = path.join(tmpDir, "external");
+      fs.mkdirSync(external);
+      fs.symlinkSync(external, path.join(tmpDir, ".trellis"));
+      const read = vi.spyOn(fs, "readFileSync");
+      expect(() =>
+        buildManagedRemovalPlan(tmpDir, { ".trellis/workflow.md": "hash" }),
+      ).toThrow(/linked .trellis root/);
+      expect(read).not.toHaveBeenCalled();
+      expect(fs.readlinkSync(path.join(tmpDir, ".trellis"))).toBe(external);
+    },
+  );
 
   it.skipIf(process.platform === "win32")(
     "refuses traversal through an external parent symlink",

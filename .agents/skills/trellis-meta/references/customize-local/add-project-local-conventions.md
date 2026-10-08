@@ -10,7 +10,7 @@ Often the user does not need to change Trellis mechanics; they need local AI to 
 | Cross-layer thinking methods | `.trellis/spec/guides/` |
 | AI capability for a project-specific flow | Platform-local skill |
 | One-off task material | `.trellis/tasks/<task>/` |
-| Session summary | `.trellis/workspace/<developer>/journal-N.md` |
+| Task progress and validation | `.trellis/tasks/<task>/implement.md` |
 
 ## Create A Project-Local Skill
 
@@ -78,6 +78,5 @@ python3 ./.trellis/scripts/task.py add-context <task> check ".trellis/spec/backe
 - `.trellis/spec/`
 - a project-local skill
 - the current task
-- workspace journal
 
 This prevents future updates to Trellis's built-in `trellis-meta` from overwriting the team's own conventions.

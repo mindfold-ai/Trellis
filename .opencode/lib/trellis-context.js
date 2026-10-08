@@ -5,10 +5,10 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync } from "fs"
-import { isAbsolute, join, relative } from "path"
+import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync, lstatSync } from "fs"
+import { dirname, isAbsolute, join, relative, resolve } from "path"
 import { platform } from "os"
-import { execSync } from "child_process"
+import { execSync, execFileSync } from "child_process"
 import { createHash } from "crypto"
 import { Buffer, isUtf8 } from "buffer"
 import process from "process"
@@ -62,6 +62,21 @@ function buildContextKey(platformName, kind, value) {
   }
   const safeValue = sanitizeKey(value)
   return safeValue ? `${platformName}_${safeValue}` : `${platformName}_${hashValue(value)}`
+}
+
+// Unicode 15.0 full case-fold deltas from ECMAScript lowercasing. Identity
+// overrides keep newer JS runtimes aligned with Python 3.12's Unicode data.
+const CASEFOLD_OVERRIDES = Object.freeze({"\u00b5":"\u03bc","\u00df":"ss","\u0149":"\u02bcn","\u017f":"s","\u01f0":"j\u030c","\u0345":"\u03b9","\u0390":"\u03b9\u0308\u0301","\u03b0":"\u03c5\u0308\u0301","\u03c2":"\u03c3","\u03d0":"\u03b2","\u03d1":"\u03b8","\u03d5":"\u03c6","\u03d6":"\u03c0","\u03f0":"\u03ba","\u03f1":"\u03c1","\u03f5":"\u03b5","\u0587":"\u0565\u0582","\u13a0":"\u13a0","\u13a1":"\u13a1","\u13a2":"\u13a2","\u13a3":"\u13a3","\u13a4":"\u13a4","\u13a5":"\u13a5","\u13a6":"\u13a6","\u13a7":"\u13a7","\u13a8":"\u13a8","\u13a9":"\u13a9","\u13aa":"\u13aa","\u13ab":"\u13ab","\u13ac":"\u13ac","\u13ad":"\u13ad","\u13ae":"\u13ae","\u13af":"\u13af","\u13b0":"\u13b0","\u13b1":"\u13b1","\u13b2":"\u13b2","\u13b3":"\u13b3","\u13b4":"\u13b4","\u13b5":"\u13b5","\u13b6":"\u13b6","\u13b7":"\u13b7","\u13b8":"\u13b8","\u13b9":"\u13b9","\u13ba":"\u13ba","\u13bb":"\u13bb","\u13bc":"\u13bc","\u13bd":"\u13bd","\u13be":"\u13be","\u13bf":"\u13bf","\u13c0":"\u13c0","\u13c1":"\u13c1","\u13c2":"\u13c2","\u13c3":"\u13c3","\u13c4":"\u13c4","\u13c5":"\u13c5","\u13c6":"\u13c6","\u13c7":"\u13c7","\u13c8":"\u13c8","\u13c9":"\u13c9","\u13ca":"\u13ca","\u13cb":"\u13cb","\u13cc":"\u13cc","\u13cd":"\u13cd","\u13ce":"\u13ce","\u13cf":"\u13cf","\u13d0":"\u13d0","\u13d1":"\u13d1","\u13d2":"\u13d2","\u13d3":"\u13d3","\u13d4":"\u13d4","\u13d5":"\u13d5","\u13d6":"\u13d6","\u13d7":"\u13d7","\u13d8":"\u13d8","\u13d9":"\u13d9","\u13da":"\u13da","\u13db":"\u13db","\u13dc":"\u13dc","\u13dd":"\u13dd","\u13de":"\u13de","\u13df":"\u13df","\u13e0":"\u13e0","\u13e1":"\u13e1","\u13e2":"\u13e2","\u13e3":"\u13e3","\u13e4":"\u13e4","\u13e5":"\u13e5","\u13e6":"\u13e6","\u13e7":"\u13e7","\u13e8":"\u13e8","\u13e9":"\u13e9","\u13ea":"\u13ea","\u13eb":"\u13eb","\u13ec":"\u13ec","\u13ed":"\u13ed","\u13ee":"\u13ee","\u13ef":"\u13ef","\u13f0":"\u13f0","\u13f1":"\u13f1","\u13f2":"\u13f2","\u13f3":"\u13f3","\u13f4":"\u13f4","\u13f5":"\u13f5","\u13f8":"\u13f0","\u13f9":"\u13f1","\u13fa":"\u13f2","\u13fb":"\u13f3","\u13fc":"\u13f4","\u13fd":"\u13f5","\u1c80":"\u0432","\u1c81":"\u0434","\u1c82":"\u043e","\u1c83":"\u0441","\u1c84":"\u0442","\u1c85":"\u0442","\u1c86":"\u044a","\u1c87":"\u0463","\u1c88":"\ua64b","\u1c89":"\u1c89","\u1e96":"h\u0331","\u1e97":"t\u0308","\u1e98":"w\u030a","\u1e99":"y\u030a","\u1e9a":"a\u02be","\u1e9b":"\u1e61","\u1e9e":"ss","\u1f50":"\u03c5\u0313","\u1f52":"\u03c5\u0313\u0300","\u1f54":"\u03c5\u0313\u0301","\u1f56":"\u03c5\u0313\u0342","\u1f80":"\u1f00\u03b9","\u1f81":"\u1f01\u03b9","\u1f82":"\u1f02\u03b9","\u1f83":"\u1f03\u03b9","\u1f84":"\u1f04\u03b9","\u1f85":"\u1f05\u03b9","\u1f86":"\u1f06\u03b9","\u1f87":"\u1f07\u03b9","\u1f88":"\u1f00\u03b9","\u1f89":"\u1f01\u03b9","\u1f8a":"\u1f02\u03b9","\u1f8b":"\u1f03\u03b9","\u1f8c":"\u1f04\u03b9","\u1f8d":"\u1f05\u03b9","\u1f8e":"\u1f06\u03b9","\u1f8f":"\u1f07\u03b9","\u1f90":"\u1f20\u03b9","\u1f91":"\u1f21\u03b9","\u1f92":"\u1f22\u03b9","\u1f93":"\u1f23\u03b9","\u1f94":"\u1f24\u03b9","\u1f95":"\u1f25\u03b9","\u1f96":"\u1f26\u03b9","\u1f97":"\u1f27\u03b9","\u1f98":"\u1f20\u03b9","\u1f99":"\u1f21\u03b9","\u1f9a":"\u1f22\u03b9","\u1f9b":"\u1f23\u03b9","\u1f9c":"\u1f24\u03b9","\u1f9d":"\u1f25\u03b9","\u1f9e":"\u1f26\u03b9","\u1f9f":"\u1f27\u03b9","\u1fa0":"\u1f60\u03b9","\u1fa1":"\u1f61\u03b9","\u1fa2":"\u1f62\u03b9","\u1fa3":"\u1f63\u03b9","\u1fa4":"\u1f64\u03b9","\u1fa5":"\u1f65\u03b9","\u1fa6":"\u1f66\u03b9","\u1fa7":"\u1f67\u03b9","\u1fa8":"\u1f60\u03b9","\u1fa9":"\u1f61\u03b9","\u1faa":"\u1f62\u03b9","\u1fab":"\u1f63\u03b9","\u1fac":"\u1f64\u03b9","\u1fad":"\u1f65\u03b9","\u1fae":"\u1f66\u03b9","\u1faf":"\u1f67\u03b9","\u1fb2":"\u1f70\u03b9","\u1fb3":"\u03b1\u03b9","\u1fb4":"\u03ac\u03b9","\u1fb6":"\u03b1\u0342","\u1fb7":"\u03b1\u0342\u03b9","\u1fbc":"\u03b1\u03b9","\u1fbe":"\u03b9","\u1fc2":"\u1f74\u03b9","\u1fc3":"\u03b7\u03b9","\u1fc4":"\u03ae\u03b9","\u1fc6":"\u03b7\u0342","\u1fc7":"\u03b7\u0342\u03b9","\u1fcc":"\u03b7\u03b9","\u1fd2":"\u03b9\u0308\u0300","\u1fd3":"\u03b9\u0308\u0301","\u1fd6":"\u03b9\u0342","\u1fd7":"\u03b9\u0308\u0342","\u1fe2":"\u03c5\u0308\u0300","\u1fe3":"\u03c5\u0308\u0301","\u1fe4":"\u03c1\u0313","\u1fe6":"\u03c5\u0342","\u1fe7":"\u03c5\u0308\u0342","\u1ff2":"\u1f7c\u03b9","\u1ff3":"\u03c9\u03b9","\u1ff4":"\u03ce\u03b9","\u1ff6":"\u03c9\u0342","\u1ff7":"\u03c9\u0342\u03b9","\u1ffc":"\u03c9\u03b9","\ua7cb":"\ua7cb","\ua7cc":"\ua7cc","\ua7ce":"\ua7ce","\ua7d2":"\ua7d2","\ua7d4":"\ua7d4","\ua7da":"\ua7da","\ua7dc":"\ua7dc","\uab70":"\u13a0","\uab71":"\u13a1","\uab72":"\u13a2","\uab73":"\u13a3","\uab74":"\u13a4","\uab75":"\u13a5","\uab76":"\u13a6","\uab77":"\u13a7","\uab78":"\u13a8","\uab79":"\u13a9","\uab7a":"\u13aa","\uab7b":"\u13ab","\uab7c":"\u13ac","\uab7d":"\u13ad","\uab7e":"\u13ae","\uab7f":"\u13af","\uab80":"\u13b0","\uab81":"\u13b1","\uab82":"\u13b2","\uab83":"\u13b3","\uab84":"\u13b4","\uab85":"\u13b5","\uab86":"\u13b6","\uab87":"\u13b7","\uab88":"\u13b8","\uab89":"\u13b9","\uab8a":"\u13ba","\uab8b":"\u13bb","\uab8c":"\u13bc","\uab8d":"\u13bd","\uab8e":"\u13be","\uab8f":"\u13bf","\uab90":"\u13c0","\uab91":"\u13c1","\uab92":"\u13c2","\uab93":"\u13c3","\uab94":"\u13c4","\uab95":"\u13c5","\uab96":"\u13c6","\uab97":"\u13c7","\uab98":"\u13c8","\uab99":"\u13c9","\uab9a":"\u13ca","\uab9b":"\u13cb","\uab9c":"\u13cc","\uab9d":"\u13cd","\uab9e":"\u13ce","\uab9f":"\u13cf","\uaba0":"\u13d0","\uaba1":"\u13d1","\uaba2":"\u13d2","\uaba3":"\u13d3","\uaba4":"\u13d4","\uaba5":"\u13d5","\uaba6":"\u13d6","\uaba7":"\u13d7","\uaba8":"\u13d8","\uaba9":"\u13d9","\uabaa":"\u13da","\uabab":"\u13db","\uabac":"\u13dc","\uabad":"\u13dd","\uabae":"\u13de","\uabaf":"\u13df","\uabb0":"\u13e0","\uabb1":"\u13e1","\uabb2":"\u13e2","\uabb3":"\u13e3","\uabb4":"\u13e4","\uabb5":"\u13e5","\uabb6":"\u13e6","\uabb7":"\u13e7","\uabb8":"\u13e8","\uabb9":"\u13e9","\uabba":"\u13ea","\uabbb":"\u13eb","\uabbc":"\u13ec","\uabbd":"\u13ed","\uabbe":"\u13ee","\uabbf":"\u13ef","\ufb00":"ff","\ufb01":"fi","\ufb02":"fl","\ufb03":"ffi","\ufb04":"ffl","\ufb05":"st","\ufb06":"st","\ufb13":"\u0574\u0576","\ufb14":"\u0574\u0565","\ufb15":"\u0574\u056b","\ufb16":"\u057e\u0576","\ufb17":"\u0574\u056d","\ud803\udd50":"\ud803\udd50","\ud803\udd51":"\ud803\udd51","\ud803\udd52":"\ud803\udd52","\ud803\udd53":"\ud803\udd53","\ud803\udd54":"\ud803\udd54","\ud803\udd55":"\ud803\udd55","\ud803\udd56":"\ud803\udd56","\ud803\udd57":"\ud803\udd57","\ud803\udd58":"\ud803\udd58","\ud803\udd59":"\ud803\udd59","\ud803\udd5a":"\ud803\udd5a","\ud803\udd5b":"\ud803\udd5b","\ud803\udd5c":"\ud803\udd5c","\ud803\udd5d":"\ud803\udd5d","\ud803\udd5e":"\ud803\udd5e","\ud803\udd5f":"\ud803\udd5f","\ud803\udd60":"\ud803\udd60","\ud803\udd61":"\ud803\udd61","\ud803\udd62":"\ud803\udd62","\ud803\udd63":"\ud803\udd63","\ud803\udd64":"\ud803\udd64","\ud803\udd65":"\ud803\udd65","\ud81b\udea0":"\ud81b\udea0","\ud81b\udea1":"\ud81b\udea1","\ud81b\udea2":"\ud81b\udea2","\ud81b\udea3":"\ud81b\udea3","\ud81b\udea4":"\ud81b\udea4","\ud81b\udea5":"\ud81b\udea5","\ud81b\udea6":"\ud81b\udea6","\ud81b\udea7":"\ud81b\udea7","\ud81b\udea8":"\ud81b\udea8","\ud81b\udea9":"\ud81b\udea9","\ud81b\udeaa":"\ud81b\udeaa","\ud81b\udeab":"\ud81b\udeab","\ud81b\udeac":"\ud81b\udeac","\ud81b\udead":"\ud81b\udead","\ud81b\udeae":"\ud81b\udeae","\ud81b\udeaf":"\ud81b\udeaf","\ud81b\udeb0":"\ud81b\udeb0","\ud81b\udeb1":"\ud81b\udeb1","\ud81b\udeb2":"\ud81b\udeb2","\ud81b\udeb3":"\ud81b\udeb3","\ud81b\udeb4":"\ud81b\udeb4","\ud81b\udeb5":"\ud81b\udeb5","\ud81b\udeb6":"\ud81b\udeb6","\ud81b\udeb7":"\ud81b\udeb7","\ud81b\udeb8":"\ud81b\udeb8"})
+
+function unicodeCasefold(value) {
+  return Array.from(value, char => CASEFOLD_OVERRIDES[char] ?? char.toLowerCase()).join("")
+}
+
+function visibleIdentityCandidates(taskRef) {
+  const candidates = [taskRef]
+  const match = taskRef.match(/^\d{2}-\d{2}-(.+)$/)
+  if (match) candidates.push(match[1])
+  return candidates
 }
 
 // Matches `trellis-implement`, `trellis-check`, `trellis-research` exactly.
@@ -150,12 +165,7 @@ function unquoteYaml(s) {
  */
 function readContextInjectionLimits(repoRoot) {
   const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS }
-  let text = null
-  try {
-    text = readFileSync(join(repoRoot, ".trellis", "config.yaml"), "utf-8")
-  } catch {
-    return limits
-  }
+  const text = readFileBytes(repoRoot, join(repoRoot, ".trellis", "config.yaml"))?.toString("utf-8")
   if (!text) return limits
 
   let inSection = false
@@ -234,6 +244,79 @@ function budgetedBlock(budget, header, plainPath, content, reason, sizeForIndex)
   }
   budget.add(blockBytes)
   return block
+}
+
+function pathWithin(root, candidate) {
+  const rel = relative(root, candidate)
+  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith("../") && !rel.startsWith("..\\"))
+}
+
+function bindingExists(root, candidate) {
+  try {
+    lstatSync(candidate)
+    return true
+  } catch (error) {
+    if (error.code === "ENOENT") return false
+    throw error
+  }
+}
+
+function gitOutput(root, args) {
+  const excluded = new Set(["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES"])
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !excluded.has(key)))
+  env.LC_ALL = "C"
+  return execFileSync("git", ["-C", root, ...args], {
+    encoding: "utf-8", timeout: 5000, stdio: ["ignore", "pipe", "pipe"], env,
+  })
+}
+
+function commonDir(root) {
+  const value = gitOutput(root, ["rev-parse", "--git-common-dir"]).replace(/[\r\n]+$/, "")
+  return realpathSync(resolve(root, value))
+}
+
+function repositoryFacts(root) {
+  let common
+  try {
+    common = commonDir(root)
+  } catch (error) {
+    // A failed Git probe in an apparent checkout is not a non-Git project.
+    for (let parent = root; ; parent = dirname(parent)) {
+      if (bindingExists(root, join(parent, ".git"))) throw new Error("git_discovery_failed")
+      if (dirname(parent) === parent) break
+    }
+    if (!String(error.stderr || "").includes("not a git repository")) throw new Error("git_discovery_failed")
+    return { common: null, roots: [root], gitRoot: root }
+  }
+  const roots = gitOutput(root, ["worktree", "list", "--porcelain", "-z"])
+    .split("\0").filter(field => field.startsWith("worktree ")).map(field => {
+      const candidate = field.slice("worktree ".length)
+      try { return realpathSync(candidate) } catch { return null }
+    }).filter(Boolean)
+  const gitRoot = realpathSync(gitOutput(root, ["rev-parse", "--show-toplevel"]).replace(/[\r\n]+$/, ""))
+  if (!roots.includes(gitRoot) || !pathWithin(gitRoot, root)) throw new Error("unregistered_workspace")
+  return { common, roots, gitRoot }
+}
+
+function validateWorkspace(root, facts) {
+  const actual = realpathSync(root)
+  if (!statSync(join(actual, ".trellis")).isDirectory()) throw new Error("invalid_workspace")
+  if (!facts.common) {
+    if (actual !== facts.roots[0]) throw new Error("workspace_mismatch")
+    return actual
+  }
+  const gitRoot = realpathSync(gitOutput(actual, ["rev-parse", "--show-toplevel"]).replace(/[\r\n]+$/, ""))
+  if (!facts.roots.includes(gitRoot) || !pathWithin(gitRoot, actual)) throw new Error("unregistered_workspace")
+  if (commonDir(actual) !== facts.common) throw new Error("common_dir_mismatch")
+  return actual
+}
+
+function readBinding(root, file) {
+  const bytes = readFileSync(file)
+  if (!isUtf8(bytes)) throw new Error("binding_encoding_error")
+  const data = JSON.parse(bytes.toString("utf-8"))
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid_binding")
+  return data
 }
 
 /** Read raw file bytes, return null if file doesn't exist. */
@@ -359,45 +442,145 @@ export class TrellisContext {
   }
 
   readContext(contextKey) {
-    try {
-      const contextPath = join(this.directory, ".trellis", ".runtime", "sessions", `${contextKey}.json`)
-      if (!existsSync(contextPath)) return null
-      return JSON.parse(readFileSync(contextPath, "utf-8"))
-    } catch {
-      return null
-    }
+    const binding = this._readSessionBinding(contextKey)
+    if (!binding) return null
+    this._validateBinding(binding)
+    return binding.data
   }
 
-  /**
-   * Get active task from session runtime context.
-   *
-   * Resolution order (mirrors Python `active_task.resolve_active_task`):
-   *   1. Lookup the runtime file for the input-derived context key.
-   *   2. If that misses and exactly one session runtime file exists locally,
-   *      use it (`_resolveSingleSessionFallback`). Refuses to guess when 0 or
-   *      ≥2 files exist so multi-window isolation holds.
-   */
-  getActiveTask(platformInput = null) {
-    const contextKey = this.getContextKey(platformInput)
-    if (contextKey) {
-      const context = this.readContext(contextKey)
-      const taskRef = this.normalizeTaskRef(context?.current_task || "")
-      if (taskRef) {
-        const taskDir = this.resolveTaskDir(taskRef)
-        return {
-          taskPath: taskRef,
-          source: `session:${contextKey}`,
-          stale: !taskDir || !existsSync(taskDir),
+  _readSessionBinding(contextKey) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(contextKey || "")) throw new Error("invalid_context_key")
+    const root = realpathSync(this.directory)
+    const facts = repositoryFacts(root)
+    validateWorkspace(root, facts)
+    const store = facts.common
+      ? join(facts.common, "trellis", "sessions")
+      : join(root, ".trellis", ".runtime", "sessions")
+    const current = join(store, `${contextKey}.json`)
+    if (bindingExists(root, current)) {
+      const data = readBinding(root, current)
+      return { data, root, facts }
+    }
+    if (facts.common) {
+      const offset = relative(facts.gitRoot, root)
+      for (const worktree of [...new Set(facts.roots)].sort()) {
+        const candidate = join(worktree, offset)
+        const workflow = join(candidate, ".trellis")
+        if (!bindingExists(candidate, workflow)) continue
+        const workspace = validateWorkspace(candidate, facts)
+        const obsolete = join(
+          workspace, ".trellis", ".runtime", "sessions", `${contextKey}.json`,
+        )
+        if (bindingExists(workspace, obsolete)) {
+          throw new Error(`unsupported_binding_schema: ${obsolete}; run task.py start`)
         }
       }
     }
+    return null
+  }
 
-    const fallback = this._resolveSingleSessionFallback()
-    if (fallback) {
-      return fallback
+  _validateBinding({ data, root, facts }) {
+    if (data.schema_version !== 2) throw new Error("unsupported_schema")
+    const keys = Object.keys(data).sort()
+    if (JSON.stringify(keys) !== JSON.stringify(["lifecycle_generation", "schema_version", "task_id"])) {
+      throw new Error("invalid_binding_fields")
     }
+    if (typeof data.task_id !== "string" || !data.task_id.trim()) throw new Error("invalid_task_id")
+    if (!Number.isInteger(data.lifecycle_generation) || data.lifecycle_generation < 0) {
+      throw new Error("invalid_lifecycle_generation")
+    }
+    const requestedFold = unicodeCasefold(data.task_id)
+    const offset = facts.common ? relative(facts.gitRoot, root) : ""
+    const workspaces = facts.common
+      ? [...new Set(facts.roots.map(worktree => join(worktree, offset)))]
+      : [root]
+    const exact = []
+    const mismatches = []
+    const casefoldConflicts = []
+    for (const candidate of workspaces) {
+      const workflow = join(candidate, ".trellis")
+      if (!bindingExists(candidate, workflow)) continue
+      const workspace = validateWorkspace(candidate, facts)
+      const tasksDir = join(workspace, ".trellis", "tasks")
+      if (!bindingExists(workspace, tasksDir)) continue
+      let names
+      try {
+        names = readdirSync(tasksDir).sort()
+      } catch (error) {
+        throw new Error(`task_inventory_failed: ${error.message}`)
+      }
+      for (const name of names) {
+        if (name === "archive") continue
+        const taskDir = join(tasksDir, name)
+        let taskStat
+        try { taskStat = statSync(taskDir) } catch { continue }
+        if (!taskStat.isDirectory()) continue
+        const taskFile = join(taskDir, "task.json")
+        const visibleMatch = visibleIdentityCandidates(name)
+          .some(value => unicodeCasefold(value) === requestedFold)
+        let metadata
+        try {
+          metadata = readBinding(workspace, taskFile)
+        } catch (error) {
+          if (visibleMatch) throw new Error(`task_metadata_invalid: ${taskFile}: ${error.message}`)
+          continue
+        }
+        if (typeof metadata.id !== "string" || !metadata.id.trim()) {
+          if (visibleMatch) throw new Error(`invalid_task_id: ${taskFile}`)
+          continue
+        }
+        if (unicodeCasefold(metadata.id) !== requestedFold) continue
+        if (metadata.id !== data.task_id) {
+          casefoldConflicts.push(`${taskDir}=${JSON.stringify(metadata.id)}`)
+          continue
+        }
+        const generation = Object.hasOwn(metadata, "lifecycle_generation")
+          ? metadata.lifecycle_generation : 0
+        if (!Number.isInteger(generation) || generation < 0) {
+          throw new Error(`invalid_lifecycle_generation: ${taskFile}`)
+        }
+        const resolved = {
+          taskPath: relative(workspace, taskDir).split("\\").join("/"),
+          taskWorkspaceRoot: workspace,
+          resolvedTaskPath: taskDir,
+          repositoryCommonDir: facts.common,
+        }
+        if (generation === data.lifecycle_generation) exact.push(resolved)
+        else mismatches.push(`${taskDir}=${generation}`)
+      }
+    }
+    if (casefoldConflicts.length) throw new Error(`task_id_casefold_collision: ${casefoldConflicts.join(", ")}`)
+    if (exact.length > 1 || (exact.length && mismatches.length)) {
+      const local = exact.filter(item => realpathSync(item.taskWorkspaceRoot) === realpathSync(this.directory))
+      if (local.length === 1) return { ...local[0] }
+      throw new Error("ambiguous_task_identity")
+    }
+    if (!exact.length && mismatches.length) throw new Error(`stale_lifecycle_generation: ${mismatches.join(", ")}`)
+    if (!exact.length) throw new Error("stale_task_identity")
+    return {
+      ...exact[0],
+    }
+  }
 
-    return { taskPath: null, source: "none", stale: false }
+  /** Exact identity only. A known key miss or error never borrows a session. */
+  getActiveTask(platformInput = null) {
+    const contextKey = this.getContextKey(platformInput)
+    const empty = {
+      taskPath: null, source: "none", stale: false, error: null, contextKey,
+      invocationRoot: resolve(this.directory), repositoryCommonDir: null,
+      taskWorkspaceRoot: null, resolvedTaskPath: null,
+    }
+    try {
+      const facts = repositoryFacts(realpathSync(this.directory))
+      validateWorkspace(this.directory, facts)
+      empty.repositoryCommonDir = facts.common
+      if (!contextKey) return empty
+      const binding = this._readSessionBinding(contextKey)
+      if (!binding) return empty
+      return { ...empty, ...this._validateBinding(binding), source: `session:${contextKey}` }
+    } catch (error) {
+      return { ...empty, source: contextKey ? `session:${contextKey}` : "none", stale: true, error: error.message }
+    }
   }
 
   /**
@@ -406,35 +589,33 @@ export class TrellisContext {
    * else null.
    */
   _resolveSingleSessionFallback() {
-    const sessionsDir = join(this.directory, ".trellis", ".runtime", "sessions")
-    if (!existsSync(sessionsDir)) return null
+    if (this.getContextKey()) return null
+    const root = realpathSync(this.directory)
+    const facts = repositoryFacts(root)
+    validateWorkspace(root, facts)
+    const sessionsDir = facts.common
+      ? join(facts.common, "trellis", "sessions")
+      : join(root, ".trellis", ".runtime", "sessions")
+    if (!bindingExists(root, sessionsDir)) return null
 
     let files
     try {
       files = readdirSync(sessionsDir)
         .filter(name => name.endsWith(".json"))
         .sort()
-    } catch {
-      return null
+    } catch (error) {
+      throw new Error(`binding_read_failed: ${error.message}`)
     }
     if (files.length !== 1) return null
 
-    const sessionFile = join(sessionsDir, files[0])
-    let context
-    try {
-      context = JSON.parse(readFileSync(sessionFile, "utf-8"))
-    } catch {
-      return null
-    }
-    const taskRef = this.normalizeTaskRef(context?.current_task || "")
-    if (!taskRef) return null
-
-    const taskDir = this.resolveTaskDir(taskRef)
     const fallbackKey = files[0].replace(/\.json$/, "")
+    const file = join(sessionsDir, files[0])
+    const data = readBinding(root, file)
+    const active = this._validateBinding({ data, root, facts })
     return {
-      taskPath: taskRef,
+      ...active,
       source: `session-fallback:${fallbackKey}`,
-      stale: !taskDir || !existsSync(taskDir),
+      contextKey: fallbackKey, invocationRoot: root, stale: false, error: null,
     }
   }
 
@@ -499,14 +680,37 @@ export class TrellisContext {
         ? join(this.directory, normalized)
         : join(this.directory, ".trellis", "tasks", normalized)
 
-    return this.containInProject(candidate)
+    try {
+      const tasksRoot = join(this.directory, ".trellis", "tasks")
+      const lexical = relative(tasksRoot, candidate).split("\\").join("/")
+      if (!lexical || lexical.split("/").length !== 1 || lexical === ".." || lexical === "archive" || isAbsolute(lexical)) return null
+      const actualRoot = realpathSync(tasksRoot)
+      const actual = realpathSync(candidate)
+      const actualRef = relative(actualRoot, actual).split("\\").join("/")
+      if (!actualRef || actualRef.split("/").length !== 1 || !pathWithin(actualRoot, actual) || actualRef === "archive") return null
+      if (!statSync(actual).isDirectory()) return null
+      const canonical = join(tasksRoot, actualRef)
+      return canonical
+    } catch {
+      return null
+    }
   }
 
   // ============================================================
   // File Reading Utilities
   // ============================================================
 
+  isActivePath(filePath) {
+    try {
+      realpathSync(filePath)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   readFile(filePath) {
+    if (!this.isActivePath(filePath)) return null
     try {
       if (existsSync(filePath)) {
         return readFileSync(filePath, "utf-8")

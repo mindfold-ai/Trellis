@@ -1,0 +1,9 @@
+{"file":".trellis/spec/cli/backend/script-conventions.md","reason":"Python runtime and dogfood twin ownership"}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"Entire retired workspace exclusion before reads, copies and mutations"}
+{"file":".trellis/spec/cli/backend/commands-update.md","reason":"Update and reapply pipeline"}
+{"file":".trellis/spec/cli/backend/platform-integration.md","reason":"Supported platform and onboarding contracts"}
+{"file":".trellis/spec/cli/backend/trellis-core-sdk.md","reason":"CLI and core task ownership boundary"}
+{"file":".trellis/spec/cli/backend/commands-channel.md","reason":"Remove workspace context trust without unrelated channel redesign"}
+{"file":".trellis/spec/cli/backend/commands-ablate.md","reason":"Prevent whole-tree snapshot and restore from consuming historical workspace"}
+{"file":".trellis/spec/cli/backend/commands-uninstall.md","reason":"Preserve retired data during managed-asset removal"}
+{"file":".trellis/tasks/09-11-issue-3-remove-developer-identity/design.md","reason":"Proposed design; approval required before implementation"}

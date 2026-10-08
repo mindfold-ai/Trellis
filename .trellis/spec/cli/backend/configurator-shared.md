@@ -291,11 +291,11 @@ Configurators must respect these. They are not enforced by types; tests in `test
 `configurators/shared.ts` does not:
 
 - **Encode platform-specific layout.** Where each platform writes (`.claude/`, `.codex/`, `.gemini/`, etc.) is decided by the per-platform configurator. Shared helpers take a `dir` argument and don't compute it.
-- **Read user input.** Init prompts, `--user`, `--force` flags, project-type detection — all in `commands/init.ts` and the platform configurator's body.
+- **Read interactive input.** Init prompts, `--force` flags, project-type detection — all in `commands/init.ts` and the platform configurator's body.
 - **Touch the network.** No template fetching; no version probing. Everything operates on bundled templates loaded from `templates/common/index.ts` and `templates/shared-hooks/index.ts`.
 - **Mutate the registry.** `types/ai-tools.ts:AI_TOOLS` is read-only from this file. Adding a platform updates the registry first, then the configurator file consumes it.
 - **Decide capability flags.** `agentCapable` / `hasHooks` come from the `TemplateContext` constructed in `configurators/index.ts`; shared helpers only read them.
-- **Touch user-owned spec content.** `.trellis/spec/`, `.trellis/.developer`, `.trellis/tasks/`, `.trellis/workspace/`, `.trellis/.current-task` are protected paths owned by `commands/update.ts` migration logic, not by configurators.
+- **Touch project spec/task content outside the operation contract.** See [Task Lifecycle](./task-lifecycle.md).
 - **Cache anything other than the resolved Python command.** The single piece of module state (`resolvedPythonCommand`) exists because init runs once and configurators are called repeatedly afterward. Anything else with cross-call lifetime belongs at the `commands/init.ts` call site, not here.
 
 ---

@@ -34,7 +34,7 @@ CLI owns:
 - help text and terminal output (including `tl mem` row formatting and `--json` shaping)
 - prompts, confirmations, exit codes, and `process.exit`
 - the OpenCode-unavailable stderr notice for `tl mem` (a presentation concern, not a core one)
-- template copying, dogfooding paths, migration manifest application, and update UX
+- template copying, dogfooding paths, and current-version update UX
 - release scripts and CI-specific package orchestration
 
 When logic starts in the CLI but is needed by another package or embedding app, move the reusable part into core and leave only CLI rendering and option translation in the CLI package.
@@ -190,8 +190,8 @@ If a CLI test duplicates a pure core test, move the pure assertion to core and k
 `packages/core/src/task/schema.ts` is the single TS-side source of truth for the
 `task.json` shape (including `meta: Record<string, unknown>` with its own
 validation). The `.trellis/scripts/` Python layer implements *behavior* on top of
-that shape (create/list/set-meta/validate/journal rendering) and has NO parallel
-implementation in core — jsonl validation, list tree rendering, and journal
+that shape (create/list/set-meta/validate) and has NO parallel
+implementation in core — jsonl validation, list tree rendering, and task
 rendering exist only in Python.
 
 Rule of thumb when changing task behavior:
@@ -203,3 +203,6 @@ Rule of thumb when changing task behavior:
 - The only template code with a genuine dual implementation is sub-agent context
   injection (Python shared hook ↔ Pi extension) — see the Context Injection
   Limits Contract in platform-integration.md.
+
+Unknown task properties are rejected by the canonical SDK record and Python
+task readers. See [Task Lifecycle](./task-lifecycle.md).

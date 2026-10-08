@@ -70,6 +70,7 @@ function unquoteYaml(s) {
  */
 function readSkipKeyword(directory) {
   const path = join(directory, ".trellis", "config.yaml")
+  if (!new TrellisContext(directory).isActivePath(path)) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
   if (!existsSync(path)) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
   let text
   try {
@@ -122,6 +123,7 @@ function promptHasSkipKeyword(text, keyword) {
  */
 function loadBreadcrumbs(directory) {
   const workflowPath = join(directory, ".trellis", "workflow.md")
+  if (!new TrellisContext(directory).isActivePath(workflowPath)) return {}
   if (!existsSync(workflowPath)) return {}
   let content
   try {
@@ -141,24 +143,25 @@ function loadBreadcrumbs(directory) {
 /**
  * Get (taskId, status) from active task, or null if no active task.
  */
-function getActiveTask(ctx, platformInput = null) {
-  const active = ctx.getActiveTask(platformInput)
+function getActiveTask(ctx, platformInput = null, active = ctx.getActiveTask(platformInput)) {
+  if (active.error || active.stale) return { id: "session binding", status: "task_error", source: active.source, error: active.error || "stale binding" }
   const taskRef = active.taskPath
   if (!taskRef) return null
-  const taskDir = ctx.resolveTaskDir(taskRef)
+  const taskDir = active.resolvedTaskPath
+  ctx = new TrellisContext(active.taskWorkspaceRoot)
   if (active.stale || !taskDir || !existsSync(taskDir)) {
     return { id: taskRef.split("/").pop(), status: "stale", source: active.source }
   }
   const taskJsonPath = join(taskDir, "task.json")
-  if (!existsSync(taskJsonPath)) return null
+  if (!ctx.isActivePath(taskJsonPath) || !existsSync(taskJsonPath)) return { id: taskRef, status: "task_error", source: active.source }
   try {
-    const data = JSON.parse(readFileSync(taskJsonPath, "utf-8"))
+    const data = JSON.parse(ctx.readFile(taskJsonPath))
     const status = typeof data.status === "string" ? data.status : ""
-    if (!status) return null
+    if (!status) return { id: taskRef, status: "task_error", source: active.source }
     const id = data.id || taskRef.split("/").pop()
     return { id, status, source: active.source }
   } catch {
-    return null
+    return { id: taskRef, status: "task_error", source: active.source }
   }
 }
 
@@ -206,19 +209,23 @@ export default async ({ directory }) => {
           }
 
           const originalText = latestUserPromptText(messages)
+          const active = ctx.getActiveTask(platformInput)
+          const taskRoot = active.taskWorkspaceRoot || directory
 
           // Escape hatch (issue #427): user prompt contains the skip keyword
           // as a standalone word — emit nothing for this turn only.
-          if (promptHasSkipKeyword(originalText, readSkipKeyword(directory))) {
+          if (promptHasSkipKeyword(originalText, readSkipKeyword(taskRoot))) {
             debugLog("workflow-state", "Skipping turn: skip keyword present in prompt")
             return
           }
 
-          const templates = loadBreadcrumbs(directory)
-          const task = getActiveTask(ctx, platformInput)
-          const breadcrumb = task
+          const templates = loadBreadcrumbs(taskRoot)
+          const task = getActiveTask(ctx, platformInput, active)
+          let breadcrumb = task
             ? buildBreadcrumb(task.id, task.status, templates, task.source)
             : buildBreadcrumb(null, "no_task", templates)
+          if (task?.error) breadcrumb += `\nTask binding error: ${task.error}`
+          else if (active.taskWorkspaceRoot) breadcrumb += `\nTask workspace: ${taskRoot}; caller workspace: ${directory}.`
 
           prependEphemeralText(messages, breadcrumb)
           debugLog(

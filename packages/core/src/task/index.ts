@@ -3,10 +3,7 @@
 //
 // Task API is intentionally independent from the channel API.
 
-export type {
-  TrellisTaskRecord,
-  TaskRecordField,
-} from "./schema.js";
+export type { TrellisTaskRecord, TaskRecordField } from "./schema.js";
 
 export {
   TASK_RECORD_FIELD_ORDER,
@@ -22,7 +19,13 @@ export type {
 export {
   loadTaskRecord,
   writeTaskRecord,
+  serializeTaskRecord,
 } from "./records.js";
+
+export {
+  isKnownLegacyTaskRecord,
+  validateLegacyTaskProjection,
+} from "./migration.js";
 
 export type { TaskDirParts } from "./paths.js";
 export { validateTaskDirName, isValidTaskDirName } from "./paths.js";

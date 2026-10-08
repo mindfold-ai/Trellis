@@ -19,7 +19,7 @@ The Trellis task system is stored entirely under `.trellis/tasks/` in the user p
 
 | File | Purpose |
 | --- | --- |
-| `task.json` | Task metadata: status, assignee, priority, branch, parent/child tasks, and similar fields. |
+| `task.json` | Task metadata: status, priority, branch, parent/child tasks, and similar fields. |
 | `prd.md` | Requirements document; the most important business context during implementation. |
 | `info.md` | Optional technical design. |
 | `implement.jsonl` | List of spec/research files the implement agent must read first. |
@@ -35,7 +35,6 @@ The Trellis task system is stored entirely under `.trellis/tasks/` in the user p
 | `id` / `name` / `title` | Task identity and title. |
 | `status` | Status such as `planning`, `in_progress`, `review`, or `completed`. |
 | `priority` | `P0`, `P1`, `P2`, `P3`. |
-| `creator` / `assignee` | Creator and assignee. |
 | `package` | Target package in a monorepo; may be empty. |
 | `branch` / `base_branch` | Working branch and PR target branch. |
 | `children` / `parent` | Parent/child task relationships. |

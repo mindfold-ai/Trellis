@@ -110,7 +110,7 @@ Avoid:
 | Session Start | `start` | `start` |
 | Pre-development | `before-` | `before-dev` |
 | Check | `check-` | `check` |
-| Record | `record-` | `record-session` |
+| Record | `record-` | `record-decision` |
 | Generate | `generate-` | `generate-api-doc` |
 | Update | `update-` | `update-changelog` |
 | Other | verb-first | `review-code`, `sync-data` |

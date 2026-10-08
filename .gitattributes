@@ -1,13 +1,3 @@
-# Trellis: append-only developer journals should merge cleanly across
-# parallel sessions/worktrees — each session only appends a new block, so
-# there is nothing to actually conflict on.
-#
-# Do NOT add a rule for workspace/*/index.md here — it is fully regenerated
-# every session, so a real conflict there is expected and safe to resolve by
-# picking either side (task state lives in task.json, not index.md). See
-# .trellis/spec/cli/backend/directory-structure.md for details.
-.trellis/workspace/*/journal-*.md merge=union
-
 # Normalize line endings on checkin. Windows contributors save with CRLF by
 # default, and without this git records the whole file as rewritten: #555
 # arrived as a 2159-line diff for ~75 lines of real work, and would have

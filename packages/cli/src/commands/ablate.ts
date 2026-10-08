@@ -43,6 +43,10 @@ import {
 } from "../utils/managed-removal.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
 import { loadHashes } from "../utils/template-hash.js";
+import {
+  ownedTrellisChildren,
+  removeOwnedTrellisData,
+} from "../utils/trellis-owned-data.js";
 
 export interface AblateOptions {
   yes?: boolean;
@@ -107,7 +111,7 @@ function renderAblatePlan(
   );
   for (const entry of deletions)
     console.log(`  ${chalk.red("-")} ${entry.posixPath}`);
-  console.log(`  ${chalk.red("-")} ${DIR_NAMES.WORKFLOW}/`);
+  console.log(`  ${chalk.red("-")} ${DIR_NAMES.WORKFLOW}/ (managed entries)`);
   if (plan.modifications.length > 0) {
     console.log(
       chalk.yellow.bold(
@@ -128,7 +132,7 @@ function renderAblatePlan(
   console.log(chalk.gray(`\nRecovery transaction: ${transactionDir}`));
   console.log(
     chalk.yellow(
-      "Recovery copies exact .trellis task/spec/workspace bytes, which may contain user-authored sensitive text. " +
+      "Recovery copies active .trellis task/spec bytes, which may contain user-authored sensitive text. Retired history is not copied. " +
         "The private transaction is retained until verified restore.\n",
     ),
   );
@@ -281,9 +285,18 @@ function buildAblationEntries(
   }
 
   const trellisPath = path.join(projectRoot, DIR_NAMES.WORKFLOW);
-  addEntry(entries, seen, DIR_NAMES.WORKFLOW, fingerprintPath(trellisPath), {
-    kind: "absent",
-  });
+  for (const name of ownedTrellisChildren(trellisPath)) {
+    const relativePath = `${DIR_NAMES.WORKFLOW}/${name}`;
+    addEntry(
+      entries,
+      seen,
+      relativePath,
+      fingerprintPath(path.join(trellisPath, name)),
+      {
+        kind: "absent",
+      },
+    );
+  }
   return entries;
 }
 
@@ -316,12 +329,7 @@ function applyAblationPlan(
   }
 
   const trellisPath = path.join(projectRoot, DIR_NAMES.WORKFLOW);
-  const trellisStat = lstatIfPresent(trellisPath);
-  if (trellisStat?.isSymbolicLink()) {
-    fs.unlinkSync(trellisPath);
-  } else if (trellisStat) {
-    fs.rmSync(trellisPath, { recursive: true, force: false });
-  }
+  removeOwnedTrellisData(trellisPath);
 
   for (const relativeDir of prunableDirectories) {
     const directory = path.join(projectRoot, ...relativeDir.split("/"));
@@ -447,7 +455,7 @@ export async function ablate(options: AblateOptions = {}): Promise<void> {
     }
   });
 
-  console.log(chalk.green("Trellis is fully ablated for this project."));
+  console.log(chalk.green("Active Trellis surfaces ablated."));
   console.log(
     chalk.yellow("Start a fresh agent session before comparing behavior."),
   );

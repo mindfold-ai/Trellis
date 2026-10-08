@@ -18,7 +18,9 @@ Provides:
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -27,31 +29,28 @@ from pathlib import Path
 from .config import (
     get_codex_dispatch_mode,
     get_packages,
-    get_session_auto_commit,
+    get_task_auto_commit,
     is_monorepo,
     resolve_package,
     validate_package,
 )
 from .git import (
     INDEX_LOCK_RETRY_ATTEMPTS,
-    branch_exists_locally,
-    has_git_remote,
     index_lock_path,
     resolve_default_branch,
     run_git,
     run_git_retry_index_lock,
     stderr_indicates_index_lock,
 )
+from .path_boundary import require_project_path
 from .io import describe_json_read_failure, read_json_checked, write_json
 from .log import Colors, colored
 from .paths import (
-    DEVELOPER_HINT,
     DIR_ARCHIVE,
     DIR_TASKS,
     DIR_WORKFLOW,
     FILE_TASK_JSON,
     generate_task_date_prefix,
-    get_developer,
     get_repo_root,
     get_tasks_dir,
 )
@@ -60,11 +59,16 @@ from .safe_commit import (
     safe_archive_paths_to_add,
     safe_git_add,
 )
+from .session_storage import SessionBindingError, repository_facts, workspace_roots
 from .task_utils import (
+    TASK_ID_PATTERN,
     archive_destination_for,
     archive_task_complete,
     find_task_by_name,
     is_within_tasks_dir,
+    require_unique_task_id,
+    task_identity_from_data,
+    TaskIdentityError,
     resolve_task_dir,
     run_task_hooks,
 )
@@ -95,7 +99,6 @@ BLANK_CHARS = (
     "\ufeff"                                  # zero-width no-break space / BOM (JS only)
 )
 
-
 def strip_blank(value: str | None) -> str:
     """Return ``value`` with :data:`BLANK_CHARS` trimmed from both ends."""
     return (value or "").strip(BLANK_CHARS)
@@ -114,6 +117,7 @@ def ensure_tasks_dir(repo_root: Path) -> Path:
     """Ensure tasks directory exists."""
     tasks_dir = get_tasks_dir(repo_root)
     archive_dir = tasks_dir / "archive"
+    require_project_path(archive_dir, repo_root)
 
     if not tasks_dir.exists():
         tasks_dir.mkdir(parents=True)
@@ -125,16 +129,19 @@ def ensure_tasks_dir(repo_root: Path) -> Path:
     return tasks_dir
 
 
-def _find_archived_task_by_dir_name(tasks_dir: Path, dir_name: str) -> Path | None:
+def _find_archived_task_by_dir_name(tasks_dir: Path, dir_name: str, repo_root: Path) -> Path | None:
     """Find an archived task directory with the exact active-task dir name."""
     archive_dir = tasks_dir / DIR_ARCHIVE
+    require_project_path(archive_dir, repo_root)
     if not archive_dir.is_dir():
         return None
 
     for month_dir in sorted(archive_dir.iterdir()):
+        require_project_path(month_dir, repo_root)
         if not month_dir.is_dir():
             continue
         candidate = month_dir / dir_name
+        require_project_path(candidate, repo_root)
         if candidate.is_dir():
             return candidate
 
@@ -160,30 +167,6 @@ def _report_read_failure(path: Path, reason: str | None) -> None:
     problem, hint = describe_json_read_failure(path, reason)
     print(colored(f"Error: {problem}", Colors.RED), file=sys.stderr)
     print(hint, file=sys.stderr)
-
-
-def _ensure_children_list(data: dict) -> list:
-    """The task's `children` as a list, repaired in place if it is not one.
-
-    `.get(key, default)` returns the default only when the key is *absent*. A
-    task.json carrying `"children": null` — older format, or hand-edited —
-    yields None, and every caller below goes on to use the result as a list.
-    In `cmd_create` that raise lands *after* the new task.json is written,
-    leaving a task on disk its parent does not reference.
-
-    The repair is written into `data` rather than only returned, because the
-    unlink path removes a name it may not find and would otherwise persist the
-    malformed value untouched — no crash, but the next caller inherits it.
-
-    Anything that is not a list is discarded rather than coerced: a string
-    would iterate per character and a dict per key, each producing a plausible
-    child set that is not one.
-    """
-    children = data.get("children")
-    if not isinstance(children, list):
-        children = []
-        data["children"] = children
-    return children
 
 
 def _report_write_failure(path: Path) -> None:
@@ -296,6 +279,37 @@ def _parse_meta_pairs(pairs: list[str] | None) -> dict[str, str] | None:
     return meta
 
 
+def _parse_create_source(raw: str | None) -> dict | None:
+    """Validate the source that will be written with the new task.json."""
+    if raw is None:
+        return {"kind": "no_issue"}
+    try:
+        source = json.loads(raw)
+    except json.JSONDecodeError:
+        print("Error: --source-json must be valid JSON", file=sys.stderr)
+        return None
+    if source == {"kind": "no_issue"}:
+        return source
+    if (
+        isinstance(source, dict)
+        and set(source) == {"kind", "repo_ref", "number", "disposition"}
+        and source["kind"] == "issue"
+        and isinstance(source["repo_ref"], str)
+        and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*", source["repo_ref"])
+        and not source["repo_ref"].endswith(".git")
+        and type(source["number"]) is int
+        and source["number"] > 0
+        and source["disposition"] in ("exact_source", "reference_only")
+    ):
+        return source
+    print(
+        "Error: --source-json must be no_issue or an issue with repo_ref, "
+        "positive number, and exact_source or reference_only disposition",
+        file=sys.stderr,
+    )
+    return None
+
+
 def _default_prd_content(title: str, description: str | None = None) -> str:
     """Return the default PRD skeleton created with every task."""
     goal = (description or "").strip() or "TBD."
@@ -353,6 +367,10 @@ def cmd_create(args: argparse.Namespace) -> int:
         )
         return 1
 
+    source = _parse_create_source(getattr(args, "source_json", None))
+    if source is None:
+        return 1
+
     # Validate --meta (CLI source: fail-fast, before any directory is created)
     meta = _parse_meta_pairs(getattr(args, "meta", None))
     if meta is None:
@@ -374,20 +392,6 @@ def cmd_create(args: argparse.Namespace) -> int:
     else:
         # Inferred: default_package → None (no task.json yet for create)
         package = resolve_package(repo_root=repo_root)
-
-    # Default assignee to current developer
-    assignee = args.assignee
-    if not assignee:
-        assignee = get_developer(repo_root)
-        if not assignee:
-            print(colored("Error: No developer set. Run init_developer.py first or use --assignee", Colors.RED), file=sys.stderr)
-            print(DEVELOPER_HINT, file=sys.stderr)
-            return 1
-
-    ensure_tasks_dir(repo_root)
-
-    # Get current developer as creator
-    creator = get_developer(repo_root) or assignee
 
     # Generate slug if not provided. A title-derived slug is sanitized by
     # _slugify; an explicit --slug is not, so reject the characters that would
@@ -461,10 +465,50 @@ def cmd_create(args: argparse.Namespace) -> int:
             return 1
 
     dir_name = f"{date_prefix}-{slug}"
+    explicit_task_id = getattr(args, "task_id", None)
+    task_id = explicit_task_id if explicit_task_id is not None else slug
+    if not TASK_ID_PATTERN.fullmatch(task_id):
+        source = "--task-id" if explicit_task_id is not None else "derived task id"
+        print(colored(f"Error: {source} must match [A-Za-z0-9][A-Za-z0-9._-]*", Colors.RED), file=sys.stderr)
+        return 1
     task_dir = tasks_dir / dir_name
     task_json_path = task_dir / FILE_TASK_JSON
+    for filename in (FILE_TASK_JSON, "prd.md", "implement.jsonl", "check.jsonl"):
+        require_project_path(task_dir / filename, repo_root)
+    if task_dir.exists() and getattr(args, "force", False):
+        print(colored(f"Error: task_id_collision: --force cannot replace an existing task: {dir_name}", Colors.RED), file=sys.stderr)
+        return 1
 
-    archived_task_dir = _find_archived_task_by_dir_name(tasks_dir, dir_name)
+    try:
+        for workspace in workspace_roots(repository_facts(repo_root)):
+            require_unique_task_id(task_id, get_tasks_dir(workspace), workspace)
+        refs_result = subprocess.run(
+            ["git", "for-each-ref", "--format=%(objectname)", "refs/heads", "refs/remotes"],
+            cwd=repo_root, capture_output=True, text=True, check=False,
+        )
+        for head in set(refs_result.stdout.splitlines() if refs_result.returncode == 0 else []):
+            paths = subprocess.run(
+                ["git", "ls-tree", "-r", "--name-only", head, "--", ".trellis/tasks"],
+                cwd=repo_root, capture_output=True, text=True, check=True,
+            ).stdout.splitlines()
+            for path in paths:
+                if not re.fullmatch(r"\.trellis/tasks/(?:archive/.+/)?[^/]+/task\.json", path):
+                    continue
+                payload = subprocess.run(
+                    ["git", "show", f"{head}:{path}"], cwd=repo_root,
+                    capture_output=True, text=True, check=True,
+                ).stdout
+                try:
+                    existing = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(existing, dict) and str(existing.get("id", "")).casefold() == task_id.casefold():
+                    raise TaskIdentityError(f"task_id_collision: {task_id!r}: {path} at {head}")
+    except (TaskIdentityError, SessionBindingError) as exc:
+        print(colored(f"Error: {exc}", Colors.RED), file=sys.stderr)
+        return 1
+
+    archived_task_dir = _find_archived_task_by_dir_name(tasks_dir, dir_name, repo_root)
     if archived_task_dir:
         print(colored(f"Error: Task already archived: {dir_name}", Colors.RED), file=sys.stderr)
         print(f"Archived at: {_repo_relative_path(archived_task_dir, repo_root)}", file=sys.stderr)
@@ -473,28 +517,15 @@ def cmd_create(args: argparse.Namespace) -> int:
 
     # Reusing a slug on the same day is an ordinary accident, and continuing
     # would rewrite the existing task.json below — resetting status, children,
-    # parent, branch and meta, which nothing else can reconstruct. Fail like
-    # the archived-name collision above unless the caller asks for it.
+    # parent and meta, which nothing else can reconstruct. Stable TaskIds
+    # cannot be replaced by --force either.
     if task_dir.exists():
-        if not getattr(args, "force", False):
-            print(colored(f"Error: Task already exists: {dir_name}", Colors.RED), file=sys.stderr)
-            print(f"Existing task at: {_repo_relative_path(task_dir, repo_root)}", file=sys.stderr)
-            print(
-                "Use a different --slug, or pass --force to overwrite its task.json.",
-                file=sys.stderr,
-            )
-            return 1
-        print(
-            colored(
-                f"Warning: --force: overwriting task.json in existing task: {dir_name}",
-                Colors.YELLOW,
-            ),
-            file=sys.stderr,
-        )
-        created_dir = False
-    else:
-        task_dir.mkdir(parents=True)
-        created_dir = True
+        print(colored(f"Error: Task already exists: {dir_name}", Colors.RED), file=sys.stderr)
+        print(f"Existing task at: {_repo_relative_path(task_dir, repo_root)}", file=sys.stderr)
+        print("Use a different --slug to create a new task.", file=sys.stderr)
+        return 1
+    ensure_tasks_dir(repo_root)
+    task_dir.mkdir(parents=True)
 
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -526,8 +557,10 @@ def cmd_create(args: argparse.Namespace) -> int:
             )
 
     task_data = {
-        "id": slug,
+        "id": task_id,
         "name": slug,
+        "lifecycle_generation": 0,
+        "source": source,
         "title": args.title,
         "description": description,
         "status": "planning",
@@ -535,16 +568,12 @@ def cmd_create(args: argparse.Namespace) -> int:
         "scope": None,
         "package": package,
         "priority": args.priority,
-        "creator": creator,
-        "assignee": assignee,
         "createdAt": today,
         "completedAt": None,
-        "branch": None,
         "base_branch": base_branch,
         "worktree_path": None,
         "commit": None,
         "pr_url": None,
-        "subtasks": [],
         "children": [],
         "parent": None,
         "relatedFiles": [],
@@ -558,14 +587,13 @@ def cmd_create(args: argparse.Namespace) -> int:
     if not write_json(task_json_path, task_data):
         _report_write_failure(task_json_path)
         print(colored(f"No task was created: {dir_name}", Colors.RED), file=sys.stderr)
-        if created_dir:
-            try:
-                task_dir.rmdir()
-            except OSError:
-                print(
-                    f"Leftover empty directory: {_repo_relative_path(task_dir, repo_root)}",
-                    file=sys.stderr,
-                )
+        try:
+            task_dir.rmdir()
+        except OSError:
+            print(
+                f"Leftover empty directory: {_repo_relative_path(task_dir, repo_root)}",
+                file=sys.stderr,
+            )
         return 1
 
     prd_path = task_dir / "prd.md"
@@ -596,7 +624,7 @@ def cmd_create(args: argparse.Namespace) -> int:
         parent_json_path = parent_dir / FILE_TASK_JSON
 
         # Add child to parent's children list
-        parent_children = _ensure_children_list(parent_data)
+        parent_children = parent_data["children"]
         if dir_name not in parent_children:
             parent_children.append(dir_name)
             parent_data["children"] = parent_children
@@ -715,11 +743,9 @@ def cmd_create(args: argparse.Namespace) -> int:
 # Command: rename
 # =============================================================================
 
-# task.json fields that carry the task's own slug. The directory name carries
-# it too, prefixed with the creation date; everything else that names the task
-# (parent / children / subtasks in *other* tasks, jsonl paths) stores the full
-# directory name instead.
-RENAME_IDENTITY_FIELDS: tuple[str, ...] = ("id", "name")
+# Only the mutable TaskRef-facing name follows a rename. ``id`` is the stable
+# lifecycle identity and never changes after creation.
+RENAME_IDENTITY_FIELDS: tuple[str, ...] = ("name",)
 
 _JSONL_NAMES: tuple[str, ...] = ("implement.jsonl", "check.jsonl")
 
@@ -812,7 +838,7 @@ def _validate_rename_slug(slug: str, date_prefix: str) -> str | None:
 
 
 def _plan_jsonl_rewrites(
-    task_dir: Path, old_rel: str, new_rel: str
+    task_dir: Path, old_rel: str, new_rel: str, repo_root: Path
 ) -> list[tuple[Path, list[int], str]]:
     """Plan rewrites of context entries pointing under the old task directory.
 
@@ -823,6 +849,8 @@ def _plan_jsonl_rewrites(
     needle = f"{old_rel}/"
     replacement = f"{new_rel}/"
 
+    for jsonl_name in _JSONL_NAMES:
+        require_project_path(task_dir / jsonl_name, repo_root)
     for jsonl_name in _JSONL_NAMES:
         jsonl_path = task_dir / jsonl_name
         if not jsonl_path.is_file():
@@ -844,23 +872,25 @@ def _plan_jsonl_rewrites(
 
 
 def _plan_backrefs(
-    tasks_dir: Path, task_dir: Path, old_name: str, new_name: str
+    tasks_dir: Path, task_dir: Path, old_name: str, new_name: str, repo_root: Path
 ) -> tuple[list[tuple[Path, dict, list[str]]], list[Path]]:
     """Plan back-reference rewrites in the other active tasks.
 
-    Returns ``(changes, unreadable)``. ``subtasks`` is the legacy spelling of
-    ``children`` and is still carried in older task.json files, so both lists
-    are rewritten.
+    Returns ``(changes, unreadable)``. Only current task records are rewritten.
     """
     changes: list[tuple[Path, dict, list[str]]] = []
     unreadable: list[Path] = []
 
     for candidate in sorted(tasks_dir.iterdir()):
+        if candidate.name == DIR_ARCHIVE:
+            continue
+        require_project_path(candidate, repo_root)
         if not candidate.is_dir() or candidate.name == DIR_ARCHIVE:
             continue
         if candidate == task_dir:
             continue
         json_path = candidate / FILE_TASK_JSON
+        require_project_path(json_path, repo_root)
         if not json_path.is_file():
             continue
 
@@ -873,14 +903,10 @@ def _plan_backrefs(
         if data.get("parent") == old_name:
             data["parent"] = new_name
             labels.append("parent")
-        for list_field in ("children", "subtasks"):
-            values = data.get(list_field)
-            if not isinstance(values, list):
-                continue
-            for index, value in enumerate(values):
-                if value == old_name:
-                    values[index] = new_name
-                    labels.append(f"{list_field}[{index}]")
+        for index, value in enumerate(data["children"]):
+            if value == old_name:
+                data["children"][index] = new_name
+                labels.append(f"children[{index}]")
 
         if labels:
             changes.append((json_path, data, labels))
@@ -893,15 +919,13 @@ def _plan_reported_refs(
 ) -> list[tuple[Path, int]]:
     """Find remaining mentions of the old task name elsewhere under .trellis/.
 
-    These are reported, never rewritten: journal entries and workflow prose
+    These are reported, never rewritten: maintained workflow prose
     cite tasks in free text, and a blind substitution there is how a rename
     turns into a diff nobody asked for. The boundary-anchored pattern keeps a
     longer task name that merely contains this one out.
 
-    Runtime session pointers are excluded because they are not prose and they
-    *are* rewritten — see ``repoint_task_in_sessions``. Listing them here as
-    "not rewritten" would be a false statement about the one file whose
-    staleness actually breaks the next command.
+    Runtime session records are excluded because schema 2 carries TaskId and
+    generation, not the mutable task name.
     """
     from .active_task import _runtime_sessions_dir
 
@@ -914,7 +938,18 @@ def _plan_reported_refs(
     if not trellis_dir.is_dir():
         return hits
 
-    for path in sorted(trellis_dir.rglob("*")):
+    def maintained_files(directory: Path):
+        for child in sorted(directory.iterdir()):
+            if child.name == "__pycache__":
+                continue
+            if child.is_symlink():
+                continue
+            if child.is_dir():
+                yield from maintained_files(child)
+            else:
+                yield child
+
+    for path in maintained_files(trellis_dir):
         if not path.is_file() or path in rewritten:
             continue
         if path == task_dir or task_dir in path.parents:
@@ -961,9 +996,7 @@ def _render_rename_plan(plan: _RenamePlan, repo_root: Path) -> list[str]:
         lines.append(
             f"  reported (not rewritten): {_repo_relative_path(path, repo_root)}:{lineno}"
         )
-    lines.append(
-        f"  sessions: any active-task pointer at {plan.old_rel} is repointed to {plan.new_rel}"
-    )
+    lines.append("  sessions: unchanged (resolved later by stable TaskId)")
     return lines
 
 
@@ -986,6 +1019,12 @@ def _apply_rename(plan: _RenamePlan, repo_root: Path) -> int:
     finishes; a move-first ordering would instead leave the old name
     unresolvable and the remaining edits to be made by hand.
     """
+    try:
+        for jsonl_name in _JSONL_NAMES:
+            require_project_path(plan.task_dir / jsonl_name, repo_root)
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED), file=sys.stderr)
+        return 1
     if plan.identity:
         data = dict(plan.task_data)
         for field_name, _old_value, new_value in plan.identity:
@@ -1022,24 +1061,18 @@ def _apply_rename(plan: _RenamePlan, repo_root: Path) -> int:
         _rename_interrupted(plan)
         return 1
 
-    # Last, and after the move: a session pointing at the old path would now
-    # resolve to a missing directory, so `current` would report the task stale
-    # and the context hook would inject nothing until the user ran `start`
-    # again. Archive clears these pointers because the task is leaving; rename
-    # moves them, because the task is still the one being worked on.
-    from .active_task import repoint_task_in_sessions
-
-    repoint_task_in_sessions(str(plan.task_dir), str(plan.new_dir), repo_root)
-
     return 0
 
 
 def cmd_rename(args: argparse.Namespace) -> int:
     """Rename a task and every reference to it."""
     repo_root = get_repo_root()
+    from .task_utils import resolve_lifecycle_target
+    target = resolve_lifecycle_target(args.name, repo_root, use_active=True)
+    if target is None:
+        return 1
+    repo_root, task_dir = target
     tasks_dir = get_tasks_dir(repo_root)
-
-    task_dir = resolve_task_dir(args.name, repo_root)
     if task_dir is None or not task_dir.is_dir():
         if task_dir is not None:
             print(colored(f"Error: Task not found: {args.name}", Colors.RED), file=sys.stderr)
@@ -1083,7 +1116,7 @@ def cmd_rename(args: argparse.Namespace) -> int:
         print("Pick a different slug.", file=sys.stderr)
         return 1
 
-    archived_task_dir = _find_archived_task_by_dir_name(tasks_dir, new_name)
+    archived_task_dir = _find_archived_task_by_dir_name(tasks_dir, new_name, repo_root)
     if archived_task_dir:
         print(
             colored(f"Error: Task already archived: {new_name}", Colors.RED),
@@ -1106,6 +1139,15 @@ def cmd_rename(args: argparse.Namespace) -> int:
         _report_read_failure(task_json_path, reason)
         print("Nothing was renamed.", file=sys.stderr)
         return 1
+    try:
+        identity = task_identity_from_data(task_data, task_json_path)
+        require_unique_task_id(
+            identity.task_id, tasks_dir, repo_root, exclude=task_dir
+        )
+    except TaskIdentityError as exc:
+        print(colored(f"Error: {exc}", Colors.RED), file=sys.stderr)
+        print("Nothing was renamed.", file=sys.stderr)
+        return 1
 
     plan = _RenamePlan(
         task_dir=task_dir,
@@ -1122,9 +1164,13 @@ def cmd_rename(args: argparse.Namespace) -> int:
         for name in RENAME_IDENTITY_FIELDS
         if task_data.get(name) != slug
     ]
-    plan.jsonl = _plan_jsonl_rewrites(task_dir, plan.old_rel, plan.new_rel)
+    try:
+        plan.jsonl = _plan_jsonl_rewrites(task_dir, plan.old_rel, plan.new_rel, repo_root)
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED), file=sys.stderr)
+        return 1
     plan.backrefs, plan.unreadable = _plan_backrefs(
-        tasks_dir, task_dir, old_name, new_name
+        tasks_dir, task_dir, old_name, new_name, repo_root
     )
     rewritten = {path for path, _linenos, _text in plan.jsonl}
     rewritten.update(path for path, _data, _labels in plan.backrefs)
@@ -1168,92 +1214,6 @@ def cmd_rename(args: argparse.Namespace) -> int:
 # Command: archive
 # =============================================================================
 
-def _task_branch_field(data: dict, key: str) -> str:
-    """Read a branch field as a trimmed string ("" when unset or not a string)."""
-    value = data.get(key)
-    return strip_blank(value) if isinstance(value, str) else ""
-
-
-def _validate_branch_metadata(
-    data: dict,
-    task_name: str,
-    repo_root: Path,
-    skip: bool,
-) -> bool:
-    """Check branch metadata before the task leaves the active tree.
-
-    Returns False when archiving must stop. Archive is the last gate that sees
-    a task, so metadata nobody can reconstruct afterwards is refused here
-    rather than repaired by hand later (#399 follow-up).
-
-    "PR-backed" is deliberately pragmatic: a task carrying a base_branch in a
-    repo that has a remote was created expecting a PR, so a missing `branch`
-    means the metadata was never recorded — not that the work had no branch.
-    Local-only repos and tasks without a base_branch are left alone.
-
-    A recorded branch that no longer exists locally stays a warning: after a
-    merge the feature branch is normally deleted, and refusing to archive then
-    would be backwards.
-    """
-    branch = _task_branch_field(data, "branch")
-    base_branch = _task_branch_field(data, "base_branch")
-    task_py = f"python3 {DIR_WORKFLOW}/scripts/task.py"
-
-    if branch and not branch_exists_locally(branch, repo_root):
-        print(
-            colored(
-                f"Warning: recorded branch '{branch}' no longer exists locally "
-                "(likely merged and deleted).",
-                Colors.YELLOW,
-            ),
-            file=sys.stderr,
-        )
-
-    if skip:
-        return True
-
-    if branch and base_branch and branch == base_branch:
-        print(
-            colored(
-                f"Error: refusing to archive '{task_name}': branch and base_branch "
-                f"are both '{branch}'. A PR cannot target its own branch, so this "
-                "metadata cannot describe the work that was merged.",
-                Colors.RED,
-            ),
-            file=sys.stderr,
-        )
-        print("Repair whichever field is wrong:", file=sys.stderr)
-        print(f"  {task_py} set-branch {task_name} <feature-branch>", file=sys.stderr)
-        print(f"  {task_py} set-base-branch {task_name} <target-branch>", file=sys.stderr)
-        print(
-            f"  {task_py} archive {task_name} --skip-branch-validation"
-            "   # only if this task was never PR-backed",
-            file=sys.stderr,
-        )
-        return False
-
-    if not branch and base_branch and has_git_remote(repo_root):
-        print(
-            colored(
-                f"Error: refusing to archive '{task_name}': no branch is recorded, "
-                f"but the task targets base_branch '{base_branch}' in a repo with a "
-                "remote — the branch it was built on was never written down.",
-                Colors.RED,
-            ),
-            file=sys.stderr,
-        )
-        print("Repair with:", file=sys.stderr)
-        print(f"  {task_py} set-branch {task_name} <branch>", file=sys.stderr)
-        print(
-            f"  {task_py} archive {task_name} --skip-branch-validation"
-            "   # only if the work landed without a branch of its own",
-            file=sys.stderr,
-        )
-        return False
-
-    return True
-
-
 def cmd_archive(args: argparse.Namespace) -> int:
     """Archive completed task."""
     repo_root = get_repo_root()
@@ -1263,10 +1223,13 @@ def cmd_archive(args: argparse.Namespace) -> int:
         print(colored("Error: Task name is required", Colors.RED), file=sys.stderr)
         return 1
 
+    from .task_utils import resolve_lifecycle_target
+    target = resolve_lifecycle_target(task_name, repo_root, use_active=True)
+    if target is None:
+        print(f"Error: refusing to archive '{task_name}': task authority could not be validated", file=sys.stderr)
+        return 1
+    repo_root, task_dir = target
     tasks_dir = get_tasks_dir(repo_root)
-
-    # Resolve task directory (supports task name, relative path, or absolute path)
-    task_dir = resolve_task_dir(task_name, repo_root)
 
     if task_dir is None or not task_dir.is_dir():
         if task_dir is None:
@@ -1281,7 +1244,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
         print("Active tasks:", file=sys.stderr)
         # Import lazily to avoid circular dependency
         from .tasks import iter_active_tasks
-        for t in iter_active_tasks(tasks_dir):
+        for t in iter_active_tasks(tasks_dir, repo_root):
             print(f"  - {t.dir_name}/", file=sys.stderr)
         return 1
 
@@ -1296,11 +1259,28 @@ def cmd_archive(args: argparse.Namespace) -> int:
             Colors.RED), file=sys.stderr)
         return 1
 
+    task_json_path = task_dir / FILE_TASK_JSON
+    task_data, read_reason = read_json_checked(task_json_path)
+    if task_data is None:
+        _report_read_failure(task_json_path, read_reason)
+        print("The task was not archived.", file=sys.stderr)
+        return 1
+    try:
+        identity = task_identity_from_data(task_data, task_json_path)
+        require_unique_task_id(
+            identity.task_id, tasks_dir, repo_root, exclude=task_dir
+        )
+    except TaskIdentityError as exc:
+        print(colored(f"Error: {exc}", Colors.RED), file=sys.stderr)
+        print("The task was not archived.", file=sys.stderr)
+        return 1
+
     # Check the destination before anything below mutates task state. The
     # mover refuses a collision too, but by then this command has already
     # marked the task completed, re-parented its children and cleared the
     # sessions pointing at it — all of which would have to be undone by hand.
     archive_dest_check = archive_destination_for(task_dir)
+    require_project_path(archive_dest_check, repo_root)
     if archive_dest_check.exists():
         print(colored(
             f"Error: refusing to archive '{task_name}': "
@@ -1311,8 +1291,16 @@ def cmd_archive(args: argparse.Namespace) -> int:
         print("Move or rename the existing archived task, then retry.", file=sys.stderr)
         return 1
 
+    from .active_task import clear_task_from_sessions, task_session_records
+    try:
+        archive_session_records = task_session_records(
+            identity.task_id, identity.lifecycle_generation, repo_root
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}; the task was not modified or archived", file=sys.stderr)
+        return 1
+
     dir_name = task_dir.name
-    task_json_path = task_dir / FILE_TASK_JSON
 
     # Update status before archiving
     today = datetime.now().strftime("%Y-%m-%d")
@@ -1320,34 +1308,8 @@ def cmd_archive(args: argparse.Namespace) -> int:
     # into safe_archive_paths_to_add so they're staged in this commit.
     modified_children: list[str] = []
     if task_json_path.is_file():
-        data, read_reason = read_json_checked(task_json_path)
-        if data is None:
-            # Archiving is still the right outcome for a task whose task.json
-            # is broken — but say so, or the missing "completed" status looks
-            # like the archive silently did half its job.
-            problem, _ = describe_json_read_failure(task_json_path, read_reason)
-            print(
-                colored(
-                    f"Warning: {problem}; archiving without updating status/children.",
-                    Colors.YELLOW,
-                ),
-                file=sys.stderr,
-            )
-        else:
-            # Before any mutation: branch metadata is unrecoverable once the
-            # task leaves the active tree. Stale branches only warn.
-            if not _validate_branch_metadata(
-                data,
-                task_name,
-                repo_root,
-                getattr(args, "skip_branch_validation", False),
-            ):
-                print(
-                    f"Not archived: {_repo_relative_path(task_dir, repo_root)} is unchanged.",
-                    file=sys.stderr,
-                )
-                return 1
-
+        data = task_data
+        if data is not None:
             data["status"] = "completed"
             data["completedAt"] = today
             if not write_json(task_json_path, data):
@@ -1375,7 +1337,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
             unlinked_children: dict[Path, str | None] = {}
             if task_children:
                 for child_name in task_children:
-                    child_dir_path = find_task_by_name(child_name, tasks_dir)
+                    child_dir_path = find_task_by_name(child_name, tasks_dir, repo_root)
                     if child_dir_path:
                         child_json = child_dir_path / FILE_TASK_JSON
                         if child_json.is_file():
@@ -1426,8 +1388,16 @@ def cmd_archive(args: argparse.Namespace) -> int:
                             modified_children.append(child_dir_path.name)
 
     # Clear any session that still points at this task before the path moves.
-    from .active_task import clear_task_from_sessions
-    clear_task_from_sessions(str(task_dir), repo_root)
+    try:
+        clear_task_from_sessions(
+            identity.task_id,
+            identity.lifecycle_generation,
+            repo_root,
+            selected=archive_session_records,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}; task metadata may already be updated, but the task was not moved", file=sys.stderr)
+        return 1
 
     # Archive
     result = archive_task_complete(task_dir, repo_root)
@@ -1438,7 +1408,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
 
         # Auto-commit unless --no-commit
         if not getattr(args, "no_commit", False):
-            if not _auto_commit_archive(dir_name, repo_root, modified_children):
+            if not _auto_commit_archive(dir_name, repo_root, archive_dest, modified_children):
                 print(
                     colored(
                         "Archive moved on disk, but git auto-commit did not complete. "
@@ -1463,6 +1433,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
 def _auto_commit_archive(
     task_name: str,
     repo_root: Path,
+    archive_dest: Path,
     modified_children: list[str] | None = None,
 ) -> bool:
     """Stage Trellis-owned task paths and commit after archive.
@@ -1475,15 +1446,15 @@ def _auto_commit_archive(
     If ``.gitignore`` blocks the paths, we warn + skip — we do NOT
     retry with ``git add -f``. The warning explicitly forbids
     ``git add -f .trellis/`` (which would fan out to caches/backups)
-    and points users at ``session_auto_commit: false``.
+    and points users at ``task_auto_commit: false``.
 
-    Honors ``session_auto_commit`` in ``.trellis/config.yaml``: when
+    Honors ``task_auto_commit`` in ``.trellis/config.yaml``: when
     set to ``false``, this function returns immediately without
     touching git (the archive directory move on disk is unaffected).
     """
-    if not get_session_auto_commit(repo_root):
+    if not get_task_auto_commit(repo_root):
         print(
-            "[OK] session_auto_commit: false — skipping git stage/commit.",
+            "[OK] task_auto_commit: false — skipping git stage/commit.",
             file=sys.stderr,
         )
         return True
@@ -1496,7 +1467,7 @@ def _auto_commit_archive(
     source_was_tracked = rc == 0 and bool(tracked_out.strip())
 
     paths = safe_archive_paths_to_add(
-        repo_root, task_name=task_name, modified_children=modified_children
+        repo_root, archive_dest, modified_children=modified_children
     )
     if not paths:
         print("[OK] No task changes to commit.", file=sys.stderr)
@@ -1660,7 +1631,7 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
         return 1
 
     # Add child to parent's children list
-    parent_children = _ensure_children_list(parent_data)
+    parent_children = parent_data["children"]
     child_dir_name = child_dir.name
     if child_dir_name not in parent_children:
         parent_children.append(child_dir_name)
@@ -1731,7 +1702,7 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
         return 1
 
     # Remove child from parent's children list
-    parent_children = _ensure_children_list(parent_data)
+    parent_children = parent_data["children"]
     child_dir_name = child_dir.name
     if child_dir_name in parent_children:
         parent_children.remove(child_dir_name)

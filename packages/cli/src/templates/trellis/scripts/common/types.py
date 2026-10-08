@@ -22,7 +22,7 @@ class TaskData(TypedDict, total=False):
     """Shape of task.json on disk.
 
     Used only for type annotations when reading task.json.
-    Writes must use the original dict to avoid losing unknown fields.
+    Writes use the validated original dict to preserve current task metadata.
     """
 
     id: str
@@ -34,8 +34,6 @@ class TaskData(TypedDict, total=False):
     scope: str | None
     package: str | None
     priority: str
-    creator: str
-    assignee: str
     createdAt: str
     completedAt: str | None
     branch: str | None
@@ -43,7 +41,6 @@ class TaskData(TypedDict, total=False):
     worktree_path: str | None
     commit: str | None
     pr_url: str | None
-    subtasks: list[str]
     children: list[str]
     parent: str | None
     relatedFiles: list[str]
@@ -68,7 +65,6 @@ class TaskInfo:
     directory: Path
     title: str
     status: str
-    assignee: str
     priority: str
     children: tuple[str, ...]
     parent: str | None

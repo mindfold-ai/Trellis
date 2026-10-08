@@ -136,7 +136,7 @@ def _detect_platform(input_data: dict) -> str | None:
     return None
 
 
-def get_current_task(
+def _resolve_active_task(
     repo_root: str,
     input_data: dict,
     *,
@@ -144,15 +144,12 @@ def get_current_task(
     allow_single_session_fallback: bool = True,
     allow_environment_context: bool = True,
     require_existing: bool = False,
-) -> str | None:
+):
     """Resolve current task directory through the unified active task resolver."""
     scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
-    try:
-        from common.active_task import resolve_active_task  # type: ignore[import-not-found]
-    except Exception:
-        return None
+    from common.active_task import resolve_active_task  # type: ignore[import-not-found]
 
     active = resolve_active_task(
         Path(repo_root),
@@ -161,7 +158,14 @@ def get_current_task(
         allow_single_session_fallback=allow_single_session_fallback,
         allow_environment_context=allow_environment_context,
     )
-    if require_existing and active.stale:
+    return active
+
+
+def get_current_task(repo_root: str, input_data: dict, **kwargs) -> str | None:
+    """Relative-reference compatibility reader; injection uses ActiveTask fields."""
+    active = _resolve_active_task(repo_root, input_data, **kwargs)
+    if active.error or active.stale:
+        print(f"Trellis task binding error: {active.error or 'stale binding'}", file=sys.stderr)
         return None
     return active.task_path
 
@@ -379,7 +383,8 @@ def _materialize_directory(
         md_files = sorted(
             f
             for f in os.listdir(full_path)
-            if f.endswith(".md") and os.path.isfile(os.path.join(full_path, f))
+            if f.endswith(".md")
+            and os.path.isfile(os.path.join(full_path, f))
         )
         for filename in md_files[:max_files]:
             relative_path = os.path.join(dir_path, filename)
@@ -934,7 +939,7 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
     if not repo_root:
         return
 
-    task_dir = get_current_task(
+    active = _resolve_active_task(
         repo_root,
         {"session_id": parent_session_id},
         platform="codex",
@@ -942,8 +947,19 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
         allow_environment_context=False,
         require_existing=True,
     )
-    if not task_dir:
+    if active.error or active.stale:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "SubagentStart",
+            "additionalContext": f"Trellis task binding error: {active.error or 'stale binding'}",
+        }}))
         return
+    if not active.resolved_task_path:
+        return
+    repo_root = str(active.task_workspace_root)
+    task_dir = (
+        active.task_path if active.task_workspace_root == active.invocation_root
+        else str(active.resolved_task_path)
+    )
 
     if subagent_type in AGENTS_REQUIRE_TASK:
         task_dir_full = Path(repo_root) / task_dir
@@ -960,6 +976,10 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
     if not context:
         return
 
+    context = (
+        f"Caller workspace: {active.invocation_root}\n"
+        f"Task workspace: {repo_root}\n\n{context}"
+    )
     output = {
         "hookSpecificOutput": {
             "hookEventName": "SubagentStart",
@@ -1103,10 +1123,10 @@ def main():
     if _hook_event_name(input_data) == "SubagentStart":
         try:
             _handle_codex_subagent_start(input_data)
-        except Exception:
+        except Exception as error:
             # A native context hook must never prevent Codex from spawning the
             # requested child when its runtime state is unavailable or stale.
-            pass
+            print(f"Trellis task context error: {error}", file=sys.stderr)
         sys.exit(0)
 
     subagent_type, original_prompt, tool_input = _parse_hook_input(input_data)
@@ -1122,35 +1142,30 @@ def main():
         sys.exit(0)
 
     # Get current task directory (research doesn't require it)
-    task_dir = get_current_task(
+    active = _resolve_active_task(
         repo_root,
         input_data,
         allow_single_session_fallback=True,
     )
+    if active.error or active.stale:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": f"Trellis task binding error: {active.error or 'stale binding'}",
+        }}))
+        return
+    task_dir = (
+        active.task_path if active.task_workspace_root == active.invocation_root
+        else str(active.resolved_task_path) if active.resolved_task_path else None
+    )
+    repo_root = str(active.task_workspace_root or repo_root)
 
     # implement/check need task directory
     if subagent_type in AGENTS_REQUIRE_TASK:
         if not task_dir:
             sys.exit(0)
-        # Contain the pointer before reading anything through it. `task.py` now
-        # refuses to store a ref that leaves the repo, but a session file
-        # written before that fix can still hold one, and `trellis update`
-        # does not rewrite session files — so a poisoned pointer outlives the
-        # upgrade that closed the writer. This is the last hop before the
-        # task's prd.md/design.md reach the model prompt, so it checks again.
-        try:
-            root_real = os.path.realpath(repo_root)
-            # `.trellis` may itself be a symlink into a store outside the
-            # repo (#567); its real location is a second legitimate base.
-            workflow_real = os.path.realpath(os.path.join(repo_root, ".trellis"))
-            task_dir_full = os.path.realpath(os.path.join(repo_root, task_dir))
-            if not _real_path_contained(root_real, task_dir_full) and not (
-                _real_path_contained(workflow_real, task_dir_full)
-            ):
-                sys.exit(0)
-        except OSError:
-            sys.exit(0)
-        if not os.path.exists(task_dir_full):
+        # The resolver validates live worktree membership and the effective
+        # tasks root, including supported external tasks-directory symlinks.
+        if not os.path.isdir(os.path.join(repo_root, task_dir)):
             sys.exit(0)
 
     # Check for [finish] marker in prompt (check agent with finish context)
@@ -1181,6 +1196,10 @@ def main():
     if not context:
         sys.exit(0)
 
+    new_prompt += (
+        f"\n\nCaller workspace: {active.invocation_root}\n"
+        f"Task workspace: {repo_root}"
+    )
     # Return updated input. Most platforms ignore unrecognized fields, so we
     # include multiple formats. ZCode is stricter; live probing confirmed the
     # nested Claude-compatible shape below reaches the sub-agent prompt.

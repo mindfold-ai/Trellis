@@ -8,6 +8,7 @@ import {
   type WorkerState,
 } from "../internal/store/worker-state.js";
 import { resolveChannelRef } from "./resolve.js";
+import { eventsPath, seqSidecarPath, lockPath } from "../internal/store/paths.js";
 import type {
   SpawnWorkerInput,
   WorkerRuntime,
@@ -36,6 +37,11 @@ export async function spawnWorker(
     ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
   });
 
+  // Reject predictable storage failures before starting an external worker.
+  eventsPath(input.channel, ref.project, input.cwd);
+  seqSidecarPath(input.channel, ref.project, input.cwd);
+  lockPath(input.channel, ref.project, input.cwd);
+
   const startInput: WorkerStartInput = {
     channel: ref,
     workerId: input.workerId,
@@ -62,9 +68,10 @@ export async function spawnWorker(
       ...(input.meta !== undefined ? { meta: input.meta } : {}),
     },
     ref.project,
+    input.cwd,
   );
 
-  const events = await readChannelEvents(input.channel, ref.project);
+  const events = await readChannelEvents(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events, ref);
   const state = registry.workers.find(
     (w) => w.workerId === input.workerId,

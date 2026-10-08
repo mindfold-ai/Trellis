@@ -1,0 +1,29 @@
+{
+  "id": "issue-29-identity-reservation-boundary",
+  "name": "29-identity-reservation-boundary",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 29,
+    "disposition": "exact_source"
+  },
+  "title": "修复身份占用扫描的步骤职责边界",
+  "description": "承接 castbox/Trellis#29，分离身份占用、选中任务生命周期校验与迁移分类，保持历史数据和身份冲突拒绝。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-08",
+  "completedAt": "2026-10-08",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

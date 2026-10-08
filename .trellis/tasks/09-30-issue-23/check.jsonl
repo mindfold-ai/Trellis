@@ -1,0 +1,4 @@
+{"file":".trellis/spec/cli/backend/quality-guidelines.md","reason":"Repository verification and regression requirements"}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"Historical preservation and generated asset mutation boundaries"}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Meaningful compatibility and installed runtime tests"}
+{"file":".trellis/tasks/09-30-issue-23/prd.md","reason":"Issue acceptance and excluded downstream scope"}

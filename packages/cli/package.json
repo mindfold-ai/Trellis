@@ -1,6 +1,6 @@
 {
   "name": "@mindfoldhq/trellis",
-  "version": "0.6.17",
+  "version": "0.7.0-castbox.3",
   "description": "AI capabilities grow like ivy — Trellis provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",
@@ -34,8 +34,7 @@
     "release:major": "node scripts/release.js major",
     "release:beta": "node scripts/release.js beta",
     "release:rc": "node scripts/release.js rc",
-    "release:promote": "node scripts/release.js promote",
-    "manifest": "node scripts/create-manifest.js"
+    "release:promote": "node scripts/release.js promote"
   },
   "keywords": [
     "ai",

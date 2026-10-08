@@ -57,6 +57,7 @@ export async function requestInterrupt(
       ...(input.meta !== undefined ? { meta: input.meta } : {}),
     },
     ref.project,
+    input.cwd,
   );
 }
 
@@ -82,7 +83,7 @@ export async function interruptWorker(
     ...(input.cwd !== undefined ? { cwd: input.cwd } : {}),
   });
 
-  const events = await readChannelEvents(input.channel, ref.project);
+  const events = await readChannelEvents(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events);
   const worker = registry.workers.find((w) => w.workerId === input.workerId);
 
@@ -100,6 +101,7 @@ export async function interruptWorker(
       ...(input.meta !== undefined ? { meta: input.meta } : {}),
     },
     ref.project,
+    input.cwd,
   );
 
   if (!worker) {
@@ -141,6 +143,7 @@ export async function interruptWorker(
       ...(input.meta !== undefined ? { meta: input.meta } : {}),
     },
     ref.project,
+    input.cwd,
   );
 
   const delivery: InterruptDelivery =

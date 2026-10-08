@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Issue 25 creation and lifecycle contract"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Issue 25 creation and lifecycle contract"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Issue 25 creation and lifecycle contract"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Issue 25 creation and lifecycle contract"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Issue 25 creation and lifecycle contract"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Issue 25 creation and lifecycle contract"}

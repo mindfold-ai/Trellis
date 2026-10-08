@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import {
+  basename,
   delimiter,
   dirname,
   isAbsolute,
@@ -26,6 +27,7 @@ interface PiToolResult {
   details?: unknown;
 }
 interface PiExtensionContext {
+  cwd?: string;
   hasUI?: boolean;
   model?: {
     provider?: string;
@@ -422,9 +424,15 @@ function num(v: unknown): number {
 function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 24);
 }
-function readText(p: string) {
+function activePath(root: string, p: string): string | null {
+  const full = resolve(root, p);
+  try { realpathSync(full); return full; } catch { return null; }
+}
+function readText(p: string, root: string) {
+  const file = activePath(root, p);
+  if (!file) return "";
   try {
-    return readFileSync(p, "utf-8");
+    return readFileSync(file, "utf-8");
   } catch {
     return "";
   }
@@ -815,7 +823,7 @@ function unquoteYaml(s: string): string {
  * fall back to the default for that key). */
 function readContextInjectionLimits(repoRoot: string): ContextInjectionLimits {
   const limits: ContextInjectionLimits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS };
-  const text = readText(join(repoRoot, ".trellis", "config.yaml"));
+  const text = readText(join(repoRoot, ".trellis", "config.yaml"), repoRoot);
   if (!text) return limits;
 
   let inSection = false;
@@ -888,7 +896,8 @@ function budgetedBlock(
   return block;
 }
 function readFileBytes(basePath: string, filePath: string): Buffer | null {
-  const full = join(basePath, filePath);
+  const full = activePath(basePath, join(basePath, filePath));
+  if (!full) return null;
   try {
     if (!statSync(full).isFile()) return null;
   } catch {
@@ -943,8 +952,8 @@ interface JsonlEntry {
   type: string;
   reason: string;
 }
-function readJsonlEntries(basePath: string, jsonlPath: string): JsonlEntry[] {
-  const text = readText(join(basePath, jsonlPath));
+function readJsonlEntries(basePath: string, jsonlPath: string, root: string): JsonlEntry[] {
+  const text = readText(join(basePath, jsonlPath), root);
   if (!text) return [];
   const entries: JsonlEntry[] = [];
   for (const line of text.split(/\r?\n/)) {
@@ -971,11 +980,33 @@ function readJsonlEntries(basePath: string, jsonlPath: string): JsonlEntry[] {
 function findRoot(start: string): string {
   let c = resolve(start);
   while (true) {
-    if (existsSync(join(c, ".trellis")) || existsSync(join(c, ".pi"))) return c;
+    // Only a directory with `.trellis/` is a Trellis project root. A bare
+    // `.pi` can be pi's global config (`~/.pi`) or an unrelated project, so
+    // accepting it here made root resolution stop too early (e.g. on `~`).
+    // Also reject a regular file named `.trellis` — the marker must be a
+    // directory.
+    const marker = join(c, ".trellis");
+    if (existsSync(marker) && statSync(marker).isDirectory()) return c;
     const p = dirname(c);
     if (p === c) return resolve(start);
     c = p;
   }
+}
+// Resolve the project root from the session working directory when available
+// (pi's ExtensionContext.cwd), falling back to the pi host process cwd.
+// process.cwd() is the host's launch directory and can differ from the
+// session cwd (pi-web / RPC / multi-project hosts), which made .pi/agents
+// lookups fail or resolve to the wrong project.
+function resolveRoot(ctx?: PiExtensionContext): string {
+  return findRoot(ctx?.cwd ?? process.cwd());
+}
+// Cache key scoping per-session state by both the session key and the
+// resolved project root. With dynamic root resolution a session can observe
+// different ctx.cwd values over its lifetime (pi-web / RPC / project
+// switching); keying caches by the session key alone would leak one
+// project's startup/task context into another.
+function cacheKey(k: string | null, ctx?: PiExtensionContext): string {
+  return `${k ?? "default"}::${resolveRoot(ctx)}`;
 }
 function splitFM(c: string) {
   const m = c.replace(/^\uFEFF/, "").match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
@@ -1054,47 +1085,53 @@ function contextKey(input?: unknown, ctx?: PiExtensionContext): string | null {
   return null;
 }
 
-/**
- * Return `candidate` when it lands inside `root`, else null.
- *
- * A session pointer is not always something the user typed. `task.py` now
- * refuses to store a ref that leaves the project, but a session file written
- * before that fix can still hold one, and `trellis update` does not rewrite
- * session files — so a poisoned pointer outlives the upgrade that closed the
- * writer. Both sides are resolved so a task directory symlinked outside is
- * refused too, but the original `candidate` is returned on success: callers do
- * `relative(root, dir)`, and handing them a realpath would break that whenever
- * `root` itself sits behind a symlink (`/tmp` does on macOS).
- */
-function containInRoot(root: string, candidate: string): string | null {
-  try {
-    const rel = relative(realpathSync(root), realpathSync(candidate));
-    if (rel !== "" && (rel.startsWith("..") || isAbsolute(rel))) return null;
-    return candidate;
-  } catch {
-    return null;
-  }
+interface ActiveTask {
+  taskDir: string | null;
+  taskRoot: string;
+  status: string;
+  id: string;
+  error: string | null;
 }
 
-function readTaskDir(root: string, key: string | null): string | null {
-  if (!key) return null;
+function readActiveTask(root: string, key: string | null): ActiveTask {
+  const empty: ActiveTask = { taskDir: null, taskRoot: root, status: "no_task", id: "", error: null };
+  if (!key) return empty;
+  const invalid = (error: string): ActiveTask => ({ ...empty, status: "invalid_task", error });
+  const script = join(root, ".trellis", "scripts", "task.py");
+  if (!activePath(root, script) || !exists(script)) return invalid("Task resolver unavailable");
   try {
-    const ctx = JSON.parse(
-      readText(join(root, ".trellis", ".runtime", "sessions", `${key}.json`)),
-    ) as JsonObject;
-    let ref = str(ctx.current_task);
-    if (!ref) return null;
-    ref = ref;
-    ref = ref.replace(/\\/g, "/").replace(/^\.\//, "");
-    if (ref.startsWith("tasks/")) ref = `.trellis/${ref}`;
-    const candidate = ref.startsWith(".trellis/")
-      ? join(root, ref)
-      : isAbsolute(ref)
-        ? ref
-        : join(root, ".trellis", "tasks", ref);
-    return containInRoot(root, candidate);
-  } catch {
-    return null;
+    // The shared runtime owns live Git membership, common-dir storage, legacy
+    // uniqueness and historical guards. Never infer a different session here.
+    const result = spawnSync(process.platform === "win32" ? "python" : "python3", [script, "current", "--json"], {
+      cwd: root,
+      env: { ...process.env, TRELLIS_CONTEXT_ID: key, PYTHONDONTWRITEBYTECODE: "1" },
+      encoding: "utf-8",
+      timeout: SESSION_OVERVIEW_TIMEOUT_MS,
+      windowsHide: true,
+    });
+    if (result.error) return invalid(result.error.message);
+    const data: unknown = JSON.parse(result.stdout ?? "");
+    if (!isObj(data) || typeof data.invocation_root !== "string" || typeof data.stale !== "boolean") {
+      return invalid("Invalid task resolver response; update the Trellis runtime");
+    }
+    if (data.error || data.stale) return invalid(JSON.stringify(data.error ?? "Stale task binding"));
+    if (data.current_task === null && data.source === "none" && result.status === 1) return empty;
+    if (result.status !== 0 || !isObj(data.current_task)) return invalid("Task resolver failed");
+    const status = data.current_task.status;
+    if (typeof status !== "string" || !status.trim()) return invalid("Invalid task status: expected a nonempty string");
+    const taskRoot = str(data.task_workspace_root);
+    const taskDir = str(data.resolved_task_path);
+    if (!taskRoot || !taskDir || !isAbsolute(taskRoot) || !isAbsolute(taskDir) || !activePath(taskRoot, taskDir)) {
+      return invalid("Invalid task workspace response");
+    }
+    return {
+      taskDir, taskRoot,
+      status,
+      id: str(data.current_task.id) ?? basename(taskDir),
+      error: null,
+    };
+  } catch (error) {
+    return invalid(error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -1102,7 +1139,10 @@ function readTaskDir(root: string, key: string | null): string | null {
 const WF_RE =
   /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g;
 function workflowBreadcrumb(root: string, key: string | null): string {
-  const wf = readText(join(root, ".trellis", "workflow.md"));
+  const active = readActiveTask(root, key);
+  if (active.error) return `<workflow-state>\nStatus: invalid_task\n${active.error}\n</workflow-state>`;
+  root = active.taskRoot;
+  const wf = readText(join(root, ".trellis", "workflow.md"), root);
   if (!wf) return "";
   const templates: Record<string, string> = {};
   for (const m of wf.matchAll(WF_RE)) {
@@ -1110,19 +1150,11 @@ function workflowBreadcrumb(root: string, key: string | null): string {
       b = (m[2] ?? "").trim();
     if (s && b) templates[s] = b;
   }
-  const dir = readTaskDir(root, key);
   let header = "Status: no_task",
     lookup = "no_task";
-  if (dir) {
-    try {
-      const d = JSON.parse(readText(join(dir, "task.json"))) as JsonObject;
-      const status = str(d.status) ?? "";
-      const id = str(d.id) ?? dir.split(/[\\/]/).pop() ?? "";
-      if (status) {
-        header = `Task: ${id} (${status})`;
-        lookup = status;
-      }
-    } catch {}
+  if (active.taskDir) {
+    header = `Task: ${active.id} (${active.status})`;
+    lookup = active.status;
   }
   const body = templates[lookup] ?? "Refer to workflow.md for current step.";
   return `<workflow-state>\n${header}\n${body}\n</workflow-state>`;
@@ -1131,7 +1163,7 @@ function workflowBreadcrumb(root: string, key: string | null): string {
 // ── Session Overview ───────────────────────────────────────────────────
 function runContextScript(root: string, key: string | null, args: string[]): string {
   const script = join(root, ".trellis", "scripts", "get_context.py");
-  if (!exists(script)) return "";
+  if (!activePath(root, script) || !exists(script)) return "";
   try {
     const py = process.platform === "win32" ? "python" : "python3";
     const result = spawnSync(py, [script, ...args], {
@@ -1182,9 +1214,12 @@ function buildStartupContext(
 }
 
 function buildContext(root: string, agent: string, key: string | null): string {
-  const dir = readTaskDir(root, key);
+  const active = readActiveTask(root, key);
+  if (active.error) return `Trellis task binding invalid: ${active.error}`;
+  const dir = active.taskDir;
   if (!dir)
     return "No active Trellis task found. Read .trellis/ before proceeding.";
+  root = active.taskRoot;
   const relTaskDir = relative(root, dir).replace(/\\/g, "/");
   const limits = readContextInjectionLimits(root);
   const budget = new ContextBudget(limits.max_total_bytes);
@@ -1194,7 +1229,7 @@ function buildContext(root: string, agent: string, key: string | null): string {
   const jsonlName = TRELLIS_AGENT_JSONL[agent] ?? "";
   const specBlocks: string[] = [];
   if (jsonlName) {
-    for (const entry of readJsonlEntries(dir, jsonlName)) {
+    for (const entry of readJsonlEntries(dir, jsonlName, root)) {
       if (entry.type === "directory") continue;
       const block = materializeFile(root, entry.file, entry.reason, limits, budget);
       if (block) specBlocks.push(block);
@@ -1257,7 +1292,7 @@ function buildPrompt(
   key: string | null,
 ): string {
   const agent = normalizeAgent(input.agent);
-  const raw = readText(join(root, ".pi", "agents", `${agent}.md`));
+  const raw = readText(join(root, ".pi", "agents", `${agent}.md`), root);
   const def = stripFM(raw);
   const ctx = buildContext(root, agent, key);
   return [
@@ -1610,7 +1645,7 @@ async function runSubagent(
 ): Promise<{ output: string; details: ProgressDetails; failed: boolean }> {
   const parentSessionId = parentSessionIdForChild(ctx);
   const agentName = normalizeAgent(input.agent);
-  const agentRaw = readText(join(root, ".pi", "agents", `${agentName}.md`));
+  const agentRaw = readText(join(root, ".pi", "agents", `${agentName}.md`), root);
   const agentCfg = parseAgentFM(agentRaw);
   const runCfg = resolveRunCfg(
     input,
@@ -1761,7 +1796,9 @@ export default function trellisExtension(pi: {
   getThinkingLevel?: () => string;
 }): void {
   if (process.env.TRELLIS_SUBAGENT_CHILD === "1") return;
-  const root = findRoot(process.cwd());
+  // Process-level fallback; call sites with a session context re-resolve via
+  // resolveRoot(ctx) so the active project (session cwd) is used instead.
+  const root = resolveRoot();
   const procKey = `pi_process_${hash([root, process.pid, Date.now(), randomBytes(8).toString("hex")].join(":"))}`;
   let curKey: string | null = null;
 
@@ -1773,20 +1810,22 @@ export default function trellisExtension(pi: {
 
   // Per-turn cache to avoid double-spawning python
   let turnCache: {
-    key: string | null;
+    key: string;
     ts: number;
     wf: string;
     ov: string;
   } | null = null;
-  const getTurnCtx = (k: string | null) => {
+  const getTurnCtx = (k: string | null, ctx?: PiExtensionContext) => {
     const now = Date.now();
-    if (turnCache && turnCache.key === k && now - turnCache.ts < 1500)
+    const ck = cacheKey(k, ctx);
+    if (turnCache && turnCache.key === ck && now - turnCache.ts < 1500)
       return turnCache;
+    const r = resolveRoot(ctx);
     turnCache = {
-      key: k,
+      key: ck,
       ts: now,
-      wf: workflowBreadcrumb(root, k),
-      ov: sessionOverview(root, k),
+      wf: workflowBreadcrumb(r, k),
+      ov: sessionOverview(r, k),
     };
     return turnCache;
   };
@@ -1798,11 +1837,12 @@ export default function trellisExtension(pi: {
   const getStartupCtx = (
     k: string | null,
     turn: { ov: string },
+    ctx?: PiExtensionContext,
   ): string => {
-    const key = k ?? "default";
+    const key = cacheKey(k, ctx);
     let startup = startupCtxCache.get(key);
     if (startup === undefined) {
-      startup = buildStartupContext(root, k, turn.ov);
+      startup = buildStartupContext(resolveRoot(ctx), k, turn.ov);
       startupCtxCache.set(key, startup);
     }
     return startup;
@@ -1810,6 +1850,14 @@ export default function trellisExtension(pi: {
   const taskCtxSnapshot = new Map<string, string>();
   const lastSentTaskCtx = new Map<string, string>();
   const lastSentRuntimeCtx = new Map<string, string>();
+  // Session-level "most recently persisted" project root. The root-scoped
+  // lastSent* maps suppress re-emission for an unchanged root, but when a
+  // session switches projects (A -> B -> A) the latest persisted update
+  // would otherwise stay B's — and its <trellis-task-context-update>
+  // explicitly supersedes the system-prompt context. Re-assert the current
+  // root's task/runtime context on every root transition so the agent never
+  // keeps following the previous project's instructions.
+  const lastPersistedRoot = new Map<string, string>();
 
   // Toggle only the latest subagent native card; do not use Pi global tool expansion.
   const toggleDetail = (ctx: PiExtensionContext) => {
@@ -1877,6 +1925,7 @@ export default function trellisExtension(pi: {
       ctx?: PiExtensionContext,
     ) => {
       activeSubagentToolCallId = id;
+      const root = resolveRoot(ctx);
       const agentName = normalizeAgent(input.agent);
       if (!isTrellisAgent(root, agentName)) {
         return {
@@ -2027,11 +2076,14 @@ export default function trellisExtension(pi: {
     return undefined;
   });
   pi.on?.("before_agent_start", (event, ctx) => {
+    // A new turn can follow task start/finish/rebind within the old cache TTL.
+    turnCache = null;
     const k = getKey(event, ctx);
-    const key = k ?? "default";
+    const key = cacheKey(k, ctx);
     const cur = (event as { systemPrompt?: string }).systemPrompt ?? "";
-    const turn = getTurnCtx(k);
-    const startup = getStartupCtx(k, turn);
+    const root = resolveRoot(ctx);
+    const turn = getTurnCtx(k, ctx);
+    const startup = getStartupCtx(k, turn, ctx);
     // Task context is snapshotted into systemPrompt once; later on-disk
     // changes are delivered as persisted messages so the prefix stays stable.
     const freshTaskCtx = buildContext(root, "trellis-implement", k);
@@ -2043,11 +2095,23 @@ export default function trellisExtension(pi: {
     }
     const updates: string[] = [];
     const runtimeContext = [turn.wf, turn.ov].filter(Boolean).join("\n\n");
-    if (runtimeContext && runtimeContext !== lastSentRuntimeCtx.get(key)) {
+    // Re-assert the current root's context on project switches: when the
+    // session returns to an unchanged root, the root-scoped lastSent* maps
+    // alone would leave the previous project's persisted update as the most
+    // recent one in history.
+    const prevRoot = lastPersistedRoot.get(k ?? "default");
+    const switchedRoot = prevRoot !== undefined && prevRoot !== root;
+    if (
+      runtimeContext &&
+      (runtimeContext !== lastSentRuntimeCtx.get(key) || switchedRoot)
+    ) {
       lastSentRuntimeCtx.set(key, runtimeContext);
       updates.push(runtimeContext);
     }
-    if (freshTaskCtx !== lastSentTaskCtx.get(key)) {
+    if (
+      freshTaskCtx !== lastSentTaskCtx.get(key) ||
+      switchedRoot
+    ) {
       lastSentTaskCtx.set(key, freshTaskCtx);
       updates.push(
         "<trellis-task-context-update>\nTask context changed on disk. This supersedes the Trellis Task Context in the system prompt.\n\n" +
@@ -2055,6 +2119,7 @@ export default function trellisExtension(pi: {
           "\n</trellis-task-context-update>",
       );
     }
+    if (updates.length > 0) lastPersistedRoot.set(k ?? "default", root);
     const content = updates.join("\n\n");
     return {
       message: content

@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureDir, writeFile } from "../utils/file-writer.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
+import { getAllScripts } from "./trellis/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,6 +112,16 @@ export async function copyTrellisDir(
   destPath: string,
   options?: { executable?: boolean },
 ): Promise<void> {
+  if (srcRelativePath === "scripts") {
+    for (const [relativePath, content] of getAllScripts()) {
+      const destination = path.join(destPath, relativePath);
+      ensureDir(path.dirname(destination));
+      await writeFile(destination, replacePythonCommandLiterals(content), {
+        executable: options?.executable && relativePath.endsWith(".py"),
+      });
+    }
+    return;
+  }
   const trellisPath = getTrellisSourcePath();
   const srcPath = path.join(trellisPath, srcRelativePath);
   await copyDirRecursive(srcPath, destPath, options);

@@ -1,6 +1,6 @@
 ---
 name: trellis-brainstorm
-description: "Guides collaborative requirements discovery before implementation. Creates task directory, seeds PRD, asks high-value questions one at a time, researches technical choices, and converges on MVP scope. Use when requirements are unclear, there are multiple valid approaches, or the user describes a new feature or complex task."
+description: "Guides collaborative requirements discovery with or without a Trellis task. Asks high-value questions one at a time, researches technical choices, and returns reviewable planning content to the caller's chosen destination. Use when requirements are unclear, there are multiple valid approaches, or the user describes a new feature or complex task."
 ---
 
 # Brainstorm - Requirements Discovery (AI Coding Enhanced)
@@ -15,7 +15,7 @@ If a question can be answered by exploring the codebase, explore the codebase in
 
 Guide AI through collaborative requirements discovery **before implementation**, optimized for AI coding workflows:
 
-* **Task-first** (capture ideas immediately)
+* **Destination-aware** (use the caller's planning destination when supplied)
 * **Action-before-asking** (reduce low-value questions)
 * **Research-first** for technical choices (avoid asking users to invent options)
 * **Diverge → Converge** (expand thinking, then lock MVP)
@@ -35,8 +35,8 @@ Triggered from /trellis:start when the user describes a development task, especi
 
 ## Core Principles (Non-negotiable)
 
-1. **Task-first (capture early)**
-   Always ensure a task exists at the start so the user's ideas are recorded immediately.
+1. **Standalone exploration**
+   A task is optional. The caller owns task creation, output paths, approval, and activation.
 
 2. **Action before asking**
    If you can derive the answer from repo code, docs, configs, conventions, or quick research — do that first.
@@ -59,21 +59,16 @@ Triggered from /trellis:start when the user describes a development task, especi
 
 ---
 
-## Step 0: Ensure Task Exists (ALWAYS)
+## Step 0: Capture the Requirement
 
-Before any Q&A, ensure a task exists. If none exists, create one immediately.
+Start from the caller's requirement, optional evidence context, and optional
+planning destination. Do not create or select tasks or directories, bind a
+session, start or archive a task, or ask for lifecycle consent. When the caller
+supplies a planning destination, update it. Otherwise return the planning
+content in conversation. References to the PRD below mean that supplied
+destination or conversational planning content.
 
-* Use a **temporary working title** derived from the user's message.
-* It's OK if the title is imperfect — refine later in PRD.
-
-```bash
-TASK_DIR=$(python3 ./.trellis/scripts/task.py create "brainstorm: <short goal>" --description "<one-line summary>" --slug <auto>)
-```
-
-Use a slug without a date prefix. `task.py create` adds the `MM-DD-`
-directory prefix automatically.
-
-Create/seed `prd.md` immediately with what you know:
+Capture what is known using this structure:
 
 ```markdown
 # brainstorm: <short goal>
@@ -154,7 +149,7 @@ Write findings into PRD:
 | **Moderate** | Multiple files, some ambiguity                         | Light brainstorm (2–3 high-value questions) |
 | **Complex**  | Vague goal, architectural choices, multiple approaches | Full brainstorm                             |
 
-> Note: Task already exists from Step 0. Classification only affects depth of brainstorming.
+> Classification affects the depth of brainstorming; no task is required.
 
 ---
 
@@ -206,14 +201,14 @@ For each research topic, **spawn a `trellis-research` sub-agent via the Task too
 
 Why:
 - The sub-agent has its own context window → doesn't pollute brainstorm context with raw tool output
-- It persists findings to `{TASK_DIR}/research/<topic>.md` (the contract — see `workflow.md` Phase 1.2)
+- When the caller supplies a research destination, it persists findings there; otherwise summarize findings in the planning content.
 - It returns only `{file path, one-line summary}` to the main agent
 - Independent topics can be **parallelized** — spawn multiple sub-agents in one tool call
 
-> **Codex exception**: on Codex CLI, do NOT dispatch `trellis-research` for research-first mode — do the research inline (WebFetch / WebSearch in the main session) and write findings to `{TASK_DIR}/research/<topic>.md` yourself. Reason: Codex `spawn_agent` runs sub-agents with `fork_turns="none"` (isolated context, no parent session inheritance), so the research sub-agent cannot resolve the active task path via `task.py current` and silently aborts without producing files. Inline research on Codex avoids this failure mode. The 3+ inline research calls limit (B rule in `workflow.md`) is relaxed for Codex specifically.
+> **Codex exception**: on Codex CLI, perform research inline when no stable task destination is supplied. Persist findings only at a caller-provided path; otherwise summarize them in the planning content.
 
 Agent type: `trellis-research`
-Task description template: "Research <specific question>; persist findings to `{TASK_DIR}/research/<topic-slug>.md`."
+Task description template when a destination is supplied: "Research <specific question>; persist findings to the caller-provided path."
 
 ❌ Bad (what you must NOT do):
 ```
@@ -241,13 +236,13 @@ Each `trellis-research` sub-agent should:
 1. Identify 2–4 comparable tools/patterns for its topic
 2. Summarize common conventions and why they exist
 3. Map conventions onto our repo constraints
-4. Write findings to `{TASK_DIR}/research/<topic>.md`
+4. Write findings to the supplied research path, or return them in the planning content.
 
-Main agent then reads the persisted files and produces **2–3 feasible approaches** in PRD.
+Main agent then uses the findings to produce **2–3 feasible approaches** in the planning content.
 
 ### Research output format (PRD)
 
-The PRD itself should only reference the persisted research files, not duplicate their content. Add a `## Research References` section pointing at `research/*.md`.
+When research files were supplied and persisted, reference them without duplicating their content. Without a research destination, include concise findings in the planning content.
 
 Optionally, add a convergence section with feasible approaches derived from the research:
 
@@ -445,21 +440,13 @@ Here's my understanding of the complete requirements:
 * PR2: <core behavior>
 * PR3: <edge cases + docs + cleanup>
 
-Does this look correct? If yes, I'll proceed with implementation.
+Does this accurately capture the requirements and decisions?
 ```
 
 ### Subtask Decomposition (Complex Tasks)
 
-For complex tasks with multiple independent work items, create subtasks:
-
-```bash
-# Create child tasks
-CHILD1=$(python3 ./.trellis/scripts/task.py create "Child task 1" --description "First slice of the parent task" --slug child1 --parent "$TASK_DIR")
-CHILD2=$(python3 ./.trellis/scripts/task.py create "Child task 2" --description "Second slice of the parent task" --slug child2 --parent "$TASK_DIR")
-
-# Or link existing tasks
-python3 ./.trellis/scripts/task.py add-subtask "$TASK_DIR" "$CHILD_DIR"
-```
+For complex tasks with independent work items, recommend a decomposition in the
+planning content. The caller decides whether to create or link child tasks.
 
 ---
 
@@ -517,15 +504,18 @@ Context / Decision / Consequences
 
 ## Integration with Start Workflow
 
-After brainstorm completes (Step 8 confirmation approved), the flow continues to the Task Workflow's **Phase 2: Prepare for Implementation**:
+After brainstorm returns the planning content, the caller applies its own
+review and implementation gates:
 
 ```text
 Brainstorm
-  Step 0: Create task directory + seed PRD
+  Step 0: Capture the requirement at the supplied destination or in conversation
   Step 1–7: Discover requirements, research, converge
-  Step 8: Final confirmation → user approves
+  Step 8: Return a reviewable planning summary
   ↓
 Task Workflow Phase 2 (Prepare for Implementation)
+  Create/select task and planning paths when needed
+  Review planning artifacts and obtain implementation approval
   Code-Spec Depth Check (if applicable)
   → Research codebase (based on confirmed PRD)
   → Configure code-spec context (jsonl files)
@@ -535,7 +525,7 @@ Task Workflow Phase 3 (Execute)
   Implement → Check → Complete
 ```
 
-The task directory and PRD already exist from brainstorm, so Phase 1 of the Task Workflow is skipped entirely.
+The caller owns task creation, context manifests, approval and activation.
 
 ---
 

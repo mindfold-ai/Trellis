@@ -38,7 +38,7 @@ export async function readChannelEvents(
     ...(opts.afterSeq !== undefined ? { afterSeq: opts.afterSeq } : {}),
     ...(opts.beforeSeq !== undefined ? { beforeSeq: opts.beforeSeq } : {}),
     ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
-  });
+  }, opts.cwd);
 }
 
 export async function readChannelMetadata(
@@ -61,6 +61,7 @@ export async function listForumThreads(
     opts.channel,
     ref.project,
     "forum",
+    opts.cwd,
   );
   return reduceThreads(events);
 }
@@ -78,6 +79,7 @@ export async function showThread(
     opts.channel,
     ref.project,
     "thread",
+    opts.cwd,
   );
   return collectThreadTimeline(events, normalizeThreadKey(opts.thread));
 }

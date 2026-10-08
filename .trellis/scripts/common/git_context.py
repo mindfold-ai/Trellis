@@ -18,8 +18,6 @@ from .git import run_git
 from .session_context import (
     get_context_json,
     get_context_text,
-    get_context_record_json,
-    get_context_text_record,
     output_json,
     output_text,
 )
@@ -27,6 +25,12 @@ from .packages_context import (
     get_context_packages_text,
     get_context_packages_json,
 )
+from .continuation_contract import (
+    ContinuationContractError,
+    extract_continuation_contract,
+)
+from .path_boundary import require_project_path
+from .paths import DIR_WORKFLOW, get_repo_root
 from .trellis_config import read_trellis_config
 from .workflow_phase import (
     filter_platform,
@@ -57,9 +61,9 @@ def main() -> None:
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["default", "record", "packages", "phase"],
+        choices=["default", "packages", "phase", "continuation"],
         default="default",
-        help="Output mode: default (full context), record (for record-session), packages (package info only), phase (workflow step extraction)",
+        help="Output mode: default (full context), packages (package info only), phase (workflow step extraction), continuation (workflow-owned continuation contract)",
     )
     parser.add_argument(
         "--step",
@@ -72,12 +76,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.mode == "record":
-        if args.json:
-            print(json.dumps(get_context_record_json(), indent=2, ensure_ascii=False))
-        else:
-            print(get_context_text_record())
-    elif args.mode == "packages":
+    if args.mode == "packages":
         if args.json:
             print(json.dumps(get_context_packages_json(), indent=2, ensure_ascii=False))
         else:
@@ -94,6 +93,18 @@ def main() -> None:
                 args.platform, read_trellis_config()
             )
             content = filter_platform(content, effective)
+        print(content, end="")
+    elif args.mode == "continuation":
+        workflow_path = get_repo_root() / DIR_WORKFLOW / "workflow.md"
+        require_project_path(workflow_path, get_repo_root())
+        try:
+            content = extract_continuation_contract(workflow_path)
+        except ContinuationContractError as exc:
+            parser.exit(
+                2,
+                "invalid_continuation_contract: "
+                f"{exc.error_type}: {exc.workflow_path}\n",
+            )
         print(content, end="")
     else:
         if args.json:

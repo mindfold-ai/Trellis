@@ -379,7 +379,8 @@ def _materialize_directory(
         md_files = sorted(
             f
             for f in os.listdir(full_path)
-            if f.endswith(".md") and os.path.isfile(os.path.join(full_path, f))
+            if f.endswith(".md")
+            and os.path.isfile(os.path.join(full_path, f))
         )
         for filename in md_files[:max_files]:
             relative_path = os.path.join(dir_path, filename)
@@ -1122,7 +1123,11 @@ def main():
         sys.exit(0)
 
     # Get current task directory (research doesn't require it)
-    task_dir = get_current_task(repo_root, input_data)
+    task_dir = get_current_task(
+        repo_root,
+        input_data,
+        allow_single_session_fallback=True,
+    )
 
     # implement/check need task directory
     if subagent_type in AGENTS_REQUIRE_TASK:

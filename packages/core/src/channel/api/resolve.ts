@@ -34,7 +34,7 @@ export function resolveChannelRef(opts: ResolveChannelRefOptions): ChannelRef {
       name: opts.channel,
       scope: opts.scope ?? "project",
       project,
-      dir: channelDir(opts.channel, project),
+      dir: channelDir(opts.channel, project, opts.cwd),
     };
   }
   if (opts.forCreate) {

@@ -1,0 +1,6 @@
+{"file":".trellis/spec/cli/backend/identity-free-task-lifecycle.md","reason":"Retired-data and session ownership boundaries"}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"Atomic writes and Python twin synchronization"}
+{"file":".trellis/spec/cli/backend/script-conventions.md","reason":"Python runtime conventions"}
+{"file":".trellis/spec/cli/backend/workflow-state-contract.md","reason":"Hook status and lifecycle contracts"}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Regression fixtures and environment isolation"}
+{"file":".trellis/tasks/09-14-cross-worktree-session-binding/research/reproduction.md","reason":"Verified original failure and evidence gaps"}

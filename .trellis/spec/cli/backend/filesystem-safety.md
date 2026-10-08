@@ -40,12 +40,8 @@ def write_text_atomic(path: Path, text: str) -> bool
 # write_json serializes and delegates, so both share one implementation.
 ```
 
-`write_text_atomic` covers the Markdown state files, not just JSON:
-`add_session.py` appends to `journal-*.md` and rewrites `index.md` through it.
-Those two carry the session record that a retry classifies, so a half-written
-one is not a cosmetic defect — it is pending evidence nothing can resume from.
-The append is read-all + write-all rather than `open("a")` for exactly that
-reason.
+`write_text_atomic` covers durable task Markdown as well as JSON. See
+[Task Lifecycle](./task-lifecycle.md) for current task storage.
 
 ### Wrong vs Correct
 
@@ -102,8 +98,8 @@ one of these must hold. Pick by operation:
 | Delete a mixed-ownership file (e.g. `AGENTS.md`) | Strip only the managed block (`scrubManagedMarkdownBlock`); delete only if nothing user-authored remains. Never `unlinkSync` the whole file. |
 | Move a dir that may be user-owned (rename-dir) | Ownership check (`dirHasManifestEntries`); unowned + target-absent → **skip** (safe even under `--force`, since skip never executes). |
 | Overwrite a dir from a remote source | Download to a temp dir; `rm` + copy the old dir **only after** the download succeeds (`downloadWithStrategy` `overwrite`). Never delete-then-download. |
-| Rename onto a possibly-existing target | `fs.existsSync(newPath)` first; skip/renumber instead of clobbering (`renameTracesToJournal`). Especially when the dir is excluded from backup. |
-| `rm -rf` a tree with user data (`uninstall`) | `collectUncommittedTrellisData(cwd)` (git status over `spec/tasks/workspace`); scripted `--yes` fails closed unless `TRELLIS_ALLOW_DIRTY_UNINSTALL=1`. Disclosure must name what user data is deleted. |
+| Rename onto a possibly-existing target | Check collision before moving; never clobber user content. |
+| `rm -rf` a tree with user data (`uninstall`) | `collectUncommittedTrellisData(cwd)` (git status over `spec/tasks`); scripted `--yes` fails closed unless `TRELLIS_ALLOW_DIRTY_UNINSTALL=1`. Disclosure must name what user data is deleted. |
 
 **Env override precedent**: a fail-closed guard on a `--yes`/`--force` path gets
 an explicit env bypass, mirroring `TRELLIS_ALLOW_HOMEDIR`
@@ -139,11 +135,11 @@ without the guard**:
 
 ## Related
 
-- [`trellis update` Command](./commands-update.md) — migration classification/apply
+- [`trellis update` Command](./commands-update.md) — managed-template classification/apply
 - [`trellis uninstall` Command](./commands-uninstall.md) — plan/execute phases
 - [`trellis channel` Command](./commands-channel.md) — store paths, project buckets
 - [Script Conventions](./script-conventions.md) — Python `io.py` contract
-- [Migrations](./migrations.md) — rename/rename-dir/delete semantics
+- [Installed Version Boundary](./installed-version.md) — exact-version update requirement
 
 ## Channel Context Trust Set (`channel.trusted_context_dirs`, #414)
 
@@ -156,8 +152,8 @@ inside a trusted root. Trusted roots resolve once per spawn
    entries resolve against cwd; missing dirs warn + skip; each entry is
    realpath-canonicalized).
 2. Auto-trust (disable with `channel.auto_trust_trellis_symlinks: false`):
-   ONLY the top-level `.trellis/tasks` and `.trellis/workspace` entries, when
-   they are themselves symlinks, contribute their realpath targets. No
+   ONLY the top-level `.trellis/tasks` entry, when
+   it is itself a symlink, contributes its realpath target. No
    recursion — a nested symlink planted inside a task dir stays refused.
 
 Containment predicate (identical at all three sites, byte-comparable):
@@ -166,3 +162,9 @@ load-bearing (blocks `/work/ws-evil` matching trusted `/work/ws`). The OMP
 template carries a standalone verbatim copy of the parser/resolver; changes
 must be mirrored there. Do not relax to lexical checks — realpath containment
 is the defense from the 2026-07-10 audit (#409 family).
+
+## Managed Data Boundary
+
+See [Task Lifecycle](./task-lifecycle.md) for current path ownership. Limit
+backup, removal, and restore to explicitly managed files. Validate each path
+before language IO and Git subprocess calls.

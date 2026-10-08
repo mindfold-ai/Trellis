@@ -63,7 +63,7 @@ function isInsideRoot(root: string, candidate: string): boolean {
 // standalone copy since templates don't import from the CLI package).
 // ---------------------------------------------------------------------------
 
-const AUTO_TRUST_ENTRIES = ["tasks", "workspace"];
+const AUTO_TRUST_ENTRIES = ["tasks"];
 
 function stripTrustValue(s: string): string {
    return s.trim().replace(/\s*#.*$/, "").trim().replace(/^['"]|['"]$/g, "");
@@ -126,9 +126,10 @@ function parseChannelTrustSection(content: string): { trustedDirs: string[]; aut
 function resolveTrustedRoots(projectRoot: string): string[] {
    const configPath = join(projectRoot, ".trellis", "config.yaml");
    let config: { trustedDirs: string[]; autoTrustSymlinks?: boolean } = { trustedDirs: [] };
-   if (existsSync(configPath)) {
+   const configText = readActiveText(projectRoot, configPath);
+   if (configText !== null) {
       try {
-         config = parseChannelTrustSection(readFileSync(configPath, "utf-8"));
+         config = parseChannelTrustSection(configText);
       } catch {
          // ignore
       }
@@ -137,7 +138,8 @@ function resolveTrustedRoots(projectRoot: string): string[] {
    const roots: string[] = [];
    for (const entry of config.trustedDirs) {
       try {
-         roots.push(realpathSync(resolve(projectRoot, entry)));
+         const real = realpathSync(resolve(projectRoot, entry));
+         roots.push(real);
       } catch {
          // entry not found or invalid — skip
       }
@@ -148,7 +150,8 @@ function resolveTrustedRoots(projectRoot: string): string[] {
          const entryPath = join(projectRoot, ".trellis", entryName);
          try {
             if (lstatSync(entryPath).isSymbolicLink()) {
-               roots.push(realpathSync(entryPath));
+               const real = realpathSync(entryPath);
+               roots.push(real);
             }
          } catch {
             // missing / broken symlink — nothing to trust
@@ -199,72 +202,62 @@ function displayProjectPath(projectRoot: string, filePath: string, taskDir?: str
 // Active task resolution
 // ---------------------------------------------------------------------------
 
+function isActiveDataPath(projectRoot: string, file: string): boolean {
+   try { return realpathSync(file).length > 0; } catch { return false; }
+}
+
+function readActiveText(projectRoot: string, file: string): string | null {
+   if (!isActiveDataPath(projectRoot, file)) return null;
+   try { return readFileSync(file, "utf-8"); } catch { return null; }
+}
+
 function resolveActiveTaskStatus(
    projectRoot: string,
    contextKey: string | null,
-): { status: string; taskDir: string | null; taskTitle: string | null } {
-   const sessionsDir = join(projectRoot, ".trellis", ".runtime", "sessions");
-   if (!existsSync(sessionsDir)) return { status: "no_task", taskDir: null, taskTitle: null };
-
-   // --- 通过 context key 解析 session 文件 ---
-   let sessionFilePath: string | null = null;
-
-   if (contextKey) {
-      const candidate = join(sessionsDir, `${contextKey}.json`);
-      if (existsSync(candidate)) {
-         sessionFilePath = candidate;
-      } else {
-         return { status: "no_task", taskDir: null, taskTitle: null };
-      }
-   } else {
-      // No identity: use single-session fallback only when there is exactly one session file.
-      let sessionFiles: string[];
-      try {
-         sessionFiles = readdirSync(sessionsDir).filter((f) => f.endsWith(".json"));
-      } catch {
-         return { status: "no_task", taskDir: null, taskTitle: null };
-      }
-      if (sessionFiles.length === 1) {
-         sessionFilePath = join(sessionsDir, sessionFiles[0]);
-      } else {
-         return { status: "no_task", taskDir: null, taskTitle: null };
-      }
-   }
-
-   // --- 读取 session 数据 ---
-   let sessionData: Record<string, unknown>;
+): { status: string; taskDir: string | null; taskTitle: string | null; taskRoot: string; error: string | null } {
+   const empty = { status: "no_task", taskDir: null, taskTitle: null, taskRoot: projectRoot, error: null };
+   if (!contextKey) return empty;
+   const invalid = (error: string) => ({ ...empty, status: "invalid_task", error });
+   const script = join(projectRoot, ".trellis", "scripts", "task.py");
+   if (!isActiveDataPath(projectRoot, script) || !existsSync(script)) return invalid("Task resolver unavailable");
    try {
-      sessionData = JSON.parse(readFileSync(sessionFilePath, "utf-8"));
-   } catch {
-      return { status: "no_task", taskDir: null, taskTitle: null };
+      // Reuse the runtime's live Git, common-dir, legacy and historical guards.
+      // A known key miss must never fall back to another session's pointer.
+      const result = spawnSync(process.platform === "win32" ? "python" : "python3", [script, "current", "--json"], {
+         cwd: projectRoot,
+         encoding: "utf-8",
+         env: { ...process.env, TRELLIS_CONTEXT_ID: contextKey, PYTHONDONTWRITEBYTECODE: "1" },
+         timeout: SESSION_CONTEXT_TIMEOUT_MS,
+         windowsHide: true,
+      });
+      if (result.error) return invalid(result.error.message);
+      const data: unknown = JSON.parse(result.stdout ?? "");
+      if (!isObject(data) || typeof data.invocation_root !== "string" || typeof data.stale !== "boolean") {
+         return invalid("Invalid task resolver response; update the Trellis runtime");
+      }
+      if (data.error || data.stale) return invalid(JSON.stringify(data.error ?? "Stale task binding"));
+      if (data.current_task === null && data.source === "none" && result.status === 1) return empty;
+      if (result.status !== 0 || !isObject(data.current_task)) return invalid("Task resolver failed");
+      const status = data.current_task.status;
+      if (typeof status !== "string" || !status.trim()) return invalid("Invalid task status: expected a nonempty string");
+      const taskRoot = data.task_workspace_root;
+      const taskDir = data.resolved_task_path;
+      if (typeof taskRoot !== "string" || typeof taskDir !== "string" || !isAbsolute(taskRoot) || !isAbsolute(taskDir) || !isActiveDataPath(taskRoot, taskDir)) {
+         return invalid("Invalid task workspace response");
+      }
+      return {
+         status,
+         taskDir, taskRoot,
+         taskTitle: typeof data.current_task.title === "string" ? data.current_task.title : null,
+         error: null,
+      };
+   } catch (error) {
+      return invalid(error instanceof Error ? error.message : String(error));
    }
+}
 
-   const currentTask = sessionData.current_task;
-   if (typeof currentTask !== "string" || !currentTask)
-      return { status: "no_task", taskDir: null, taskTitle: null };
-
-   // Same jail the jsonl-referenced files already go through below. `task.py`
-   // now refuses to store a ref that leaves the project, but a session file
-   // written before that fix can still hold one, and `trellis update` does not
-   // rewrite session files — so a poisoned pointer outlives the upgrade that
-   // closed the writer.
-   const taskDir = resolveProjectFile(projectRoot, currentTask, resolveTrustedRoots(projectRoot));
-   if (!taskDir) return { status: "no_task", taskDir: null, taskTitle: null };
-   const taskJsonPath = join(taskDir, "task.json");
-   if (!existsSync(taskJsonPath)) return { status: "no_task", taskDir: null, taskTitle: null };
-
-   let taskData: Record<string, unknown>;
-   try {
-      taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
-   } catch {
-      return { status: "no_task", taskDir: null, taskTitle: null };
-   }
-
-   return {
-      status: typeof taskData.status === "string" ? taskData.status : "planning",
-      taskDir,
-      taskTitle: typeof taskData.title === "string" ? taskData.title : null,
-   };
+function isObject(value: unknown): value is Record<string, unknown> {
+   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +268,7 @@ const SESSION_CONTEXT_TIMEOUT_MS = 5000;
 
 function buildSessionContext(projectRoot: string, contextKey: string | null): string {
    const script = join(projectRoot, ".trellis", "scripts", "get_context.py");
-   if (!existsSync(script)) return "";
+   if (!isActiveDataPath(projectRoot, script) || !existsSync(script)) return "";
 
    try {
       const result = spawnSync("python3", [script], {
@@ -312,16 +305,17 @@ function taskContextJsonlNames(agentType?: AgentType): string[] {
 function taskContextInputPaths(projectRoot: string, taskDir: string, agentType?: AgentType): string[] {
    const trustedRoots = resolveTrustedRoots(projectRoot);
    const paths = new Set<string>([
-      join(projectRoot, ".trellis", "config.yaml"),
       join(taskDir, "prd.md"),
       join(taskDir, "info.md"),
    ]);
+   const configPath = join(projectRoot, ".trellis", "config.yaml");
+   if (isActiveDataPath(projectRoot, configPath)) paths.add(configPath);
    for (const jsonlName of taskContextJsonlNames(agentType)) {
       const jsonlPath = join(taskDir, jsonlName);
       paths.add(jsonlPath);
       if (!existsSync(jsonlPath)) continue;
       const displayPath = displayProjectPath(projectRoot, jsonlPath, taskDir);
-      const { lines } = readJsonlLines(jsonlPath, displayPath);
+      const { lines } = readJsonlLines(jsonlPath, displayPath, projectRoot);
       for (const line of lines) {
          try {
             const row = JSON.parse(line.trim()) as Record<string, unknown>;
@@ -390,8 +384,8 @@ function unquoteYaml(value: string): string {
 
 function readContextInjectionLimits(projectRoot: string): ContextInjectionLimits {
    const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS };
-   let config = "";
-   try { config = readFileSync(join(projectRoot, ".trellis", "config.yaml"), "utf-8"); } catch { return limits; }
+   const config = readActiveText(projectRoot, join(projectRoot, ".trellis", "config.yaml"));
+   if (config === null) return limits;
 
    let inSection = false;
    let sectionIndent = -1;
@@ -524,7 +518,7 @@ function isUtf8(data: Buffer): boolean {
    return utf8Status(data) === "valid";
 }
 
-function readFilePrefix(filePath: string, maxBytes: number): { data: Buffer; size: number } | null {
+function readFilePrefix(filePath: string, maxBytes: number, projectRoot: string): { data: Buffer; size: number } | null {
    let fd: number | null = null;
    try {
       fd = openSync(filePath, "r");
@@ -571,8 +565,9 @@ function materialize(
    reason: string,
    maxBytes: number,
    kind: "file" | "artifact",
+   projectRoot: string,
 ): MaterializedFile {
-   const file = readFilePrefix(targetPath, maxBytes);
+   const file = readFilePrefix(targetPath, maxBytes, projectRoot);
    if (!file) {
       return { block: null, notice: omittedNotice(displayPath, null, `${kind} is missing or unreadable`) };
    }
@@ -594,7 +589,7 @@ function materialize(
    };
 }
 
-function readJsonlLines(jsonlPath: string, displayPath: string): { lines: string[]; omitted: string | null } {
+function readJsonlLines(jsonlPath: string, displayPath: string, projectRoot: string): { lines: string[]; omitted: string | null } {
    let fd: number | null = null;
    try {
       fd = openSync(jsonlPath, "r");
@@ -625,7 +620,7 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
    // config.yaml for every jsonl row.
    const trustedRoots = resolveTrustedRoots(projectRoot);
    const limits = readContextInjectionLimits(projectRoot);
-   const prefix = "<task-context>\nContext is bounded by .trellis/config.yaml. Files marked [truncated] or [omitted] remain authoritative on disk; use their required_read path before relying on missing detail.\n\n";
+   const prefix = `<task-context>\nTask workspace: ${projectRoot}\nAll relative paths below, including required_read paths, are based on this task workspace.\nContext is bounded by .trellis/config.yaml. Files marked [truncated] or [omitted] remain authoritative on disk; use their required_read path before relying on missing detail.\n\n`;
    const suffix = "\n</task-context>";
    const wrapperBytes = Buffer.byteLength(prefix + suffix, "utf-8");
    if (limits.max_total_bytes > 0 && limits.max_total_bytes < wrapperBytes) return "";
@@ -644,13 +639,13 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
    const prdPath = join(taskDir, "prd.md");
    const relativePrdPath = displayProjectPath(projectRoot, prdPath, taskDir);
    if (existsSync(prdPath)) {
-      const artifact = materialize(prdPath, relativePrdPath, "Requirements document", limits.max_artifact_bytes, "artifact");
+      const artifact = materialize(prdPath, relativePrdPath, "Requirements document", limits.max_artifact_bytes, "artifact", projectRoot);
       appendCandidate(artifact.block, artifact.notice);
    }
    const infoPath = join(taskDir, "info.md");
    const relativeInfoPath = displayProjectPath(projectRoot, infoPath, taskDir);
    if (existsSync(infoPath)) {
-      const artifact = materialize(infoPath, relativeInfoPath, "Task information", limits.max_artifact_bytes, "artifact");
+      const artifact = materialize(infoPath, relativeInfoPath, "Task information", limits.max_artifact_bytes, "artifact", projectRoot);
       appendCandidate(artifact.block, artifact.notice);
    }
 
@@ -666,7 +661,7 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
       if (!existsSync(jsonlPath)) continue;
 
       const relativeJsonlPath = displayProjectPath(projectRoot, jsonlPath, taskDir);
-      const manifest = readJsonlLines(jsonlPath, relativeJsonlPath);
+      const manifest = readJsonlLines(jsonlPath, relativeJsonlPath, projectRoot);
       if (manifest.omitted) {
          appendCandidate(`## ${jsonlName}\n\n${manifest.omitted}`);
          continue;
@@ -685,7 +680,7 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
             if (!targetPath) continue;
             if (includedPaths.has(targetPath)) continue;
             includedPaths.add(targetPath);
-            const materialized = materialize(targetPath, file, typeof row.reason === "string" ? row.reason : "-", limits.max_file_bytes, "file");
+            const materialized = materialize(targetPath, file, typeof row.reason === "string" ? row.reason : "-", limits.max_file_bytes, "file", projectRoot);
             const sectionPrefix = sectionHeaderEmitted
                ? "\n\n---\n\n"
                : `${parts.length > 0 ? "\n\n" : ""}## ${jsonlName}\n\n`;
@@ -739,8 +734,8 @@ function isYamlNonStringScalar(raw: string): boolean {
 }
 
 function readPromptInjectionSkipKeyword(projectRoot: string): string {
-   let config = "";
-   try { config = readFileSync(join(projectRoot, ".trellis", "config.yaml"), "utf-8"); } catch { return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD; }
+   const config = readActiveText(projectRoot, join(projectRoot, ".trellis", "config.yaml"));
+   if (config === null) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD;
 
    let inSection = false;
    let sectionIndent = -1;
@@ -818,13 +813,12 @@ class TurnContextCache {
          return { workflowMsg: this.workflowMsg };
       }
 
-      const { status } = resolveActiveTaskStatus(projectRoot, contextKey);
+      const { status, taskRoot, error } = resolveActiveTaskStatus(projectRoot, contextKey);
 
-      const workflowPath = join(projectRoot, ".trellis", "workflow.md");
-      let workflowMd = "";
-      try { workflowMd = readFileSync(workflowPath, "utf-8"); } catch { }
+      const workflowPath = join(taskRoot, ".trellis", "workflow.md");
+      const workflowMd = error ? null : readActiveText(taskRoot, workflowPath);
 
-      let workflowBody = "";
+      let workflowBody = error ? `Status: invalid_task\n${error}` : "";
       if (workflowMd) {
          const blocks = parseWorkflowStateBlocks(workflowMd);
          const activeBlock = blocks.find((b) => b.status === status);
@@ -932,9 +926,10 @@ export default function(pi: ExtensionAPI): void {
 
       if (isSubAgent) {
          // Sub-agent: inject precise task context once
-         const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
+         const { taskDir, taskRoot, error } = resolveActiveTaskStatus(projectRoot, contextKey);
+         if (error) ctx.ui.notify(`Trellis task binding invalid: ${error}`, "error");
          if (taskDir) {
-            const taskContext = getTaskContext(taskDir, projectRoot);
+            const taskContext = getTaskContext(taskDir, taskRoot);
             if (taskContext) {
                await pi.sendMessage({
                   customType: "trellis-task-context",
@@ -954,9 +949,10 @@ export default function(pi: ExtensionAPI): void {
             });
          }
 
-         const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
+         const { taskDir, taskRoot, error } = resolveActiveTaskStatus(projectRoot, contextKey);
+         if (error) ctx.ui.notify(`Trellis task binding invalid: ${error}`, "error");
          if (taskDir) {
-            const taskContext = getTaskContext(taskDir, projectRoot);
+            const taskContext = getTaskContext(taskDir, taskRoot);
             if (taskContext) {
                await pi.sendMessage({
                   customType: "trellis-task-context",
@@ -1005,8 +1001,10 @@ export default function(pi: ExtensionAPI): void {
       const contextKey = rememberContextKey(ctx);
 
       const messages = event.messages as { role?: string; customType?: string; content?: string }[];
-      const { taskDir } = resolveActiveTaskStatus(projectRoot, contextKey);
-      const currentTaskContext = taskDir ? getTaskContext(taskDir, projectRoot) : "";
+      const { taskDir, taskRoot, error } = resolveActiveTaskStatus(projectRoot, contextKey);
+      const currentTaskContext = error
+         ? `Trellis task binding invalid: ${error}`
+         : taskDir ? getTaskContext(taskDir, taskRoot) : "";
       const taskContextIndexes = messages
          .map((message, index) => message.customType === "trellis-task-context" ? index : -1)
          .filter((index) => index >= 0);

@@ -1,44 +1,6 @@
 # MCP Setup
 
-GitNexus and ABCoder are recommended when bootstrapping Trellis specs because they expose architecture and AST context to the agent. They are tool choices, not platform requirements. Configure them through whatever MCP mechanism your agent host provides.
-
-## GitNexus
-
-GitNexus builds a code knowledge graph from the repository. Use it for module boundaries, execution flows, dependency relationships, blast radius, and graph queries.
-
-### Install and Index
-
-```bash
-# Run from the repository root.
-npx gitnexus analyze
-
-# Check index status.
-npx gitnexus status
-
-# Re-index after code changes when the analysis is stale.
-npx gitnexus analyze
-```
-
-The index is written to `.gitnexus/`. Keep embeddings only if the project already uses them; otherwise a normal index is enough for spec bootstrapping.
-
-### MCP Server Command
-
-Use this server command in the host's MCP configuration:
-
-```bash
-npx -y gitnexus mcp
-```
-
-### Useful Tools
-
-| Tool | Purpose |
-|------|---------|
-| `gitnexus_query` | Find execution flows and functional areas by concept |
-| `gitnexus_context` | Inspect callers, callees, references, and process participation for a symbol |
-| `gitnexus_impact` | Understand blast radius before changing a symbol |
-| `gitnexus_detect_changes` | Check changed symbols and affected flows before finishing |
-| `gitnexus_cypher` | Run direct graph queries |
-| `gitnexus_list_repos` | List indexed repositories |
+ABCoder is an optional tool for exposing architecture and AST context while bootstrapping Trellis specs. Configure it through the MCP mechanism your agent host provides, or use language-native tooling and direct source inspection without MCP setup.
 
 ## ABCoder
 
@@ -82,9 +44,8 @@ abcoder mcp ~/abcoder-asts
 
 ## Verification
 
-After configuration, verify from the agent host that both MCP servers are visible. Then run one simple query against each server before starting the spec writing pass.
+If ABCoder is configured, verify from the agent host that its MCP server is visible. Then run one simple query before starting the spec writing pass. No MCP setup is required for language-native tooling and direct source inspection.
 
 ```bash
-ls .gitnexus/meta.json
 ls ~/abcoder-asts/*.json
 ```

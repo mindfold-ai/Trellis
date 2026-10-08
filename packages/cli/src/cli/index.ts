@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { init } from "../commands/init.js";
 import { update } from "../commands/update.js";
+import { migrate } from "../commands/migrate.js";
 import { upgrade } from "../commands/upgrade.js";
 import { uninstall } from "../commands/uninstall.js";
 import { ablate, restore } from "../commands/ablate.js";
@@ -55,7 +56,10 @@ function checkForUpdates(cwd: string): void {
 
 // Check for updates at CLI startup (only if .trellis exists)
 const cwd = process.cwd();
-if (fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
+if (
+  process.argv[2] !== "migrate" &&
+  fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))
+) {
   checkForUpdates(cwd);
 }
 
@@ -99,10 +103,6 @@ program
     "Install the Trellis statusLine for Claude Code (off by default)",
   )
   .option("-y, --yes", "Skip prompts and use defaults")
-  .option(
-    "-u, --user <name>",
-    "Initialize developer identity with specified name",
-  )
   .option("-f, --force", "Overwrite existing files without asking")
   .option("-s, --skip-existing", "Skip existing files without asking")
   .option("--monorepo", "Force monorepo mode")
@@ -154,14 +154,32 @@ program
   });
 
 program
+  .command("migrate")
+  .description(
+    "Explicit one-way migration from a supported legacy installation",
+  )
+  .requiredOption(
+    "--from <version>",
+    "Source core predecessor (0.6.x or 0.7.0-castbox.N)",
+  )
+  .requiredOption("--plan <file>", "Private reviewed core/task projection")
+  .option("--dry-run", "Print exact migration actions without writes")
+  .action(async (options: { from: string; plan: string; dryRun?: boolean }) => {
+    try {
+      console.log(JSON.stringify(await migrate(options)));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+program
   .command("update")
   .description("Update trellis configuration and commands to latest version")
   .option("--dry-run", "Preview changes without applying them")
   .option("-f, --force", "Overwrite all changed files without asking")
   .option("-s, --skip-all", "Skip all changed files without asking")
   .option("-n, --create-new", "Create .new copies for all changed files")
-  .option("--allow-downgrade", "Allow downgrading to an older version")
-  .option("--migrate", "Apply pending file migrations (renames/deletions)")
   .action(async (options: Record<string, unknown>) => {
     try {
       await update({
@@ -169,8 +187,6 @@ program
         force: options.force as boolean,
         skipAll: options.skipAll as boolean,
         createNew: options.createNew as boolean,
-        allowDowngrade: options.allowDowngrade as boolean,
-        migrate: options.migrate as boolean,
       });
     } catch (error) {
       console.error(

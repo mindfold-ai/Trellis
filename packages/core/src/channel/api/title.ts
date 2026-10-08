@@ -31,6 +31,7 @@ export async function setChannelTitle(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   );
   return event as ChannelMetadataEvent;
 }
@@ -55,6 +56,7 @@ export async function clearChannelTitle(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   );
   return event as ChannelMetadataEvent;
 }

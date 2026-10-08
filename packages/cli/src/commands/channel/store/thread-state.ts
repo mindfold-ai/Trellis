@@ -18,11 +18,7 @@ export function formatThreadBoard(states: ThreadState[]): string[] {
     ...states.map((state) => {
       const labels =
         state.labels.length > 0 ? ` labels=${state.labels.join(",")}` : "";
-      const assignees =
-        state.assignees.length > 0
-          ? ` assignees=${state.assignees.join(",")}`
-          : "";
-      return `${state.thread} [${state.status}] ${state.title ?? ""}${labels}${assignees}`;
+      return `${state.thread} [${state.status}] ${state.title ?? ""}${labels}`;
     }),
   ];
 }

@@ -782,7 +782,7 @@ def detect_platform(project_root: Path) -> Platform:
     7. .kilocode directory exists → kilo
     8. .kiro/skills exists and no other platform dirs → kiro
     9. .agent/workflows exists and no other platform dirs → antigravity
-    10. .devin/workflows (or legacy .windsurf/workflows) exists and no other platform dirs → devin
+    10. .devin/workflows exists and no other platform dirs → devin
     11. .codebuddy directory exists → codebuddy
     12. .qoder directory exists → qoder
     13. .github/copilot directory exists → copilot
@@ -869,14 +869,9 @@ def detect_platform(project_root: Path) -> Platform:
     ):
         return "antigravity"
 
-    # Check for Devin workflow directory only when no other platform config
-    # exists. `.windsurf/workflows` is the legacy pre-rename path (still detected
-    # as devin for back-compat until users migrate via `trellis update --migrate`).
-    if (
-        (project_root / ".devin" / "workflows").is_dir()
-        or (project_root / ".windsurf" / "workflows").is_dir()
-    ) and not _has_other_platform_dir(
-        project_root, {".devin", ".windsurf"}
+    # Check for Devin workflow directory only when no other platform config exists.
+    if (project_root / ".devin" / "workflows").is_dir() and not _has_other_platform_dir(
+        project_root, {".devin"}
     ):
         return "devin"
 

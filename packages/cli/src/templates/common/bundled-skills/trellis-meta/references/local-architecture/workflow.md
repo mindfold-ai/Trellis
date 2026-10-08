@@ -4,11 +4,12 @@
 
 ## File Responsibilities
 
-`.trellis/workflow.md` has three responsibilities:
+`.trellis/workflow.md` has four responsibilities:
 
 1. **Explain workflow phases**: Plan, Execute, Finish.
 2. **Define skill routing**: which skill or agent the AI should use when the user expresses a certain intent.
 3. **Provide workflow-state prompt blocks**: hooks can inject the prompt block for the current state into the conversation.
+4. **Own active-task continuation**: one `[trellis-continuation]` block decides the next semantic owner and recovery path from live facts.
 
 ## Current Phase Model
 
@@ -27,7 +28,19 @@ Each phase contains numbered steps, such as `1.3 Configure context`. These numbe
 - Platforms with sub-agent support: dispatch `trellis-implement` by default for implementation and `trellis-check` for checking.
 - Platforms without sub-agent support: the main session reads skills such as `trellis-before-dev`, then executes directly.
 
-When changing local AI behavior, update the routing descriptions in `workflow.md` first, then check whether the corresponding platform skill, command, or agent files need to stay in sync.
+When changing local AI behavior, update the routing descriptions in `workflow.md`. Start/continue entries stay workflow-neutral and do not mirror the continuation route graph.
+
+## Continuation Contract
+
+Every active workflow must contain exactly one non-empty block:
+
+```text
+[trellis-continuation]
+<workflow-owned continuation rules>
+[/trellis-continuation]
+```
+
+`get_context.py --mode continuation` validates and returns this body without interpreting it. The current AI applies the contract to the exact active-task binding. Detailed lifecycle interpretation, next-owner selection, public DTO recovery, semantic reruns, and fail-closed stops belong here, not in platform entries or scripts.
 
 ## Workflow-State Prompt Blocks
 
@@ -59,7 +72,7 @@ Common changes:
 | Add a phase | Update the Phase Index, phase body, routing, and state blocks. |
 | Change task creation policy | Update the `no_task` state block and Phase 1 description. |
 | Change the default implementation/check path | Update Phase 2 and skill routing. |
-| Change the wrap-up flow | Update Phase 3 and `finish-work` related descriptions. Note the current split: Phase 3.4 = AI-driven code commits (batched, user-confirmed), Phase 3.5 = `/finish-work` (archive + record session). `/finish-work` refuses to run if the working tree is dirty. |
+| Change the wrap-up flow | Update Phase 3 and `finish-work` related descriptions. Note the current split: Phase 3.4 = AI-driven code commits (batched, user-confirmed), Phase 3.5 = `/finish-work` (task archive). `/finish-work` refuses to run if the working tree is dirty. |
 | Change platform differences | Update routing descriptions grouped by platform. |
 
 After editing, make the AI reread `.trellis/workflow.md`; do not assume the flow from the old conversation is still valid.
@@ -72,4 +85,4 @@ After editing, make the AI reread `.trellis/workflow.md`; do not assume the flow
 - commands/prompts/workflows, such as continue and finish-work.
 - hooks, such as session-start or workflow-state injection.
 
-If only `workflow.md` changes, platform entry files may still contain old language. When the user wants to change "what the AI actually does," also inspect the relevant platform directory.
+Canonical `trellis-start` and `trellis-continue` projections load the current workflow contract on every invocation, so workflow switching changes continuation immediately. Inspect platform directories only for intentionally local replacement entries or format-specific wiring, not to synchronize a route table.

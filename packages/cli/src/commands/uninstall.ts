@@ -13,8 +13,7 @@
  *      fields, leaving user-added neighbors intact. If the scrubber says the
  *      file is fully empty afterwards, we delete it.
  *
- * Whether the user has modified a manifest-listed file or not, it is removed
- * (per the PRD: "全删"). The `.trellis/` tree is removed unconditionally.
+ * Managed files are removed even when their content has changed.
  */
 
 import { execFileSync } from "node:child_process";
@@ -26,6 +25,7 @@ import inquirer from "inquirer";
 
 import { DIR_NAMES } from "../constants/paths.js";
 import { loadHashes } from "../utils/template-hash.js";
+import { ownedTrellisChildren } from "../utils/trellis-owned-data.js";
 import { getConfiguredPlatforms } from "../configurators/index.js";
 import { pruneOrphanManifestKeys } from "../utils/manifest-prune.js";
 import {
@@ -67,7 +67,7 @@ function renderPlan(cwd: string, plan: UninstallPlan): void {
   if (plan.removeTrellisDir && fs.existsSync(trellisDir)) {
     console.log(
       `  ${chalk.red("-")} ${DIR_NAMES.WORKFLOW}/  ${chalk.gray(
-        "(entire directory — including your specs, task PRDs, journals, and memory)",
+        "(managed data including specs and tasks)",
       )}`,
     );
   }
@@ -119,19 +119,15 @@ async function promptContinue(): Promise<boolean> {
 
 /**
  * List uncommitted (modified, staged, or untracked) files under the
- * user-data subdirectories of `.trellis/` — spec/, tasks/, workspace/ — which
- * hold user-authored specs, task PRDs, and journals that `update.ts` marks as
- * PROTECTED. Uninstall deletes the whole `.trellis/` tree with no backup, so
+ * active user-data subdirectories of `.trellis/` — spec/ and tasks/ — which
+ * hold user-authored specs and task PRDs that `update.ts` marks as
+ * PROTECTED. Uninstall deletes these directories with no backup, so
  * these are surfaced before the destructive step. Returns `[]` when this is
  * not a git repo or git is unavailable (nothing we can check).
  */
 export function collectUncommittedTrellisData(cwd: string): string[] {
   const w = DIR_NAMES.WORKFLOW;
-  const userDataDirs = [
-    `${w}/${DIR_NAMES.SPEC}`,
-    `${w}/${DIR_NAMES.TASKS}`,
-    `${w}/${DIR_NAMES.WORKSPACE}`,
-  ];
+  const userDataDirs = [`${w}/${DIR_NAMES.SPEC}`, `${w}/${DIR_NAMES.TASKS}`];
   try {
     const out = execFileSync(
       "git",
@@ -185,19 +181,25 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
   // platform files are trellis-owned vs user-owned.
   const hashes = loadHashes(cwd);
   if (Object.keys(hashes).length === 0) {
+    if (ownedTrellisChildren(trellisDir).length === 0) {
+      console.log(
+        chalk.gray(
+          "No managed files remain under .trellis/; no files were removed.",
+        ),
+      );
+      return;
+    }
     console.error(
       chalk.red(
-        "Trellis directory found but manifest is missing — cannot determine which platform files to remove. " +
-          "You can manually delete .trellis/ if needed.",
+        "Active Trellis files remain but the ownership manifest is missing or unreadable. " +
+          "Reconcile the manifest before uninstalling managed files.",
       ),
     );
     process.exit(1);
   }
 
-  // Self-heal poisoned manifests from buggy init versions: prune any manifest
-  // entry that no current configurator owns. Runs BEFORE buildPlan so the
-  // user-owned paths (.codex/sessions/, .claude/projects/, pre-existing
-  // AGENTS.md, etc.) never reach the deletion list. See PRD R3.
+  // Remove entries without current template ownership before building the
+  // deletion plan, so user-owned files cannot enter it.
   //
   // Dry-run: still compute the pruned hashes (so the plan reflects post-prune
   // reality) but pass `persist: false` so no disk write happens. The actual
@@ -209,11 +211,10 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
     cwd,
     [...configuredPlatforms],
     hashes,
-    { persist: !options.dryRun },
+    { persist: false },
   );
   if (pruned.length > 0) {
-    // Surface counts only — listing every poisoned entry would alarm users
-    // without giving them an actionable signal.
+    // Surface the count without overwhelming the plan with unowned paths.
     console.log(
       chalk.gray(
         `   Pruned ${pruned.length} orphan manifest entries (user-owned files trellis did not write).`,
@@ -224,7 +225,7 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
   const plan = buildManagedRemovalPlan(cwd, prunedHashes);
   renderPlan(cwd, plan);
 
-  // .trellis/ holds user-authored specs, task PRDs, and journals that have no
+  // .trellis/ holds user-authored specs and task PRDs that have no
   // backup here. Surface any uncommitted such files before deleting the tree,
   // and — for scripted `--yes` runs where nobody reads the warning — fail
   // closed unless explicitly overridden.
@@ -232,7 +233,7 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
   if (uncommitted.length > 0) {
     console.warn(
       chalk.red.bold(
-        `\n⚠ ${uncommitted.length} uncommitted file(s) under .trellis/ (spec/tasks/workspace) ` +
+        `\n⚠ ${uncommitted.length} uncommitted file(s) under .trellis/ (spec/tasks) ` +
           `will be permanently deleted with no backup:`,
       ),
     );
@@ -256,7 +257,7 @@ export async function uninstall(options: UninstallOptions = {}): Promise<void> {
     console.error(
       chalk.red(
         "Refusing to uninstall with --yes while .trellis/ has uncommitted user data " +
-          "(spec/tasks/workspace). Commit or stash it, re-run without --yes to confirm " +
+          "(spec/tasks). Commit or stash it, re-run without --yes to confirm " +
           "interactively, or set TRELLIS_ALLOW_DIRTY_UNINSTALL=1 to override.",
       ),
     );

@@ -1,15 +1,5 @@
 /**
- * Integration tests for a non-list `children` field in a parent task.json.
- *
- * `common/task_store.py` reads it with `.get("children", [])`, which returns
- * the default only when the key is *absent*. A parent carrying
- * `"children": null` — older format, or hand-edited — yielded None, and the
- * `not in` test below it raised `TypeError`.
- *
- * The severity was in the ordering: in `create` that raise lands *after* the
- * new task.json is written, leaving a task on disk that its parent does not
- * reference. All three link sites (`create --parent`, `add-subtask`,
- * `remove-subtask`) read the field the same way and are covered here.
+ * Parent-child mutations reject malformed task records before writing.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -17,6 +7,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { emptyTaskRecord } from "@mindfoldhq/trellis-core/task";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
@@ -41,10 +32,6 @@ function setupRepo(tmp: string): void {
     path.join(tmp, ".trellis", "config.yaml"),
     "session_auto_commit: false\n",
   );
-  // `task.py create` refuses to run without a developer identity. Write the
-  // `.developer` file rather than exporting an env var, so this fixture does
-  // not depend on which identity sources the runtime happens to support.
-  fs.writeFileSync(path.join(tmp, ".trellis", ".developer"), "name=tester\n");
 }
 
 function makeTask(
@@ -58,19 +45,7 @@ function makeTask(
   fs.writeFileSync(
     path.join(dir, "task.json"),
     JSON.stringify({
-      id: name,
-      name,
-      title: name,
-      status: "planning",
-      priority: "P2",
-      createdAt: "2026-08-19",
-      assignee: "tester",
-      creator: "tester",
-      subtasks: [],
-      children: [],
-      parent: null,
-      relatedFiles: [],
-      meta: {},
+      ...emptyTaskRecord({ id: name, name, title: name, createdAt: "2026-08-19" }),
       ...overrides,
     }) + "\n",
   );
@@ -81,7 +56,7 @@ function runTask(repo: string, ...args: string[]) {
   return spawnSync("python3", [".trellis/scripts/task.py", ...args], {
     cwd: repo,
     encoding: "utf-8",
-    env: { ...process.env, TRELLIS_DEVELOPER: "tester" },
+    env: { ...process.env },
   });
 }
 
@@ -109,14 +84,16 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-children-test-"));
     setupRepo(tmp);
-    makeTask(tmp, PARENT, { children: null });
+    makeTask(tmp, PARENT);
   });
 
   afterEach(() => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("`create --parent` links, rather than writing a task the parent never references", () => {
+  it("`create --parent` refuses malformed parent metadata before creating a child", () => {
+    setChildren(tmp, PARENT, null);
+    const tasksBefore = fs.readdirSync(path.join(tmp, ".trellis", "tasks"));
     const r = runTask(
       tmp,
       "create",
@@ -130,23 +107,29 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
       "--no-start",
     );
     expect(r.stderr).not.toContain("TypeError");
-    expect(r.status).toBe(0);
+    expect(r.status).not.toBe(0);
+    expect(fs.readdirSync(path.join(tmp, ".trellis", "tasks")).filter((name) => name !== "archive")).toEqual(tasksBefore);
+    expect(readChildren(tmp, PARENT)).toBeNull();
+  });
 
-    const created = fs
-      .readdirSync(path.join(tmp, ".trellis", "tasks"))
-      .filter((d) => d.endsWith("-kid"));
-    expect(created).toHaveLength(1);
+  it("`add-subtask` rejects a missing lifecycle generation without rewriting metadata", () => {
+    const child = "08-19-standalone";
+    makeTask(tmp, child);
+    const parentJson = path.join(tmp, ".trellis", "tasks", PARENT, "task.json");
+    const parentData = JSON.parse(fs.readFileSync(parentJson, "utf-8"));
+    delete parentData.lifecycle_generation;
+    const original = JSON.stringify(parentData) + "\n";
+    fs.writeFileSync(parentJson, original);
 
-    // The whole point: the task on disk and the parent's list agree.
-    expect(readChildren(tmp, PARENT)).toEqual(created);
-    expect(
-      JSON.parse(
-        fs.readFileSync(
-          path.join(tmp, ".trellis", "tasks", created[0], "task.json"),
-          "utf-8",
-        ),
-      ).parent,
-    ).toBe(PARENT);
+    const result = runTask(
+      tmp,
+      "add-subtask",
+      `.trellis/tasks/${PARENT}`,
+      `.trellis/tasks/${child}`,
+    );
+    expect(result.status).not.toBe(0);
+    expect(fs.readFileSync(parentJson, "utf-8")).toBe(original);
+    expect(readChildren(tmp, PARENT)).toEqual([]);
   });
 
   it.each([
@@ -154,7 +137,7 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
     ["a string", "08-19-not-a-list"],
     ["a number", 42],
     ["an object", { "08-19-kid": true }],
-  ])("`add-subtask` normalizes %s instead of crashing", (_label, value) => {
+  ])("`add-subtask` rejects %s without writing", (_label, value) => {
     const child = "08-19-standalone";
     makeTask(tmp, child);
     setChildren(tmp, PARENT, value);
@@ -166,11 +149,12 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
       `.trellis/tasks/${child}`,
     );
     expect(r.stderr).not.toContain("TypeError");
-    expect(r.status).toBe(0);
-    expect(readChildren(tmp, PARENT)).toEqual([child]);
+    expect(r.status).not.toBe(0);
+    expect(readChildren(tmp, PARENT)).toEqual(value);
+    expect(JSON.parse(fs.readFileSync(path.join(tmp, ".trellis", "tasks", child, "task.json"), "utf-8")).parent).toBeNull();
   });
 
-  it("`remove-subtask` leaves a valid empty list when the field was null", () => {
+  it("`remove-subtask` refuses malformed parent metadata without unlinking", () => {
     const child = "08-19-standalone";
     makeTask(tmp, child, { parent: PARENT });
     setChildren(tmp, PARENT, null);
@@ -182,7 +166,8 @@ describe.skipIf(!hasPython())("non-list `children` in a parent task.json", () =>
       `.trellis/tasks/${child}`,
     );
     expect(r.stderr).not.toContain("TypeError");
-    expect(r.status).toBe(0);
-    expect(readChildren(tmp, PARENT)).toEqual([]);
+    expect(r.status).not.toBe(0);
+    expect(readChildren(tmp, PARENT)).toBeNull();
+    expect(JSON.parse(fs.readFileSync(path.join(tmp, ".trellis", "tasks", child, "task.json"), "utf-8")).parent).toBe(PARENT);
   });
 });

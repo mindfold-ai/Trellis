@@ -29,7 +29,6 @@ describe("loadTaskRecord / writeTaskRecord", () => {
         id: "demo",
         name: "demo",
         title: "Demo",
-        assignee: "developer",
       }),
     });
     const raw = fs.readFileSync(path.join(dir, "task.json"), "utf-8");
@@ -46,8 +45,6 @@ describe("loadTaskRecord / writeTaskRecord", () => {
       id: "rt",
       name: "rt",
       title: "Round Trip",
-      assignee: "developer",
-      branch: "feat/x",
     });
     writeTaskRecord({ taskDir: dir, record });
     const loaded = loadTaskRecord({ taskDir: dir });
@@ -61,7 +58,7 @@ describe("loadTaskRecord / writeTaskRecord", () => {
       string,
       unknown
     >;
-    delete partial.assignee;
+    delete partial.createdAt;
     fs.writeFileSync(
       path.join(dir, "task.json"),
       JSON.stringify(partial, null, 2) + "\n",
@@ -69,7 +66,7 @@ describe("loadTaskRecord / writeTaskRecord", () => {
     );
 
     expect(() => loadTaskRecord({ taskDir: dir })).toThrow(
-      /task.assignee is required/,
+      /task.createdAt is required/,
     );
   });
 
@@ -109,14 +106,12 @@ describe("loadTaskRecord / writeTaskRecord", () => {
     );
   });
 
-  it("preserves unknown on-disk fields across writeTaskRecord", () => {
+  it("rejects unknown on-disk fields before replacing a record", () => {
     const dir = path.join(tmp, "05-13-unknown");
     fs.mkdirSync(dir, { recursive: true });
     const original = {
       ...emptyTaskRecord({ id: "u", name: "u", title: "U" }),
-      // Simulate a field added by an external tool / future version.
-      external_tracker: { id: "external-42", system: "external" },
-      legacy_flag: true,
+      extra: "unexpected",
     };
     fs.writeFileSync(
       path.join(dir, "task.json"),
@@ -124,7 +119,8 @@ describe("loadTaskRecord / writeTaskRecord", () => {
       "utf-8",
     );
 
-    writeTaskRecord({
+    const before = fs.readFileSync(path.join(dir, "task.json"), "utf-8");
+    expect(() => writeTaskRecord({
       taskDir: dir,
       record: emptyTaskRecord({
         id: "u",
@@ -132,27 +128,22 @@ describe("loadTaskRecord / writeTaskRecord", () => {
         title: "U updated",
         status: "in_progress",
       }),
-    });
+    })).toThrow(/task.extra is not a supported field/);
+    expect(fs.readFileSync(path.join(dir, "task.json"), "utf-8")).toBe(before);
+  });
 
-    const raw = JSON.parse(
-      fs.readFileSync(path.join(dir, "task.json"), "utf-8"),
-    ) as Record<string, unknown>;
-    expect(raw.title).toBe("U updated");
-    expect(raw.status).toBe("in_progress");
-    expect(raw.external_tracker).toEqual({
-      id: "external-42",
-      system: "external",
-    });
-    expect(raw.legacy_flag).toBe(true);
+  it("preserves branch and meta through a current-schema write", () => {
+    const dir = path.join(tmp, "05-13-current");
+    const record = { ...emptyTaskRecord({ id: "current", name: "current", meta: { link: "A-1" } }), branch: "feature/current" };
+    writeTaskRecord({ taskDir: dir, record });
+    const loaded = loadTaskRecord({ taskDir: dir });
+    expect(loaded.branch).toBe("feature/current");
+    writeTaskRecord({ taskDir: dir, record: loaded });
 
-    // Canonical fields come first, unknown fields trail in original order.
-    const keys = Object.keys(raw);
-    const canonicalCount = TASK_RECORD_FIELD_ORDER.length;
-    expect(keys.slice(0, canonicalCount)).toEqual([...TASK_RECORD_FIELD_ORDER]);
-    expect(keys.slice(canonicalCount)).toEqual([
-      "external_tracker",
-      "legacy_flag",
-    ]);
+    const written = JSON.parse(fs.readFileSync(path.join(dir, "task.json"), "utf8"));
+    expect(written.lifecycle_generation).toBe(0);
+    expect(written.branch).toBe("feature/current");
+    expect(written.meta).toEqual({ link: "A-1" });
   });
 
   it("refuses to overwrite corrupt existing task.json files", () => {
@@ -182,7 +173,7 @@ describe("loadTaskRecord / writeTaskRecord", () => {
         taskDir: dir,
         record: emptyTaskRecord({ id: "a", name: "a", title: "A" }),
       }),
-    ).toThrow(/Refusing to overwrite non-object task record/);
+    ).toThrow(/Refusing to overwrite invalid task record/);
 
     expect(fs.readFileSync(file, "utf-8")).toBe("[]\n");
   });

@@ -1,0 +1,7 @@
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Regression and environment isolation requirements"}
+{"file":".trellis/spec/cli/unit-test/integration-patterns.md","reason":"Installed CLI upgrade and lifecycle matrix"}
+{"file":".trellis/spec/cli/backend/migrations.md","reason":"No historical workspace migration or reindexing through old manifests"}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"No generic traversal or whole-tree operation bypasses retired-data exclusion"}
+{"file":".trellis/spec/cli/backend/release-process.md","reason":"Package delivery versus publication evidence"}
+{"file":".trellis/tasks/09-11-issue-3-remove-developer-identity/prd.md","reason":"R1-R7 acceptance and scope"}
+{"file":".trellis/tasks/09-11-issue-3-remove-developer-identity/implement.md","reason":"Verification matrix and remaining gates"}

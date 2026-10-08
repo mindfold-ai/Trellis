@@ -471,14 +471,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     name: "ZCode",
     templateDirs: ["common", "zcode"],
     configDir: ".zcode",
-    // `.zcode/cli/agents` is the pre-ZCode-update discovery path. Kept managed
-    // during the transition so `trellis update --migrate` (rename-dir →
-    // `.zcode/agents/`) and `trellis uninstall` can clean up the now-empty
-    // `.zcode/cli/` parent. Drop this entry once the migration has shipped and
-    // no project still holds the legacy dir. Only empty dirs are ever removed,
-    // so user files are never touched (see cleanupEmptyDirs in update.ts).
     extraManagedPaths: [
-      ".zcode/cli/agents",
       ".zcode/agents",
       ".zcode/commands",
       ".zcode/skills",

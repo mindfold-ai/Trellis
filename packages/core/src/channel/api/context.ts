@@ -28,6 +28,7 @@ async function appendContextEvent(
   thread: string | undefined,
   origin: ContextMutationOptions["origin"],
   meta: ContextMutationOptions["meta"],
+  cwd?: string,
 ): Promise<ContextChannelEvent> {
   if (!context || context.length === 0) {
     throw new Error("context must contain at least one entry");
@@ -45,6 +46,7 @@ async function appendContextEvent(
       ...(meta !== undefined ? { meta } : {}),
     },
     ref.project,
+    cwd,
   );
   return event as ContextChannelEvent;
 }
@@ -67,6 +69,7 @@ export async function addChannelContext(
     undefined,
     opts.origin,
     opts.meta,
+    opts.cwd,
   );
 }
 
@@ -88,6 +91,7 @@ export async function deleteChannelContext(
     undefined,
     opts.origin,
     opts.meta,
+    opts.cwd,
   );
 }
 
@@ -105,7 +109,7 @@ export async function listChannelContext(
     ...(opts.projectKey !== undefined ? { projectKey: opts.projectKey } : {}),
     ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}),
   });
-  const events = await readChannelEvents(opts.channel, ref.project);
+  const events = await readChannelEvents(opts.channel, ref.project, undefined, opts.cwd);
   const meta = reduceChannelMetadata(events);
   return meta.context ?? [];
 }
@@ -121,7 +125,7 @@ export async function addThreadContext(
   });
   const thread = normalizeThreadKey(opts.thread);
   const states = reduceThreads(
-    await readForumChannelEvents(opts.channel, ref.project, "context add"),
+    await readForumChannelEvents(opts.channel, ref.project, "context add", opts.cwd),
   );
   assertKnownThread(states, thread, opts.channel);
   return appendContextEvent(
@@ -133,6 +137,7 @@ export async function addThreadContext(
     thread,
     opts.origin,
     opts.meta,
+    opts.cwd,
   );
 }
 
@@ -147,7 +152,7 @@ export async function deleteThreadContext(
   });
   const thread = normalizeThreadKey(opts.thread);
   const states = reduceThreads(
-    await readForumChannelEvents(opts.channel, ref.project, "context delete"),
+    await readForumChannelEvents(opts.channel, ref.project, "context delete", opts.cwd),
   );
   assertKnownThread(states, thread, opts.channel);
   return appendContextEvent(
@@ -159,6 +164,7 @@ export async function deleteThreadContext(
     thread,
     opts.origin,
     opts.meta,
+    opts.cwd,
   );
 }
 
@@ -179,6 +185,7 @@ export async function listThreadContext(opts: {
     opts.channel,
     ref.project,
     "context list",
+    opts.cwd,
   );
   const states = reduceThreads(events);
   const key = normalizeThreadKey(opts.thread);

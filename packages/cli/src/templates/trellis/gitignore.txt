@@ -1,6 +1,3 @@
-# Developer identity (local only)
-.developer
-
 # Current task pointer (each dev works on different task)
 .current-task
 
@@ -20,9 +17,6 @@
 
 # Atomic update temp files
 *.tmp
-
-# Update backup directories
-.backup-*
 
 # Conflict resolution temp files
 *.new

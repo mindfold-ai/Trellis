@@ -2,17 +2,23 @@
  * Canonical task.json shape — single source of truth for Trellis tasks.
  *
  * The runtime Python writer is `.trellis/scripts/common/task_store.py`
- * (`cmd_create`). The 24-field shape and field order below mirror that
+ * (`cmd_create`). The field shape and order below mirror that
  * writer exactly so every TS and Python entry point produces structurally
  * identical task.json files.
  *
- * Downstream consumers (CLI bootstrap, migration tooling, external Node
+ * Downstream consumers (CLI bootstrap, external Node
  * services) should depend on this type instead of redefining their own
  * task.json shape.
  */
+export type TaskSource =
+  | { kind: "no_issue" }
+  | { kind: "issue"; repo_ref: string; number: number; disposition: "exact_source" | "reference_only" | "follow_up" | "parent" };
+
 export interface TrellisTaskRecord {
   id: string;
   name: string;
+  lifecycle_generation: number;
+  source: TaskSource;
   title: string;
   description: string;
   status: string;
@@ -20,16 +26,13 @@ export interface TrellisTaskRecord {
   scope: string | null;
   package: string | null;
   priority: string;
-  creator: string;
-  assignee: string;
   createdAt: string;
   completedAt: string | null;
-  branch: string | null;
   base_branch: string | null;
+  branch?: string | null;
   worktree_path: string | null;
   commit: string | null;
   pr_url: string | null;
-  subtasks: string[];
   children: string[];
   parent: string | null;
   relatedFiles: string[];
@@ -44,6 +47,8 @@ export interface TrellisTaskRecord {
 export const TASK_RECORD_FIELD_ORDER = [
   "id",
   "name",
+  "lifecycle_generation",
+  "source",
   "title",
   "description",
   "status",
@@ -51,16 +56,12 @@ export const TASK_RECORD_FIELD_ORDER = [
   "scope",
   "package",
   "priority",
-  "creator",
-  "assignee",
   "createdAt",
   "completedAt",
-  "branch",
   "base_branch",
   "worktree_path",
   "commit",
   "pr_url",
-  "subtasks",
   "children",
   "parent",
   "relatedFiles",
@@ -77,8 +78,6 @@ const STRING_FIELDS: ReadonlySet<TaskRecordField> = new Set([
   "description",
   "status",
   "priority",
-  "creator",
-  "assignee",
   "createdAt",
   "notes",
 ]);
@@ -88,7 +87,6 @@ const NULLABLE_STRING_FIELDS: ReadonlySet<TaskRecordField> = new Set([
   "scope",
   "package",
   "completedAt",
-  "branch",
   "base_branch",
   "worktree_path",
   "commit",
@@ -97,7 +95,6 @@ const NULLABLE_STRING_FIELDS: ReadonlySet<TaskRecordField> = new Set([
 ]);
 
 const STRING_ARRAY_FIELDS: ReadonlySet<TaskRecordField> = new Set([
-  "subtasks",
   "children",
   "relatedFiles",
 ]);
@@ -108,11 +105,8 @@ const STRING_ARRAY_FIELDS: ReadonlySet<TaskRecordField> = new Set([
  * record, throwing on shape violations; `taskRecordSchema.safeParse`
  * returns a result discriminated by `success`.
  *
- * All canonical fields are required; older partial records are rejected rather
- * than backfilled with defaults. Unknown fields on the input are intentionally
- * omitted from this structured output. `writeTaskRecord` preserves unknown
- * fields already present on disk by merging canonical updates over the existing
- * JSON object.
+ * Canonical fields are required, except branch which is added by set-branch.
+ * Unknown top-level fields are rejected; meta remains an open JSON object.
  */
 export const taskRecordSchema = {
   parse(input: unknown): TrellisTaskRecord {
@@ -138,13 +132,23 @@ function parseTaskRecord(input: unknown): TrellisTaskRecord {
   if (!isPlainObject(input)) {
     throw new Error("task record must be a JSON object");
   }
-  const out = emptyTaskRecord();
+  const allowed = new Set<string>([...TASK_RECORD_FIELD_ORDER, "branch"]);
+  for (const key of Object.keys(input)) {
+    if (!allowed.has(key)) throw new Error(`task.${key} is not a supported field`);
+  }
+  const out = emptyTaskRecord({ id: "placeholder" });
   for (const field of TASK_RECORD_FIELD_ORDER) {
     if (!(field in input)) {
       throw new Error(`task.${field} is required`);
     }
     const value = (input as Record<string, unknown>)[field];
     assignField(out, field, value);
+  }
+  if ("branch" in input) {
+    if (input.branch !== null && typeof input.branch !== "string") {
+      throw new Error("task.branch must be a string or null");
+    }
+    out.branch = input.branch;
   }
   return out;
 }
@@ -155,6 +159,35 @@ function assignField(
   value: unknown,
 ): void {
   const bag = record as unknown as Record<string, unknown>;
+  if (field === "id") {
+    if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) {
+      throw new Error("task.id must match [A-Za-z0-9][A-Za-z0-9._-]*");
+    }
+    record.id = value;
+    return;
+  }
+  if (field === "lifecycle_generation") {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      throw new Error("task.lifecycle_generation must be a non-negative integer");
+    }
+    record.lifecycle_generation = value;
+    return;
+  }
+  if (field === "source") {
+    if (!isPlainObject(value)) throw new Error("task.source must be an object");
+    if (value.kind === "no_issue" && Object.keys(value).length === 1) {
+      record.source = { kind: "no_issue" };
+      return;
+    }
+    if (value.kind === "issue" && Object.keys(value).length === 4
+        && typeof value.repo_ref === "string" && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.repo_ref)
+        && typeof value.number === "number" && Number.isInteger(value.number) && value.number > 0
+        && ["exact_source", "reference_only", "follow_up", "parent"].includes(String(value.disposition))) {
+      record.source = value as TaskSource;
+      return;
+    }
+    throw new Error("task.source must be no_issue or a structured issue source");
+  }
   if (STRING_FIELDS.has(field)) {
     if (typeof value !== "string") {
       throw new Error(`task.${field} must be a string`);
@@ -191,18 +224,23 @@ function assignField(
 /**
  * Produce a fully-populated canonical-shape {@link TrellisTaskRecord}.
  *
- * All 24 fields are present in canonical order. `overrides` shallow-merges
- * over the defaults — callers supply per-task values (id, name, title,
- * assignee, createdAt, etc.) and leave null-default fields untouched
+ * New-task fields are present in canonical order. `overrides` shallow-merges
+ * over the defaults — callers supply a valid id and per-task values (name, title,
+ * createdAt, etc.) and leave null-default fields untouched
  * unless they have a real value.
  */
 export function emptyTaskRecord(
-  overrides: Partial<TrellisTaskRecord> = {},
+  overrides: Partial<TrellisTaskRecord> & Pick<TrellisTaskRecord, "id">,
 ): TrellisTaskRecord {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(overrides.id)) {
+    throw new Error("task.id must match [A-Za-z0-9][A-Za-z0-9._-]*");
+  }
   const today = new Date().toISOString().split("T")[0] ?? "";
   const base: TrellisTaskRecord = {
-    id: "",
+    id: overrides.id,
     name: "",
+    lifecycle_generation: 0,
+    source: { kind: "no_issue" },
     title: "",
     description: "",
     status: "planning",
@@ -210,16 +248,12 @@ export function emptyTaskRecord(
     scope: null,
     package: null,
     priority: "P2",
-    creator: "",
-    assignee: "",
     createdAt: today,
     completedAt: null,
-    branch: null,
     base_branch: null,
     worktree_path: null,
     commit: null,
     pr_url: null,
-    subtasks: [],
     children: [],
     parent: null,
     relatedFiles: [],
@@ -227,9 +261,6 @@ export function emptyTaskRecord(
     meta: {},
   };
   const record = { ...base, ...overrides };
-  if (overrides.subtasks !== undefined) {
-    record.subtasks = [...overrides.subtasks];
-  }
   if (overrides.children !== undefined) {
     record.children = [...overrides.children];
   }

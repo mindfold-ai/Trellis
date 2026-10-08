@@ -80,7 +80,7 @@ export function registerChannelCommand(program: Command): void {
       [] as string[],
     )
     .option("--cwd <path>", "working directory recorded in the create event")
-    .option("--by <agent>", "agent name recorded as the creator", "main")
+    .option("--by <agent>", "agent name recorded on the create event", "main")
     .option("--force", "overwrite existing channel with the same name")
     .option(
       "--ephemeral",
@@ -668,7 +668,6 @@ export function registerChannelCommand(program: Command): void {
     .option("--description <text>", "stable thread description")
     .option("--status <status>", "thread status")
     .option("--labels <csv>", "replace thread labels")
-    .option("--assignees <csv>", "replace thread assignees")
     .option("--summary <text>", "thread summary")
     .option(
       "--context-file <absolute-path>",

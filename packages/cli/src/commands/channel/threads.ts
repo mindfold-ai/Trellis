@@ -30,7 +30,6 @@ export interface ThreadPostOptions {
   description?: string;
   status?: string;
   labels?: string;
-  assignees?: string;
   summary?: string;
   scope?: string;
   /** New canonical flag list. */
@@ -74,7 +73,6 @@ export async function channelThreadPost(
     [...(opts.contextRaw ?? []), ...(opts.linkedContextRaw ?? [])],
   );
   const labels = parseCsv(opts.labels);
-  const assignees = parseCsv(opts.assignees);
   const text = await resolveChannelTextBody(opts, {
     required: false,
     missingMessage: "No text provided (use --text, --stdin, or --text-file)",
@@ -94,7 +92,6 @@ export async function channelThreadPost(
     ...(opts.description ? { description: opts.description } : {}),
     ...(opts.status ? { status: opts.status } : {}),
     ...(labels ? { labels } : {}),
-    ...(assignees ? { assignees } : {}),
     ...(opts.summary ? { summary: opts.summary } : {}),
     ...(context ? { context } : {}),
     origin: "cli",
@@ -146,9 +143,6 @@ export async function channelThreadShow(
   );
   if (state.description) console.log(`description: ${state.description}`);
   if (state.labels.length > 0) console.log(`labels: ${state.labels.join(",")}`);
-  if (state.assignees.length > 0) {
-    console.log(`assignees: ${state.assignees.join(",")}`);
-  }
   if (state.summary) console.log(`summary: ${state.summary}`);
   for (const ev of events) printTimelineEvent(ev);
 }

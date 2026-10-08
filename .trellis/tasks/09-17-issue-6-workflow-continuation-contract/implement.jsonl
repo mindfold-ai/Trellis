@@ -1,0 +1,6 @@
+{"file":".trellis/spec/cli/backend/commands-workflow.md","reason":"Workflow registry, switch, hash ownership, and runtime parsing contract affected by continuation blocks."}
+{"file":".trellis/spec/cli/backend/workflow-state-contract.md","reason":"Defines breadcrumb ownership and cross-worktree workflow-state behavior that must remain distinct from continuation semantics."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Bug fixes and new pure parsing logic require regression and unit coverage with repository test conventions."}
+{"file":".trellis/spec/cli/unit-test/integration-patterns.md","reason":"Init, update, workflow switch, and filesystem conflict behavior require function-level integration coverage."}
+{"file":".trellis/spec/guides/cross-platform-thinking-guide.md","reason":"Generated entrypoints and Python command behavior span every supported platform and OS path."}
+{"file":".trellis/tasks/09-17-issue-6-workflow-continuation-contract/research/code-map.md","reason":"Focused map of canonical entry generation, runtime twins, official workflows, cross-worktree tests, and Trellis Meta edit points."}

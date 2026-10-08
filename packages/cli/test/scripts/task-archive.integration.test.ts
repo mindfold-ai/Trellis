@@ -13,7 +13,7 @@
  *      working tree stays clean against HEAD).
  *   3. Commit-failure visibility — if the archive move succeeds but git
  *      cannot create the bookkeeping commit, `task.py archive` must fail
- *      loudly so callers do not continue to journal over dirty deletes.
+ *      loudly so callers do not continue after dirty deletes.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -21,6 +21,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { emptyTaskRecord } from "@mindfoldhq/trellis-core/task";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
@@ -71,20 +72,9 @@ function makeTask(repo: string, name: string, prdBody: string): void {
   fs.writeFileSync(path.join(dir, "prd.md"), prdBody);
   fs.writeFileSync(
     path.join(dir, "task.json"),
-    JSON.stringify({
-      id: name,
-      name,
-      title: name,
-      status: "in_progress",
-      priority: "P2",
-      createdAt: "2026-05-13",
-      assignee: "test",
-      creator: "test",
-      subtasks: [],
-      children: [],
-      relatedFiles: [],
-      meta: {},
-    }) + "\n",
+    JSON.stringify(emptyTaskRecord({
+      id: name, name, title: name, status: "in_progress", createdAt: "2026-05-13",
+    })) + "\n",
   );
 }
 
@@ -116,6 +106,9 @@ describe.skipIf(!hasPython())(
     it("does not bundle dirty changes from other task dirs (scope-creep fix)", () => {
       makeTask(tmp, "task-a", "task A prd\n");
       makeTask(tmp, "task-b", "task B prd v1\n");
+      const historical = path.join(tmp, ".trellis/tasks/archive/2025-01/old-task");
+      fs.mkdirSync(historical, { recursive: true });
+      fs.writeFileSync(path.join(historical, "prd.md"), "historical task\n");
       git(tmp, "add", "-A");
       git(tmp, "commit", "-q", "-m", "initial");
 
@@ -124,6 +117,7 @@ describe.skipIf(!hasPython())(
         path.join(tmp, ".trellis", "tasks", "task-b", "prd.md"),
         "DIRTY EDIT IN TASK-B SHOULD NOT BE COMMITTED\n",
       );
+      fs.appendFileSync(path.join(historical, "prd.md"), "unrelated historical edit\n");
 
       runArchive(tmp, "task-a");
 
@@ -142,10 +136,12 @@ describe.skipIf(!hasPython())(
       // task-b paths must NOT appear in the archive commit.
       const leaked = lastFiles.filter((f) => f.includes("/task-b/"));
       expect(leaked).toEqual([]);
+      expect(lastFiles.some((f) => f.includes("/old-task/"))).toBe(false);
 
       // task-b dirty change still in working tree.
       const status = git(tmp, "status", "--porcelain");
       expect(status).toMatch(/M\s+\.trellis\/tasks\/task-b\/prd\.md/);
+      expect(status).toContain(".trellis/tasks/archive/2025-01/old-task/prd.md");
     });
 
     it("does not sweep pre-staged unrelated files into the archive commit (#579)", () => {
@@ -232,6 +228,26 @@ describe.skipIf(!hasPython())(
       },
       30_000, // python startup + 100-file ops can be slow
     );
+
+    it("preflights session storage before changing task metadata", () => {
+      makeTask(tmp, "task-a", "task A prd\n");
+      const taskJson = path.join(tmp, ".trellis/tasks/task-a/task.json");
+      const before = fs.readFileSync(taskJson, "utf8");
+      const session = path.join(tmp, ".git/trellis/sessions/broken.json");
+      fs.mkdirSync(path.dirname(session), { recursive: true });
+      fs.writeFileSync(session, "{broken");
+
+      const result = spawnSync(
+        "python3",
+        [".trellis/scripts/task.py", "archive", "task-a", "--no-commit"],
+        { cwd: tmp, encoding: "utf-8" },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("the task was not modified or archived");
+      expect(fs.readFileSync(taskJson, "utf8")).toBe(before);
+      expect(fs.readFileSync(session, "utf8")).toBe("{broken");
+    });
 
     it("refuses to archive a mistyped name that resolves to a real source dir", () => {
       makeTask(tmp, "real-task", "# real task\n");

@@ -1,6 +1,6 @@
 {
   "name": "@mindfoldhq/trellis-core",
-  "version": "0.6.17",
+  "version": "0.7.0-castbox.3",
   "description": "Trellis core SDK — channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",

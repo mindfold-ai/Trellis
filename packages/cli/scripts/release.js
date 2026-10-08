@@ -4,7 +4,7 @@
  *
  * This keeps package.json as a thin command table while the release sequence
  * stays in one place:
- *   manifest/docs guards -> tests -> pre-release commit -> synchronized bump
+ *   docs guard -> tests -> pre-release commit -> synchronized bump
  *   -> version check -> version commit -> tag -> push
  */
 import { execSync } from "node:child_process";
@@ -133,7 +133,6 @@ function main() {
   assertBranchMatchesType(type, branch);
   console.log(`releasing ${type} from branch "${branch}"`);
 
-  run("node scripts/check-manifest-continuity.js");
   docsGuard(type);
   run("pnpm --filter @mindfoldhq/trellis-core test");
   run("pnpm test");

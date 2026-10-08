@@ -17,7 +17,6 @@ export type ThreadAction =
   | "comment"
   | "status"
   | "labels"
-  | "assignees"
   | "summary"
   | "processed"
   | "rename";
@@ -63,7 +62,6 @@ export const THREAD_ACTIONS: ReadonlySet<ThreadAction> = new Set([
   "comment",
   "status",
   "labels",
-  "assignees",
   "summary",
   "processed",
   "rename",

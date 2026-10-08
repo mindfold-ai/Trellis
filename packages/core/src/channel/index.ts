@@ -1,4 +1,9 @@
 // Public channel API surface.
+export {
+  channelRoot as resolveChannelStorageRoot,
+  projectDir as resolveChannelStorageProjectDir,
+  channelDir as resolveChannelStorageDir,
+} from "./internal/store/paths.js";
 
 export type {
   ChannelScope,

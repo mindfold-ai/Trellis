@@ -11,9 +11,9 @@ describe("dsh collectDshTemplates", () => {
     expect(files.has(".dsh/skills/trellis-continue/SKILL.md")).toBe(true);
     expect(files.has(".dsh/skills/trellis-finish-work/SKILL.md")).toBe(true);
 
-    // Platform-resolved placeholders: get_context.py calls carry --platform dsh
+    // Workflow-neutral entries delegate active-task routing to the workflow.
     const start = files.get(".dsh/skills/trellis-start/SKILL.md");
-    expect(start).toContain("--platform dsh");
+    expect(start).toContain("get_context.py --mode continuation");
     expect(start).toContain("name: trellis-start");
   });
 

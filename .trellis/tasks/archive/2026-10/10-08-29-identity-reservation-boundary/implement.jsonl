@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Current task, identity, selected-record and session contracts"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python read boundaries and canonical/dogfood parity"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Path containment and mutation safety"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Precise checked-read diagnostics"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Routing consumers and scope checks"}
+{"file": ".trellis/spec/cli/backend/commands-migrate.md", "reason": "Independent migration classification boundary"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Real CLI regression scenarios and fixture isolation"}

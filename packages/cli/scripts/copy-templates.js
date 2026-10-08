@@ -25,7 +25,10 @@
 import { cpSync, readdirSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 
-const EXCLUDED_TEMPLATE_ENTRIES = new Set(["__pycache__", ".DS_Store"]);
+const EXCLUDED_TEMPLATE_ENTRIES = new Set([
+  "__pycache__",
+  ".DS_Store",
+]);
 const EXCLUDED_TEMPLATE_EXTENSIONS = new Set([".pyc", ".pyo", ".ts"]);
 
 function shouldSkipTemplateEntry(entry) {
@@ -67,9 +70,5 @@ function copyDir(src, dest) {
 // Copy src/templates to dist/templates
 copyDir("src/templates", "dist/templates");
 console.log("Copied src/templates/ to dist/templates/");
-
-// Copy src/migrations/manifests to dist/migrations/manifests
-copyDir("src/migrations/manifests", "dist/migrations/manifests");
-console.log("Copied src/migrations/manifests/ to dist/migrations/manifests/");
 
 console.log("Template copy complete.");

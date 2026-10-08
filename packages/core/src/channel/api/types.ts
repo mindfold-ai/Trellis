@@ -58,7 +58,6 @@ export interface PostThreadOptions
     | "comment"
     | "status"
     | "labels"
-    | "assignees"
     | "summary"
     | "processed";
   thread: string;
@@ -67,7 +66,6 @@ export interface PostThreadOptions
   description?: string;
   status?: string;
   labels?: string[];
-  assignees?: string[];
   summary?: string;
   context?: ContextEntry[];
 }

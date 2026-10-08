@@ -1,0 +1,4 @@
+{"file":".trellis/spec/cli/backend/index.md","reason":"Affected runtime, SDK, migration and template guideline routing"}
+{"file":".trellis/spec/cli/backend/identity-free-task-lifecycle.md","reason":"Historical data and archive boundaries; Issue 23 supersedes ownership requirements"}
+{"file":".trellis/spec/cli/backend/platform-integration.md","reason":"Canonical and generated platform synchronization"}
+{"file":".trellis/tasks/09-30-issue-23/design.md","reason":"Runtime retirement and caller-owned lifecycle contract"}

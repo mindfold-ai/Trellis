@@ -5,3 +5,4 @@
 
 export * from "./channel/index.js";
 export * from "./task/index.js";
+export { assertProjectPath } from "./path-boundary.js";

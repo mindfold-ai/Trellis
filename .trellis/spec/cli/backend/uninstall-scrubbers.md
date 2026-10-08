@@ -199,7 +199,7 @@ Scrubbers themselves are **not hash-gated**. Decisions about whether a file may 
 - The PRD policy is "全删" — uninstall removes manifest-listed files whether or not the user has modified them. There is no per-file "user-modified, skip" branch like `update.ts` has.
 - `--force` does not exist on `uninstall`; the only flags are `--yes` (skip prompt) and `--dry-run` (plan only).
 
-Hash matching DOES affect `update.ts` flows (preserve user edits, `safe-file-delete` allowlist). It does NOT affect `uninstall`. If you are adding a scrubber and reaching for a hash gate, you are probably writing migration logic in the wrong place — see `migrations.md`.
+Hash matching affects current-version `update.ts` flows that preserve local edits. It does not affect `uninstall`.
 
 ---
 
@@ -323,7 +323,7 @@ Caller: `packages/cli/src/utils/managed-removal.ts` (`buildStructuredFileSpecs`,
 
 Related specs:
 - `commands-uninstall.md` — orchestration, plan-render-execute flow, prompts
-- `migrations.md` — `safe-file-delete` and hash-gated removal during `update`
+- `installed-version.md` — exact-version update requirement
 - `platform-integration.md` — the configurator side: where each scrubber-targeted file is emitted
 
 ---

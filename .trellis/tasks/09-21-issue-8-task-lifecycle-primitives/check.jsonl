@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/cli/backend/identity-free-task-lifecycle.md", "reason": "Verify lifecycle, session, and registered-worktree contract"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Verify safe mutation and dogfood/template byte parity"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Verify Python compatibility and canonical script distribution"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Verify lint, type, and code quality constraints"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Verify regression structure, isolation, and exact assertions"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Verify real filesystem and cross-module integration coverage"}
+{"file": ".trellis/spec/cli/unit-test/mock-strategies.md", "reason": "Verify mocks do not replace filesystem or Git behavior under test"}
+{"file": ".trellis/tasks/09-21-issue-8-task-lifecycle-primitives/research/current-state.md", "reason": "Verify against the live code map and historical-data constraints"}

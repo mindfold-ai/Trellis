@@ -17,11 +17,12 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from .io import describe_json_read_failure, read_json_checked
-from .paths import FILE_TASK_JSON
+from .path_boundary import ProjectPathError, require_project_path
+from .paths import FILE_TASK_JSON, get_repo_root
 from .types import TaskInfo
 
 
-def load_task(task_dir: Path) -> TaskInfo | None:
+def load_task(task_dir: Path, repo_root: Path | None = None) -> TaskInfo | None:
     """Load task from a directory containing task.json.
 
     Args:
@@ -37,6 +38,11 @@ def load_task(task_dir: Path) -> TaskInfo | None:
     cannot vanish from the workflow with no diagnostic anywhere.
     """
     task_json = task_dir / FILE_TASK_JSON
+    try:
+        require_project_path(task_json, repo_root if repo_root is not None else get_repo_root())
+    except ProjectPathError as exc:
+        print(f"[WARN] Skipping task '{task_dir.name}': {exc}", file=sys.stderr)
+        return None
     if not task_json.is_file():
         return None
 
@@ -52,7 +58,6 @@ def load_task(task_dir: Path) -> TaskInfo | None:
         directory=task_dir,
         title=data.get("title") or data.get("name") or "unknown",
         status=data.get("status", "unknown"),
-        assignee=data.get("assignee", ""),
         priority=data.get("priority", "P2"),
         children=tuple(data.get("children", [])),
         parent=data.get("parent"),
@@ -61,7 +66,7 @@ def load_task(task_dir: Path) -> TaskInfo | None:
     )
 
 
-def iter_active_tasks(tasks_dir: Path) -> Iterator[TaskInfo]:
+def iter_active_tasks(tasks_dir: Path, repo_root: Path | None = None) -> Iterator[TaskInfo]:
     """Iterate all active (non-archived) tasks, sorted by directory name.
 
     Skips the "archive" directory and directories without valid task.json.
@@ -72,13 +77,22 @@ def iter_active_tasks(tasks_dir: Path) -> Iterator[TaskInfo]:
     Yields:
         TaskInfo for each valid task.
     """
+    root = repo_root if repo_root is not None else get_repo_root()
+    require_project_path(tasks_dir, root)
     if not tasks_dir.is_dir():
         return
 
     for d in sorted(tasks_dir.iterdir()):
-        if not d.is_dir() or d.name == "archive":
+        if d.name == "archive":
             continue
-        info = load_task(d)
+        try:
+            require_project_path(d, root)
+        except ProjectPathError as exc:
+            print(f"[WARN] Skipping task '{d.name}': {exc}", file=sys.stderr)
+            continue
+        if not d.is_dir():
+            continue
+        info = load_task(d, root)
         if info is not None:
             yield info
 

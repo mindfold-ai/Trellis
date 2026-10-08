@@ -20,6 +20,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { emptyTaskRecord } from "@mindfoldhq/trellis-core/task";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
@@ -93,18 +94,20 @@ describe.skipIf(!hasPython() || process.platform === "win32")(
       fs.writeFileSync(
         path.join(store, "tasks", TASK, "task.json"),
         JSON.stringify({
+          ...emptyTaskRecord({ id: TASK }),
           id: TASK,
           name: TASK,
+          lifecycle_generation: 0,
+          children: [],
           title: TASK,
           status: "in_progress",
           meta: {},
-          children: [],
         }) + "\n",
       );
       fs.cpSync(TEMPLATE_SCRIPTS, path.join(store, "scripts"), {
         recursive: true,
       });
-      fs.writeFileSync(path.join(store, ".developer"), "name=tester\n");
+      fs.writeFileSync(path.join(store, "custom-note"), "name=tester\n");
 
       fs.mkdirSync(repo, { recursive: true });
       spawnSync("git", ["init", "-q", repo], { encoding: "utf-8" });
