@@ -111,6 +111,7 @@ program
     "-t, --template <name>",
     "Use a remote spec template (e.g., electron-fullstack)",
   )
+  .option("--empty-spec", "Skip all spec scaffolding")
   .option(
     "--overwrite",
     "Overwrite existing spec directory when using template",

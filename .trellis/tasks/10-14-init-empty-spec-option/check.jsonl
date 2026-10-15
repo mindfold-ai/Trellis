@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Verify init behavior, filesystem safety, and shared scaffold contracts"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Review meaningful integration coverage and test isolation"}

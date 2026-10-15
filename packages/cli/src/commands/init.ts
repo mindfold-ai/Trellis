@@ -70,6 +70,7 @@ import { updateHashes } from "../utils/template-hash.js";
 const MIN_PYTHON_MAJOR = 3;
 const MIN_PYTHON_MINOR = 9;
 const PYTHON_VERSION_RE = /Python (\d+)\.(\d+)/;
+const EMPTY_SPEC_VALUE = "__empty_spec__";
 
 function collectSpecPaths(cwd: string): Set<string> {
   const specRoot = path.join(cwd, PATHS.SPEC);
@@ -371,7 +372,9 @@ function getBootstrapChecklistItems(
 function getBootstrapRelatedFiles(
   projectType: ProjectType,
   packages?: DetectedPackage[],
+  emptySpec = false,
 ): string[] {
+  if (emptySpec) return [];
   if (packages && packages.length > 0) {
     return packages.map((pkg) => `.trellis/spec/${sanitizePkgName(pkg.name)}/`);
   }
@@ -388,7 +391,46 @@ function getBootstrapPrdContent(
   projectType: ProjectType,
   pythonCmd: string,
   packages?: DetectedPackage[],
+  emptySpec = false,
 ): string {
+  if (emptySpec) {
+    return `# Bootstrap Task: Review Project Conventions
+
+**You (the AI) are running this task. The developer does not read this file.**
+
+The developer initialized Trellis without spec scaffolding. No starter files
+were added under \`.trellis/spec/\`. Any existing project specs were preserved.
+
+Help the developer review existing project guidance and decide whether
+project-specific Trellis specs would be useful. Specs are optional. Do not
+create a generic backend/frontend structure by default. If the developer wants
+specs, first inspect the actual project and use a structure and terminology
+that fit its domain. It is also valid to leave \`.trellis/spec/\` empty.
+
+## Status (update the checkboxes as you complete each item)
+
+- [ ] Decide whether project-specific specs would help this project
+- [ ] Optionally add domain-specific conventions under \`.trellis/spec/\`
+
+## How to approach this task
+
+1. Review existing project instructions and contribution documents.
+2. Ask whether the developer wants to add Trellis specs now.
+3. If yes, inspect the codebase and document its actual conventions in an
+   appropriate structure; do not assume frontend/backend layers.
+4. If no, leave existing files untouched and finish this task.
+
+## Completion
+
+When the developer is satisfied, guide them to run:
+
+\`\`\`bash
+${pythonCmd} ./.trellis/scripts/task.py finish
+${pythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines
+\`\`\`
+`;
+  }
+
   const checklistItems = getBootstrapChecklistItems(projectType, packages);
   const checklistMarkdown = checklistItems
     .map((item) => `- [ ] ${item}`)
@@ -572,9 +614,14 @@ function getBootstrapTaskJson(
   developer: string,
   projectType: ProjectType,
   packages?: DetectedPackage[],
+  emptySpec = false,
 ): TaskJson {
   const today = new Date().toISOString().split("T")[0];
-  const relatedFiles = getBootstrapRelatedFiles(projectType, packages);
+  const relatedFiles = getBootstrapRelatedFiles(
+    projectType,
+    packages,
+    emptySpec,
+  );
 
   // Canonical 24-field shape via emptyTaskJson factory.
   // Checklist items (previously stored as structured `subtasks`) are now
@@ -583,8 +630,10 @@ function getBootstrapTaskJson(
   return emptyTaskJson({
     id: BOOTSTRAP_TASK_NAME,
     name: BOOTSTRAP_TASK_NAME,
-    title: "Bootstrap Guidelines",
-    description: "Fill in project development guidelines for AI agents",
+    title: emptySpec ? "Review Project Conventions" : "Bootstrap Guidelines",
+    description: emptySpec
+      ? "Decide whether domain-specific Trellis specs would help this project"
+      : "Fill in project development guidelines for AI agents",
     status: "in_progress",
     dev_type: "docs",
     priority: "P1",
@@ -592,7 +641,9 @@ function getBootstrapTaskJson(
     assignee: developer,
     createdAt: today,
     relatedFiles,
-    notes: `First-time setup task created by trellis init (${projectType} project)`,
+    notes: emptySpec
+      ? "First-time setup task created by trellis init (empty spec mode)"
+      : `First-time setup task created by trellis init (${projectType} project)`,
   });
 }
 
@@ -605,9 +656,20 @@ function createBootstrapTask(
   pythonCmd: string,
   projectType: ProjectType,
   packages?: DetectedPackage[],
+  emptySpec = false,
 ): boolean {
-  const taskJson = getBootstrapTaskJson(developer, projectType, packages);
-  const prdContent = getBootstrapPrdContent(projectType, pythonCmd, packages);
+  const taskJson = getBootstrapTaskJson(
+    developer,
+    projectType,
+    packages,
+    emptySpec,
+  );
+  const prdContent = getBootstrapPrdContent(
+    projectType,
+    pythonCmd,
+    packages,
+    emptySpec,
+  );
   return writeTaskSkeleton(cwd, BOOTSTRAP_TASK_NAME, taskJson, prdContent);
 }
 
@@ -1031,6 +1093,7 @@ interface InitOptions {
   force?: boolean;
   skipExisting?: boolean;
   template?: string;
+  emptySpec?: boolean;
   overwrite?: boolean;
   append?: boolean;
   registry?: string;
@@ -1108,6 +1171,11 @@ export async function init(options: InitOptions): Promise<void> {
     console.error(chalk.red(homedirGuardMessage("init")));
     process.exit(1);
   }
+
+  if (options.emptySpec && options.template) {
+    throw new Error("--empty-spec cannot be used with --template.");
+  }
+  let emptySpec = options.emptySpec ?? false;
 
   // Deprecated alias: --windsurf → --devin (Windsurf was renamed to Devin).
   // Normalize here too so programmatic callers (not just the CLI action) map
@@ -1191,7 +1259,8 @@ export async function init(options: InitOptions): Promise<void> {
   const tasksDirEarly = path.join(cwd, PATHS.TASKS);
   const tasksEmptyEarly =
     !fs.existsSync(tasksDirEarly) || fs.readdirSync(tasksDirEarly).length === 0;
-  const hasTemplateRequest = !!options.template || !!options.registry;
+  const hasTemplateRequest =
+    !!options.template || !!options.registry || emptySpec;
 
   if (
     !isFirstInit &&
@@ -1233,7 +1302,7 @@ export async function init(options: InitOptions): Promise<void> {
   // Parse custom registry source early (needed by both monorepo + single-repo flows)
   let registry: RegistrySource | undefined;
   let registrySourceForConfig: string | undefined;
-  if (options.registry) {
+  if (options.registry && !emptySpec) {
     try {
       registry = parseRegistrySource(options.registry);
       registrySourceForConfig = options.registry;
@@ -1334,8 +1403,29 @@ export async function init(options: InitOptions): Promise<void> {
         monorepoPackages = detected;
         remoteSpecPackages = new Set<string>();
 
-        // Per-package template selection (unless -y mode: all use blank spec)
-        if (!options.yes && !options.template) {
+        if (!emptySpec && !options.yes && !options.template) {
+          const { specMode } = await inquirer.prompt<{
+            specMode: string;
+          }>([
+            {
+              type: "list",
+              name: "specMode",
+              message: "Spec setup for this monorepo:",
+              choices: [
+                { name: "Choose a source for each package", value: "packages" },
+                {
+                  name: "empty spec (skip all spec scaffolding)",
+                  value: EMPTY_SPEC_VALUE,
+                },
+              ],
+              default: "packages",
+            },
+          ]);
+          emptySpec = specMode === EMPTY_SPEC_VALUE;
+        }
+
+        // Per-package selection stays the default unless the user chose empty spec.
+        if (!emptySpec && !options.yes && !options.template) {
           for (const pkg of detected) {
             const { specSource } = await inquirer.prompt<{
               specSource: string;
@@ -1491,8 +1581,8 @@ export async function init(options: InitOptions): Promise<void> {
     ? `${registry.rawBaseUrl}/index.json`
     : TEMPLATE_INDEX_URL;
 
-  if (monorepoPackages) {
-    // Monorepo: template selection already handled above
+  if (emptySpec || monorepoPackages) {
+    // Empty spec skips lookup; monorepo selection was handled above.
   } else if (options.template) {
     // Template specified via --template flag
     selectedTemplate = options.template;
@@ -1546,20 +1636,57 @@ export async function init(options: InitOptions): Promise<void> {
     fetchedTemplates = templates;
 
     if (templates.length === 0 && registry && registryProbeNotFound) {
-      // Custom registry: confirmed no index.json — will try direct download later
+      const { registryChoice } = await inquirer.prompt<{
+        registryChoice: string;
+      }>([
+        {
+          type: "list",
+          name: "registryChoice",
+          message: "This registry has no template index:",
+          choices: [
+            { name: "Download spec directly from registry", value: "direct" },
+            {
+              name: "empty spec (skip all spec scaffolding)",
+              value: EMPTY_SPEC_VALUE,
+            },
+          ],
+          default: "direct",
+        },
+      ]);
+      if (registryChoice === EMPTY_SPEC_VALUE) emptySpec = true;
       console.log(
         chalk.gray(
-          "   No index.json found at registry. Will download as direct spec template.",
+          emptySpec
+            ? "   Continuing with empty spec."
+            : "   No index.json found at registry. Will download as direct spec template.",
         ),
       );
     } else if (templates.length === 0 && registry) {
-      // Custom registry: transient error (not a 404) — abort, don't misclassify
+      // A failed registry lookup should not prevent users from choosing empty spec.
       console.log(
-        chalk.red(
-          `   ${registryProbeError?.message ?? "Could not reach registry. Check your connection and try again."}`,
+        chalk.yellow(
+          `   ${registryProbeError?.message ?? "Could not reach registry."}`,
         ),
       );
-      return;
+      const { registryChoice } = await inquirer.prompt<{
+        registryChoice: string;
+      }>([
+        {
+          type: "list",
+          name: "registryChoice",
+          message: "How would you like to continue?",
+          choices: [
+            { name: "Abort initialization", value: "abort" },
+            {
+              name: "Continue with empty spec",
+              value: EMPTY_SPEC_VALUE,
+            },
+          ],
+          default: "abort",
+        },
+      ]);
+      if (registryChoice !== EMPTY_SPEC_VALUE) return;
+      emptySpec = true;
     } else if (templates.length === 0) {
       console.log(
         chalk.gray(
@@ -1569,7 +1696,7 @@ export async function init(options: InitOptions): Promise<void> {
       console.log(chalk.gray("   Using blank templates.\n"));
     }
 
-    if (templates.length > 0) {
+    if (templates.length > 0 || !registry) {
       // Build template choices
       const specTemplates = templates
         .filter((t) => t.type === "spec")
@@ -1579,7 +1706,13 @@ export async function init(options: InitOptions): Promise<void> {
         }));
 
       const templateChoices = registry
-        ? specTemplates
+        ? [
+            ...specTemplates,
+            {
+              name: "empty spec (skip all spec scaffolding)",
+              value: EMPTY_SPEC_VALUE,
+            },
+          ]
         : [
             {
               name: "from scratch (default)",
@@ -1589,6 +1722,10 @@ export async function init(options: InitOptions): Promise<void> {
             {
               name: "custom (enter a registry source)",
               value: "__custom__",
+            },
+            {
+              name: "empty spec (skip all spec scaffolding)",
+              value: EMPTY_SPEC_VALUE,
             },
           ];
 
@@ -1601,7 +1738,7 @@ export async function init(options: InitOptions): Promise<void> {
             name: "template",
             message: "Select a spec template:",
             choices: templateChoices,
-            default: registry ? undefined : "blank",
+            default: registry ? specTemplates[0]?.value : "blank",
           },
         ]);
 
@@ -1633,23 +1770,31 @@ export async function init(options: InitOptions): Promise<void> {
             if (customTemplates.length > 0) {
               // Marketplace mode: show picker with custom templates
               fetchedTemplates = customTemplates;
-              const customChoices = customTemplates
-                .filter((t) => t.type === "spec")
-                .map((t) => ({
-                  name: `${t.id} (${t.name})`,
-                  value: t.id,
-                }));
-              if (customChoices.length > 0) {
-                const customAnswer = await inquirer.prompt<{
-                  template: string;
-                }>([
-                  {
-                    type: "list",
-                    name: "template",
-                    message: "Select a spec template:",
-                    choices: customChoices,
-                  },
-                ]);
+              const customChoices = [
+                ...customTemplates
+                  .filter((t) => t.type === "spec")
+                  .map((t) => ({
+                    name: `${t.id} (${t.name})`,
+                    value: t.id,
+                  })),
+                {
+                  name: "empty spec (skip all spec scaffolding)",
+                  value: EMPTY_SPEC_VALUE,
+                },
+              ];
+              const customAnswer = await inquirer.prompt<{
+                template: string;
+              }>([
+                {
+                  type: "list",
+                  name: "template",
+                  message: "Select a spec template:",
+                  choices: customChoices,
+                },
+              ]);
+              if (customAnswer.template === EMPTY_SPEC_VALUE) {
+                emptySpec = true;
+              } else {
                 selectedTemplate = customAnswer.template;
 
                 // Check if spec directory already exists and ask what to do
@@ -1685,7 +1830,27 @@ export async function init(options: InitOptions): Promise<void> {
               }
               templatePicked = true;
             } else if (customProbe.isNotFound) {
-              // No index.json → direct download mode
+              const { registryChoice } = await inquirer.prompt<{
+                registryChoice: string;
+              }>([
+                {
+                  type: "list",
+                  name: "registryChoice",
+                  message: "This registry has no template index:",
+                  choices: [
+                    {
+                      name: "Download spec directly from registry",
+                      value: "direct",
+                    },
+                    {
+                      name: "empty spec (skip all spec scaffolding)",
+                      value: EMPTY_SPEC_VALUE,
+                    },
+                  ],
+                  default: "direct",
+                },
+              ]);
+              if (registryChoice === EMPTY_SPEC_VALUE) emptySpec = true;
               templatePicked = true;
             } else {
               // Transient error (not 404) — loop back, don't misclassify
@@ -1709,7 +1874,12 @@ export async function init(options: InitOptions): Promise<void> {
           }
         } else {
           templatePicked = true;
-          if (templateAnswer.template !== "blank") {
+          if (templateAnswer.template === EMPTY_SPEC_VALUE) {
+            emptySpec = true;
+          } else if (
+            templateAnswer.template &&
+            templateAnswer.template !== "blank"
+          ) {
             selectedTemplate = templateAnswer.template;
 
             // Check if spec directory already exists and ask what to do
@@ -1781,7 +1951,7 @@ export async function init(options: InitOptions): Promise<void> {
   let useRemoteTemplate = false;
   let registrySpecConfigToPersist: SpecRegistryConfig | null = null;
 
-  if (selectedTemplate) {
+  if (!emptySpec && selectedTemplate) {
     // Marketplace mode: download specific template by ID
     console.log(chalk.blue(`📦 Downloading template "${selectedTemplate}"...`));
     console.log(chalk.gray("   This may take a moment on slow connections."));
@@ -1820,7 +1990,7 @@ export async function init(options: InitOptions): Promise<void> {
         : `trellis init --template ${selectedTemplate}`;
       console.log(chalk.gray(`   You can retry later: ${retryCmd}`));
     }
-  } else if (registry && fetchedTemplates.length === 0) {
+  } else if (!emptySpec && registry && fetchedTemplates.length === 0) {
     // Direct download mode: registry has no index.json, download directory directly
     console.log(
       chalk.blue(`📦 Downloading spec from ${registry.gigetSource}...`),
@@ -1917,6 +2087,7 @@ export async function init(options: InitOptions): Promise<void> {
     await createWorkflowStructure(cwd, {
       projectType,
       skipSpecTemplates: useRemoteTemplate,
+      emptySpec,
       packages: monorepoPackages,
       remoteSpecPackages,
       workflowMdOverride,
@@ -2032,6 +2203,7 @@ export async function init(options: InitOptions): Promise<void> {
         pythonCmd,
         projectType,
         monorepoPackages,
+        emptySpec,
       );
     } else if (!hadDeveloperFileAtStart) {
       try {
