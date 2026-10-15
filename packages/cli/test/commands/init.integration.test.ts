@@ -9,6 +9,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import readline from "node:readline";
+import inquirer from "inquirer";
+import { downloadTemplate } from "giget";
 
 // === External dependency mocks (hoisted by vitest) ===
 
@@ -1049,6 +1052,369 @@ describe("init() integration", () => {
     );
     expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "guides", "index.md"))).toBe(true);
+  });
+
+  describe("#658 empty spec", () => {
+    interface SpecQuestion {
+      name: string;
+      choices?: { name: string; value: string }[];
+      default?: unknown;
+    }
+
+    const emptyChoice = "__empty_spec__";
+    const templateIndex = {
+      version: 1,
+      templates: [
+        { id: "kernel-spec", type: "spec", name: "Kernel", path: "kernel" },
+      ],
+    };
+
+    function answerPrompts(answers: Record<string, unknown>): SpecQuestion[] {
+      const asked: SpecQuestion[] = [];
+      vi.mocked(inquirer.prompt).mockImplementation(((questions: unknown) => {
+        const question = (questions as SpecQuestion[])[0];
+        asked.push(question);
+        return Promise.resolve({
+          [question.name]: answers[question.name] ?? question.default,
+        });
+      }) as never);
+      return asked;
+    }
+
+    beforeEach(() => {
+      vi.mocked(inquirer.prompt).mockReset().mockResolvedValue({});
+      vi.mocked(downloadTemplate).mockClear();
+    });
+
+    afterEach(() => {
+      vi.mocked(inquirer.prompt).mockReset().mockResolvedValue({});
+    });
+
+    it("#658.1 --empty-spec keeps the runtime and optional bootstrap without creating spec", async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      await init({ yes: true, emptySpec: true, cursor: true, user: "alice" });
+
+      expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC))).toBe(false);
+      for (const relativePath of [
+        PATHS.SCRIPTS,
+        PATHS.WORKSPACE,
+        PATHS.TASKS,
+        PATHS.WORKFLOW_GUIDE_FILE,
+        ".cursor",
+        "AGENTS.md",
+      ]) {
+        expect(fs.existsSync(path.join(tmpDir, relativePath))).toBe(true);
+      }
+      const taskDir = path.join(tmpDir, PATHS.TASKS, "00-bootstrap-guidelines");
+      const task = JSON.parse(
+        fs.readFileSync(path.join(taskDir, "task.json"), "utf-8"),
+      );
+      const prd = fs.readFileSync(path.join(taskDir, "prd.md"), "utf-8");
+      expect(task.relatedFiles).toEqual([]);
+      expect(prd).toContain("Specs are optional");
+      expect(prd).toContain("leave existing files untouched");
+      expect(prd).not.toContain(".trellis/spec/backend/");
+      expect(prd).not.toContain(".trellis/spec/frontend/");
+      expect(prd).not.toContain(".trellis/spec/guides/");
+      const hashes = JSON.parse(
+        fs.readFileSync(
+          path.join(tmpDir, DIR_NAMES.WORKFLOW, ".template-hashes.json"),
+          "utf-8",
+        ),
+      ).hashes as Record<string, string>;
+      expect(
+        Object.keys(hashes).filter((key) => key.startsWith(".trellis/spec/")),
+      ).toEqual([]);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(downloadTemplate).not.toHaveBeenCalled();
+      expect(inquirer.prompt).not.toHaveBeenCalled();
+    });
+
+    it("#658.2 explicit empty spec ignores an unused registry without network access or prompts", async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      await init({
+        emptySpec: true,
+        registry: "invalid:unused",
+        cursor: true,
+        user: "alice",
+      });
+
+      expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE))).toBe(
+        true,
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(downloadTemplate).not.toHaveBeenCalled();
+      expect(inquirer.prompt).not.toHaveBeenCalled();
+      expect(
+        fs.readFileSync(
+          path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+          "utf-8",
+        ),
+      ).not.toContain("invalid:unused");
+    });
+
+    it("#658.3 rejects conflicting explicit template choices before writing", async () => {
+      await expect(
+        init({ yes: true, emptySpec: true, template: "kernel-spec" }),
+      ).rejects.toThrow("--empty-spec cannot be used with --template");
+      expect(fs.readdirSync(tmpDir)).toEqual([]);
+      expect(downloadTemplate).not.toHaveBeenCalled();
+    });
+
+    it("#658.4 preserves all existing spec files during forced reinitialization", async () => {
+      await init({ yes: true, cursor: true, user: "alice" });
+      const specDir = path.join(tmpDir, PATHS.SPEC);
+      fs.writeFileSync(
+        path.join(specDir, "backend", "index.md"),
+        "# Custom backend\n",
+      );
+      fs.mkdirSync(path.join(specDir, "kernel"));
+      fs.writeFileSync(
+        path.join(specDir, "kernel", "locking.md"),
+        "# Kernel locking\n",
+      );
+      const snapshot = (): Record<string, string> => {
+        const files: Record<string, string> = {};
+        const visit = (dir: string): void => {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              visit(full);
+            } else if (entry.isFile()) {
+              files[path.relative(specDir, full)] = fs.readFileSync(
+                full,
+                "utf-8",
+              );
+            }
+          }
+        };
+        visit(specDir);
+        return files;
+      };
+      const before = snapshot();
+
+      await init({
+        yes: true,
+        emptySpec: true,
+        force: true,
+        cursor: true,
+        user: "alice",
+      });
+
+      expect(snapshot()).toEqual(before);
+    });
+
+    it.each([
+      ["built-in marketplace", undefined, 200],
+      ["custom marketplace", "gh:example/registry/specs", 200],
+      ["direct registry", "gh:example/registry/specs", 404],
+      ["offline built-in marketplace", undefined, 503],
+      ["unavailable custom registry", "gh:example/registry/specs", 503],
+    ])(
+      "#658.5 offers interactive empty spec for %s",
+      async (_mode, registry, status) => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn().mockResolvedValue({
+            ok: status === 200,
+            status,
+            text: async () => JSON.stringify(templateIndex),
+          }),
+        );
+        const asked = answerPrompts({
+          template: emptyChoice,
+          registryChoice: emptyChoice,
+        });
+
+        await init({ registry, cursor: true, user: "alice" });
+
+        expect(
+          asked.some((question) =>
+            question.choices?.some((choice) => choice.value === emptyChoice),
+          ),
+        ).toBe(true);
+        expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC))).toBe(false);
+        expect(downloadTemplate).not.toHaveBeenCalled();
+        expect(
+          fs.readFileSync(
+            path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+            "utf-8",
+          ),
+        ).not.toContain("source: gh:example/registry/specs");
+      },
+    );
+
+    it.each([false, true])(
+      "#658.6 skips monorepo package specs and shared guides (flag: %s)",
+      async (useFlag) => {
+        setupPnpmWorkspace(tmpDir, [
+          { rel: "packages/core", name: "core" },
+          { rel: "packages/ui", name: "ui" },
+        ]);
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        const asked = answerPrompts({
+          useMonorepo: true,
+          specMode: emptyChoice,
+        });
+
+        await init({
+          yes: useFlag,
+          emptySpec: useFlag,
+          cursor: true,
+          user: "alice",
+        });
+
+        expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC))).toBe(false);
+        expect(asked.some((question) => question.name === "specSource")).toBe(
+          false,
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(downloadTemplate).not.toHaveBeenCalled();
+        const config = fs.readFileSync(
+          path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+          "utf-8",
+        );
+        expect(config).toContain("path: packages/core");
+        expect(config).toContain("path: packages/ui");
+        const task = JSON.parse(
+          fs.readFileSync(
+            path.join(
+              tmpDir,
+              PATHS.TASKS,
+              "00-bootstrap-guidelines",
+              "task.json",
+            ),
+            "utf-8",
+          ),
+        );
+        expect(task.relatedFiles).toEqual([]);
+      },
+    );
+
+    it.each([200, 404])(
+      "#658.9 offers empty spec after entering a custom registry (status: %s)",
+      async (status) => {
+        vi.spyOn(readline, "createInterface").mockReturnValue({
+          question: (_prompt: string, answer: (value: string) => void) => {
+            answer("gh:example/registry/specs");
+          },
+          close: noop,
+        } as readline.Interface);
+        vi.stubGlobal(
+          "fetch",
+          vi
+            .fn()
+            .mockResolvedValueOnce({
+              ok: true,
+              text: async () => JSON.stringify(templateIndex),
+            })
+            .mockResolvedValue({
+              ok: status === 200,
+              status,
+              text: async () => JSON.stringify(templateIndex),
+            }),
+        );
+        vi.mocked(inquirer.prompt)
+          .mockResolvedValueOnce({ template: "__custom__" })
+          .mockResolvedValueOnce({
+            template: emptyChoice,
+            registryChoice: emptyChoice,
+          });
+
+        await init({ cursor: true, user: "alice" });
+
+        expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC))).toBe(false);
+        expect(downloadTemplate).not.toHaveBeenCalled();
+        expect(
+          fs.readFileSync(
+            path.join(tmpDir, DIR_NAMES.WORKFLOW, "config.yaml"),
+            "utf-8",
+          ),
+        ).not.toContain("source: gh:example/registry/specs");
+      },
+    );
+
+    it("#658.10 honors empty spec during ordinary reinit without force", async () => {
+      await init({ yes: true, cursor: true, user: "alice", emptySpec: true });
+      const specDir = path.join(tmpDir, PATHS.SPEC);
+      fs.mkdirSync(path.join(specDir, "kernel"), { recursive: true });
+      fs.writeFileSync(
+        path.join(specDir, "kernel", "locking.md"),
+        "# Locking\n",
+      );
+
+      await init({ yes: true, cursor: true, user: "alice", emptySpec: true });
+
+      expect(fs.readdirSync(specDir)).toEqual(["kernel"]);
+      expect(
+        fs.readFileSync(path.join(specDir, "kernel", "locking.md"), "utf-8"),
+      ).toBe("# Locking\n");
+    });
+
+    it("#658.7 keeps from scratch as the interactive default", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          text: async () => JSON.stringify(templateIndex),
+        }),
+      );
+      const asked = answerPrompts({});
+
+      await init({ cursor: true, user: "alice" });
+
+      expect(
+        asked.find((question) => question.name === "template")?.default,
+      ).toBe("blank");
+      expect(
+        fs.existsSync(path.join(tmpDir, PATHS.SPEC, "backend", "index.md")),
+      ).toBe(true);
+      expect(
+        fs.existsSync(path.join(tmpDir, PATHS.SPEC, "frontend", "index.md")),
+      ).toBe(true);
+      expect(
+        fs.existsSync(path.join(tmpDir, PATHS.SPEC, "guides", "index.md")),
+      ).toBe(true);
+    });
+
+    it.each([200, 404])(
+      "#658.8 still installs an interactive remote spec (status: %s)",
+      async (status) => {
+        registryDownload.files.set("index.md", "# Project-specific spec\n");
+        vi.stubGlobal(
+          "fetch",
+          vi.fn().mockResolvedValue({
+            ok: status === 200,
+            status,
+            text: async () => JSON.stringify(templateIndex),
+          }),
+        );
+        answerPrompts({ template: "kernel-spec", registryChoice: "direct" });
+
+        await init({
+          registry: "gh:example/registry/specs",
+          cursor: true,
+          user: "alice",
+        });
+
+        expect(
+          fs.readFileSync(path.join(tmpDir, PATHS.SPEC, "index.md"), "utf-8"),
+        ).toBe("# Project-specific spec\n");
+        expect(downloadTemplate).toHaveBeenCalledOnce();
+        expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC, "backend"))).toBe(
+          false,
+        );
+        expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC, "guides"))).toBe(
+          false,
+        );
+      },
+    );
   });
 
   // ===========================================================================

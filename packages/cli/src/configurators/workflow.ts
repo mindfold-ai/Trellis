@@ -58,6 +58,8 @@ export interface WorkflowOptions {
   projectType: ProjectType;
   /** Skip creating local spec templates (when using remote template) — single-repo mode */
   skipSpecTemplates?: boolean;
+  /** Skip all built-in spec files in single-repo and monorepo modes */
+  emptySpec?: boolean;
   /** Detected monorepo packages (enables monorepo spec creation) */
   packages?: DetectedPackage[];
   /** Package names that use remote templates (skip blank spec for these) */
@@ -128,6 +130,7 @@ export async function createWorkflowStructure(
 ): Promise<void> {
   const projectType = options?.projectType ?? "fullstack";
   const skipSpecTemplates = options?.skipSpecTemplates ?? false;
+  const emptySpec = options?.emptySpec ?? false;
   const packages = options?.packages;
   const remoteSpecPackages = options?.remoteSpecPackages;
   const workflowMd = options?.workflowMdOverride ?? workflowMdTemplate;
@@ -185,10 +188,10 @@ export async function createWorkflowStructure(
 
   // Create spec templates based on project type
   // These are NOT dogfooded - they are generic templates for new projects
-  if (packages && packages.length > 0) {
+  if (!emptySpec && packages && packages.length > 0) {
     // Monorepo mode: create per-package spec directories
     await createSpecTemplates(cwd, projectType, packages, remoteSpecPackages);
-  } else if (!skipSpecTemplates) {
+  } else if (!emptySpec && !skipSpecTemplates) {
     // Single-repo mode: create global spec (skip if using remote template)
     await createSpecTemplates(cwd, projectType);
   }
