@@ -30,6 +30,15 @@ const MAX_LINEAGE_HOPS = 8;
 const MAX_QUERY_CHARS = 2000;
 const MAX_REFS = 30;
 
+/** Function words that can wrap a query without adding an answer.
+ * A user turn made only of these plus the query terms is a question echo. */
+const QUERY_ECHO_WORDS = new Set([
+  "a", "an", "about", "any", "are", "can", "could", "describe", "did", "do",
+  "does", "explain", "for", "how", "in", "is", "me", "my", "of", "on", "our",
+  "please", "should", "tell", "that", "the", "there", "this", "to", "was",
+  "were", "what", "when", "where", "which", "who", "why", "will", "would",
+]);
+
 interface EvidenceRef {
   kind: "doc" | "session";
   path?: string;
@@ -46,6 +55,10 @@ interface Candidate {
   anchorStart: number;
   anchorEnd: number;
   coverage: number;
+  /** Required terms matched in the body, after the first heading. */
+  bodyEvidence: boolean;
+  /** Required terms that contain a digit, such as TASK-4419. */
+  idCoverage: number;
   derivedCoverage: number;
   titleCoverage: number;
   pathCoverage: number;
@@ -105,6 +118,45 @@ function headingBefore(text: string, index: number): string | undefined {
 /** Effective notes outrank archived / superseded ones at equal coverage. */
 function inactiveRank(hit: RecallHit): number {
   return hit.status === "archived" || hit.status === "superseded" ? 1 : 0;
+}
+
+function hasBodyEvidence(bodyCoverage: number, requiredCount: number): boolean {
+  return bodyCoverage >= 2 && bodyCoverage * 2 >= requiredCount;
+}
+
+/** Current body evidence beats an archived title. An archived body beats a
+ * current note that only matched in its title. One shared word is not enough. */
+function preferRecordedBody(a: Candidate, b: Candidate): number {
+  const aCurrent = a.bodyEvidence && inactiveRank(a.hit) === 0;
+  const bCurrent = b.bodyEvidence && inactiveRank(b.hit) === 0;
+  if (aCurrent && !b.bodyEvidence && inactiveRank(b.hit) > 0) return -1;
+  if (bCurrent && !a.bodyEvidence && inactiveRank(a.hit) > 0) return 1;
+  const aOld = a.bodyEvidence && inactiveRank(a.hit) > 0;
+  const bOld = b.bodyEvidence && inactiveRank(b.hit) > 0;
+  if (aOld && !b.bodyEvidence && inactiveRank(b.hit) === 0) return -1;
+  if (bOld && !a.bodyEvidence && inactiveRank(a.hit) === 0) return 1;
+  return 0;
+}
+
+const ANSWER_SIGNAL =
+  /(?:^|[^\p{L}\p{N}])(?:no|not|never|nor|yes|rejected|reject|allow|allows|allowed|most|least|one|two|three|four|five|six|seven|eight|nine|ten|once|twice|confirmed|确认|\d+)(?=$|[^\p{L}\p{N}])/iu;
+
+/** A digit, denial, limit, or explicit confirmation. Instructions around a question do not count. */
+function hasAnswerSignal(text: string): boolean {
+  return ANSWER_SIGNAL.test(text.normalize("NFKC").toLowerCase());
+}
+
+/** A user turn that only asks the query, with no confirmation, correction, or denial. */
+function isQueryEcho(text: string, required: readonly string[]): boolean {
+  if (!required.length) return false;
+  const tokens = text
+    .normalize("NFKC")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length >= 2 || /^\d+$/.test(token));
+  const known = new Set(required);
+  if (!required.every((term) => tokens.includes(term))) return false;
+  return tokens.every((token) => known.has(token) || QUERY_ECHO_WORDS.has(token));
 }
 
 /** The last current note in a declared chain ranks immediately before the note
@@ -239,6 +291,8 @@ function select(
 ): { hits: RecallHit[]; truncated: boolean } {
   const ranked = [...candidates].sort(
     (a, b) =>
+      b.idCoverage - a.idCoverage ||
+      preferRecordedBody(a, b) ||
       b.coverage - a.coverage ||
       b.titleCoverage - a.titleCoverage ||
       b.pathCoverage - a.pathCoverage ||
@@ -342,8 +396,21 @@ export function recallMem(options: RecallMemOptions): RecallResult {
       : windowAt(text, 0, 0, EXCERPT_CHARS);
     const matchedTerms = [...new Set([...matches, ...pathMatches].map((h) => h.term))];
     const coverage = required.filter((t) => matchedTerms.includes(t)).length;
+    const bodySource =
+      ref.kind === "doc" ? text.replace(/^#{1,6}[ \t].*$/m, "") : "";
+    const bodyHits = bodySource ? matchTerms(bodySource, terms) : [];
+    const bodyCoverage = required.filter((term) =>
+      bodyHits.some((match) => match.term === term),
+    ).length;
     const titleCoverage = titleMatches.length / terms.length;
     const pathCoverage = pathMatches.length / terms.length;
+    // A user question can match every term without stating a rule. Keep that
+    // request as a weak clue so it cannot fill the default hits.
+    const userTurn = ref.kind === "session" && hit.section === "user";
+    const echo =
+      userTurn &&
+      (isQueryEcho(text, required) ||
+        (coverage === required.length && !hasAnswerSignal(text)));
     const record: RecallHit = {
       ...hit,
       ...(title ? { title } : {}),
@@ -354,7 +421,7 @@ export function recallMem(options: RecallMemOptions): RecallResult {
       }),
       excerpt: window.excerpt,
       matchedTerms,
-      strength: coverage === required.length ? "strong" : "weak",
+      strength: !echo && coverage === required.length ? "strong" : "weak",
     };
     if (ref.kind === "doc") {
       record.line = text.slice(0, window.anchorStart).split("\n").length;
@@ -365,7 +432,11 @@ export function recallMem(options: RecallMemOptions): RecallResult {
       source: text,
       anchorStart: window.anchorStart,
       anchorEnd: window.anchorEnd,
-      coverage,
+      coverage: echo ? 0 : coverage,
+      bodyEvidence: hasBodyEvidence(bodyCoverage, required.length),
+      idCoverage: required.filter(
+        (term) => /\d/.test(term) && matchedTerms.includes(term),
+      ).length,
       derivedCoverage: matchedTerms.length / Math.max(1, terms.length),
       titleCoverage,
       pathCoverage,
@@ -446,10 +517,16 @@ export function recallMem(options: RecallMemOptions): RecallResult {
     }
   }
   const strong = candidates.filter((c) => c.hit.strength === "strong");
+  // A user question, even one that states a correction, does not by itself
+  // drop every weaker document.
+  const strongCurrent = strong.filter(
+    (c) => inactiveRank(c.hit) === 0 && c.hit.section !== "user",
+  );
   const successors = new Set(strong.filter((c) => !c.hit.lineageFault)
     .map((c) => c.hit.supersededBy).filter(Boolean));
   // A current rule may use fewer query terms than the note it replaces.
-  const pool = strong.length
+  // Archived title matches alone must not drop that current note.
+  const pool = strongCurrent.length
     ? candidates.filter((c) => c.hit.strength === "strong" || successors.has(c.hit.path))
     : candidates;
   const selected = select(pool, limit, maxChars);

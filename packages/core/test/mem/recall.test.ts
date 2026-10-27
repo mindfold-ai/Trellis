@@ -40,6 +40,359 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+const RETRY_RULE =
+  "OrbitCallback transient failures allow at most 4 total attempts. Permanent failures allow 1 attempt.";
+
+function claudeSessions(
+  sessions: { id: string; turns: { role: "user" | "assistant"; text: string }[] }[],
+): void {
+  const adapter = MEM_PLATFORMS.claude;
+  vi.mocked(adapter.list).mockReturnValue(
+    sessions.map((session) => ({
+      id: session.id,
+      platform: "claude" as const,
+      cwd: root,
+      filePath: session.id,
+    })),
+  );
+  vi.spyOn(adapter, "extract").mockImplementation((session) => {
+    return sessions.find((item) => item.id === session.id)?.turns ?? [];
+  });
+}
+
+describe("0.3.2 recall", () => {
+  it("keeps the answer document when repeated user questions match every query term", () => {
+    write(
+      ".trellis/spec/retry-budget.md",
+      `# Retry budget\n\n${RETRY_RULE}\n`,
+    );
+    claudeSessions([
+      { id: "ask-1", turns: [{ role: "user", text: "OrbitCallback retry policy" }] },
+      { id: "ask-2", turns: [{ role: "user", text: "What is the OrbitCallback retry policy?" }] },
+      { id: "ask-3", turns: [{ role: "user", text: "Please explain our OrbitCallback retry policy" }] },
+    ]);
+    const result = recallMem({ cwd: root, query: "OrbitCallback retry policy" });
+    const docAt = result.hits.findIndex(
+      (hit) => hit.path === ".trellis/spec/retry-budget.md",
+    );
+    expect(docAt).toBeGreaterThanOrEqual(0);
+    expect(docAt).toBeLessThan(3);
+    expect(result.hits[docAt]?.excerpt).toContain("at most 4 total attempts");
+    const read = readMemRefs({
+      cwd: root,
+      refs: [result.hits[docAt]?.ref ?? ""],
+    });
+    expect(read.reads[0]?.text).toContain("at most 4 total attempts");
+    expect(read.reads[0]?.text).toContain("Permanent failures allow 1 attempt");
+    expect(result.hits.some((hit) => hit.sourceKind === "doc")).toBe(true);
+    expect(result.hits.every((hit) => hit.section === "user")).toBe(false);
+  });
+
+  it("keeps the answer document when user questions add instructions but no answer", () => {
+    write(".trellis/spec/retry-budget.md", `# Retry budget\n\n${RETRY_RULE}\n`);
+    claudeSessions([
+      {
+        id: "current",
+        turns: [{
+          role: "user",
+          text: "What is the OrbitCallback retry policy? Include the numeric limits, any excluded case, and the note path.",
+        }],
+      },
+      {
+        id: "again",
+        turns: [{
+          role: "user",
+          text: "Please look up the OrbitCallback retry policy and quote the limits.",
+        }],
+      },
+      {
+        id: "third",
+        turns: [{
+          role: "user",
+          text: "I need the OrbitCallback retry policy from the notes.",
+        }],
+      },
+    ]);
+    const result = recallMem({ cwd: root, query: "OrbitCallback retry policy" });
+    const docAt = result.hits.findIndex(
+      (hit) => hit.path === ".trellis/spec/retry-budget.md",
+    );
+    expect(docAt).toBeGreaterThanOrEqual(0);
+    expect(docAt).toBeLessThan(3);
+    expect(result.hits[docAt]?.excerpt).toContain("at most 4 total attempts");
+    expect(result.hits.filter((hit) => hit.section === "user").every(
+      (hit) => hit.strength === "weak",
+    )).toBe(true);
+  });
+
+  it("does not present a user question that only restates the query as a strong answer", () => {
+    claudeSessions([
+      {
+        id: "ask-only",
+        turns: [{ role: "user", text: "What is the OrbitCallback retry policy?" }],
+      },
+    ]);
+    const result = recallMem({ cwd: root, query: "OrbitCallback retry policy" });
+    expect(result.hits.some((hit) => hit.strength === "strong")).toBe(false);
+    expect(result.hits[0]?.section).toBe("user");
+    expect(result.hits[0]?.excerpt.toLowerCase()).toContain("orbitcallback retry policy");
+    expect(result.hits[0]?.excerpt).not.toContain("at most 4");
+  });
+
+  it("keeps an assistant answer next to a question that only restates the query", () => {
+    claudeSessions([
+      { id: "ask-1", turns: [{ role: "user", text: "OrbitCallback retry policy" }] },
+      {
+        id: "ask-2",
+        turns: [{ role: "user", text: "What is the OrbitCallback retry policy?" }],
+      },
+      {
+        id: "ask-3",
+        turns: [{ role: "user", text: "Please explain our OrbitCallback retry policy" }],
+      },
+      {
+        id: "answered",
+        turns: [
+          { role: "user", text: "OrbitCallback retry policy" },
+          { role: "assistant", text: RETRY_RULE },
+        ],
+      },
+    ]);
+    const result = recallMem({ cwd: root, query: "OrbitCallback retry policy" });
+    const answer = result.hits.find(
+      (hit) => hit.section === "assistant" && hit.excerpt.includes("at most 4"),
+    );
+    expect(answer?.excerpt).toContain("Permanent failures allow 1 attempt");
+    const read = readMemRefs({ cwd: root, refs: [answer?.ref ?? ""] });
+    expect(read.reads[0]?.text).toContain("assistant:");
+    expect(read.reads[0]?.text).toContain("at most 4 total attempts");
+    expect(read.reads[0]?.text).toContain("user:");
+  });
+
+  it("keeps a user correction of the retry count", () => {
+    claudeSessions([
+      {
+        id: "confirm",
+        turns: [
+          {
+            role: "assistant",
+            text: "OrbitCallback retry policy allows 3 total attempts.",
+          },
+          {
+            role: "user",
+            text: "No. OrbitCallback retry policy allows 4 total attempts, not 3.",
+          },
+        ],
+      },
+    ]);
+    const result = recallMem({
+      cwd: root,
+      query: "OrbitCallback retry policy",
+      limit: 5,
+    });
+    const user = result.hits.find((hit) => hit.section === "user");
+    expect(user?.strength).toBe("strong");
+    expect(user?.excerpt).toContain("4 total attempts");
+    expect(user?.excerpt).toContain("not 3");
+    const read = readMemRefs({ cwd: root, refs: [user?.ref ?? ""] });
+    expect(read.reads[0]?.text).toContain("user:");
+    expect(read.reads[0]?.text).toContain("4 total attempts");
+    expect(read.reads[0]?.text).toContain("not 3");
+  });
+
+  it.each([
+    [
+      "retry policy",
+      "The retry policy is a fixed interval.",
+      "Confirmed: the retry policy now uses exponential backoff.",
+      "exponential backoff",
+    ],
+    [
+      "重试规则",
+      "重试规则是固定间隔。",
+      "确认：重试规则改用指数退避。",
+      "指数退避",
+    ],
+  ])(
+    "keeps a confirmation that states a new rule without a number: %s",
+    (query, oldRule, confirmation, marker) => {
+      claudeSessions([
+        {
+          id: "old-rule",
+          turns: [
+            { role: "assistant", text: oldRule },
+            { role: "user", text: confirmation },
+          ],
+        },
+      ]);
+      const result = recallMem({ cwd: root, query, limit: 5 });
+      const user = result.hits.find((hit) => hit.section === "user");
+      expect(user?.strength).toBe("strong");
+      expect(user?.excerpt).toContain(marker);
+      expect(result.hits.some((hit) => hit.excerpt.includes(oldRule.slice(0, 8)))).toBe(
+        true,
+      );
+    },
+  );
+
+  it("recalls an explicit rejection and its condition, not only the proposal", () => {
+    claudeSessions([
+      {
+        id: "reject",
+        turns: [
+          {
+            role: "user",
+            text: "Proposal: OrbitCallback retry policy should allow 9 attempts for every failure.",
+          },
+          {
+            role: "assistant",
+            text: "I will set the OrbitCallback retry policy to 9 attempts for every failure.",
+          },
+          {
+            role: "user",
+            text: "No. Rejected. Permanent failures allow 1 attempt. Transient failures allow at most 4. The OrbitCallback retry policy does not apply to manual replays.",
+          },
+        ],
+      },
+    ]);
+    const result = recallMem({
+      cwd: root,
+      query: "OrbitCallback retry policy",
+      limit: 5,
+      maxChars: 8000,
+    });
+    const rejection = result.hits.find((hit) => hit.excerpt.includes("Rejected"));
+    expect(rejection?.section).toBe("user");
+    expect(rejection?.excerpt).toContain("at most 4");
+    expect(rejection?.excerpt).toContain("manual replays");
+    const read = readMemRefs({ cwd: root, refs: [rejection?.ref ?? ""] });
+    expect(read.reads[0]?.text).toContain("Permanent failures allow 1 attempt");
+    expect(read.reads[0]?.text).toContain("does not apply to manual replays");
+    expect(result.hits.some((hit) => hit.excerpt.includes("9 attempts"))).toBe(true);
+  });
+
+  it("ranks a current spec ahead of archived tasks whose titles repeat the query", () => {
+    const title = "Separate Capacity Impact from Flow Impact";
+    for (const name of ["alpha", "beta", "gamma"]) {
+      write(
+        `.trellis/research/08-15-${name}/legacy/task.md`,
+        `# ${title}\n\nMigrated task. Discuss the split and record the decision later.\n`,
+      );
+    }
+    write(
+      ".trellis/spec/allocation.md",
+      "# Allocation rules\n\nCapacity impact counts nameplate volume.\nFlow impact counts the scheduled path.\nDo not add the two impacts together.\n",
+    );
+    const result = recallMem({
+      cwd: root,
+      query: title,
+    });
+    const specAt = result.hits.findIndex(
+      (hit) => hit.path === ".trellis/spec/allocation.md",
+    );
+    expect(specAt).toBeGreaterThanOrEqual(0);
+    expect(specAt).toBeLessThan(3);
+    expect(result.hits[specAt]?.status).toBeUndefined();
+    expect(result.hits[specAt]?.excerpt).toContain("Capacity impact");
+    expect(result.hits[specAt]?.excerpt).toContain("Flow impact");
+    const archiveAt = result.hits.findIndex((hit) =>
+      hit.path?.includes("/legacy/"),
+    );
+    expect(archiveAt).toBeGreaterThan(specAt);
+    expect(result.hits[archiveAt]?.status).toBe("archived");
+  });
+
+  it("returns an archived task when nothing current matches, and skips an unrelated spec", () => {
+    write(
+      ".trellis/research/08-15-flow/legacy/task.md",
+      "# Separate Capacity Impact from Flow Impact\n\nTASK-4419 migrated.\n",
+    );
+    write(".trellis/spec/billing.md", "# Billing\n\nInvoices are issued monthly.\n");
+    const result = recallMem({
+      cwd: root,
+      query: "Separate Capacity Impact from Flow Impact",
+    });
+    expect(result.hits.map((hit) => hit.path)).toEqual([
+      ".trellis/research/08-15-flow/legacy/task.md",
+    ]);
+    expect(result.hits[0]?.status).toBe("archived");
+  });
+
+  it("finds an archived task by its unique id and by its full path", () => {
+    const rel = ".trellis/research/08-15-flow/legacy/task.md";
+    write(rel, "# Old split\n\nTASK-4419 recorded the earlier discussion.\n");
+    write(
+      ".trellis/spec/allocation.md",
+      "# Allocation rules\n\nCapacity impact counts nameplate volume.\n",
+    );
+    const byId = recallMem({ cwd: root, query: "TASK-4419" });
+    expect(byId.hits.map((hit) => hit.path)).toEqual([rel]);
+    expect(byId.hits[0]?.status).toBe("archived");
+    const byPath = recallMem({ cwd: root, query: rel });
+    expect(byPath.hits[0]?.path).toBe(rel);
+    expect(byPath.hits[0]?.status).toBe("archived");
+    const read = readMemRefs({ cwd: root, refs: [byId.hits[0]?.ref ?? ""] });
+    expect(read.reads[0]?.text).toContain("TASK-4419");
+  });
+
+  it("does not let title-only current notes crowd out an archived rule", () => {
+    for (const name of ["billing", "shipping", "audit"]) {
+      write(`.trellis/spec/${name}.md`, `# ${name} retry policy\n\nTODO\n`);
+    }
+    write(
+      ".trellis/research/08-15-flow/legacy/policy.md",
+      "# Earlier note\n\nThe retry policy allows at most 4 attempts and skips manual replays.\n",
+    );
+    const result = recallMem({ cwd: root, query: "retry policy" });
+    const archivedAt = result.hits.findIndex((hit) => hit.status === "archived");
+    expect(archivedAt).toBeGreaterThanOrEqual(0);
+    expect(archivedAt).toBeLessThan(3);
+    expect(result.hits[archivedAt]?.excerpt).toContain("at most 4 attempts");
+    const todoAt = result.hits.findIndex((hit) => hit.excerpt.includes("TODO"));
+    if (todoAt >= 0) expect(archivedAt).toBeLessThan(todoAt);
+  });
+
+  it("keeps the note that contains the task id ahead of generic retry policies", () => {
+    for (const name of ["billing", "shipping", "audit"]) {
+      write(
+        `.trellis/spec/${name}.md`,
+        `# ${name}\n\nThe ${name} retry policy retries transient failures.\n`,
+      );
+    }
+    const legacy = ".trellis/research/08-15-flow/legacy/task.md";
+    write(legacy, "# Old task\n\nTASK-4419 retry policy was a fixed interval.\n");
+    const result = recallMem({ cwd: root, query: "TASK-4419 retry policy" });
+    expect(result.hits[0]?.path).toBe(legacy);
+    expect(result.hits[0]?.excerpt).toContain("TASK-4419");
+    expect(result.hits[0]?.status).toBe("archived");
+  });
+
+  it("keeps a shorter successor at limit 1 ahead of a newer unrelated note", () => {
+    write(
+      ".trellis/research/old-cap.md",
+      "---\nstatus: superseded\nsuperseded_by: .trellis/research/new-cap.md\n---\n\n# callback retry limit\n\ncallback retry limit was three\n",
+    );
+    write(
+      ".trellis/research/new-cap.md",
+      "# Cap\n\n" +
+        "General introduction. ".repeat(40) +
+        "\ncallback limit is two.\n",
+    );
+    write("docs/deploy.md", "# Deploy\n\nThe callback window is Sunday.\n");
+    const newer = new Date("2026-10-20T00:00:00Z");
+    fs.utimesSync(path.join(root, "docs/deploy.md"), newer, newer);
+    const result = recallMem({
+      cwd: root,
+      query: "callback retry limit",
+      limit: 1,
+    });
+    expect(result.hits[0]?.path).toBe(".trellis/research/new-cap.md");
+    expect(result.hits[0]?.excerpt).toContain("is two");
+    expect(result.hits[0]?.status).toBeUndefined();
+    expect(result.hits[0]?.supersededBy).toBeUndefined();
+  });
+});
+
 describe("queryTerms", () => {
   it("keeps a Chinese query term whole and adds bigrams", () => {
     const terms = queryTerms("幂等性");

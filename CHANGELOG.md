@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.2 — 2026-10-27
+
+- A user question that only restates the query no longer crowds out a note that states the rule. A confirmation still counts when it has no digit, including `Confirmed:` and `确认：`. A correction or rejection stays as evidence.
+- A current note whose body matches the topic ranks ahead of archived titles that repeat the query. The heading is not treated as the body, so a title with a TODO body does not crowd out an archived rule. A query id such as `TASK-4419` is not outranked by generic wording. An archived path or unique id still returns that history. Declared successors are unchanged.
+
+Version changes and upgrade instructions are in the [release notes](docs/releases/v0.3.2.md).
+
 ## v0.3.1 — 2026-10-20
 
 - DeepSeek Harness installs short project skills under `.dsh/skills/`. There is no project SessionStart hook. The model calls `mem recall`, then `mem read` when the excerpt is not enough, and `mini-trellis-remember` after a confirmed decision. Compressed transcripts in `~/.dsh/sessions` are not read.

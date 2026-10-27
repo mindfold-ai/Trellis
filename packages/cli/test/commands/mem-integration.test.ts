@@ -854,7 +854,7 @@ describe("runMem subcommand integration", () => {
     runMem(["recall", "memory leak", "--cwd", projectCwd]);
     const joined = logs.join("\n");
     expect(joined).toContain("session:v1:");
-    expect(joined).toContain("memory");
+    expect(joined).toContain("unbounded caches");
   });
 
   it("recall: missing query exits non-zero", () => {
