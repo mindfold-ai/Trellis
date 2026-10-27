@@ -147,6 +147,8 @@ vite.config.ts.timestamp-*
 
 # Local development plans and internal acceptance material
 /docs/plans/
+/docs/roadmap.md
+/docs/development-plan.md
 /experiments/
 
 # Multi-agent temp files
@@ -181,3 +183,12 @@ tmp1/
 packages/*/LICENSE
 packages/*/COPYRIGHT
 packages/cli/README.md
+
+# Claude v2 trial dumps. The written record is docs/eval/memory-0.3.2/results/v2-claude.md
+docs/eval/memory-0.3.2/results/v2-claude/*.json
+
+# Local comparison runners, fixtures, raw traces and trial data.
+# Public summaries and figures live under docs/releases/ and docs/assets/.
+# Already-tracked files/commits are not excluded by these rules.
+/docs/eval/
+/packages/cli/test/eval/
