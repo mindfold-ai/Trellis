@@ -121,41 +121,106 @@ function inactiveRank(hit: RecallHit): number {
 }
 
 function hasBodyEvidence(bodyCoverage: number, requiredCount: number): boolean {
-  return bodyCoverage >= 2 && bodyCoverage * 2 >= requiredCount;
+  if (bodyCoverage < 1) return false;
+  // A one-term query is a whole question, so a body mention is all the body
+  // evidence there can be. Longer queries need two terms and half of them.
+  return (
+    bodyCoverage >= Math.min(2, requiredCount) &&
+    bodyCoverage * 2 >= requiredCount
+  );
 }
 
-/** Current body evidence beats an archived title. An archived body beats a
- * current note that only matched in its title. One shared word is not enough. */
-function preferRecordedBody(a: Candidate, b: Candidate): number {
-  const aCurrent = a.bodyEvidence && inactiveRank(a.hit) === 0;
-  const bCurrent = b.bodyEvidence && inactiveRank(b.hit) === 0;
-  if (aCurrent && !b.bodyEvidence && inactiveRank(b.hit) > 0) return -1;
-  if (bCurrent && !a.bodyEvidence && inactiveRank(a.hit) > 0) return 1;
-  const aOld = a.bodyEvidence && inactiveRank(a.hit) > 0;
-  const bOld = b.bodyEvidence && inactiveRank(b.hit) > 0;
-  if (aOld && !b.bodyEvidence && inactiveRank(b.hit) === 0) return -1;
-  if (bOld && !a.bodyEvidence && inactiveRank(a.hit) === 0) return 1;
-  return 0;
+/** A current body that states the rule moves ahead of archived tasks whose
+ * titles repeat the query; an archived body moves ahead of a current note that
+ * only matched in its title. One shared word is not enough.
+ *
+ * This is a pass instead of a comparator: the two rules point in opposite
+ * directions across statuses, so folding them into the sort key would make the
+ * ordering non-transitive and depend on the engine's sort. Ordering inside one
+ * status is left to the sort keys. */
+function preferBodyEvidence(ranked: Candidate[]): Candidate[] {
+  const out: Candidate[] = [];
+  for (const candidate of ranked) {
+    if (!candidate.bodyEvidence) {
+      out.push(candidate);
+      continue;
+    }
+    const current = inactiveRank(candidate.hit) === 0;
+    const at = out.findIndex((existing) =>
+      current
+        ? inactiveRank(existing.hit) > 0
+        : inactiveRank(existing.hit) === 0 && !existing.bodyEvidence,
+    );
+    if (at < 0) out.push(candidate);
+    else out.splice(at, 0, candidate);
+  }
+  return out;
 }
 
 const ANSWER_SIGNAL =
-  /(?:^|[^\p{L}\p{N}])(?:no|not|never|nor|yes|rejected|reject|allow|allows|allowed|most|least|one|two|three|four|five|six|seven|eight|nine|ten|once|twice|confirmed|确认|\d+)(?=$|[^\p{L}\p{N}])/iu;
+  /(?:^|[^\p{L}\p{N}])(?:no|not|never|nor|yes|rejected|reject|allow|allows|allowed|most|least|one|two|three|four|five|six|seven|eight|nine|ten|once|twice|confirmed|agreed|approved|\d+)(?=$|[^\p{L}\p{N}])/iu;
 
-/** A digit, denial, limit, or explicit confirmation. Instructions around a question do not count. */
-function hasAnswerSignal(text: string): boolean {
-  return ANSWER_SIGNAL.test(text.normalize("NFKC").toLowerCase());
+/** First-person confirmation only, so "can you confirm ..." stays a question. */
+const FIRST_PERSON_CONFIRM = /(?:^|[^\p{L}\p{N}])i confirm(?=$|[^\p{L}\p{N}])/iu;
+
+/** Chinese markers are not separated by spaces, so most are matched as
+ * substrings. 确认 keeps a boundary so "请确认…" stays a question. */
+const CJK_CONFIRM = /确认(?=$|[：:，,。.！!？?\s])/u;
+const CJK_ANSWER_SIGNAL = [
+  "不要", "不用", "不是", "不对", "否决", "取消", "禁止", "不再",
+  "不允许", "最多", "至少", "允许", "改成", "改为", "改用",
+];
+
+function rawTokens(text: string): string[] {
+  return text
+    .normalize("NFKC")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+}
+
+/** One-letter words are noise in an echo, but they matter for "I confirm". */
+function echoTokens(text: string): string[] {
+  return rawTokens(text).filter(
+    (token) => token.length >= 2 || /^\d+$/.test(token),
+  );
+}
+
+/** Every part of every required term, so a restated question repeats
+ * `TASK-4419` as `task` plus `4419` too. */
+function requiredTokens(required: readonly string[]): Set<string> {
+  const known = new Set<string>();
+  for (const term of required)
+    for (const token of echoTokens(term)) known.add(token);
+  return known;
+}
+
+/** A denial, limit or explicit confirmation. Digits only count when they are
+ * not part of the query, so `TASK-4419 retry policy` stays a question. */
+function hasAnswerSignal(text: string, required: readonly string[]): boolean {
+  const known = requiredTokens(required);
+  const residue = rawTokens(text)
+    .filter((token) => !known.has(token))
+    .join(" ");
+  return (
+    ANSWER_SIGNAL.test(residue) ||
+    FIRST_PERSON_CONFIRM.test(residue) ||
+    CJK_CONFIRM.test(residue) ||
+    CJK_ANSWER_SIGNAL.some((marker) => residue.includes(marker))
+  );
 }
 
 /** A user turn that only asks the query, with no confirmation, correction, or denial. */
 function isQueryEcho(text: string, required: readonly string[]): boolean {
   if (!required.length) return false;
-  const tokens = text
-    .normalize("NFKC")
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((token) => token.length >= 2 || /^\d+$/.test(token));
-  const known = new Set(required);
-  if (!required.every((term) => tokens.includes(term))) return false;
+  const tokens = echoTokens(text);
+  const known = requiredTokens(required);
+  if (
+    !required.every((term) =>
+      echoTokens(term).every((token) => tokens.includes(token)),
+    )
+  )
+    return false;
   return tokens.every((token) => known.has(token) || QUERY_ECHO_WORDS.has(token));
 }
 
@@ -289,10 +354,9 @@ function select(
   limit: number,
   maxChars: number,
 ): { hits: RecallHit[]; truncated: boolean } {
-  const ranked = [...candidates].sort(
+  const sorted = [...candidates].sort(
     (a, b) =>
       b.idCoverage - a.idCoverage ||
-      preferRecordedBody(a, b) ||
       b.coverage - a.coverage ||
       b.titleCoverage - a.titleCoverage ||
       b.pathCoverage - a.pathCoverage ||
@@ -300,6 +364,19 @@ function select(
       inactiveRank(a.hit) - inactiveRank(b.hit) ||
       (b.hit.sourceTime ?? "").localeCompare(a.hit.sourceTime ?? ""),
   );
+  // An identifier match such as TASK-4419 outranks generic wording, so the
+  // body-evidence pass only reorders candidates at the same identifier level.
+  const ranked: Candidate[] = [];
+  let block: Candidate[] = [];
+  for (const candidate of sorted) {
+    const previous = block[block.length - 1];
+    if (previous && previous.idCoverage !== candidate.idCoverage) {
+      ranked.push(...preferBodyEvidence(block));
+      block = [];
+    }
+    block.push(candidate);
+  }
+  if (block.length) ranked.push(...preferBodyEvidence(block));
   const hits: RecallHit[] = [];
   let used = 0;
   let truncated = false;
@@ -410,7 +487,7 @@ export function recallMem(options: RecallMemOptions): RecallResult {
     const echo =
       userTurn &&
       (isQueryEcho(text, required) ||
-        (coverage === required.length && !hasAnswerSignal(text)));
+        (coverage === required.length && !hasAnswerSignal(text, required)));
     const record: RecallHit = {
       ...hit,
       ...(title ? { title } : {}),
@@ -517,17 +594,25 @@ export function recallMem(options: RecallMemOptions): RecallResult {
     }
   }
   const strong = candidates.filter((c) => c.hit.strength === "strong");
-  // A user question, even one that states a correction, does not by itself
-  // drop every weaker document.
+  // A user question does not by itself drop every weaker document. A current
+  // note with full coverage, or else an archived full match, still narrows it.
   const strongCurrent = strong.filter(
-    (c) => inactiveRank(c.hit) === 0 && c.hit.section !== "user",
+    (c) => c.hit.section !== "user" && inactiveRank(c.hit) === 0,
   );
+  const anchors = strongCurrent.length
+    ? strongCurrent
+    : strong.filter((c) => inactiveRank(c.hit) > 0);
   const successors = new Set(strong.filter((c) => !c.hit.lineageFault)
     .map((c) => c.hit.supersededBy).filter(Boolean));
-  // A current rule may use fewer query terms than the note it replaces.
-  // Archived title matches alone must not drop that current note.
-  const pool = strongCurrent.length
-    ? candidates.filter((c) => c.hit.strength === "strong" || successors.has(c.hit.path))
+  // A current rule may use fewer query terms than the note it replaces, and a
+  // note whose body states the rule must survive archived title matches.
+  const pool = anchors.length
+    ? candidates.filter(
+        (c) =>
+          c.hit.strength === "strong" ||
+          successors.has(c.hit.path) ||
+          c.bodyEvidence,
+      )
     : candidates;
   const selected = select(pool, limit, maxChars);
   return {

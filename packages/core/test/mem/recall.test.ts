@@ -349,7 +349,8 @@ describe("0.3.2 recall", () => {
     expect(archivedAt).toBeLessThan(3);
     expect(result.hits[archivedAt]?.excerpt).toContain("at most 4 attempts");
     const todoAt = result.hits.findIndex((hit) => hit.excerpt.includes("TODO"));
-    if (todoAt >= 0) expect(archivedAt).toBeLessThan(todoAt);
+    expect(todoAt).toBeGreaterThanOrEqual(0);
+    expect(archivedAt).toBeLessThan(todoAt);
   });
 
   it("keeps the note that contains the task id ahead of generic retry policies", () => {
@@ -365,6 +366,98 @@ describe("0.3.2 recall", () => {
     expect(result.hits[0]?.path).toBe(legacy);
     expect(result.hits[0]?.excerpt).toContain("TASK-4419");
     expect(result.hits[0]?.status).toBe("archived");
+  });
+
+  it("ranks a single-word Chinese query's current body ahead of archived titles", () => {
+    for (const name of ["alpha", "beta", "gamma"]) {
+      write(
+        `.trellis/research/08-15-${name}/legacy/task.md`,
+        "# 幂等性\n\n迁移任务。\n",
+      );
+    }
+    write(".trellis/spec/idempotency.md", "# 幂等规则\n\n幂等性依靠请求键去重。\n");
+    const result = recallMem({ cwd: root, query: "幂等性" });
+    expect(result.hits[0]?.path).toBe(".trellis/spec/idempotency.md");
+    expect(result.hits[0]?.status).toBeUndefined();
+    expect(result.hits[0]?.excerpt).toContain("请求键");
+    expect(result.hits.slice(1).every((hit) => hit.status === "archived")).toBe(
+      true,
+    );
+  });
+
+  it("keeps a current spec ahead of archived tasks whose bodies also repeat the query", () => {
+    const title = "Separate Capacity Impact from Flow Impact";
+    for (const name of ["alpha", "beta", "gamma"]) {
+      write(
+        `.trellis/research/08-15-${name}/legacy/task.md`,
+        `# ${title}\n\nMigrated task. Discuss capacity impact and flow impact for ${name}.\n`,
+      );
+    }
+    write(
+      ".trellis/spec/allocation.md",
+      "# Allocation rules\n\nCapacity impact counts nameplate volume.\nFlow impact counts the scheduled path.\n",
+    );
+    const result = recallMem({ cwd: root, query: title });
+    expect(result.hits[0]?.path).toBe(".trellis/spec/allocation.md");
+    expect(result.hits[0]?.status).toBeUndefined();
+    expect(result.hits[0]?.excerpt).toContain("Flow impact");
+    expect(result.hits.slice(1).every((hit) => hit.status === "archived")).toBe(
+      true,
+    );
+  });
+
+  it("does not present a restated question that repeats a task id as an answer", () => {
+    write(
+      ".trellis/spec/retry-budget.md",
+      "# Retry budget\n\nTASK-4419 retry policy allows at most 4 attempts.\n",
+    );
+    claudeSessions([
+      { id: "ask", turns: [{ role: "user", text: "TASK-4419 retry policy" }] },
+    ]);
+    const result = recallMem({ cwd: root, query: "TASK-4419 retry policy" });
+    expect(result.hits[0]?.path).toBe(".trellis/spec/retry-budget.md");
+    expect(result.hits[0]?.excerpt).toContain("at most 4 attempts");
+    expect(
+      result.hits.every((hit) => hit.section !== "user" || hit.strength === "weak"),
+    ).toBe(true);
+    fs.rmSync(path.join(root, ".trellis/spec/retry-budget.md"));
+    const alone = recallMem({ cwd: root, query: "TASK-4419 retry policy" });
+    expect(alone.hits.some((hit) => hit.strength === "strong")).toBe(false);
+  });
+
+  it("keeps a Chinese rejection without a number as evidence", () => {
+    claudeSessions([
+      {
+        id: "rejected-cn",
+        turns: [
+          { role: "assistant", text: "OrbitCallback retry policy 使用固定间隔。" },
+          { role: "user", text: "OrbitCallback retry policy 不要固定间隔，改指数退避。" },
+        ],
+      },
+    ]);
+    const result = recallMem({
+      cwd: root,
+      query: "OrbitCallback retry policy",
+      limit: 5,
+    });
+    const user = result.hits.find((hit) => hit.section === "user");
+    expect(user?.strength).toBe("strong");
+    expect(user?.excerpt).toContain("不要固定间隔");
+  });
+
+  it("does not return an unrelated current note when only an archived note matches fully", () => {
+    write(
+      ".trellis/research/08-15-flow/legacy/task.md",
+      "# retry policy\n\nMigrated task notes.\n",
+    );
+    write(
+      ".trellis/spec/billing.md",
+      "# Billing\n\nInvoices are issued monthly; a failed charge uses the retry queue.\n",
+    );
+    const result = recallMem({ cwd: root, query: "retry policy" });
+    expect(result.hits.map((hit) => hit.path)).toEqual([
+      ".trellis/research/08-15-flow/legacy/task.md",
+    ]);
   });
 
   it("keeps a shorter successor at limit 1 ahead of a newer unrelated note", () => {

@@ -1,11 +1,11 @@
 # Changelog
 
-## v0.3.2 — 2026-10-27
+## Unreleased — 0.3.2
 
-- A user question that only restates the query no longer crowds out a note that states the rule. A confirmation still counts when it has no digit, including `Confirmed:` and `确认：`. A correction or rejection stays as evidence.
-- A current note whose body matches the topic ranks ahead of archived titles that repeat the query. The heading is not treated as the body, so a title with a TODO body does not crowd out an archived rule. A query id such as `TASK-4419` is not outranked by generic wording. An archived path or unique id still returns that history. Declared successors are unchanged.
+- A user question that only restates the query no longer crowds out a note that states the rule, including a question that repeats an id such as `TASK-4419`. A confirmation, correction or denial still counts: `Confirmed:`, `确认：`, a numeric correction, and a Chinese rejection without a number.
+- A note whose body states the rule ranks ahead of archived tasks whose titles repeat the query, including migrated tasks that also discuss the topic in their own body. The heading is not counted as the body. An archived body still stays ahead of a current title that only says TODO. An archived path or unique id still returns that history. Declared successors are unchanged.
 
-Version changes and upgrade instructions are in the [release notes](docs/releases/v0.3.2.md).
+Release notes for this version are in [docs/releases/v0.3.2.md](docs/releases/v0.3.2.md). They are a draft: the version number, date and tag are set when the release is cut.
 
 ## v0.3.1 — 2026-10-20
 
