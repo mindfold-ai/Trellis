@@ -9,7 +9,34 @@ npm install -g mini-trellis
 mini-trellis init -u 你的名字 --claude
 ```
 
-只加上实际使用的宿主：`--claude`、`--codex`、`--opencode`、`--pi`、`--dsh`、`--cursor`。加上 `-y` 会跳过提问。init 写入 `.trellis/` 和宿主文件，不创建 Git 提交。DeepSeek 没有 SessionStart，需要时自己调用 `mem recall`。Cursor 只在本地注入短入口；云端不跑 `sessionStart`。两边都不解析本机对话。OpenCode 和 Pi 没有精确 compact。
+只加上实际使用的宿主：`--claude`、`--codex`、`--opencode`、`--pi`、`--dsh`、`--cursor`。加上 `-y` 会跳过提问。init 写入 `.trellis/` 和宿主文件，不创建 Git 提交。DeepSeek 没有 SessionStart，需要时自己调用 `mem recall`。Cursor 会装上技能和本地 `sessionStart`；云端不跑这个 hook，本地 hook 跑过也不等于 Agent 提示里收到了 `additional_context`。两边都不解析本机对话。OpenCode 和 Pi 没有精确 compact。
+
+## 在 Cursor 里
+
+```bash
+mini-trellis init -u 你的名字 --cursor -y
+```
+
+init 会写入 `AGENTS.md` 里的托管说明、`.cursor/skills/` 下的三个技能，以及只注册 `sessionStart` 的 `.cursor/hooks.json`。记录用技能 `mini-trellis-remember`。找回用 `mini-trellis mem recall`，摘录缺条件时再 `mem read`。
+
+2026-11-01 在 Cursor 3.27.22 的本地 Agent 对话里核对过：`sessionStart` 执行了，Hooks 日志写成已合并，返回的 `additional_context` 不在模型提示里。实际能用的是 `AGENTS.md` 和 `mem recall`。云端 Agent 不运行 `sessionStart`。不解析 Cursor 对话历史。
+
+第一次这样走：
+
+1. 在项目根执行上面的 init。
+2. 新开一个本地 Agent 对话。`mini-trellis doctor` 里 `cursor` 和 `cursor-trigger` 应为 ok。hook 还没在磁盘留下记录时，`cursor-runtime` 是 unknown。
+3. 确认一条规则。让 Agent 更新已有主题；没有合适文件时再写一篇短 spec，然后使用 `mini-trellis-remember`。核对主题正文、journal 链接和 index。
+4. 再开一个对话，对这条规则执行 `mem recall`。摘录里要还在条件和来源。
+
+再次 init 或 refresh 会保留 `.cursor/hooks.json` 里不相干的 hook，也会保留用户写的 `version`。文件不是合法 JSON 时，init 打印 `Skipped .cursor/hooks.json` 并留下原文件，refresh 停在 conflict。这时 `doctor` 报 `cursor-config`。
+
+| 看到什么 | 怎么处理 |
+| --- | --- |
+| Hooks 日志里没有加载项目 `sessionStart` | 打开的是含 `.cursor/hooks.json` 的项目根。 |
+| `cursor-runtime` 为 unknown | 还没有成功的 hook 记录。开一轮本地 Agent 对话，再看 `.trellis/.runtime/hooks/cursor.json`。 |
+| hook 成功了，模型却没有 recall 说明 | 看 `AGENTS.md`，直接说 `mini-trellis mem recall`。日志里的 merged 不是送达。 |
+| `cursor-config` 警告 | 先修好 `.cursor/hooks.json`。坏文件不会被覆盖。 |
+| 云端 Agent | 不跑 `sessionStart`。仓库里的笔记还在，需要时自己 recall。 |
 
 ## 从 Trellis 迁过来
 
@@ -112,5 +139,6 @@ mini-trellis doctor
 | `memory-layer` | 缺少 `.trellis` 或 `add_session.py`。跑 `mini-trellis init`。 |
 | `instructions` | `AGENTS.md` 没有托管块。再跑一次 init。 |
 | `platforms` | 没有发现宿主。加上 `--claude`、`--codex`、`--opencode`、`--pi`、`--dsh` 或 `--cursor`。 |
-| `<host>-runtime` 为 unknown | 还没有一次真实 hook 记录。开一轮宿主会话。Codex 要先信任项目 hook。 |
+| `<host>-runtime` 为 unknown | 还没有一次真实 hook 记录。开一轮宿主会话。Codex 要先信任项目 hook。Cursor 还要分开看：hook 记录出现，也不等于短入口进了模型提示。 |
+| `cursor-config` | `.cursor/hooks.json` 不是合法 JSON。init 会跳过，refresh 会停住并保留该文件。 |
 | `<host>-runtime` 为 warn | 最近一次 hook 没有干净结束。明细里有状态和错误类别。 |

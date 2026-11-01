@@ -562,11 +562,17 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   console.log(chalk.green("\n✓ mini-trellis initialized."));
-  console.log(
-    chalk.gray(
-      "  Record sessions with /mini-trellis:remember (or $mini-trellis-remember on Codex).",
-    ),
-  );
+  const recordCommands: string[] = [];
+  if (tools.includes("claude") || tools.includes("opencode")) {
+    recordCommands.push("/mini-trellis:remember");
+  }
+  if (tools.includes("pi")) recordCommands.push("/mini-trellis-remember");
+  if (tools.includes("codex")) recordCommands.push("$mini-trellis-remember");
+  if (recordCommands.length > 0) {
+    console.log(
+      chalk.gray(`  Record sessions with ${recordCommands.join(", ")}.`),
+    );
+  }
   const skillHosts = [
     tools.includes("dsh") ? "DeepSeek Harness" : "",
     tools.includes("cursor") ? "Cursor" : "",

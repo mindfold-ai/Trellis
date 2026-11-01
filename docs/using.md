@@ -9,7 +9,34 @@ npm install -g mini-trellis
 mini-trellis init -u your-name --claude
 ```
 
-Pass only the tools you use: `--claude`, `--codex`, `--opencode`, `--pi`, `--dsh`, `--cursor`. Add `-y` to skip prompts. Init writes `.trellis/` and the host files. It does not create a Git commit. DeepSeek has no SessionStart, so call `mem recall` when project knowledge is needed. Cursor injects the short entry only in a local session; cloud agents do not run `sessionStart`. Neither host parses local conversation history. OpenCode and Pi have no precise compact.
+Pass only the tools you use: `--claude`, `--codex`, `--opencode`, `--pi`, `--dsh`, `--cursor`. Add `-y` to skip prompts. Init writes `.trellis/` and the host files. It does not create a Git commit. DeepSeek has no SessionStart, so call `mem recall` when project knowledge is needed. Cursor installs skills and a local `sessionStart` hook; cloud agents do not run that hook, and a local hook run does not by itself mean the agent prompt received `additional_context`. Neither host parses local conversation history. OpenCode and Pi have no precise compact.
+
+## Cursor
+
+```bash
+mini-trellis init -u your-name --cursor -y
+```
+
+Init writes the managed block in `AGENTS.md`, three skills under `.cursor/skills/`, and a `.cursor/hooks.json` that registers only `sessionStart`. Record with the `mini-trellis-remember` skill. Recall with `mini-trellis mem recall`, then `mem read` when the excerpt is missing a condition.
+
+On Cursor 3.27.22, a local agent chat ran `sessionStart`, the Hooks log said the responses were merged, and the returned `additional_context` was not in the model prompt. Treat `AGENTS.md` plus `mem recall` as the path that actually works. Cloud agents do not run `sessionStart`. Cursor conversation history is not parsed.
+
+First loop:
+
+1. Run the init command above from the project root.
+2. Open a new local agent chat. `mini-trellis doctor` should show `cursor` and `cursor-trigger` as ok. `cursor-runtime` stays unknown until a hook run is on disk.
+3. Confirm one rule. Ask the agent to update the existing topic, or create a short spec if none exists, then use `mini-trellis-remember`. Check the topic text, the journal link, and the index.
+4. Open another chat and run `mem recall` for that rule. The excerpt should keep the condition and the source.
+
+`init` and `refresh` keep unrelated hooks in `.cursor/hooks.json`. A user `version` value is left as-is. If that file is not valid JSON, init prints `Skipped .cursor/hooks.json` and leaves it, and refresh stops with a conflict. `doctor` then reports `cursor-config`.
+
+| What you see | What to do |
+| --- | --- |
+| Hooks log never says a project `sessionStart` hook loaded | Open the project root that contains `.cursor/hooks.json`. |
+| `cursor-runtime` is unknown | No successful hook record yet. Start one local agent chat, then read `.trellis/.runtime/hooks/cursor.json`. |
+| The hook succeeded and the model still has no recall instruction | Use `AGENTS.md` and say `mini-trellis mem recall`. A merged Hooks log is not delivery. |
+| `cursor-config` warns | Fix `.cursor/hooks.json` before the next init or refresh. The invalid file is kept. |
+| Cloud agent | `sessionStart` does not run. Notes in the repo are still there; call `mem recall`. |
 
 ## Move a Trellis project over
 
@@ -112,5 +139,6 @@ mini-trellis doctor
 | `memory-layer` | `.trellis` or `add_session.py` is missing. Run `mini-trellis init`. |
 | `instructions` | `AGENTS.md` is missing the managed block. Run init again. |
 | `platforms` | No host was found. Pass `--claude`, `--codex`, `--opencode`, `--pi`, `--dsh`, or `--cursor`. |
-| `<host>-runtime` unknown | No real hook run is on disk yet. Start one host session. For Codex, trust the project hook first. |
+| `<host>-runtime` unknown | No real hook run is on disk yet. Start one host session. For Codex, trust the project hook first. For Cursor, a later hook record still does not prove the short entry reached the model prompt. |
+| `cursor-config` | `.cursor/hooks.json` is not valid JSON. Init skips it and refresh stops, leaving the file in place. |
 | `<host>-runtime` warn | The last hook did not finish cleanly. The detail has the status and error category. |

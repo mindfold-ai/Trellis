@@ -204,6 +204,20 @@ export function buildDoctorReport(cwd: string): DoctorReport {
         detail: triggerDetail,
       });
       if (platform === "dsh") continue;
+      if (platform === "cursor") {
+        try {
+          JSON.parse(
+            fs.readFileSync(path.join(cwd, ".cursor/hooks.json"), "utf8"),
+          );
+        } catch {
+          checks.push({
+            level: "warn",
+            name: "cursor-config",
+            detail:
+              ".cursor/hooks.json is not valid JSON; init skips it and refresh keeps the file",
+          });
+        }
+      }
       const runtime = runtimeStatus(platform);
       if (!runtime) {
         checks.push({

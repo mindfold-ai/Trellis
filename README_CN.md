@@ -181,7 +181,7 @@ mini-trellis mem read "<ref>"
 | Agent 工具 | 初始化参数 | 记录当前会话 | 项目知识与历史检索支持 |
 | --- | --- | --- | --- |
 | **Claude Code** | `--claude` | `/mini-trellis:remember` | `SessionStart` 注入短入口；支持项目文档与 `~/.claude/projects` 本地历史检索 |
-| **Cursor** | `--cursor` | `mini-trellis-remember` | 安装 `.cursor/skills/`；本地会话通过 `sessionStart` 注入短入口（云端 Agent 不运行该 Hook） |
+| **Cursor** | `--cursor` | `mini-trellis-remember` | 安装 `.cursor/skills/` 和本地 `sessionStart`。Hook 可以执行，而 `additional_context` 仍可能到不了 Agent 提示；可用的是 `AGENTS.md` 和 `mem recall`。云端不运行 `sessionStart`。不解析对话历史 |
 | **Codex** | `--codex` | `$mini-trellis-remember` | 支持项目 Hook 注入与本地会话历史检索 |
 | **OpenCode** | `--opencode` | `/mini-trellis:remember` | 支持启动入口与本地会话检索（含 `--include-children` 子代理会话合并） |
 | **Pi** | `--pi` | `/mini-trellis-remember` | 支持启动入口与本地会话检索 |
@@ -197,7 +197,7 @@ mini-trellis mem read "<ref>"
   4. 运行 `mini-trellis doctor`，随后开启新会话。
 - **宿主边界说明**：
   - DeepSeek Harness 无项目级 `SessionStart` 注入点，不解析 `~/.dsh/sessions` 压缩转录本；
-  - Cursor 本地支持 `sessionStart` 注入，云端 Agent 仅随仓库携带 `.cursor/skills/`，不解析 Cursor 本地对话历史；
+  - Cursor 本地可以运行 `sessionStart`，Hooks 日志也可能写成已经合并，但 `additional_context` 不一定进入 Agent 提示。在 Cursor 3.27.22 的 Agent 对话里核对过：hook 退出码为 0，模型没有收到短入口。使用 `AGENTS.md` 里的说明、技能 `mini-trellis-remember` 和 `mini-trellis mem recall`。云端不运行 `sessionStart`，也不解析 Cursor 对话历史；
   - OpenCode 与 Pi 支持列出会话与检索，暂无精确 compact 边界恢复。详见 [v0.3.1 版本说明](./docs/releases/v0.3.1.md)。
 
 </details>
