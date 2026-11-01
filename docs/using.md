@@ -96,6 +96,20 @@ Update the existing spec, add the provider doc link to the research note, then r
 
 `remember` updates the topic, then links it from the journal.
 
+## Keep the project description current
+
+Keep one description of what the project is today. If a README, docs page, or spec already states it, edit that file. Create a short spec only when no such file exists. Do not copy the same description into a second file.
+
+You can hand this to the agent:
+
+```text
+Update the project description from the current code. Keep confirmed capabilities, architecture, and constraints. Mark anything uncertain as unverified.
+```
+
+The description lists purpose, implemented capabilities, main modules, and constraints, each traced to code, a test, or a confirmed decision. Planned work and a suggestion are not implemented capabilities. Change the affected section. An ordinary rename or formatting change does not rewrite the description and does not get a journal entry.
+
+A Chinese discussion updates an English description in English, with the same meaning, limits, and negations. After a confirmation, the current description and the journal link agree. The next session's `mem recall` returns the updated text. Older journal entries stay searchable and do not replace the current description.
+
 ## When a decision changes
 
 Edit the section when only that section changed. When a whole note is replaced, leave the old note in place and point it at the new one:

@@ -10,7 +10,8 @@ Capture durable contracts and conventions into `.trellis/spec/` as short markdow
 ## Write
 
 - Check the existing topic first (`mini-trellis mem recall "<topic or path>"` when needed); update the relevant section instead of duplicating it.
-- Record only confirmed rules, scope, and sources. Preserve the supplied wording when possible; leave unconfirmed behavior open or label it as inference. Keep a history link when replacing an earlier decision.
+- If a README or docs page already states the project description, update that section when the confirmed boundary belongs there. Add a spec file only for a durable rule that has no home. Do not keep two copies.
+- Record only confirmed rules, scope, and sources. State implemented behavior. Label uncertain parts unverified. Do not record a proposal as a current capability. Preserve the supplied wording when possible; leave unconfirmed behavior open or label it as inference. Keep a history link when replacing an earlier decision.
 - Leave rejected approaches in research, labeled rejected. Do not promote them into spec as current rules.
 - New documents follow the requested or discussion language; updates retain the existing language. Paths and identifiers stay unchanged.
 - Short markdown. The 7-section template is optional.

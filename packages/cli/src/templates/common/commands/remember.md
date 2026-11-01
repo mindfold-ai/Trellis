@@ -30,6 +30,16 @@ Replace `--topic` with the actual file just verified, or omit it for a handoff w
 
 If this session produced reusable research, write `.trellis/research/<topic>.md` and mention that path in the summary. Promote durable boundaries into `.trellis/spec/` with `mini-trellis-update-spec` (short markdown).
 
+## Project status
+
+When the user asks what the project is today, or a confirmed capability or architecture boundary changes, keep one description:
+
+- Update the README, docs page, or spec section that already states it. Create a short `.trellis/spec/` note only when no such file exists. Do not copy the same description into a second file.
+- Write the purpose, implemented capabilities, main modules, and constraints. Each claim needs a source in the current code, a test, or a confirmed decision. Planned work is not an implemented capability. A suggestion stays a suggestion, or is labeled unverified.
+- Edit the affected section. An ordinary rename or formatting change does not rewrite the description and does not get a journal entry.
+- Keep the file's language. A Chinese discussion updates an English description in English, with the same meaning, limits, and negations.
+- Link that verified file from the journal with `--topic`. A root `README*.md` or a Markdown file under `docs/` or `doc/` is accepted, as are spec and research notes. The journal does not replace the description.
+
 ## Reuse and language
 
 Before writing a topic, use `mini-trellis mem recall "<topic>"` if the relevant notes are not already open. Expand needed evidence with `mini-trellis mem read "<ref>"`. Update the existing research/spec section; record the scope and sources, distinguish user confirmation from measured facts and inference, and keep a link when replacing an earlier decision. Journal should briefly describe the work and link to the topic, not repeat its body.

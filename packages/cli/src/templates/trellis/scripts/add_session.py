@@ -1508,7 +1508,7 @@ def main() -> int:
     parser.add_argument("--summary", default="Session summary was not supplied.", help="Brief summary")
     parser.add_argument(
         "--topic", action="append", default=[], metavar="PATH",
-        help="Existing spec/research Markdown to validate and link in the journal (repeatable); does not edit or verify its conclusions",
+        help="Existing spec, research, root README, or docs Markdown to validate and link in the journal (repeatable); does not edit or verify its conclusions",
     )
     parser.add_argument("--content-file", help="Path to file with detailed content")
     parser.add_argument("--package", help="Package name tag (e.g., cli, core)")
@@ -1545,13 +1545,21 @@ def main() -> int:
         try:
             candidate = (repo_root / topic).resolve(strict=True)
             relative = candidate.relative_to(repo_root.resolve()).as_posix()
-            if (not relative.startswith((".trellis/spec/", ".trellis/research/"))
+            lowered = relative.lower()
+            in_notes = lowered.startswith((".trellis/spec/", ".trellis/research/"))
+            root_readme = (
+                "/" not in relative
+                and lowered.startswith("readme")
+                and lowered.endswith(".md")
+            )
+            in_docs = lowered.startswith(("docs/", "doc/"))
+            if (not (in_notes or root_readme or in_docs)
                     or candidate.suffix.lower() != ".md"
                     or not candidate.is_file()
                     or not candidate.read_text(encoding="utf-8").strip()):
-                raise ValueError("expected a non-empty spec/research Markdown file")
+                raise ValueError("expected a project description or note")
         except (OSError, ValueError, UnicodeError):
-            print("Error: --topic must name a readable, non-empty spec/research Markdown inside this project; journal not written.", file=sys.stderr)
+            print("Error: --topic must name a readable, non-empty spec, research, root README, or docs Markdown file inside this project; journal not written.", file=sys.stderr)
             return 1
         if relative not in topic_links:
             topic_links.append(relative)

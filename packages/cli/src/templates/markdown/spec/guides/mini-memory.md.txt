@@ -21,7 +21,7 @@
 
 ## Remember
 
-Save confirmed decisions and reusable findings in the relevant spec/research topic, updating an existing topic when possible. Check the saved content, then record a short journal entry linking to it:
+Save confirmed decisions and reusable findings in the relevant spec/research topic, updating an existing topic when possible. If a README or docs page already states the project description, update that file instead of copying it into a new note. Check the saved content, then record a short journal entry linking to it:
 
 Keep confirmed rules short and faithful. Unconfirmed scope, exceptions, and implementation choices stay open or are labeled as inference, not added to the contract.
 

@@ -245,6 +245,44 @@ describe.skipIf(!hasPython())("recording diagnostics", () => {
     expect(rejected.status).toBe(1);
     expect(rejected.stderr).toContain("journal not written");
     expect(readJournal(tmp)).toBe(before);
+
+    fs.writeFileSync(
+      path.join(tmp, "README.md"),
+      "# Pay\n\nRetry at most 4 times.\n",
+    );
+    fs.mkdirSync(path.join(tmp, "docs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmp, "docs/status.md"),
+      "# Status\n\nImplemented delivery.\n",
+    );
+    const readme = tryAddSession(tmp, "readme home", [
+      "--no-commit",
+      "--summary",
+      "updated the readme",
+      "--topic",
+      "README.md",
+    ]);
+    expect(readme.status).toBe(0);
+    expect(readJournal(tmp)).toContain("README.md");
+    const docs = tryAddSession(tmp, "docs home", [
+      "--no-commit",
+      "--summary",
+      "updated the docs page",
+      "--topic",
+      "docs/status.md",
+    ]);
+    expect(docs.status).toBe(0);
+    expect(readJournal(tmp)).toContain("docs/status.md");
+
+    const outside = readJournal(tmp);
+    const blocked = tryAddSession(tmp, "agents is not a description", [
+      "--no-commit",
+      "--topic",
+      "AGENTS.md",
+    ]);
+    expect(blocked.status).toBe(1);
+    expect(blocked.stderr).toContain("journal not written");
+    expect(readJournal(tmp)).toBe(outside);
   });
 
   it("keeps topic links usable after journal rotation and a retry", () => {
