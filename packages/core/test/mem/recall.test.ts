@@ -44,7 +44,11 @@ const RETRY_RULE =
   "OrbitCallback transient failures allow at most 4 total attempts. Permanent failures allow 1 attempt.";
 
 function claudeSessions(
-  sessions: { id: string; turns: { role: "user" | "assistant"; text: string }[] }[],
+  sessions: {
+    id: string;
+    created?: string;
+    turns: { role: "user" | "assistant"; text: string }[];
+  }[],
 ): void {
   const adapter = MEM_PLATFORMS.claude;
   vi.mocked(adapter.list).mockReturnValue(
@@ -53,6 +57,7 @@ function claudeSessions(
       platform: "claude" as const,
       cwd: root,
       filePath: session.id,
+      ...(session.created ? { created: session.created } : {}),
     })),
   );
   vi.spyOn(adapter, "extract").mockImplementation((session) => {
@@ -232,6 +237,62 @@ describe("0.3.2 recall", () => {
       expect(result.hits.some((hit) => hit.excerpt.includes(oldRule.slice(0, 8)))).toBe(
         true,
       );
+    },
+  );
+
+  it.each(["user", "assistant"] as const)(
+    "keeps a %s answer in the default hits when three archived bodies match",
+    (role) => {
+      for (const name of ["alpha", "beta", "gamma"]) {
+        write(
+          `.trellis/research/08-15-${name}/legacy/decision.md`,
+          `# Earlier decision\n\nThe retry policy allows at most 9 attempts for ${name}.\n`,
+        );
+      }
+      claudeSessions([
+        {
+          id: "today",
+          created: "2026-11-01T10:00:00Z",
+          turns: [{
+            role,
+            text: "Confirmed: retry policy now allows 4 attempts; the earlier 9-attempt limit is obsolete.",
+          }],
+        },
+      ]);
+      const result = recallMem({ cwd: root, query: "retry policy" });
+      expect(
+        result.hits.some(
+          (hit) =>
+            hit.sourceKind === "claude" &&
+            hit.section === role &&
+            hit.excerpt.includes("4 attempts"),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    ["English", "The retry policy uses exponential backoff; fixed intervals are obsolete."],
+    ["Chinese", "retry policy 采用指数退避，固定间隔方案已废弃。"],
+  ])(
+    "keeps a factual %s user statement that has no confirmation word",
+    (_name, text) => {
+      claudeSessions([
+        {
+          id: "current",
+          created: "2026-11-01T10:00:00Z",
+          turns: [{ role: "user", text }],
+        },
+        {
+          id: "old",
+          created: "2026-10-01T10:00:00Z",
+          turns: [{ role: "assistant", text: "The retry policy uses fixed intervals." }],
+        },
+      ]);
+      const result = recallMem({ cwd: root, query: "retry policy" });
+      expect(
+        result.hits.some((hit) => hit.section === "user" && hit.excerpt === text),
+      ).toBe(true);
     },
   );
 

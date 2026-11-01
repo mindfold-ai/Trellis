@@ -30,13 +30,15 @@ const MAX_LINEAGE_HOPS = 8;
 const MAX_QUERY_CHARS = 2000;
 const MAX_REFS = 30;
 
-/** Function words that can wrap a query without adding an answer.
- * A user turn made only of these plus the query terms is a question echo. */
+/** Function and request words. A user turn is a question only when every token
+ * is one of these or a query term. Any other word keeps the turn eligible. */
 const QUERY_ECHO_WORDS = new Set([
-  "a", "an", "about", "any", "are", "can", "could", "describe", "did", "do",
-  "does", "explain", "for", "how", "in", "is", "me", "my", "of", "on", "our",
-  "please", "should", "tell", "that", "the", "there", "this", "to", "was",
-  "were", "what", "when", "where", "which", "who", "why", "will", "would",
+  "a", "an", "about", "and", "any", "are", "can", "case", "could", "describe",
+  "did", "do", "does", "explain", "excluded", "for", "from", "how", "in",
+  "include", "is", "limits", "look", "me", "my", "need", "note", "notes",
+  "numeric", "of", "on", "our", "path", "please", "quote", "should", "tell",
+  "that", "the", "there", "this", "to", "up", "was", "were", "what", "when",
+  "where", "which", "who", "why", "will", "would",
 ]);
 
 interface EvidenceRef {
@@ -130,17 +132,12 @@ function hasBodyEvidence(bodyCoverage: number, requiredCount: number): boolean {
   );
 }
 
-/** A current body that states the rule moves ahead of archived tasks whose
- * titles repeat the query; an archived body moves ahead of a current note that
- * only matched in its title. One shared word is not enough.
- *
- * This is a pass instead of a comparator: the two rules point in opposite
- * directions across statuses, so folding them into the sort key would make the
- * ordering non-transitive and depend on the engine's sort. Ordering inside one
- * status is left to the sort keys. */
-function preferBodyEvidence(ranked: Candidate[]): Candidate[] {
+/** Among documents only: a current body moves ahead of an archived title, and
+ * an archived body moves ahead of a current title. Sessions stay in the slots
+ * coverage already gave them. */
+function orderDocBodies(docs: Candidate[]): Candidate[] {
   const out: Candidate[] = [];
-  for (const candidate of ranked) {
+  for (const candidate of docs) {
     if (!candidate.bodyEvidence) {
       out.push(candidate);
       continue;
@@ -157,19 +154,22 @@ function preferBodyEvidence(ranked: Candidate[]): Candidate[] {
   return out;
 }
 
-const ANSWER_SIGNAL =
-  /(?:^|[^\p{L}\p{N}])(?:no|not|never|nor|yes|rejected|reject|allow|allows|allowed|most|least|one|two|three|four|five|six|seven|eight|nine|ten|once|twice|confirmed|agreed|approved|\d+)(?=$|[^\p{L}\p{N}])/iu;
-
-/** First-person confirmation only, so "can you confirm ..." stays a question. */
-const FIRST_PERSON_CONFIRM = /(?:^|[^\p{L}\p{N}])i confirm(?=$|[^\p{L}\p{N}])/iu;
-
-/** Chinese markers are not separated by spaces, so most are matched as
- * substrings. 确认 keeps a boundary so "请确认…" stays a question. */
-const CJK_CONFIRM = /确认(?=$|[：:，,。.！!？?\s])/u;
-const CJK_ANSWER_SIGNAL = [
-  "不要", "不用", "不是", "不对", "否决", "取消", "禁止", "不再",
-  "不允许", "最多", "至少", "允许", "改成", "改为", "改用",
-];
+function preferBodyEvidence(ranked: Candidate[]): Candidate[] {
+  const slots: number[] = [];
+  const docs: Candidate[] = [];
+  ranked.forEach((candidate, index) => {
+    if (candidate.hit.sourceKind !== "doc") return;
+    slots.push(index);
+    docs.push(candidate);
+  });
+  const ordered = orderDocBodies(docs);
+  const out = ranked.slice();
+  slots.forEach((index, i) => {
+    const doc = ordered[i];
+    if (doc) out[index] = doc;
+  });
+  return out;
+}
 
 function rawTokens(text: string): string[] {
   return text
@@ -195,22 +195,8 @@ function requiredTokens(required: readonly string[]): Set<string> {
   return known;
 }
 
-/** A denial, limit or explicit confirmation. Digits only count when they are
- * not part of the query, so `TASK-4419 retry policy` stays a question. */
-function hasAnswerSignal(text: string, required: readonly string[]): boolean {
-  const known = requiredTokens(required);
-  const residue = rawTokens(text)
-    .filter((token) => !known.has(token))
-    .join(" ");
-  return (
-    ANSWER_SIGNAL.test(residue) ||
-    FIRST_PERSON_CONFIRM.test(residue) ||
-    CJK_CONFIRM.test(residue) ||
-    CJK_ANSWER_SIGNAL.some((marker) => residue.includes(marker))
-  );
-}
-
-/** A user turn that only asks the query, with no confirmation, correction, or denial. */
+/** A user turn that only asks the query. Any token outside the request list
+ * keeps the turn, including a fact that names no confirmation word. */
 function isQueryEcho(text: string, required: readonly string[]): boolean {
   if (!required.length) return false;
   const tokens = echoTokens(text);
@@ -481,13 +467,12 @@ export function recallMem(options: RecallMemOptions): RecallResult {
     ).length;
     const titleCoverage = titleMatches.length / terms.length;
     const pathCoverage = pathMatches.length / terms.length;
-    // A user question can match every term without stating a rule. Keep that
-    // request as a weak clue so it cannot fill the default hits.
-    const userTurn = ref.kind === "session" && hit.section === "user";
+    // Only a turn we can see is just the question loses its rank. A fact that
+    // does not use a confirmation word stays eligible.
     const echo =
-      userTurn &&
-      (isQueryEcho(text, required) ||
-        (coverage === required.length && !hasAnswerSignal(text, required)));
+      ref.kind === "session" &&
+      hit.section === "user" &&
+      isQueryEcho(text, required);
     const record: RecallHit = {
       ...hit,
       ...(title ? { title } : {}),
