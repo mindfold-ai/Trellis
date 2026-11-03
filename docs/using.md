@@ -47,7 +47,7 @@ mini-trellis migrate --dry-run
 mini-trellis migrate
 ```
 
-`--dry-run` lists the changes and does not write. The migration replaces the Trellis instruction surface, rewrites mini-trellis scripts, and folds `.trellis/tasks/` into research. `.trellis/spec/`, `research/`, and `workspace/` stay. `-y` skips the prompts and archives task files under `<topic>/legacy/`.
+`--dry-run` lists the changes and does not write. The migration replaces the Trellis instruction surface, rewrites mini-trellis scripts, and folds `.trellis/tasks/` into research. `.trellis/spec/`, `research/`, and `workspace/` stay. `-y` skips the prompts and archives task files under `<topic>/legacy/`. After that, keep the project description current the same way as a new project. See [Keep the project description current](#keep-the-project-description-current).
 
 ## Look it up before editing
 
@@ -109,6 +109,8 @@ Update the project description from the current code. Keep confirmed capabilitie
 The description lists purpose, implemented capabilities, main modules, and constraints, each traced to code, a test, or a confirmed decision. Planned work and a suggestion are not implemented capabilities. Change the affected section. An ordinary rename or formatting change does not rewrite the description and does not get a journal entry.
 
 A Chinese discussion updates an English description in English, with the same meaning, limits, and negations. After a confirmation, the current description and the journal link agree. The next session's `mem recall` returns the updated text. Older journal entries stay searchable and do not replace the current description.
+
+An existing install accepts a root `README*.md` or Markdown under `docs/` and `doc/` as `--topic` only after `mini-trellis refresh`.
 
 ## When a decision changes
 

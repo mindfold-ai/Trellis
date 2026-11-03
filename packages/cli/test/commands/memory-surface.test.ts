@@ -147,6 +147,13 @@ describe("platform template maps", () => {
         ".cursor/skills/mini-trellis-session-insight/SKILL.md",
       ),
     ).toMatch(/conversation history is not parsed/);
+    const cursorInsight = collectPlatformTemplates("cursor")?.get(
+      ".cursor/skills/mini-trellis-session-insight/SKILL.md",
+    );
+    expect(cursorInsight).toMatch(/AGENTS\.md/);
+    expect(cursorInsight).not.toMatch(
+      /can receive the short SessionStart context/,
+    );
 
     for (const rel of [...all, ...dsh, ...cursor]) {
       const base = rel.split("/").pop() ?? rel;

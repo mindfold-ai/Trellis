@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Cursor's local `sessionStart` hook can run, and the Hooks log can say the response merged, without `additional_context` reaching the agent prompt. The Cursor session-insight skill says to use `AGENTS.md` and `mini-trellis mem recall`. Cloud agents do not run `sessionStart`. Cursor conversation history is not parsed.
+- `add_session.py --topic` accepts a root `README*.md` and Markdown under `docs/` or `doc/`, in addition to spec and research notes. An existing install gets that check after `mini-trellis refresh`.
+
 ## v0.3.2 — 2026-11-01
 
 - A user question that only restates the query no longer crowds out a note that states the rule, including a question that repeats an id such as `TASK-4419`. A turn is treated as only a question when every word is a query term or a request word. A fact with no confirmation word, a `Confirmed:` line, a numeric correction, and a Chinese rejection stay eligible. Reordering document bodies does not move a session hit out of the place coverage gave it.

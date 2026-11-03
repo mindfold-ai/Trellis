@@ -47,7 +47,7 @@ mini-trellis migrate --dry-run
 mini-trellis migrate
 ```
 
-`--dry-run` 只列出会改什么。迁移会换掉 Trellis 的说明入口，重写 mini-trellis 的脚本，并把 `.trellis/tasks/` 收进 research。`.trellis/spec/`、`research/`、`workspace/` 保留。`-y` 跳过提问，并把任务文件归档到 `<topic>/legacy/`。
+`--dry-run` 只列出会改什么。迁移会换掉 Trellis 的说明入口，重写 mini-trellis 的脚本，并把 `.trellis/tasks/` 收进 research。`.trellis/spec/`、`research/`、`workspace/` 保留。`-y` 跳过提问，并把任务文件归档到 `<topic>/legacy/`。迁完之后，项目现状的维护和新项目一样，见[维护项目现状](#维护项目现状)。
 
 ## 改代码之前先查
 
@@ -99,6 +99,8 @@ journal 只记过程和笔记路径。规则正文写在 spec 或 research 里�
 说明里只写已经实现的用途、能力、主要模块和约束，并带上代码、测试或已确认决定作为依据。规划中的功能、用户只是提出的建议，不能写成已经实现。只改相关章节。普通改名或排版不重写整篇说明，也不记一条 journal。
 
 中文讨论去改一篇英文旧说明时，正文保持英文，含义、限额和否定不变。确认之后，现行说明和 journal 里的链接一致。下一轮用 `mem recall` 找回的是更新后的内容，旧 journal 仍可查，但不代替现行说明。
+
+已经装过的项目要先 `mini-trellis refresh`，`--topic` 才接受根目录的 `README*.md`，以及 `docs/`、`doc/` 下的 Markdown。
 
 对 Agent 可以直接说：
 

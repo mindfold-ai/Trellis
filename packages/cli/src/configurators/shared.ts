@@ -261,7 +261,7 @@ export function wrapWithSkillFrontmatter(
  */
 const COMMAND_DESCRIPTIONS: Record<string, string> = {
   remember:
-    "Update the existing project description or topic, keep plans out of implemented capabilities, and record a linked journal entry.",
+    "Save confirmed decisions or rejected approaches, update the existing project description or topic, and record a linked journal entry.",
 };
 
 /** Wrap resolved command content with YAML frontmatter (name + description). */
