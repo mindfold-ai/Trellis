@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Backend guideline routing"}
+{"file": ".trellis/spec/core/backend/index.md", "reason": "SDK package boundaries"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Delivery content and recovery contracts"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python template and dogfood conventions"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Core SDK public surface"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Required quality gates"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Focused real regression tests"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Path and Python platform behavior"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse before helper creation"}

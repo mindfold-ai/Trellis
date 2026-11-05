@@ -241,6 +241,28 @@ permission identity. Readers never silently rewrite existing candidate hashes;
 if an older noncanonical Git-mode hash is inapplicable, return to its original
 producer to refresh the candidate and affected gates.
 
+Git-mode gitlinks are atomic parent-repository entries. Candidate capture reads
+selected stage-0 index mode `160000` and its full OID; commit verification and
+`GitCandidateContent` read the corresponding parent commit tree. The ordered JSON
+content triples use `[path,57344,OID]` for gitlinks (`57344` is octal `160000`),
+`[path,null,null]` for absence, and the existing byte-hash/permission triples for
+ordinary files. The enclosing SHA256 format is unchanged. Selected unresolved
+index entries reject as `invalid_candidate`. Staged deletion of a HEAD gitlink
+remains absence even with a leftover directory; an ordinary-file replacement
+retains ordinary workspace-byte semantics. Gitlink handling never enters the
+child checkout or requires its HEAD, cleanliness, initialization, internal files
+or target object availability. No submodule init/update/fetch is performed.
+
+Regular-file candidates still observe workspace bytes and executable bits, even
+when the index differs; explicit `git` mode for ordinary files remains usable
+outside Git. `git_free` behavior and ordinary directory/symlink exclusions are
+unchanged. The distinct gitlink mode identifies this additive encoding without
+changing existing ordinary-file hashes. Old unexecuted candidates which mistook
+an absent gitlink checkout for deletion require original-owner preparation and
+affected gate refresh when their identity no longer verifies. Already-produced
+commit/publication/delivery outcomes use original-owner historical recovery;
+upgrading never authorizes repeating those actions or rewriting their facts.
+
 A `local_commit` fact requires a complete lowercase 40- or 64-hex commit OID,
 matching `candidate.head_ref`. Store verification resolves that exact object
 and requires its type to be `commit` and its resolved full OID to equal the

@@ -14,7 +14,7 @@ from .delivery_operations import apply_operation, parse_operation
 from .delivery_schema import DeliveryError, candidate, fail, parse_task_v2, relative_path
 from .delivery_session import apply_release_plan, plan_release_delivery, release_delivery
 from .io import read_json_checked, write_text_atomic
-from .git_objects import CHUNK_SIZE, hash_blob, read_blob_facts, read_tree, verify_blob_objects
+from .git_objects import CHUNK_SIZE, TreeEntry, hash_blob, read_blob_facts, read_tree, selected_path_commands, verify_blob_objects
 from .path_boundary import require_project_path
 from .runtime_contract import read_runtime_contract
 from .task_artifacts import TaskArtifactContext, artifact_context, authority_locator, canonical_operation, relocate_task_directory
@@ -170,6 +170,8 @@ class GitCandidateContent:
                 entry = tree.get(locator)
                 if entry is None:
                     continue
+                if entry.mode == "160000" and entry.kind == "commit":
+                    continue
                 if entry.kind != "blob" or entry.mode not in ("100644", "100755"):
                     fail("invalid_git_fact", locator)
                 (reused if entry.oid in self._hashes else pending).append(entry.oid)
@@ -192,12 +194,74 @@ class GitCandidateContent:
         entries = []
         for locator in ordered:
             entry = tree.get(locator)
-            entries.append([locator, None, None] if entry is None else
-                           [locator, 0o755 if entry.mode == "100755" else 0o644, self._hashes[entry.oid]])
+            entries.append(_tree_content_entry(locator, entry, self._hashes))
         serialized = _serialize_entries(entries)
         if serialized not in self._aggregates:
             self._aggregates[serialized] = _digest(serialized.encode("utf-8"))
         return self._aggregates[serialized]
+
+
+def _tree_content_entry(locator: str, entry: TreeEntry | None, hashes: dict[str, str]) -> list:
+    if entry is None:
+        return [locator, None, None]
+    if entry.mode == "160000" and entry.kind == "commit":
+        return [locator, 0o160000, entry.oid]
+    return [locator, 0o755 if entry.mode == "100755" else 0o644, hashes[entry.oid]]
+
+
+def _candidate_gitlinks(root: Path, paths: list[str]) -> dict[str, str | None]:
+    """Observe only parent index/tree metadata, never a submodule checkout.
+
+    None marks a staged deletion of a HEAD gitlink. Regular index entries keep
+    the public candidate's ordinary mutable-workspace behavior.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+    env["LC_ALL"] = "C"
+    try:
+        probe = subprocess.run(["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+                               capture_output=True, timeout=20, env=env)
+        if probe.returncode:
+            if b"not a git repository" in probe.stderr:
+                return {}  # Explicit Git-mode regular files also work outside Git.
+            fail("invalid_git_fact", "cannot detect parent repository")
+        if probe.stdout.strip() != b"true":
+            return {}
+        selected = set(paths)
+        indexed = set()
+        links: dict[str, str | None] = {}
+        args = ["git", "--literal-pathspecs", "-C", str(root), "ls-files", "--stage", "-z", "--"]
+        for command in selected_path_commands(args, paths):
+            output = subprocess.run(command, capture_output=True, check=True, timeout=20, env=env).stdout
+            for row in output.split(b"\0"):
+                if not row:
+                    continue
+                header, name = row.split(b"\t", 1)
+                locator = name.decode("utf-8", errors="surrogateescape")
+                if locator not in selected:
+                    continue
+                mode, oid, stage = header.decode("ascii").split(" ")
+                if stage != "0":
+                    fail("invalid_candidate", f"unmerged index entry: {locator}")
+                indexed.add(locator)
+                if mode == "160000":
+                    links[locator] = oid
+        missing = selected - indexed
+        if missing:
+            head = subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "--quiet", "HEAD"],
+                                  capture_output=True, timeout=20, env=env)
+            if head.returncode == 0:
+                for locator, entry in read_tree(root, head.stdout.strip().decode("ascii"), paths=sorted(missing), env=env).items():
+                    if locator in missing and entry.mode == "160000" and entry.kind == "commit":
+                        links[locator] = None
+            elif head.returncode != 1:
+                fail("invalid_git_fact", "cannot read parent HEAD")
+        return links
+    except FileNotFoundError:
+        return {}  # Explicit Git-mode regular files do not require Git installed.
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
+        if isinstance(exc, DeliveryError):
+            raise
+        fail("invalid_git_fact", str(exc))
 
 
 def _candidate_content_ref(root: Path, paths: list[str], kind: str | None = None,
@@ -211,11 +275,17 @@ def _candidate_content_ref(root: Path, paths: list[str], kind: str | None = None
             kind = "git_free"
     if kind not in ("git", "git_free"):
         fail("invalid_candidate", "kind must be git or git_free")
-    entries = []
-    for locator in sorted(paths):
+    for locator in paths:
+        relative_path(locator)
         if _reserved(locator):
             fail("invalid_candidate", f"lifecycle/private file {locator}")
-        relative_path(locator)
+    links = _candidate_gitlinks(root, paths) if kind == "git" else {}
+    entries = []
+    for locator in sorted(paths):
+        if locator in links:
+            oid = links[locator]
+            entries.append([locator, None, None] if oid is None else [locator, 0o160000, oid])
+            continue
         path = _checked_path(root / locator, root)
         if not path.exists():
             entries.append([locator, None, None])
@@ -282,6 +352,8 @@ def _verify_commit(root: Path, result: dict, observation: _ContentObservation | 
             fail("invalid_candidate", locator)
         entry = tree.get(locator)
         if entry is not None:
+            if entry.mode == "160000" and entry.kind == "commit":
+                continue
             if entry.kind != "blob" or entry.mode not in ("100644", "100755"):
                 fail("invalid_git_fact", locator)
             if entry.oid not in hashes:
@@ -295,10 +367,7 @@ def _verify_commit(root: Path, result: dict, observation: _ContentObservation | 
         fail("invalid_git_fact", str(exc))
     for locator in sorted(result["candidate"]["paths"]):
         entry = tree.get(locator)
-        if entry is None:
-            entries.append([locator, None, None])
-            continue
-        entries.append([locator, 0o755 if entry.mode == "100755" else 0o644, hashes[entry.oid]])
+        entries.append(_tree_content_entry(locator, entry, hashes))
     content_ref = (observation.content_ref(entries) if observation is not None
                    else _digest(_serialize_entries(entries).encode("utf-8")))
     if content_ref != result["candidate"]["content_ref"]:

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import type { AuthorityRef, CandidateRef, GateResult, TaskRecordV2, WorkflowContract } from "@mindfoldhq/trellis-core/task/v2";
+import { computeCandidateContentRef, verifyCandidate, verifyHistoricalCommit, type AuthorityRef, type CandidateRef, type GateResult, type TaskRecordV2, type WorkflowContract } from "@mindfoldhq/trellis-core/task/v2";
 
 const scripts = path.resolve(__dirname, "../../src/templates/trellis/scripts");
 const fixtures = path.resolve(__dirname, "../../../core/test/fixtures/task-v2");
@@ -98,13 +98,13 @@ describe.skipIf(!available)("Delivery v2 shipped Python (minimum interpreter)", 
     }, deliveryId));
     return resultId;
   }
-  function candidate(gitProject = false): CandidateRef {
-    const hash = JSON.parse(ok(root, "delivery", ["candidate", "--paths", "artifact.txt", "--kind", gitProject ? "git" : "git_free"])) as { content_ref: string };
-    return { kind: gitProject ? "git" : "git_free", ...hash, paths: ["artifact.txt"], head_ref: gitProject ? git(root, "rev-parse", "HEAD") : null, base_ref: null };
+  function candidate(gitProject = false, paths = ["artifact.txt"]): CandidateRef {
+    const hash = JSON.parse(ok(root, "delivery", ["candidate", "--paths", ...paths, "--kind", gitProject ? "git" : "git_free"])) as { content_ref: string };
+    return { kind: gitProject ? "git" : "git_free", ...hash, paths, head_ref: gitProject ? git(root, "rev-parse", "HEAD") : null, base_ref: null };
   }
-  function ready(gitProject = false): CandidateRef {
+  function ready(gitProject = false, paths = ["artifact.txt"]): CandidateRef {
     const planning = gate("planning", "planning", null, null);
-    const current = candidate(gitProject);
+    const current = candidate(gitProject, paths);
     apply(operation("begin_check", "implementation", { expected_phase: "implementing", candidate: current }, d1));
     const check = gate("check", "checking", current, planning);
     const review = gate("full_review", "reviewing", current, check);
@@ -375,7 +375,101 @@ print(json.dumps({'changed':result['changed'],'counts':list(targets.values())}))
     }
   });
 
-  it("rejects committed directories, symlinks and gitlinks without writing the Task", () => {
+  for (const format of ["sha1", "sha256"]) {
+    it(`uses atomic parent-index gitlinks across Python/SDK/CLI and exact Delivery trees (${format})`, () => {
+      git(root, "init", "-q", `--object-format=${format}`);
+      git(root, "config", "maintenance.auto", "false"); git(root, "config", "gc.auto", "0");
+      const locator = "模块 [*]\tlink";
+      const oid = "1".repeat(format === "sha256" ? 64 : 40); const changedOid = "2".repeat(oid.length);
+      const expected = (value: string | null) => digest(JSON.stringify([[locator, value === null ? null : 0o160000, value]]));
+      const pointer = (value: string) => git(root, "update-index", "--add", "--cacheinfo", `160000,${value},${locator}`);
+      const commit = () => {
+        git(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "parent state");
+        return git(root, "rev-parse", "HEAD");
+      };
+      const observe = () => {
+        const actual = JSON.parse(ok(root, "delivery", ["candidate", "--kind", "git", "--paths", locator])) as { content_ref: string };
+        expect(actual.content_ref).toBe(computeCandidateContentRef(root, [locator], "git"));
+        return actual.content_ref;
+      };
+      // An unborn parent can stage a gitlink whose target object is unavailable.
+      pointer(oid); expect(observe()).toBe(expected(oid));
+      fs.mkdirSync(path.join(root, locator)); fs.writeFileSync(path.join(root, locator, "internal"), "original");
+      expect(observe()).toBe(expected(oid));
+      fs.writeFileSync(path.join(root, locator, "internal"), "dirty child content");
+      expect(observe()).toBe(expected(oid));
+      fs.rmSync(path.join(root, locator), { recursive: true });
+      expect(observe()).toBe(expected(oid));
+      git(root, "add", "artifact.txt", "requirements.md", "plan.md"); const head = commit();
+      expect(git(root, "ls-tree", "HEAD", "--", locator)).toContain(`160000 commit ${oid}`);
+      expect(spawnSync("git", ["cat-file", "-e", oid], { cwd: root }).status).not.toBe(0);
+      prepare(d1, "local_commit"); const current = ready(true, [locator]);
+      const fact = { result_id: "atomic-pointer", owner_id: native.workflow.owners.delivery, evidence: [ref("plan.md")], candidate: current, profile: "local_commit" as const, commit: head };
+      expect(() => verifyHistoricalCommit(root, fact)).not.toThrow();
+      expect(apply(operation("record_delivery", "delivery", { expected_phase: "publishing", result: fact }, d1)).phase).toBe("delivered");
+      const historical = spawnSync(python, ["-c", `
+import json,sys
+from pathlib import Path
+from common.delivery_store import GitCandidateContent
+with GitCandidateContent(Path.cwd(),no_lazy_fetch=True) as content:
+    print(json.dumps(content.content_ref(sys.argv[1],[sys.argv[2]])))
+`, head, locator], { cwd: root, encoding: "utf8", env: { ...process.env, PYTHONPATH: scripts } });
+      expect(historical.status, historical.stderr).toBe(0); expect(JSON.parse(historical.stdout)).toBe(current.content_ref);
+      pointer(changedOid); expect(observe()).toBe(expected(changedOid));
+      expect(() => verifyCandidate(root, current)).toThrow("candidate_mismatch");
+      const stale = spawnSync(python, ["-c", `
+import json,sys
+from pathlib import Path
+from common.delivery_store import verify_candidate
+verify_candidate(Path.cwd(),json.loads(sys.argv[1]))
+`, JSON.stringify(current)], { cwd: root, encoding: "utf8", env: { ...process.env, PYTHONPATH: scripts } });
+      expect(stale.status).not.toBe(0); expect(stale.stderr).toContain("candidate_mismatch");
+      const wrong = commit(); const wrongFact = { ...fact, result_id: "wrong-pointer", candidate: { ...current, head_ref: wrong }, commit: wrong };
+      expect(() => verifyHistoricalCommit(root, wrongFact)).toThrow("candidate_mismatch");
+      prepare(d2, "local_commit");
+      const wrongRequest = operation("record_delivery", "delivery", { expected_phase: "planning", historical_success: true, result: wrongFact }, d2);
+      expect(run(root, "delivery", ["apply", "--task", task, "--input", JSON.stringify(wrongRequest)]).stderr).toContain("candidate_mismatch");
+      fs.mkdirSync(path.join(root, locator)); fs.writeFileSync(path.join(root, locator, "residual"), "kept");
+      git(root, "update-index", "--force-remove", "--", locator);
+      expect(observe()).toBe(expected(null));
+      // Replacing a gitlink with an ordinary file retains mutable workspace bytes.
+      fs.rmSync(path.join(root, locator), { recursive: true }); fs.writeFileSync(path.join(root, locator), "replacement");
+      git(root, "--literal-pathspecs", "add", "--", locator);
+      const fileRef = observe(); expect(fileRef).not.toBe(expected(oid));
+      fs.writeFileSync(path.join(root, locator), "unstaged replacement"); expect(observe()).not.toBe(fileRef);
+      pointer(oid); expect(observe()).toBe(expected(oid));
+      // Selected unresolved index entries must never look like deletion.
+      git(root, "update-index", "--force-remove", "--", locator);
+      const conflict = `160000 ${oid} 1\t${locator}\0` + `160000 ${changedOid} 2\t${locator}\0`;
+      execFileSync("git", ["update-index", "-z", "--index-info"], { cwd: root, input: conflict });
+      expect(() => computeCandidateContentRef(root, [locator], "git")).toThrow("invalid_candidate");
+      expect(run(root, "delivery", ["candidate", "--kind", "git", "--paths", locator]).stderr).toContain("invalid_candidate");
+      expect(computeCandidateContentRef(root, ["artifact.txt"], "git")).toBe(candidate(true).content_ref);
+    });
+  }
+
+  it("reads selected candidate metadata without depending on unrelated large parent index/tree output", () => {
+    git(root, "init", "-q");
+    git(root, "config", "maintenance.auto", "false"); git(root, "config", "gc.auto", "0");
+    const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: root, input: "unrelated" }).toString().trim();
+    const oid = "1".repeat(40);
+    const rows = Array.from({ length: 12000 }, (_, index) => `100644 ${blob} 0\tother-${"x".repeat(80)}${index}\n`).join("");
+    execFileSync("git", ["update-index", "--index-info"], { cwd: root, input: rows + `160000 ${oid} 0\tpointer\n` });
+    git(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "large parent metadata");
+    // Both the parent index and tree exceed execFileSync's default pipe limit.
+    for (const args of [["ls-files", "--stage", "-z"], ["ls-tree", "-r", "-z", "HEAD"]]) {
+      expect(execFileSync("git", args, { cwd: root, maxBuffer: 4 * 1024 * 1024 }).length).toBeGreaterThan(1024 * 1024);
+    }
+    for (const locator of ["pointer", "artifact.txt"]) {
+      const expected = digest(JSON.stringify([[locator, locator === "pointer" ? 0o160000 : 0o644,
+        locator === "pointer" ? oid : createHash("sha256").update(fs.readFileSync(path.join(root, locator))).digest("hex")]]));
+      expect(computeCandidateContentRef(root, [locator], "git")).toBe(expected);
+      const actual = JSON.parse(ok(root, "delivery", ["candidate", "--kind", "git", "--paths", locator])) as { content_ref: string };
+      expect(actual.content_ref).toBe(expected);
+    }
+  });
+
+  it("rejects committed directories and symlinks without writing the Task", () => {
     git(root, "init", "-q");
     fs.mkdirSync(path.join(root, "directory"));
     fs.writeFileSync(path.join(root, "directory/child"), "child");
@@ -386,7 +480,7 @@ print(json.dumps({'changed':result['changed'],'counts':list(targets.values())}))
     git(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "gitlink");
     prepare(d1, "local_commit");
     const before = fs.readFileSync(path.join(root, task, "task.json"));
-    for (const locator of ["directory", "link", "gitlink"]) {
+    for (const locator of ["directory", "link"]) {
       const head = git(root, "rev-parse", "HEAD");
       const request = operation("record_delivery", "delivery", { expected_phase: "planning", historical_success: true, result: { result_id: "unsupported", owner_id: native.workflow.owners.delivery, evidence: [ref("plan.md")], candidate: { kind: "git", paths: [locator], content_ref: digest("placeholder"), head_ref: head, base_ref: null }, profile: "local_commit", commit: head } }, d1);
       const result = run(root, "delivery", ["apply", "--task", task, "--input", JSON.stringify(request)]);
