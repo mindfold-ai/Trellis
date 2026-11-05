@@ -138,7 +138,7 @@ export interface MaintenanceContract {
   task_families: string[];
   session_families: string[];
   formal_archive_reactivation: {
-    task_families: ["schema1"];
+    task_families: ["schema1", "known_legacy"];
     generation: "increment_once";
     original_archive: "read_only";
   };
@@ -168,7 +168,7 @@ export function getMaintenanceContract(): MaintenanceContract {
     ],
     task_families: ["known_legacy", "schema1", "schema2_preserve_only"],
     formal_archive_reactivation: {
-      task_families: ["schema1"],
+      task_families: ["schema1", "known_legacy"],
       generation: "increment_once",
       original_archive: "read_only",
     },

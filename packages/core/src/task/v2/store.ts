@@ -1,4 +1,4 @@
-import { taskRecordSchema } from "../schema.js";
+import { classifyFormalArchivePredecessor, validateFormalArchiveSuccessorSource } from "../maintenance.js";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -98,8 +98,13 @@ function formalPredecessorForRelocation(options: TaskStoreOptions, id: string, e
   if (typeof key !== "object" || key === null || !("task_id" in key) || !("lifecycle_generation" in key) || !same(Object.keys(key).sort(), ["task_id", "lifecycle_generation"].sort()) || key.task_id !== id || !Number.isSafeInteger(key.lifecycle_generation) || Number(key.lifecycle_generation) < 0 || record.id !== id || record.lifecycle_generation <= Number(key.lifecycle_generation) || typeof provenance.archive_ref !== "string" || !/^\.trellis\/tasks\/archive\/\d{4}-\d{2}\/[^/]+$/.test(provenance.archive_ref) || typeof provenance.original_task_ref !== "string" || !/^\.trellis\/tasks\/(?!archive$)[^/]+$/.test(provenance.original_task_ref) || typeof provenance.archive_commit !== "string" || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(provenance.archive_commit)) fail("formal_archive_provenance_mismatch", "predecessor identity");
   const predecessor = contained(options.root, provenance.archive_ref, false, true);
   const file = contained(options.root, `${provenance.archive_ref}/task.json`, false, true);
-  const source = taskRecordSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
-  if (source.id !== id || source.lifecycle_generation !== key.lifecycle_generation || source.status !== "completed" || !same(source.source, record.source) || !fs.readFileSync(file).equals(fs.readFileSync(path.join(excluded, "migration/source-task.json")))) fail("formal_archive_provenance_mismatch", "retained predecessor source");
+  const source: unknown = JSON.parse(fs.readFileSync(file, "utf8"));
+  try {
+    const identity = classifyFormalArchivePredecessor(source);
+    validateFormalArchiveSuccessorSource(source, record.source);
+    if (identity.task_id !== id || identity.generation !== key.lifecycle_generation) fail("formal_archive_provenance_mismatch", "retained predecessor identity");
+  } catch (error) { fail("formal_archive_provenance_mismatch", `retained predecessor source: ${(error as Error).message}`); }
+  if (!fs.readFileSync(file).equals(fs.readFileSync(path.join(excluded, "migration/source-task.json")))) fail("formal_archive_provenance_mismatch", "retained predecessor bytes");
   return fs.realpathSync(predecessor);
 }
 function reserveIdentityExcept(options: TaskStoreOptions, id: string, excluded?: string): void {

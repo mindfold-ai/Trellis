@@ -1,0 +1,216 @@
+{
+  "schema_version": "1.0",
+  "started_at": "2026-11-05T10:56:41.480Z",
+  "installed_cli": "/private/tmp/trellis-issue64-candidate/installed/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+  "contract": {
+    "maintenance_api": "1.0",
+    "cli_version": "0.7.0-castbox.6",
+    "core_version": "0.7.0-castbox.6",
+    "operation_kinds": [
+      "tools_install",
+      "task_conversion",
+      "legacy_closeout",
+      "task_resume",
+      "formal_archive_reactivation"
+    ],
+    "tools_custom_instruction": {
+      "path": "AGENTS.md",
+      "action": "custom"
+    },
+    "source_versions": [
+      "stable 0.6.x",
+      "0.7.0-castbox.N, N >= 1, no newer than candidate"
+    ],
+    "task_families": [
+      "known_legacy",
+      "schema1",
+      "schema2_preserve_only"
+    ],
+    "formal_archive_reactivation": {
+      "task_families": [
+        "schema1",
+        "known_legacy"
+      ],
+      "generation": "increment_once",
+      "original_archive": "read_only"
+    },
+    "archive_resume": {
+      "task_families": [
+        "known_legacy",
+        "schema1"
+      ],
+      "generation": "preserve",
+      "original_archive": "read_only"
+    },
+    "session_families": [
+      "unversioned_local",
+      "schema1_path",
+      "schema2_identity",
+      "schema3_delivery"
+    ]
+  },
+  "public_flow": {
+    "predecessor": {
+      "kind": "legacy",
+      "task_id": "legacy-formal-sample",
+      "generation": 0
+    },
+    "candidate": {
+      "cli_version": "0.7.0-castbox.6",
+      "core_version": "0.7.0-castbox.6",
+      "cli_digest": "3a6c2830dd4809203223f43642ea27f68f083ac6ad7bbc635570fddf31f879d2",
+      "core_digest": "02f1ffae5c231d9d8a9201eedf773ac51cf61e6877274cd3ed3049af6e6b2c9a"
+    },
+    "operation_id": "45b8a197-17c2-46e1-a12a-43f45a7abf72",
+    "preview": {
+      "operation_id": "45b8a197-17c2-46e1-a12a-43f45a7abf72",
+      "kind": "formal_archive_reactivation",
+      "status": "prepared",
+      "pending_paths": [
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/empty",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/migration",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/history.md",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/prd.md",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/run.sh",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/migration/source-task.json",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/task.json",
+        "/private/tmp/trellis-issue64-candidate/probe-final/public-flow:.trellis/tasks/reactivated-compact/migration/formal-archive-reactivation.json"
+      ],
+      "recovery_ref": null
+    },
+    "applied": {
+      "operation_id": "45b8a197-17c2-46e1-a12a-43f45a7abf72",
+      "kind": "formal_archive_reactivation",
+      "status": "applied",
+      "pending_paths": [],
+      "recovery_ref": "/private/tmp/trellis-issue64-candidate/probe-final/public-flow-private/state/45b8a197-17c2-46e1-a12a-43f45a7abf72.json",
+      "reactivated_task": {
+        "key": {
+          "task_id": "legacy-formal-sample",
+          "lifecycle_generation": 1
+        },
+        "task_ref": ".trellis/tasks/reactivated-compact"
+      }
+    },
+    "recovery": {
+      "operation_id": "45b8a197-17c2-46e1-a12a-43f45a7abf72",
+      "kind": "formal_archive_reactivation",
+      "status": "applied",
+      "pending_paths": [],
+      "recovery_ref": "/private/tmp/trellis-issue64-candidate/probe-final/public-flow-private/state/45b8a197-17c2-46e1-a12a-43f45a7abf72.json",
+      "reactivated_task": {
+        "key": {
+          "task_id": "legacy-formal-sample",
+          "lifecycle_generation": 1
+        },
+        "task_ref": ".trellis/tasks/reactivated-compact"
+      }
+    },
+    "resumed": {
+      "operation_id": "45b8a197-17c2-46e1-a12a-43f45a7abf72",
+      "kind": "formal_archive_reactivation",
+      "status": "applied",
+      "pending_paths": [],
+      "recovery_ref": "/private/tmp/trellis-issue64-candidate/probe-final/public-flow-private/state/45b8a197-17c2-46e1-a12a-43f45a7abf72.json",
+      "reactivated_task": {
+        "key": {
+          "task_id": "legacy-formal-sample",
+          "lifecycle_generation": 1
+        },
+        "task_ref": ".trellis/tasks/reactivated-compact"
+      }
+    },
+    "archived_successor": {
+      "kind": "verified",
+      "task": {
+        "key": {
+          "task_id": "legacy-formal-sample",
+          "lifecycle_generation": 1
+        },
+        "task_ref": ".trellis/tasks/archive/2026-11/sdk-relocated"
+      }
+    },
+    "original_archive": {
+      "mode": 493,
+      "children": [
+        [
+          "empty",
+          {
+            "mode": 448,
+            "children": []
+          }
+        ],
+        [
+          "history.md",
+          {
+            "mode": 416,
+            "sha256": "04e804276b0c3975e9cde2399da326c8504f7251699def42c2b70e4f6adcc72d"
+          }
+        ],
+        [
+          "prd.md",
+          {
+            "mode": 384,
+            "sha256": "1004415945ee29839c59f578e6fb6618c29a8ed007ec85bb4841f0419cd4eea8"
+          }
+        ],
+        [
+          "run.sh",
+          {
+            "mode": 488,
+            "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+          }
+        ],
+        [
+          "task.json",
+          {
+            "mode": 416,
+            "sha256": "77d21025ba28841bf35213e89fe05af47305a03fc0b98b37e9c11c104e297098"
+          }
+        ]
+      ]
+    },
+    "original_archive_unchanged": true,
+    "actual_core_relocation": true,
+    "actual_native_completion_closure_archive": true
+  },
+  "partial_flow": {
+    "operation_id": "38ec3b19-bad9-435d-a469-f8118e84855a",
+    "actual_write_interrupted": true,
+    "pending": {
+      "operation_id": "38ec3b19-bad9-435d-a469-f8118e84855a",
+      "kind": "formal_archive_reactivation",
+      "status": "pending",
+      "pending_paths": [
+        "/private/tmp/trellis-issue64-candidate/probe-final/partial-flow:.trellis/tasks/reactivated-compact/task.json",
+        "/private/tmp/trellis-issue64-candidate/probe-final/partial-flow:.trellis/tasks/reactivated-compact/migration/formal-archive-reactivation.json"
+      ],
+      "recovery_ref": "/private/tmp/trellis-issue64-candidate/probe-final/partial-flow-private/state/38ec3b19-bad9-435d-a469-f8118e84855a.json"
+    },
+    "resumed": {
+      "operation_id": "38ec3b19-bad9-435d-a469-f8118e84855a",
+      "kind": "formal_archive_reactivation",
+      "status": "applied",
+      "pending_paths": [],
+      "recovery_ref": "/private/tmp/trellis-issue64-candidate/probe-final/partial-flow-private/state/38ec3b19-bad9-435d-a469-f8118e84855a.json",
+      "reactivated_task": {
+        "key": {
+          "task_id": "legacy-formal-sample",
+          "lifecycle_generation": 1
+        },
+        "task_ref": ".trellis/tasks/reactivated-compact"
+      }
+    },
+    "original_archive_unchanged": true
+  },
+  "completed_at": "2026-11-05T10:56:49.276Z",
+  "status": "passed",
+  "limits": [
+    "Isolated desensitized public fixtures; no real business archive, Guru semantic qualification or joint acceptance.",
+    "Pending proof uses one injected ordinary filesystem write error through the installed public SDK; recover/resume use actual bin processes.",
+    "This probe is scoped to the executing local platform and installed matching package pair."
+  ],
+  "subprocess_count": 40,
+  "raw_report_sha256": "d28f648ddd53f38dba95489baf5ca5337b3838b361eb8901fd90764b8f184a04"
+}

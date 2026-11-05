@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { emptyTaskRecord } from "../../src/task/schema.js";
+import fs from "node:fs";
+import path from "node:path";
+import { emptyTaskRecord, taskRecordSchema } from "../../src/task/schema.js";
 import { emptyTaskRecordV2 } from "../../src/task/v2/operations.js";
-import { validateFormalArchiveReactivationProjection } from "../../src/task/maintenance.js";
+import { classifyFormalArchivePredecessor, validateFormalArchiveReactivationProjection, validateFormalArchiveSuccessorSource } from "../../src/task/maintenance.js";
 
 const reason = {
   locator: "requirements.md",
@@ -13,6 +15,55 @@ const source = emptyTaskRecord({
   status: "completed",
   meta: { retained: true },
   children: ["child"],
+});
+
+describe("compact legacy formal predecessor", () => {
+  const legacy = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../../cli/test/fixtures/legacy-formal/task.json"), "utf8")) as Record<string, unknown>;
+  const next = emptyTaskRecordV2({
+    id: String(legacy.id), name: String(legacy.name), title: String(legacy.title),
+    branch: "main", base_branch: "main", scope: String(legacy.scope),
+    lifecycle_generation: 1, accepted_scope: reason,
+    source: { kind: "issue", repo_ref: "example/project", number: 130, disposition: "reference_only" },
+  });
+  const facts = [{ field: "completedAt" as const, disposition: "source_snapshot" as const, owner_id: "original-owner", reason }];
+  it("interprets the unmodified ten-field family without passing the current reader", () => {
+    expect(Object.keys(legacy)).toHaveLength(10);
+    expect(taskRecordSchema.safeParse(legacy).success).toBe(false);
+    expect(classifyFormalArchivePredecessor(legacy)).toEqual({ kind: "legacy", task_id: legacy.id, generation: 0 });
+    expect(validateFormalArchiveReactivationProjection(legacy, next, facts)).toEqual(next);
+    expect(legacy).not.toHaveProperty("lifecycle_generation");
+    expect(legacy).not.toHaveProperty("source");
+    expect(legacy).toHaveProperty("creator", "historical-creator");
+    expect(next).not.toHaveProperty("creator");
+    expect(() => validateFormalArchiveReactivationProjection(legacy, next)).toThrow("legacy_fact_attribution_required");
+    for (const generation of [0, 2])
+      expect(() => validateFormalArchiveReactivationProjection(legacy, { ...next, lifecycle_generation: generation }, facts)).toThrow("target_key_mismatch");
+  });
+  it.each(["exact_source", "reference_only", "follow_up", "parent"] as const)("validates Issue identity while retaining caller disposition %s", (disposition) => {
+    const projection = { ...next, source: { ...next.source, disposition } };
+    expect(validateFormalArchiveReactivationProjection(legacy, projection, facts)).toEqual(projection);
+  });
+  it.each([
+    { kind: "no_issue" },
+    { kind: "issue", repo_ref: "other/project", number: 130, disposition: "reference_only" },
+    { kind: "issue", repo_ref: "example/project", number: 131, disposition: "reference_only" },
+  ])("rejects inconsistent successor source %j", (source) => {
+    expect(() => validateFormalArchiveReactivationProjection(legacy, { ...next, source }, facts)).toThrow("source_mismatch");
+  });
+  it.each([
+    { creator: undefined }, { status: "planning" }, { schema_version: "1.0" },
+    { scope: undefined }, { scope: "other historical scope" },
+    { scope: "GitHub issue: https://github.com/example/project/issues/130\n" },
+    { scope: "GitHub issue: https://github.com/example/project/issues/0130" },
+    { scope: "GitHub issue: https://github.com/example/project/issues/9007199254740992" },
+    { lifecycle_generation: 0 },
+  ])("does not default arbitrary incomplete records to formal generation zero: %j", (change) => {
+    expect(() => classifyFormalArchivePredecessor({ ...legacy, ...change })).toThrow("unsupported_source");
+  });
+  it("retains schema1 exact source equality in the public relation checker", () => {
+    expect(() => validateFormalArchiveSuccessorSource(source, next.source)).toThrow("source_mismatch");
+    expect(() => validateFormalArchiveSuccessorSource(source, source.source)).not.toThrow();
+  });
 });
 const metadata = Object.fromEntries(
   Object.entries(source).filter(

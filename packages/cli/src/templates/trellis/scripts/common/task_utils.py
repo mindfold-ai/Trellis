@@ -13,6 +13,7 @@ Provides:
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 import re
@@ -167,11 +168,27 @@ def _formal_predecessor_for_relocation(selected: Path | None, requested: str, re
     retained = selected / "migration" / "source-task.json"
     require_project_path(source_path, repo_root)
     require_project_path(retained, repo_root)
-    source, source_reason = read_json_checked(source_path)
+    # Only this retained formal relation reads a positively recognized legacy
+    # archive. Ordinary current Task readers deliberately remain strict.
+    from .maintenance import is_known_legacy_task
+    try:
+        raw_source = json.loads(source_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeError) as error:
+        raise TaskIdentityError(f"formal_archive_provenance_mismatch: retained source {archive_ref}") from error
+    legacy = is_known_legacy_task(raw_source)
+    source, source_reason = (raw_source, None) if legacy else read_json_checked(source_path)
+    source_generation = 0 if legacy else (source or {}).get("lifecycle_generation")
+    source_matches = source is not None and source.get("source") == current.get("source")
+    if legacy and source is not None:
+        scope = source.get("scope")
+        issue = re.fullmatch(r"GitHub issue: https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([1-9][0-9]*)", scope) if isinstance(scope, str) else None
+        projected = current.get("source")
+        source_matches = (issue is not None and int(issue[2]) <= 9007199254740991
+                          and isinstance(projected, dict) and projected.get("kind") == "issue"
+                          and projected.get("repo_ref") == issue[1] and projected.get("number") == int(issue[2]))
     if (source is None or source.get("schema_version") is not None
             or source.get("status") != "completed" or source.get("id") != requested
-            or source.get("lifecycle_generation") != key["lifecycle_generation"]
-            or source.get("source") != current.get("source")
+            or source_generation != key["lifecycle_generation"] or not source_matches
             or not retained.is_file() or retained.read_bytes() != source_path.read_bytes()):
         raise TaskIdentityError(f"formal_archive_provenance_mismatch: retained source {source_reason or archive_ref}")
     return predecessor.resolve()

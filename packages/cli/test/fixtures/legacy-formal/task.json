@@ -1,0 +1,12 @@
+{
+  "id": "formal-selected",
+  "name": "Compact legacy",
+  "title": "Compact legacy accepted slice",
+  "status": "completed",
+  "branch": "main",
+  "base_branch": "main",
+  "creator": "historical-creator",
+  "assignee": "historical-assignee",
+  "scope": "GitHub issue: https://github.com/example/project/issues/130",
+  "completedAt": "2026-10-08T12:00:00Z"
+}

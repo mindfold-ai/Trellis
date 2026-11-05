@@ -88,8 +88,8 @@ export function registerMaintenanceCommand(program: Command): void {
     group
       .command("inspect-task")
       .requiredOption("--target <root>", "Exact existing checkout")
-      .requiredOption("--task-id <id>", "Selected TaskId")
-      .requiredOption("--generation <number>", "Lifecycle generation")
+      .option("--task-id <id>", "Expected TaskId (with --generation)")
+      .option("--generation <number>", "Expected generation (with --task-id)")
       .requiredOption(
         "--task-ref <ref>",
         "Selected project-relative Task directory",
@@ -101,21 +101,42 @@ export function registerMaintenanceCommand(program: Command): void {
   ).action(
     (options: {
       target: string;
-      taskId: string;
-      generation: string;
+      taskId?: string;
+      generation?: string;
       taskRef: string;
       originalTaskRef?: string;
     }) =>
       run(() => {
-        const generation = Number(options.generation);
-        if (!Number.isInteger(generation) || generation < 0)
+        if (
+          (options.taskId === undefined) !==
+          (options.generation === undefined)
+        )
+          throw new api.MaintenanceError(
+            "invalid_input",
+            "--task-id and --generation must be supplied together or both omitted",
+          );
+        const generation =
+          options.generation === undefined
+            ? undefined
+            : Number(options.generation);
+        if (
+          generation !== undefined &&
+          (!Number.isSafeInteger(generation) || generation < 0)
+        )
           throw new api.MaintenanceError(
             "invalid_generation",
             "Generation must be a nonnegative integer",
           );
         return api.inspectTaskTarget({
           root: options.target,
-          key: { task_id: options.taskId, lifecycle_generation: generation },
+          ...(options.taskId !== undefined && generation !== undefined
+            ? {
+                key: {
+                  task_id: options.taskId,
+                  lifecycle_generation: generation,
+                },
+              }
+            : {}),
           task_ref: options.taskRef,
           ...(options.originalTaskRef
             ? { original_task_ref: options.originalTaskRef }

@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "cases": 16,
+  "python": "/usr/bin/python3",
+  "python_version": "3.9.6",
+  "scope": "Built Core formal predecessor/source rules compared with shipped Python retained-predecessor reader on isolated fixture directories; no lifecycle writes."
+}
