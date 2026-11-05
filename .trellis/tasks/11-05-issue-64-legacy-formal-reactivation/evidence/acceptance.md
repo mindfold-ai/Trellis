@@ -4,7 +4,10 @@
 
 Baseline: `origin/main@3c37c75897f530c3ae8c5c4d85f6c1f3455b2e5f`.
 Public contract: maintenance API `1.0`; Task schema `2.0`; matching CLI/Core
-`0.7.0-castbox.6` with fixed source SHA and package SHA256 to be recorded after commit.
+`0.7.0-castbox.6`, fixed source `619133c62d1487c5fbecbf9e00cea9e3f5ea52a6`.
+Exact source/build/package SHA256 and installation instructions:
+https://github.com/castbox/Trellis/releases/tag/issue-64-candidate-619133c62d14.
+`candidate-record.json` preserves the full identity locally.
 A version label alone is insufficient: this is a separately pinned Issue 64 build,
 not a replacement for the existing published Castbox .6 artifacts.
 
@@ -41,3 +44,30 @@ crash-consistency or concurrency guarantees.
 - Ordinary interrupted write: public recovery returned `pending` without `reactivated_task`; actual bin resume returned `applied` on the same operation and generation 1.
 - The first probe attempt exposed only a driver `/tmp` versus `/private/tmp` comparison error; canonicalizing the fixture root enabled the intended write interruption. No product change was required. Final raw report is a candidate asset; summary and its SHA256 are retained here.
 - Full pre-commit and remote CI are recorded at delivery follow-through below; these local observations do not imply Guru acceptance.
+
+
+## Delivery follow-through
+
+Implementation source commit: `619133c62d1487c5fbecbf9e00cea9e3f5ea52a6`.
+PR targeting main: https://github.com/castbox/Trellis/pull/65.
+Fixed separately pinned candidate: https://github.com/castbox/Trellis/releases/tag/issue-64-candidate-619133c62d14.
+Attached assets: both matching tarballs, SHA256SUMS, candidate-record.json,
+INSTALL.md, actual probe driver and raw 40-subprocess report.
+
+The implementation commit's required full pre-commit hook passed Core **529**
+with **1 existing skipped** test, and CLI **2434**. The candidate was uploaded
+without replacing any existing asset and without npm publication. All five remote PR CI jobs passed on source commit `619133c62d1487c5fbecbf9e00cea9e3f5ea52a6`:
+https://github.com/castbox/Trellis/actions/runs/42015654747.
+PR #65 merged as `ca0e8b931d19ccb87802d6866abd2113a6f707c0`; Issue #64 closed.
+Published assets were downloaded, all six SHA256SUMS entries checked, both packages
+freshly installed and the actual 40-command probe rerun successfully with identical
+candidate fingerprints. Supplemental published-download proof/raw report/checksums
+are attached without replacing the original candidate assets.
+
+Two attempted documentation-only commits reran the unchanged full suite and hit
+existing 10-second subprocess timing limits (plus update-probe timing assertions)
+under local machine load. No product failure or code change resulted. The original
+implementation commit had already passed its full hook, and the same source passed
+all five remote CI jobs. After verifying remaining changes are only task records,
+metadata commits/archival skip duplicate Husky execution; no functional validation
+gate is omitted.

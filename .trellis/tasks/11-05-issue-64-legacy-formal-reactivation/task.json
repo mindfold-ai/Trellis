@@ -19,11 +19,11 @@
   "completedAt": null,
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "619133c62d1487c5fbecbf9e00cea9e3f5ea52a6",
+  "pr_url": "https://github.com/castbox/Trellis/pull/65",
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "notes": "Delivered via PR #65; all five CI checks passed; merge ca0e8b931d19ccb87802d6866abd2113a6f707c0; Issue #64 closed. Fixed candidate issue-64-candidate-619133c62d14 and published-download public proof available.",
   "meta": {}
 }

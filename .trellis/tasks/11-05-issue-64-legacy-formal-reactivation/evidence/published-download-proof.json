@@ -1,0 +1,16 @@
+{
+  "source_commit": "619133c62d1487c5fbecbf9e00cea9e3f5ea52a6",
+  "release_tag": "issue-64-candidate-619133c62d14",
+  "downloaded_assets_sha256_verification": "six checksum entries passed; original seven-asset set includes the checksum manifest",
+  "fresh_install": "passed",
+  "public_probe": "passed",
+  "actual_subprocess_count": 40,
+  "same_candidate_fingerprints_as_original_probe": true,
+  "candidate": {
+    "cli_version": "0.7.0-castbox.6",
+    "core_version": "0.7.0-castbox.6",
+    "cli_digest": "3a6c2830dd4809203223f43642ea27f68f083ac6ad7bbc635570fddf31f879d2",
+    "core_digest": "02f1ffae5c231d9d8a9201eedf773ac51cf61e6877274cd3ed3049af6e6b2c9a"
+  },
+  "raw_report_sha256": "8e7d883073f715005b39106e2a3fff5649bec46a022f0280f650f1ca5c150f37"
+}
