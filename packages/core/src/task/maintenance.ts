@@ -25,6 +25,38 @@ export function classifyMaintenanceTask(value: unknown): MaintenanceTaskIdentity
   if (isKnownLegacyTaskRecord(value)) return { kind: "legacy", task_id: (value as Record<string, string>).id, generation: 0 };
   throw new MaintenanceError("unsupported_source", "Task is neither a known legacy record nor a canonical schema1/schema2 record");
 }
+
+function legacyIssueIdentity(source: Record<string, unknown>): { repo_ref: string; number: number } {
+  const match = typeof source.scope === "string"
+    ? /^GitHub issue: https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/issues\/([1-9][0-9]*)$/.exec(source.scope)
+    : null;
+  if (!match || match[0] !== source.scope || !Number.isSafeInteger(Number(match[2])))
+    throw new MaintenanceError("unsupported_source", "Known legacy formal archive requires a canonical GitHub issue scope");
+  return { repo_ref: match[1], number: Number(match[2]) };
+}
+
+/** Positive formal-family interpretation only; historical qualification belongs to the caller. */
+export function classifyFormalArchivePredecessor(value: unknown): MaintenanceTaskIdentity & { kind: "legacy" | "schema1" } {
+  const classification = classifyMaintenanceTask(value);
+  if (classification.kind === "schema2" || !isPlainObject(value) || value.status !== "completed")
+    throw new MaintenanceError("unsupported_source", "Formal reactivation requires a completed schema1 or supported known legacy predecessor");
+  if (classification.kind === "legacy") legacyIssueIdentity(value);
+  return { ...classification, kind: classification.kind };
+}
+
+/** Validate a parsed successor's source; Issue disposition remains caller-owned. */
+export function validateFormalArchiveSuccessorSource(source: unknown, successorSource: TaskRecordV2["source"]): void {
+  const classification = classifyFormalArchivePredecessor(source);
+  const old = source as Record<string, unknown>;
+  if (classification.kind === "schema1") {
+    if (!isDeepStrictEqual(old.source, successorSource))
+      throw new MaintenanceError("source_mismatch", "Formal successor must preserve the schema1 source");
+    return;
+  }
+  const issue = legacyIssueIdentity(old);
+  if (successorSource.kind !== "issue" || successorSource.repo_ref !== issue.repo_ref || successorSource.number !== issue.number)
+    throw new MaintenanceError("source_mismatch", "Formal successor source must match the legacy scope Issue identity");
+}
 export type LegacyFactDisposition = {
   field: "commit" | "pr_url" | "completedAt";
   reason: AuthorityRef;
@@ -164,20 +196,19 @@ export function classifyBranchBinding(value: unknown, selected: MaintenanceTaskI
   return { matches: value.task_id === selected.task_id && value.lifecycle_generation === selected.generation, branch_name: value.branch_name, binding_revision: Number(value.binding_revision) };
 }
 
-/** Convert a caller-selected formal schema1 archive without creating old gates. */
+/** Convert a caller-selected formal predecessor without creating old gates. */
 export function validateFormalArchiveReactivationProjection(
   source: unknown,
   projection: unknown,
   facts: readonly LegacyFactDisposition[] = [],
 ): TaskRecordV2 {
-  const classification = classifyMaintenanceTask(source);
-  if (classification.kind !== "schema1" || !isPlainObject(source) || source.status !== "completed")
-    throw new MaintenanceError("unsupported_source", "Formal reactivation requires a canonical completed schema1 predecessor");
+  const classification = classifyFormalArchivePredecessor(source);
   const record = parseTaskRecordV2(projection);
-  validateProjectionIdentity(source, record);
+  validateFormalArchiveSuccessorSource(source, record.source);
+  validateProjectionIdentity(source as Record<string, unknown>, record);
   if (!Number.isSafeInteger(classification.generation + 1) || record.lifecycle_generation !== classification.generation + 1)
     throw new MaintenanceError("target_key_mismatch", "Formal reactivation must increment lifecycle_generation exactly once");
-  validateLegacyFacts(source, record, facts);
+  validateLegacyFacts(source as Record<string, unknown>, record, facts);
   validateArchiveHistory(record, classification.generation);
   return record;
 }

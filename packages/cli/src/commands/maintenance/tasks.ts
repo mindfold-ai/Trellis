@@ -7,6 +7,8 @@ import { isDeepStrictEqual } from "node:util";
 import {
   MaintenanceError,
   classifyMaintenanceTask,
+  classifyFormalArchivePredecessor,
+  validateFormalArchiveSuccessorSource,
   classifyBranchBinding,
   validateSelectedTaskProjection,
   validateArchivedTaskResumeProjection,
@@ -208,14 +210,14 @@ export type TaskConversionInput = z.infer<typeof taskConversionInputSchema>;
 export type LegacyCloseoutInput = z.infer<typeof legacyCloseoutInputSchema>;
 export interface InspectTaskTargetInput {
   root: string;
-  key: MaintenanceTaskKey;
+  key?: MaintenanceTaskKey;
   task_ref: string;
   original_task_ref?: string;
 }
 const inspectTaskInputSchema = z
   .object({
     root: z.string().min(1),
-    key: keySchema,
+    key: keySchema.optional(),
     task_ref: z.string().min(1),
     original_task_ref: z.string().min(1).optional(),
   })
@@ -306,7 +308,6 @@ function inspectTaskTargetDetails(
       "Task inspection input does not match the public contract",
     );
   input = parsed.data;
-  const key = input.key;
   const repo = observeRepository(input.root);
   if (!isActiveRef(input.task_ref) && !isArchiveRef(input.task_ref))
     throw maintenanceError(
@@ -325,6 +326,10 @@ function inspectTaskTargetDetails(
     throw maintenanceError("unsupported_source: missing selected task.json");
   const record = rawJson(source);
   const classification = classifyMaintenanceTask(record);
+  const key = input.key ?? {
+    task_id: classification.task_id,
+    lifecycle_generation: classification.generation,
+  };
   if (
     classification.task_id !== key.task_id ||
     classification.generation !== key.lifecycle_generation
@@ -614,7 +619,9 @@ function prepareSelectedTask(
     repo = observeRepository(root);
   assertPredecessor(
     inspected.classification.kind,
-    "source_kind" in input ? input.source_kind : "schema1",
+    "source_kind" in input
+      ? input.source_kind
+      : classifyFormalArchivePredecessor(rawJson(inspected.source)).kind,
   );
   const projection = formal
     ? validateFormalArchiveReactivationProjection(
@@ -1188,14 +1195,7 @@ function verifyFormalArchive(
     true,
   );
   const source = rawJson(observed.source) as Record<string, unknown>;
-  if (
-    observed.classification.kind !== "schema1" ||
-    source.status !== "completed"
-  )
-    throw new MaintenanceError(
-      "unsupported_source",
-      "Formal reactivation requires a completed canonical schema1 archive",
-    );
+  classifyFormalArchivePredecessor(source);
   const commit = input.archive.commit;
   for (const oid of [commit, input.archive.target_head]) {
     if (
@@ -1286,6 +1286,7 @@ function successorAt(
       `Missing successor record: ${ref}`,
     );
   const record = parseTaskRecordV2(rawJson(raw));
+  validateFormalArchiveSuccessorSource(rawJson(old.source), record.source);
   const provenance = readSnapshot(
     root,
     `${ref}/migration/formal-archive-reactivation.json`,

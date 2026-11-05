@@ -387,11 +387,12 @@ record, and target-native consumers establish actual continuation independently.
 ### 1. Scope / trigger
 
 Use `formal_archive_reactivation` for one explicitly selected formally completed
-canonical schema1 archive. The workflow owner reviews completion/history and
+canonical schema1 archive or supported known-legacy Issue archive described below. The workflow owner reviews completion/history and
 pending old transactions. Completed status is only a necessary state condition;
 Core/CLI do not interpret Guru Finish summaries, Issue disposition or semantic
-approval. No authorization is recorded. Known preidentity legacy is outside this
-operation. Manual archive resume preserves generation; current Task v2 archives
+approval. No authorization is recorded. Legacy records outside the supported
+canonical Issue-scope family remain outside this operation. Manual archive resume
+preserves generation; current Task v2 archives
 continue through ordinary reopen with matching current Completion.
 
 ### 2. Signatures
@@ -415,7 +416,7 @@ validator. Existing preview/apply/recover/resume/rollback consume the new plan
 kind. Do not add another converter or alternate Python lifecycle writer.
 
 The additive API-1.0 capability is
-`formal_archive_reactivation:{task_families:["schema1"],generation:"increment_once",original_archive:"read_only"}`.
+`formal_archive_reactivation:{task_families:["schema1","known_legacy"],generation:"increment_once",original_archive:"read_only"}`.
 Require this capability and actual matching source/build identity. Keep all
 existing operation kinds and `archive_resume` semantics.
 
@@ -457,7 +458,7 @@ and archive facts. Its result is `{key,task_ref,successor}`. The successor is
 `{kind:"conflicting",task_refs:string[]}`. Verify provenance against actual source and public history;
 same TaskId and a higher generation alone are insufficient. Later successors use
 the real intermediate Completion history required by ordinary reopen. The
-initial schema1 conversion never manufactures an old Completion. Inspection
+initial predecessor conversion never manufactures an old Completion. Inspection
 does not claim that inaccessible unpublished state in another clone is absent.
 
 The returned successor belongs to the explicitly selected root. Validate its
@@ -536,6 +537,118 @@ or rewrite the original operation result to a later generation.
 Correct: caller reviews formal history; public Core/CLI validates one exact
 conversion to `g+1`; provenance enables read-only successor facts; original native
 owners independently establish binding and continue current work.
+
+
+## Compact legacy formal predecessor contract (Issue 64)
+
+### 1. Scope / trigger
+
+The formal operation additionally accepts positively recognized known legacy
+records with `status: "completed"` and a canonical historical Issue scope.
+The ten-field installation family retains `id`, `name`, `title`, `status`,
+`branch`, `base_branch`, `creator`, `assignee`, `scope`, `completedAt`; it lacks
+`schema_version`, `lifecycle_generation` and structured `source`. Personnel fields
+are historical data only. Neither format recognition nor completed status proves
+historical Finish qualification, delivered business extent or closure authority.
+
+### 2. Signatures
+
+Use existing public maintenance inspection, formal preparation and execution APIs.
+`maintenance.inspectTaskTarget({root,task_ref,original_task_ref?,key?})` accepts an
+omitted expected key for exact-locator discovery. Returned `classification` and
+`key` come from the actual record. An explicit key remains an exact assertion.
+
+```sh
+trellis maintain inspect-task --target /existing/project --task-ref .trellis/tasks/archive/2026-10/historical --json
+```
+
+CLI `--task-id` and `--generation` must occur together or both be omitted.
+All mutation inputs and formal archive inspection still require an explicit key;
+locator discovery does not grant execution authority. API remains `1.0`.
+
+Core `/task/maintenance` exports the pure shared interpretation:
+
+```ts
+classifyFormalArchivePredecessor(value: unknown): MaintenanceTaskIdentity & {kind: "legacy" | "schema1"};
+validateFormalArchiveSuccessorSource(source: unknown, successorSource: TaskRecordV2["source"]): void;
+```
+
+The source validator consumes an already validated structured successor source;
+normal Task2 parsing remains responsible for its closed structure.
+
+
+### 3. Contracts
+
+Positive legacy recognition owns generation `0`; never infer it for arbitrary
+missing-field objects or derive TaskId from a basename. The supported scope is
+exactly `GitHub issue: https://github.com/<owner>/<repo>/issues/<positive number>`.
+The caller authors a valid successor Issue source with matching `repo_ref` and
+`number`; its valid `disposition` is caller-owned. For example a delivered slice
+may retain `reference_only`; the URL does not imply `exact_source` or closure.
+Schema1 source continues to be preserved exactly. Scope and raw source are never
+rewritten. Source matching rules are public Core-owned behavior, not a downstream
+parser to copy into Guru.
+
+The formal projection is generation `1` for this family and keeps original TaskId,
+metadata and scope. Existing explicit `completedAt` source-snapshot attribution
+still applies. No old gate, Completion/Closure or new current Delivery is inferred.
+The existing active tree/provenance is the entire write set; archive, old sessions,
+bindings and unrelated tasks remain untouched.
+
+Projection validation, CLI archive verification, receiptless successor discovery
+and TS relocation use one Core family/generation/source interpretation. Native
+Python uses the same finite interpretation at its retained-predecessor relation
+boundary, reusing positive legacy recognition. Shipped/dogfood copies match.
+Ordinary current readers remain strict. Exact retained-source bytes and existing
+provenance/key/history checks remain necessary before exempting a predecessor
+from identity collision checks.
+
+Pending is not applied and exposes no active successor claim. Lost output uses
+the original operation's recover/resume; no second increment. Public receiptless
+inspection additionally checks source consistency. A successor's archived
+`task_ref` reports its actual current archive location; original operation recovery
+continues to identify the original output, without claiming current activation.
+
+### 4. Validation and error matrix
+
+| Condition | Behavior |
+| --- | --- |
+| Positively recognized completed legacy + canonical scope + matching caller Issue source | Formal `0 -> 1`, original archive unchanged. |
+| Unknown format or incomplete/noncompleted formal predecessor | `unsupported_source`, before writes. |
+| Missing/noncanonical legacy scope | Explicit unsupported-source diagnostic; do not manufacture `no_issue`. |
+| Projected/accessible successor source disagrees with predecessor Issue identity | `source_mismatch` (or retained-relation provenance diagnostic), original archive and successor preserved. |
+| Explicit expected key disagrees with exact locator | `target_key_mismatch`; no fallback to basename. |
+| Only one CLI identity flag provided | Explicit invalid-input diagnostic; do not partially discover identity. |
+| Stale locator/Git/source bytes, mismatching provenance or copied source | Existing path/Git/stale/successor/provenance diagnostic; no expanded writes. |
+
+### 5. Good / base / bad cases
+
+Good: inspect the untouched ten-field archive, submit an owner-reviewed
+`reference_only` source for its canonical Issue identity, then create exactly one
+new generation and let native owners perform later work. Base: existing schema1
+formal recovery and manual generation-preserving archive resume retain their
+contracts. Bad: insert generation/source into the predecessor, discard personnel
+fields before classification, or use a same-ID successor with a different source.
+
+### 6. Required tests
+
+Keep an untouched ten-field fixture. Cover locator-only public discovery,
+source consistency, exact increment and snapshot attribution in Core/CLI. Use
+real Git facts and actual public prepare/preview/apply/recover/resume, including
+pending and lost output. Verify raw archive bytes/modes, no invented gates,
+receiptless active/archived discovery, native Python archive/identity and TS
+relocation with retained predecessor. Retain targeted schema1/schema2/manual
+resume/pending regressions. Pack/install matching CLI/Core; record fixed source,
+package SHA256, API/capability, actual public execution and downstream limits.
+
+### 7. Wrong vs correct
+
+Wrong: accept any object lacking generation as generation 0, infer source
+semantics from the URL, or require Guru to rewrite archives into schema1.
+
+Correct: positively identify the supported predecessor, validate caller source
+structure/identity publicly, retain raw history and perform one existing formal
+operation. Guru separately owns historical qualification and next-owner routing.
 
 
 ## Python operation boundary

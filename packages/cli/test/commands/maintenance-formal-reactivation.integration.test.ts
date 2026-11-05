@@ -14,6 +14,12 @@ import {
 import * as api from "../../src/commands/maintenance/api.js";
 import { registerMaintenanceCommand } from "../../src/commands/maintenance/command.js";
 import { snapshot } from "../../src/commands/maintenance/shared.js";
+// Desensitized original ten-field installation shape. Never normalize this
+// predecessor before the public maintenance entry reads it.
+const legacyBytes = fs.readFileSync(
+  path.resolve(__dirname, "../fixtures/legacy-formal/task.json"),
+  "utf8",
+);
 const key = { task_id: "formal-selected", lifecycle_generation: 0 };
 const nextKey = { ...key, lifecycle_generation: 1 };
 const original = ".trellis/tasks/original";
@@ -85,7 +91,14 @@ function input(): api.FormalArchiveReactivationInput {
   const metadata = Object.fromEntries(
     Object.entries(old).filter(
       ([field]) =>
-        !["status", "commit", "pr_url", "completedAt"].includes(field),
+        ![
+          "status",
+          "commit",
+          "pr_url",
+          "completedAt",
+          "creator",
+          "assignee",
+        ].includes(field),
     ),
   );
   const artifacts: api.FormalArchiveReactivationInput["artifacts"] = [];
@@ -110,6 +123,16 @@ function input(): api.FormalArchiveReactivationInput {
     active_ref: active,
     projection: emptyTaskRecordV2({
       ...metadata,
+      ...(old.source === undefined
+        ? {
+            source: {
+              kind: "issue" as const,
+              repo_ref: "example/project",
+              number: 130,
+              disposition: "reference_only" as const,
+            },
+          }
+        : {}),
       id: key.task_id,
       lifecycle_generation: 1,
       accepted_scope: {
@@ -118,7 +141,16 @@ function input(): api.FormalArchiveReactivationInput {
       },
     }),
     artifacts,
-    legacy_facts: [],
+    legacy_facts: old.completedAt
+      ? [
+          {
+            field: "completedAt",
+            disposition: "source_snapshot",
+            owner_id: "original-owner",
+            reason: ref(`${archived}/history.md`),
+          },
+        ]
+      : [],
   };
 }
 function record(): TaskRecordV2 {
@@ -155,65 +187,135 @@ function prepare(): api.PreparedMaintenancePlan {
 async function apply(plan = prepare()): Promise<api.MaintenanceResult> {
   return api.applyMaintenance(plan, { state_dir: path.join(base, "state") });
 }
-beforeEach(() => {
-  base = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), "trellis-formal-")),
-  );
-  root = path.join(base, "root");
-  fs.mkdirSync(root);
-  git("init", "-b", "main");
-  git("config", "user.name", "Fixture");
-  git("config", "user.email", "fixture@example.invalid");
-  git("config", "maintenance.auto", "false");
-  git("config", "gc.auto", "0");
-  write(
-    `${original}/task.json`,
-    emptyTaskRecord({
-      id: key.task_id,
-      name: "Formal",
-      title: "Formal",
-      status: "completed",
-      meta: { history: "original-owner" },
-    }),
-  );
-  write(`${original}/prd.md`, "accepted historical scope\n", 0o600);
-  write(
-    `${original}/history.md`,
-    "Original owner completed the historical work.\n",
-  );
-  write(`${original}/run.sh`, "#!/bin/sh\nexit 0\n", 0o750);
-  git("add", original);
-  git("commit", "-m", "complete original task");
-  fs.mkdirSync(path.dirname(path.join(root, archived)), { recursive: true });
-  fs.renameSync(path.join(root, original), path.join(root, archived));
-  git("add", original, archived);
-  git("commit", "-m", "archive completed task");
-  archiveCommit = git("rev-parse", "HEAD");
-  fs.mkdirSync(path.join(root, archived, "empty"), { mode: 0o700 });
-  fs.cpSync(
-    path.resolve(__dirname, "../../src/templates/trellis/scripts"),
-    path.join(root, ".trellis/scripts"),
-    { recursive: true },
-  );
-  write(
-    ".trellis/workflow.md",
-    fs.readFileSync(
-      path.resolve(
-        __dirname,
-        "../../src/templates/trellis/workflow-delivery-v1.md",
+const families = ["schema1", "legacy"] as const;
+describe.each(families)("%s formal recovery", (family) => {
+  beforeEach(() => {
+    base = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "trellis-formal-")),
+    );
+    root = path.join(base, "root");
+    fs.mkdirSync(root);
+    git("init", "-b", "main");
+    git("config", "user.name", "Fixture");
+    git("config", "user.email", "fixture@example.invalid");
+    git("config", "maintenance.auto", "false");
+    git("config", "gc.auto", "0");
+    write(
+      `${original}/task.json`,
+      family === "legacy"
+        ? legacyBytes
+        : emptyTaskRecord({
+            id: key.task_id,
+            name: "Formal",
+            title: "Formal",
+            status: "completed",
+            meta: { history: "original-owner" },
+          }),
+    );
+    write(`${original}/prd.md`, "accepted historical scope\n", 0o600);
+    write(
+      `${original}/history.md`,
+      "Original owner completed the historical work.\n",
+    );
+    write(`${original}/run.sh`, "#!/bin/sh\nexit 0\n", 0o750);
+    git("add", original);
+    git("commit", "-m", "complete original task");
+    fs.mkdirSync(path.dirname(path.join(root, archived)), {
+      recursive: true,
+    });
+    fs.renameSync(path.join(root, original), path.join(root, archived));
+    git("add", original, archived);
+    git("commit", "-m", "archive completed task");
+    archiveCommit = git("rev-parse", "HEAD");
+    fs.mkdirSync(path.join(root, archived, "empty"), { mode: 0o700 });
+    fs.cpSync(
+      path.resolve(__dirname, "../../src/templates/trellis/scripts"),
+      path.join(root, ".trellis/scripts"),
+      { recursive: true },
+    );
+    write(
+      ".trellis/workflow.md",
+      fs.readFileSync(
+        path.resolve(
+          __dirname,
+          "../../src/templates/trellis/workflow-delivery-v1.md",
+        ),
+        "utf8",
       ),
-      "utf8",
-    ),
-  );
-  common = git("rev-parse", "--path-format=absolute", "--git-common-dir");
-  write("dirty-business.txt", "unrelated\n");
-});
-afterEach(() => {
-  vi.restoreAllMocks();
-  process.exitCode = 0;
-  fs.rmSync(base, { recursive: true, force: true });
-});
-describe("formal predecessor public maintenance", () => {
+    );
+    common = git("rev-parse", "--path-format=absolute", "--git-common-dir");
+    write("dirty-business.txt", "unrelated\n");
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.exitCode = 0;
+    fs.rmSync(base, { recursive: true, force: true });
+  });
+  it("discovers family and predecessor identity from an exact locator while keeping mutating keys mandatory", async () => {
+    const before = bytes(path.join(root, ".trellis"));
+    const located = { root, task_ref: archived };
+    expect(api.inspectTaskTarget(located)).toMatchObject({
+      key,
+      classification: { kind: family, task_id: key.task_id, generation: 0 },
+    });
+    expect(() => api.inspectTaskTarget({ ...located, key: nextKey })).toThrow(
+      "target_key_mismatch",
+    );
+    const withoutKey: Partial<api.FormalArchiveReactivationInput> = input();
+    delete withoutKey.key;
+    expect(() =>
+      api.prepareFormalArchiveReactivation(
+        withoutKey as api.FormalArchiveReactivationInput,
+      ),
+    ).toThrow("invalid_input");
+    const output: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((value) =>
+      output.push(String(value)),
+    );
+    for (const flags of [[], ["--task-id", key.task_id, "--generation", "0"]]) {
+      const command = new Command();
+      registerMaintenanceCommand(command);
+      await command.parseAsync([
+        "node",
+        "trellis",
+        "maintain",
+        "inspect-task",
+        "--target",
+        root,
+        "--task-ref",
+        archived,
+        ...flags,
+        "--json",
+      ]);
+      expect(JSON.parse(output.pop() ?? "{}")).toMatchObject({
+        key,
+        classification: { kind: family },
+      });
+    }
+    for (const flags of [
+      ["--task-id", key.task_id],
+      ["--generation", "0"],
+    ]) {
+      const command = new Command();
+      registerMaintenanceCommand(command);
+      await command.parseAsync([
+        "node",
+        "trellis",
+        "maintain",
+        "inspect-task",
+        "--target",
+        root,
+        "--task-ref",
+        archived,
+        ...flags,
+        "--json",
+      ]);
+      expect(JSON.parse(output.pop() ?? "{}")).toMatchObject({
+        error: { code: "invalid_input" },
+      });
+    }
+    expect(bytes(path.join(root, ".trellis"))).toEqual(before);
+  });
   it("is write-free through inspect/prepare/preview, creates one real g+1, and preserves archive/resources", async () => {
     fs.mkdirSync(path.join(common, "trellis/sessions"), { recursive: true });
     fs.writeFileSync(
@@ -262,7 +364,9 @@ describe("formal predecessor public maintenance", () => {
       recovery_ref: path.join(base, "state", `${plan.operation_id}.json`),
     };
     expect(
-      await api.applyMaintenance(plan, { state_dir: path.join(base, "state") }),
+      await api.applyMaintenance(plan, {
+        state_dir: path.join(base, "state"),
+      }),
     ).toEqual(applied);
     expect(await api.recoverMaintenance(recovery)).toEqual(applied);
     expect(await api.resumeMaintenance(recovery)).toEqual(applied);
@@ -292,7 +396,10 @@ describe("formal predecessor public maintenance", () => {
       const resourcesBefore = bytes(path.join(common, "trellis"));
       expect(
         api.inspectFormalArchiveReactivation(inspection()).successor,
-      ).toEqual({ kind: "verified", task: { key: nextKey, task_ref: active } });
+      ).toEqual({
+        kind: "verified",
+        task: { key: nextKey, task_ref: active },
+      });
       expect(() => prepare()).toThrow("already has a successor");
       expect(record().lifecycle_generation).toBe(1);
       expect(fs.readdirSync(path.join(base, "state"))).toEqual(
@@ -514,7 +621,10 @@ describe("formal predecessor public maintenance", () => {
     const taskRef = `.trellis/tasks/archive/${new Date().toISOString().slice(0, 7)}/reactivated`;
     expect(
       api.inspectFormalArchiveReactivation(inspection()).successor,
-    ).toEqual({ kind: "verified", task: { key: nextKey, task_ref: taskRef } });
+    ).toEqual({
+      kind: "verified",
+      task: { key: nextKey, task_ref: taskRef },
+    });
     expect(() => prepare()).toThrow("already has a successor");
     expect(
       await api.recoverMaintenance({
@@ -605,6 +715,12 @@ describe("formal predecessor public maintenance", () => {
     };
     expect(fs.existsSync(recovery.recovery_ref)).toBe(true);
     expect(fs.existsSync(path.join(root, active, "prd.md"))).toBe(true);
+    const pending = await api.recoverMaintenance(recovery);
+    expect(pending).toMatchObject({
+      operation_id: plan.operation_id,
+      status: "pending",
+    });
+    expect(pending).not.toHaveProperty("reactivated_task");
     const result = await api.resumeMaintenance(recovery);
     expect(result).toMatchObject({
       operation_id: plan.operation_id,
@@ -636,6 +752,88 @@ describe("formal predecessor public maintenance", () => {
     expect(bytes(path.join(root, ".trellis"))).toEqual(before);
     write(`${archived}/history.md`, "source changed normally\n");
     expect(() => prepare()).toThrow("stale_source");
+  });
+  it("rejects ordinary source, locator and predecessor/successor mismatches without changing archives or unrelated work", async () => {
+    const before = bytes(path.join(root, ".trellis"));
+    const mismatched = input();
+    mismatched.projection = {
+      ...(mismatched.projection as TaskRecordV2),
+      source: {
+        kind: "issue",
+        repo_ref: "other/project",
+        number: 130,
+        disposition: "reference_only",
+      },
+    };
+    expect(() => api.prepareFormalArchiveReactivation(mismatched)).toThrow(
+      "source_mismatch",
+    );
+    expect(() =>
+      api.inspectFormalArchiveReactivation({
+        ...inspection(),
+        original_task_ref: archived,
+      }),
+    ).toThrow("invalid_task_path");
+    expect(() =>
+      api.inspectFormalArchiveReactivation({ ...inspection(), key: nextKey }),
+    ).toThrow("target_key_mismatch");
+    expect(bytes(path.join(root, ".trellis"))).toEqual(before);
+    const archiveBefore = bytes(path.join(root, archived));
+    const applied = await apply();
+    const current = record();
+    write(`${active}/task.json`, {
+      ...current,
+      source: {
+        kind: "issue",
+        repo_ref: "other/project",
+        number: 130,
+        disposition: "reference_only",
+      },
+    });
+    if (!applied.recovery_ref)
+      throw new Error("Applied operation requires a recovery reference");
+    fs.unlinkSync(applied.recovery_ref);
+    expect(() => api.inspectFormalArchiveReactivation(inspection())).toThrow(
+      "source_mismatch",
+    );
+    const { preimage } = loadTaskRecordV2({ root, taskDir: active });
+    expect(() =>
+      relocateTaskRecordV2({
+        root,
+        taskDir: active,
+        destination: ".trellis/tasks/wrong-source-move",
+        expected_preimage: preimage,
+        name: "Must reject mismatched source",
+      }),
+    ).toThrow("formal_archive_provenance_mismatch");
+    const nativeMove = spawnSync(
+      python,
+      ["-B", ".trellis/scripts/task.py", "rename", active, "wrong-source-move"],
+      { cwd: root, encoding: "utf8" },
+    );
+    expect(nativeMove.status).toBe(1);
+    expect(nativeMove.stdout + nativeMove.stderr).toContain(
+      "formal_archive_provenance_mismatch",
+    );
+    expect(
+      fs.existsSync(path.join(root, ".trellis/tasks/wrong-source-move")),
+    ).toBe(false);
+    write(`${active}/task.json`, current);
+    const relation = `${active}/migration/formal-archive-reactivation.json`;
+    const provenance = JSON.parse(
+      fs.readFileSync(path.join(root, relation), "utf8"),
+    ) as object;
+    write(relation, {
+      ...provenance,
+      original_task_ref: ".trellis/tasks/wrong-original",
+    });
+    expect(() => api.inspectFormalArchiveReactivation(inspection())).toThrow(
+      "successor_mismatch",
+    );
+    expect(bytes(path.join(root, archived))).toEqual(archiveBefore);
+    expect(fs.readFileSync(path.join(root, "dirty-business.txt"), "utf8")).toBe(
+      "unrelated\n",
+    );
   });
   it("rejects occupied destinations and reports conflicting active candidates without choosing one", () => {
     write(`${active}/notes.md`, "another task owns this destination\n");
@@ -790,7 +988,7 @@ describe("formal predecessor public maintenance", () => {
     expect(api.getMaintenanceContract()).toMatchObject({
       maintenance_api: "1.0",
       formal_archive_reactivation: {
-        task_families: ["schema1"],
+        task_families: ["schema1", "known_legacy"],
         generation: "increment_once",
         original_archive: "read_only",
       },

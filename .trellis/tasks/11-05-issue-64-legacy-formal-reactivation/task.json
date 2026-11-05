@@ -1,0 +1,29 @@
+{
+  "id": "issue-64-legacy-formal-reactivation",
+  "name": "issue-64-legacy-formal-reactivation",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 64,
+    "disposition": "exact_source"
+  },
+  "title": "Issue 64: 精简 legacy 正式归档增代恢复",
+  "description": "扩展公共正式恢复及 TS/Python 前驱解释，交付匹配 CLI/Core 固定候选",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-11-05",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
