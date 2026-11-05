@@ -21,3 +21,10 @@ Final verification: 183 distinct focused tests passed: 73 Core tests (v2.test.ts
 Commands: pnpm lint; pnpm typecheck; pnpm --filter @mindfoldhq/trellis lint:py; package Vitest runs for the suites above; git diff --check; cmp of delivery_store.py, git_objects.py and delivery-contract.md canonical/dogfood pairs. All passed; Python has zero errors and 48 existing warnings. Independent complete main-relative review reports no remaining actionable findings.
 
 Scope remains upstream #62 only. No downstream Guru adoption, package/tag publication or additional platform matrix is required.
+
+
+## Delivery follow-through
+
+Implementation commit: a46beac6; PR: https://github.com/castbox/Trellis/pull/63 (main target). Local commit hook also passed the full suite: Core 511 passed / 1 skipped, CLI 2411 passed.
+
+The first PR build failed before code validation: setup-python could not install Python 3.9 on the new Ubuntu 26.04 ubuntu-latest runner. Pin only the existing build job to ubuntu-24.04 to retain the minimum-supported-Python check; no platform matrix expansion. Source: Actions run 41990855561, job 127122481098. Existing native-Python jobs continue unchanged.
