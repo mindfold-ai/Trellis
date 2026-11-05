@@ -1,0 +1,30 @@
+{
+  "id": "issue-62-delivery-gitlink",
+  "name": "issue-62-delivery-gitlink",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 62,
+    "disposition": "exact_source"
+  },
+  "title": "Issue #62 Delivery gitlink 原子内容支持",
+  "description": "同步 Python/SDK 候选、提交验证与历史读取，保持普通文件语义",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-11-05",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/62-delivery-gitlink"
+}

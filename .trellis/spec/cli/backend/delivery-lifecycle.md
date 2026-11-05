@@ -366,7 +366,8 @@ clean repository environment; store immutable commit OIDs only.
 The installed Python Delivery owner preserves the existing content_ref format:
 sorted path entries, UTF-8 compact JSON with ensure_ascii=False, Git-normalized
 0755/0644 modes (git_free retains full permission bits), SHA256 of raw file bytes,
-and explicit [path,null,null] deletion entries. A tree OID is not a substitute.
+and explicit [path,null,null] deletion entries. Regular-file tree OIDs are not
+substitutes for byte hashes. Gitlinks use the atomic pointer representation below.
 
 A normal local_commit operation verifies both the mutable candidate and immutable
 commit. Each mutable path must be independently observed on every invocation;
@@ -382,8 +383,9 @@ entries may share the aggregate digest computation, but each input's expected
 digest is compared independently. Never cache a previous validation conclusion.
 
 Immutable tree lookup preserves literal accepted paths, including UTF-8,
-whitespace, tabs and newlines. Trees, symlinks and gitlinks retain their existing
-invalid_git_fact outcome; genuine missing entries retain deletion semantics.
+whitespace, tabs and newlines. Trees and symlinks retain their existing
+invalid_git_fact outcome; gitlinks use parent-tree pointer identity and genuine
+missing entries retain deletion semantics.
 Exact full commit object checks and isolated Git environment remain required.
 Historical success still verifies the actual immutable outcome; exact unchanged
 retry still recovers the original fact without writing a second fact.
@@ -419,7 +421,8 @@ consumer compares its expected candidate independently. Repeated blob identities
 share raw-content SHA256 facts within that context. Identical serialized entries
 may share an aggregate SHA256 only after current-input validation. A cached hash
 does not bypass the Git availability/type check. Missing paths retain deletion
-entries; directories, symlinks and gitlinks fail. Literal path lookup and the
+entries; directories and symlinks fail. Gitlinks emit the parent-tree pointer
+without requiring the referenced child commit object. Literal path lookup and the
 original compact UTF-8 digest serialization remain unchanged. There are no
 caller-supplied hash facts or persistent cache files.
 
@@ -459,3 +462,81 @@ HEAD/index/worktree movement, missing cached objects, bare repositories,
 repository environment isolation, explicit no-lazy-fetch and exact SHA-256
 commit width. Full recovery/query wrappers and installed projection evidence
 must accompany performance claims; direct digest tests alone are insufficient.
+
+
+## Scenario: parent-repository gitlink atomic identity (#62)
+
+### 1. Scope / Trigger
+
+A selected Git gitlink is an atomic parent-repository entry. Checkout presence,
+submodule HEAD, initialization and internal dirtiness cannot define Delivery
+content or block candidate, commit or historical verification.
+
+### 2. Signatures
+
+Existing `candidate_content_ref(root, paths, kind=None)`,
+`verify_candidate(root, value)`, SDK `computeCandidateContentRef` /
+`verifyCandidate`, `delivery.py candidate`, commit verification, and
+`GitCandidateContent.content_ref(exact_commit, paths)` retain their signatures.
+
+### 3. Contracts
+
+The sorted compact UTF-8 JSON entry for a gitlink is `[path,57344,OID]`:
+57344 is octal 160000 and OID is the full parent entry's lowercase Git OID.
+Candidates use the parent index stage-0 entry; commit/historical reads use the
+parent commit tree's mode 160000/type commit entry. Never read that OID as a
+parent blob or require its object to be present. Do not enter, initialize,
+fetch or update the submodule. Gitlink recognition precedes filesystem reads.
+
+Staged deletion of a HEAD gitlink emits `[path,null,null]` even if a directory
+remains. Stage-0 regular-file replacements retain workspace byte/executable-bit
+semantics. Selected unmerged index entries are invalid candidates, not deletions.
+Ordinary-file bytes, permissions, deletion, git_free and explicit Git mode for
+ordinary files outside repositories retain their existing behavior. Do not add
+index, clean or commit preconditions to ordinary files. Strip inherited GIT_*
+redirects on parent Git queries; preserve literal path and object-format support.
+Read selected parent index/tree metadata with literal path queries in bounded
+64 KiB argument batches; a single selected file must not require transporting
+the entire parent index/tree or hit an unrelated repository-size output limit.
+
+The distinct mode disambiguates the added representation without changing
+regular-file fingerprints or schema/API versions. An old unexecuted candidate
+that conflated a missing gitlink checkout with deletion must be prepared again
+when verification differs. Already produced commit/publication/delivery facts
+remain under original-owner recovery and must not be re-executed on upgrade.
+
+### 4. Validation & Error Matrix
+
+| Input | Result |
+| --- | --- |
+| Same stage-0 gitlink, checkout absent/dirty/different HEAD | Same content_ref |
+| Parent pointer added/updated/deleted or type changed | Updated identity |
+| Captured pointer differs at verification | candidate_mismatch |
+| Selected unresolved index stages | invalid_candidate |
+| Exact parent commit has a different pointer | candidate_mismatch |
+| Gitlink references an unavailable child commit | Accepted without child object access |
+| Selected ordinary directory/symlink | Existing rejection boundary |
+
+### 5. Good/Base/Bad Cases
+
+Good: a parent commit with the reviewed gitlink OID passes even without a child
+checkout or child object. Base: regular-file workspace mutation still changes
+its candidate hash. Bad: use a submodule HEAD, ignore a gitlink path, or treat
+an unmerged entry as deletion because no stage-0 row exists.
+
+### 6. Tests Required
+
+Use a real parent fixture through candidate and Delivery commit gates; assert
+actual committed mode/OID and rejection of an incorrect pointer. Compare Python
+and SDK hashes on that fixture. Cover staged add/update/delete/type transitions,
+a post-capture change, one internal-state change, selected conflicts and matching
+historical reads without child objects. Reuse ordinary file, git_free, literal
+path, supported object-format, immutable-blob reuse and recovery regressions;
+do not multiply full entrypoint/platform/submodule-state matrices.
+
+### 7. Wrong vs Correct
+
+Wrong: `git -C submodule rev-parse HEAD`, read the gitlink OID with cat-file as
+a blob, or derive deletion solely from a missing directory.
+Correct: observe selected parent index/tree mode and OID, serialize the atomic
+triple, and compare every input independently through the existing owner.

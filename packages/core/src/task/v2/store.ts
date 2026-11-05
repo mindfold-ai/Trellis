@@ -2,7 +2,7 @@ import { taskRecordSchema } from "../schema.js";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { applyTaskOperation, canonicalJson, parseTaskOperation, same } from "./operations.js";
 import { authority, candidate, deliveryFact, fail, parseTaskRecordV2, relativePath, taskArtifactRoot } from "./schema.js";
 import { authorityLocator, canonicalTaskOperation, taskArtifactContext, type TaskArtifactContext } from "./artifacts.js";
@@ -134,14 +134,70 @@ function reserveIdentityExcept(options: TaskStoreOptions, id: string, excluded?:
 function reservedCandidatePath(locator: string): boolean {
   return locator === ".git" || locator.startsWith(".git/") || /(?:^|\/)trellis\/sessions(?:\/|$)/.test(locator) || /^\.trellis\/(?:sessions|\.runtime|\.internal|\.delivery-results)(?:\/|$)/.test(locator) || /^\.trellis\/tasks\/(?:archive\/[^/]+\/)?[^/]+\/task\.json$/.test(locator);
 }
+/** Bound literal path arguments and read only selected parent metadata. */
+function* selectedGitRows(root: string, args: string[], paths: string[]): Generator<string> {
+  const fixed = ["--literal-pathspecs", ...args, "--"];
+  const fixedSize = ["git", ...fixed].reduce((size, arg) => size + Buffer.byteLength(arg) + 1, 0);
+  let batch: string[] = []; let size = fixedSize;
+  const rows = (selected: string[]): string[] => gitBytes(root, [...fixed, ...selected]).toString("utf8").split("\0");
+  for (const locator of paths) {
+    const pathSize = Buffer.byteLength(locator) + 1;
+    if (fixedSize + pathSize > 64 * 1024) fail("invalid_git_fact", "Git path exceeds argument batch limit");
+    if (size + pathSize > 64 * 1024) { yield* rows(batch); batch = []; size = fixedSize; }
+    batch.push(locator); size += pathSize;
+  }
+  if (batch.length) yield* rows(batch);
+}
+
+/** Parent metadata only: null denotes a staged deletion of a HEAD gitlink. */
+function candidateGitlinks(root: string, paths: string[]): Map<string, string | null> {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith("GIT_")));
+  const probe = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: root, env: { ...env, LC_ALL: "C" }, encoding: "utf8" });
+  if (probe.status !== 0) {
+    if ((probe.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") return new Map();
+    if (probe.stderr?.includes("not a git repository")) return new Map();
+    fail("invalid_git_fact", "cannot detect parent repository");
+  }
+  if (probe.stdout.trim() !== "true") return new Map();
+  const selected = new Set(paths); const indexed = new Set<string>(); const links = new Map<string, string | null>();
+  for (const row of selectedGitRows(root, ["ls-files", "--stage", "-z"], paths)) {
+    if (!row) continue;
+    const tab = row.indexOf("\t"); const locator = row.slice(tab + 1);
+    if (!selected.has(locator)) continue;
+    const [mode, oid, stage] = row.slice(0, tab).split(" ");
+    if (stage !== "0") fail("invalid_candidate", `unmerged index entry: ${locator}`);
+    indexed.add(locator);
+    if (mode === "160000" && oid) links.set(locator, oid);
+  }
+  if (paths.some((locator) => !indexed.has(locator))) {
+    const head = spawnSync("git", ["rev-parse", "--verify", "--quiet", "HEAD"], { cwd: root, env, encoding: "utf8" });
+    if (head.status === 0) {
+      for (const row of selectedGitRows(root, ["ls-tree", "-z", head.stdout.trim()], paths.filter((locator) => !indexed.has(locator)))) {
+        const tab = row.indexOf("\t"); const locator = row.slice(tab + 1);
+        if (row.startsWith("160000 commit ") && selected.has(locator) && !indexed.has(locator)) links.set(locator, null);
+      }
+    } else if (head.status !== 1) fail("invalid_git_fact", "cannot read parent HEAD");
+  }
+  return links;
+}
+
 /** Git fingerprints retain Git's executable bit; Git-free fingerprints retain full file permissions. */
 export function computeCandidateContentRef(root: string, paths: string[], kind?: CandidateRef["kind"]): string {
   const entries: [string, number | null, string | null][] = [];
   if (!paths.length || new Set(paths).size !== paths.length) fail("invalid_candidate", "nonempty unique paths required");
   if (kind === undefined) { try { kind = git(root, ["rev-parse", "--is-inside-work-tree"]) === "true" ? "git" : "git_free"; } catch { kind = "git_free"; } }
   if (kind !== "git" && kind !== "git_free") fail("invalid_candidate", "kind must be git or git_free");
-  for (const locator of [...paths].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))) {
+  for (const locator of paths) {
+    relativePath(locator);
     if (reservedCandidatePath(locator)) fail("invalid_candidate", `lifecycle/private file ${locator}`);
+  }
+  const links = kind === "git" ? candidateGitlinks(root, paths) : new Map<string, string | null>();
+  for (const locator of [...paths].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))) {
+    if (links.has(locator)) {
+      const oid = links.get(locator);
+      entries.push(oid ? [locator, 0o160000, oid] : [locator, null, null]);
+      continue;
+    }
     const file = contained(root, locator, true);
     if (!fs.existsSync(file)) { entries.push([locator, null, null]); continue; }
     const stat = fs.statSync(file); if (!stat.isFile()) fail("invalid_candidate", `not a file: ${locator}`);
@@ -174,10 +230,15 @@ export function verifyHistoricalCommit(root: string, value: unknown): void {
   const entries: [string, number | null, string | null][] = [];
   for (const locator of [...fact.candidate.paths].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))) {
     if (reservedCandidatePath(locator)) fail("invalid_candidate", locator);
-    const tree = git(root, ["ls-tree", fact.commit, "--", locator]);
+    relativePath(locator);
+    const rows = gitBytes(root, ["--literal-pathspecs", "ls-tree", "-z", fact.commit, "--", locator]).toString("utf8").split("\0");
+    const tree = rows.find((row) => row.slice(row.indexOf("\t") + 1) === locator);
     if (!tree) { entries.push([locator, null, null]); continue; }
-    const matched = /^(100644|100755) blob [a-f0-9]+\t/.exec(tree); if (!matched) fail("invalid_git_fact", locator);
-    const bytes = gitBytes(root, ["show", `${fact.commit}:${locator}`]);
+    const matched = /^(100644|100755|160000) (blob|commit) ([a-f0-9]+)\t/.exec(tree);
+    if (!matched) fail("invalid_git_fact", locator);
+    if (matched[1] === "160000" && matched[2] === "commit") { entries.push([locator, 0o160000, matched[3] ?? ""]); continue; }
+    if (matched[2] !== "blob" || matched[1] === "160000") fail("invalid_git_fact", locator);
+    const bytes = gitBytes(root, ["cat-file", "blob", matched[3] ?? ""]);
     entries.push([locator, matched[1] === "100755" ? 0o755 : 0o644, digest(bytes)]);
   }
   if (`sha256:${digest(JSON.stringify(entries))}` !== fact.candidate.content_ref) fail("candidate_mismatch", "commit tree differs from delivered content");

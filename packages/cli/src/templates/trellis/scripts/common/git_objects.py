@@ -24,6 +24,27 @@ class ByteReader(Protocol):
     def read(self, size: int = -1, /) -> bytes: ...
 
 
+def selected_path_commands(args: list[str], paths: list[str]) -> list[list[str]]:
+    """Batch literal selected-path queries within the existing 64 KiB argv bound."""
+    fixed_size = sum(len(arg.encode("utf-8")) + 1 for arg in args)
+    commands = []
+    batch: list[str] = []
+    size = fixed_size
+    for path in paths:
+        path_size = len(path.encode("utf-8")) + 1
+        if fixed_size + path_size > 64 * 1024:
+            raise ValueError("Git path exceeds argument batch limit")
+        if size + path_size > 64 * 1024:
+            commands.append(args + batch)
+            batch = []
+            size = fixed_size
+        batch.append(path)
+        size += path_size
+    if batch:
+        commands.append(args + batch)
+    return commands
+
+
 def read_tree(root: Path, revision: str, scope: str | None = None,
               *, paths: list[str] | None = None,
               env: dict[str, str] | None = None) -> dict[str, TreeEntry]:
@@ -44,22 +65,7 @@ def read_tree(root: Path, revision: str, scope: str | None = None,
         # -t preserves a selected directory even when its descendant is also
         # selected. Filter ancestor rows below; do not recurse into descendants.
         args = ["git", "--literal-pathspecs", "-C", str(root), "ls-tree", "-t", "-z", revision, "--"]
-        fixed_size = sum(len(arg.encode("utf-8")) + 1 for arg in args)
-        commands = []
-        batch: list[str] = []
-        size = fixed_size
-        for path in paths:
-            path_size = len(path.encode("utf-8")) + 1
-            if fixed_size + path_size > 64 * 1024:
-                raise ValueError("Git tree path exceeds argument batch limit")
-            if size + path_size > 64 * 1024:
-                commands.append(args + batch)
-                batch = []
-                size = fixed_size
-            batch.append(path)
-            size += path_size
-        if batch:
-            commands.append(args + batch)
+        commands = selected_path_commands(args, paths)
     entries = {}
     for command in commands:
         output = subprocess.run(command, capture_output=True, check=True, timeout=20, env=env).stdout

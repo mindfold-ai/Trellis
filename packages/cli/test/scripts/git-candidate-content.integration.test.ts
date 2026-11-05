@@ -102,9 +102,10 @@ with store.GitCandidateContent(root) as reader:
     for invalid in ('HEAD','label',commit[:12],commit.upper(),blob,tag,'0'*40):
         rejected('invalid_git_fact',lambda:reader.content_ref(invalid,['plain']))
         rejected('invalid_git_fact',lambda:reader.content_ref(invalid,['deleted']))
-    for invalid in ('directory','link','submodule'):
+    for invalid in ('directory','link'):
         rejected('invalid_git_fact',lambda:reader.content_ref(typed,[invalid]))
     rejected('invalid_git_fact',lambda:reader.content_ref(typed,['directory','directory/file']))
+    assert reader.content_ref(typed,['submodule'])==store.candidate_content_ref(root,['submodule'],'git')
 `);
   });
 
