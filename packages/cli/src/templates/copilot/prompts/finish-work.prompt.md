@@ -6,6 +6,8 @@ description: "Trellis Copilot prompt: Finish Work — survey + archive task + re
 
 Wrap up the current session: archive the active task (and any other completed-but-unarchived tasks the user wants to clean up) and record the session journal. Code commits are NOT done here — those happen in workflow Phase 3.4 before you invoke this prompt.
 
+If the task worktree will be removed, run archival and journal recording from a retained checkout where the task artifacts are already available. Do not leave bookkeeping commits only in a checkout or branch scheduled for deletion.
+
 **Timing**: After Phase 3.4 (Commit changes) — when the working tree is already clean.
 
 ---
@@ -73,6 +75,22 @@ Use the work-commit hashes produced in Phase 3.4 (visible in Step 1's `Recent co
 
 Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` (one or more) → `chore: record journal`.
 
+## Step 5: Clean up task worktree and branches
+
+Account for all three resources: **task worktree, local task branch, and remote task branch**. This applies even when no Trellis task was created. Follow the user's and project's cleanup authorization; do not ask again when cleanup is already authorized.
+
+Before deleting anything, verify the task PR is merged into its intended target and any project-required delivery or deployment is complete. If either is pending, retain the resources and report cleanup as pending; archival alone is not proof of merge. Preserve resources the user explicitly wants to keep.
+
+Record the task worktree path, branch, PR URL, merged PR head commit, and the remote matching the PR's **source repository** (including forks). Check for uncommitted and untracked work, commits outside the merged PR, and archive/journal commits that still need delivery. Preserve and report anything not safely accounted for; never select resources by a similar name or delete another session's work.
+
+From a retained checkout, clean up each verified resource and read back the result:
+
+1. Remove the task worktree with `git worktree remove <task-path>`, then confirm its path is absent from `git worktree list --porcelain`.
+2. Delete the local branch with `git branch -d <task-branch>`, then confirm `refs/heads/<task-branch>` is absent with `git show-ref --verify`. If safe deletion refuses (including squash/rebase merges), retain and report it; do not silently escalate to `-D` or `--force`.
+3. Query the exact remote ref with `git ls-remote --heads <source-remote> refs/heads/<task-branch>`. If present, require its tip to match the merged PR head commit and use that expected tip as a deletion lease: `git push --force-with-lease=refs/heads/<task-branch>:<pr-head-commit> <source-remote> :refs/heads/<task-branch>`. Query the exact ref again to confirm deletion. A successful query with no match means absent, including platform auto-deletion; a failed query does not. If the tip changed, retain and report the branch.
+
+Report each resource as removed, already absent, or retained with a reason. Local cleanup alone must not be reported as complete cleanup.
+
 ---
 
 ## Relationship to Other Commands
@@ -82,18 +100,18 @@ Development Flow (workflow.md Phase 3):
   3.2 Debug retrospective (on demand)
   3.3 Spec update
   3.4 Commit changes  -> AI drafts batched commits, user confirms
-  3.5 Wrap-up         -> /finish-work (this prompt: survey + archive + journal)
+  3.5 Wrap-up         -> /finish-work (survey + archive + journal + eligible task cleanup)
   (3.1 was folded into 2.2 + 3.4 — see workflow.md "Phase 3: Finish" note)
 
 Debug Flow:
   Hit bug -> Fix -> /break-loop -> Knowledge capture
 ```
 
-- `/finish-work` — survey + archive + record session (this prompt)
+- `/finish-work` — survey + archive + record session + eligible task cleanup (this prompt)
 - `/break-loop` — deep analysis after debugging
 
 ---
 
 ## Core Principle
 
-> **Finish-work is pure bookkeeping.** Code is already committed before this runs. If the working tree is dirty, this prompt refuses to proceed.
+> **Code delivery precedes cleanup.** Code is already committed before this runs. Task resources are removed only after merge and required delivery, with each removal verified; pending delivery or unsafe cleanup is reported explicitly.
