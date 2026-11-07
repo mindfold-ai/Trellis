@@ -2453,6 +2453,145 @@ describe("binding-reviewed inherited registered Task copies", () => {
     expect(snapshot(sibling)).toEqual(peerBefore);
   });
 
+  it("preserves matching history-only Task copies across registered worktrees", async () => {
+    const { sibling } = inheritedCopies();
+    const archiveRef = ".trellis/tasks/archive/2026-10/shared-history";
+    const source =
+      JSON.stringify(
+        {
+          id: "shared-history",
+          lifecycle_generation: 0,
+          source: { kind: "no_issue" },
+        },
+        null,
+        2,
+      ) + "\n";
+    for (const [workspace, directory] of [
+      ["main", root],
+      ["sibling", sibling],
+    ] as const) {
+      const taskJson = path.join(directory, archiveRef, "task.json");
+      fs.mkdirSync(path.dirname(taskJson), { recursive: true });
+      fs.writeFileSync(taskJson, source);
+      fs.chmodSync(taskJson, 0o600);
+      plan.tasks.push({
+        workspace,
+        task_ref: archiveRef,
+        disposition: "history_only",
+        source: raw(source, 0o600),
+      });
+    }
+
+    const before = snapshot();
+    const siblingBefore = snapshot(sibling);
+    const preview = await execute(true);
+    expect(preview.conflicts).toEqual([]);
+    expect(snapshot()).toEqual(before);
+    expect(snapshot(sibling)).toEqual(siblingBefore);
+
+    await execute();
+    for (const directory of [root, sibling]) {
+      const taskJson = path.join(directory, archiveRef, "task.json");
+      expect(fs.readFileSync(taskJson, "utf8")).toBe(source);
+      expect(fs.statSync(taskJson).mode & 0o777).toBe(0o600);
+    }
+  });
+
+  it("keeps an active authority when another workspace has its history-only archive", async () => {
+    const { sibling } = inheritedCopies();
+    const archiveRef = ".trellis/tasks/archive/2026-10/main-task-copy";
+    const siblingTask = required(
+      plan.tasks.find(
+        (task) => task.workspace === "sibling" && task.task_ref === ref,
+      ),
+    );
+    const oldRef = siblingTask.task_ref;
+    const archiveDirectory = path.join(sibling, archiveRef);
+    fs.mkdirSync(path.dirname(archiveDirectory), { recursive: true });
+    fs.renameSync(path.join(sibling, oldRef), archiveDirectory);
+    siblingTask.task_ref = archiveRef;
+    siblingTask.disposition = "history_only";
+    delete siblingTask.record;
+    delete siblingTask.legacy_facts;
+    for (const entry of plan.files) {
+      if (
+        entry.target.workspace === "sibling" &&
+        entry.target.path.startsWith(`${oldRef}/`)
+      )
+        entry.target.path = `${archiveRef}/${entry.target.path.slice(oldRef.length + 1)}`;
+    }
+
+    const archiveBefore = snapshot(archiveDirectory);
+    const preview = await execute(true);
+    expect(preview.conflicts).toEqual([]);
+    expect(snapshot(archiveDirectory)).toEqual(archiveBefore);
+
+    await execute();
+    expect(snapshot(archiveDirectory)).toEqual(archiveBefore);
+    expect(
+      JSON.parse(fs.readFileSync(file(`${ref}/task.json`), "utf8")),
+    ).toMatchObject({ id: "main-task", schema_version: "2.0" });
+  });
+
+  it.each(["same-workspace", "case", "generation", "source"] as const)(
+    "rejects %s history-only Task copies before writes",
+    async (kind) => {
+      const { sibling } = inheritedCopies();
+      const firstRef = ".trellis/tasks/archive/2026-10/shared-history";
+      const secondRef =
+        kind === "same-workspace"
+          ? ".trellis/tasks/archive/2026-10/shared-history-copy"
+          : firstRef;
+      const first = {
+        id: "shared-history",
+        lifecycle_generation: 0,
+        source: { kind: "no_issue" },
+      };
+      const second = {
+        ...first,
+        ...(kind === "case" ? { id: "Shared-history" } : {}),
+        ...(kind === "generation" ? { lifecycle_generation: 1 } : {}),
+        ...(kind === "source"
+          ? {
+              source: {
+                kind: "issue",
+                repo_ref: "test/repo",
+                number: 7,
+                disposition: "exact_source",
+              },
+            }
+          : {}),
+      };
+      for (const [workspace, directory, taskRef, record] of [
+        ["main", root, firstRef, first],
+        [
+          kind === "same-workspace" ? "main" : "sibling",
+          kind === "same-workspace" ? root : sibling,
+          secondRef,
+          second,
+        ],
+      ] as const) {
+        const taskJson = path.join(directory, taskRef, "task.json");
+        const source = `${JSON.stringify(record, null, 2)}\n`;
+        fs.mkdirSync(path.dirname(taskJson), { recursive: true });
+        fs.writeFileSync(taskJson, source);
+        fs.chmodSync(taskJson, 0o600);
+        plan.tasks.push({
+          workspace,
+          task_ref: taskRef,
+          disposition: "history_only",
+          source: raw(source, 0o600),
+        });
+      }
+
+      const before = snapshot();
+      const siblingBefore = snapshot(sibling);
+      await expect(execute(true)).rejects.toThrow("Task identity collision");
+      expect(snapshot()).toEqual(before);
+      expect(snapshot(sibling)).toEqual(siblingBefore);
+    },
+  );
+
   it.each(["bytes", "mode", "deleted", "symlink"])(
     "rejects binding %s drift on preview/execution",
     async (kind) => {

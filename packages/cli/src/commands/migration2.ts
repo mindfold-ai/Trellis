@@ -639,28 +639,38 @@ export async function migrate2(
   for (const members of identities.values()) {
     if (members.length === 1) continue;
     const first = required(members[0]);
-    const authorities = members.filter(
-      (member) =>
-        member.active &&
-        ["convert_active", "current"].includes(member.disposition),
+    const activeMembers = members.filter((member) => member.active);
+    const historyMembers = members.filter((member) => !member.active);
+    const authorities = activeMembers.filter((member) =>
+      ["convert_active", "current"].includes(member.disposition),
     );
     if (
       !Number.isSafeInteger(first.generation) ||
       Number(first.generation) < 0 ||
-      authorities.length !== 1 ||
       new Set(members.map((member) => member.workspace)).size !==
         members.length ||
       members.some(
         (member) =>
           member.id !== first.id ||
           member.generation !== first.generation ||
-          !isDeepStrictEqual(member.provenance, first.provenance) ||
-          !member.active ||
-          !["convert_active", "current", "defer"].includes(member.disposition),
+          !isDeepStrictEqual(member.provenance, first.provenance),
       )
     )
       throw new Error(`Task identity collision ${first.id}`);
-    duplicateKeys.add(`${first.id}/${String(first.generation)}`);
+    if (
+      historyMembers.some((member) => member.disposition !== "history_only") ||
+      (activeMembers.length > 0 &&
+        (authorities.length !== 1 ||
+          activeMembers.some(
+            (member) =>
+              !["convert_active", "current", "defer"].includes(
+                member.disposition,
+              ),
+          )))
+    )
+      throw new Error(`Task identity collision ${first.id}`);
+    if (activeMembers.length > 1)
+      duplicateKeys.add(`${first.id}/${String(first.generation)}`);
   }
 
   const bindings = new Map<string, { branch: string; workspace: string }>();

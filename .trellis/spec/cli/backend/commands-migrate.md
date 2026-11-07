@@ -365,6 +365,13 @@ one live current branch checkout across the complete eligible roots. Retain
 single-entry projected authority and historical visible-name occupation checks.
 Group validation uses original snapshots even after a partial migration.
 
+Matching `history_only` archive rows may repeat that same ID/generation/source
+across distinct registered workspaces. They remain raw history, do not count as
+active authorities, and do not add a branch-binding obligation. If a group also
+contains active rows, validate the active subset with the existing unique
+authority and binding rules. Same-workspace repeats, mixed identity facts, and
+non-history archived dispositions still reject before writes.
+
 Projected active Tasks with existing bindings require reviewed snapshots even
 without copies. In Git topology, an extension marker file at
 `.trellis/guru-team/extension.json` in any eligible root also requires existing
@@ -386,7 +393,8 @@ does not add locking or transactionality during the subsequent writes.
 | --- | --- |
 | Missing, invalid, duplicate or unrelated reviewed binding | Reject before writes; never infer authority. |
 | Different case/generation/source, two authorities or all-defer duplicates | Identity collision/ambiguity; no exception. |
-| Same canonical root/Task directory, archive/history duplicate | Reject copy admission. |
+| Same canonical root/Task directory, mixed identity facts, or non-history archive duplicate | Reject copy admission. |
+| Matching history-only archive copies across distinct workspaces | Preserve each raw copy without creating active authority or binding obligations. |
 | Detached, absent, ambiguous or deferred-peer branch selection | Checkout authority error before writes. |
 | Binding raw byte/mode drift | Existing third-state conflict; execution/retry write nothing. |
 | Unsafe binding path or changed topology/checkout/absence/marker predicate | Containment or preflight error before first mutation. |
@@ -396,16 +404,19 @@ does not add locking or transactionality during the subsequent writes.
 ### 5. Good/Base/Bad Cases
 
 Good: two inherited Tasks each convert in their own bound checkout and defer in
-the opposite checkout, retaining different branch planning. Base: unique-ID
-native plan with no binding continues unchanged. Bad: convert every copy, use
-history-only for nonempty active records, or omit a peer to avoid collisions.
+the opposite checkout, retaining different branch planning. Matching archived
+copies in distinct workspaces remain raw history. Base: unique-ID native plan
+with no binding continues unchanged. Bad: convert every active copy, use
+history-only for a record-bearing active root, admit divergent identities, or
+omit a peer to avoid collisions.
 
 ### 6. Tests Required
 
 Create real Git fixtures with tracked predecessor Tasks before sibling creation.
 Assert complete zero-write preview, raw modes/planning preservation, order
-independence, binding/source/generation negatives and canonical aliases. Exercise
-final pre-write authority changes, partial failure/replay/third states and exact
+independence, archive-only and active-plus-archive identity groups,
+binding/source/generation negatives and canonical aliases. Exercise final
+pre-write authority changes, partial failure/replay/third states and exact
 rollback. Use the actual installed CLI plus Python current-task/contract/
 continuation readers from both roots; direct deferred selection remains blocked.
 Cover native no-marker, Git marker missing-binding and Git-free marker bypass.
