@@ -217,16 +217,17 @@ registered sibling worktrees and common sessions, raw modes, stale zero-write,
 ordinary-failure replay and exact rollback. Plan-1 regressions remain required.
 These upstream tests do not supply Guru's private migration or joint acceptance.
 
-## Scenario: explicit mixed predecessor records
+## Scenario: mixed predecessor and current-schema peer records
 
 ### 1. Scope / Trigger
 
-A complete Plan2 inventory can contain both strict schema-1 and positively
-known legacy records. The caller may convert selected Tasks and defer the
-others while preserving their raw data. No incomplete inventory, source-version
-spoofing or private preprocessing is needed. This upstream contract has
-independent synthetic acceptance; downstream business cutover remains with
-its owner.
+A complete Plan2 inventory can contain strict schema-1 records, positively
+known legacy records, and equivalent current-schema Tasks inherited by multiple
+registered worktrees. The caller may convert selected predecessor Tasks, select
+one current authority, and defer its equivalent peers while preserving their raw
+data. No incomplete inventory, source-version spoofing or private preprocessing
+is needed. This upstream contract has independent synthetic acceptance;
+downstream business cutover remains with its owner.
 
 ### 2. Signatures
 
@@ -235,7 +236,7 @@ RawSnapshot shape are unchanged:
 
 ```ts
 source.task_schema: "legacy" | "1.0" | "mixed";
-tasks[index].source_task_schema?: "legacy" | "1.0";
+tasks[index].source_task_schema?: "legacy" | "1.0" | "2.0";
 ```
 
 These declarations are fields inside the complete reviewed plan, not standalone
@@ -247,7 +248,8 @@ Plan2 permits existing same-package-version schema cutover.
 | Global source | Task disposition | Row selector |
 | --- | --- | --- |
 | `legacy` / `1.0` | Any | Forbidden; the global declaration is the sole predecessor source. |
-| `mixed` | `convert_active`, `convert_archive`, `defer` | Required, exactly `legacy` or `1.0`. |
+| `mixed` | `convert_active`, `convert_archive` | Required, exactly `legacy` or `1.0`. |
+| `mixed` | `defer` | Required; `legacy` or `1.0` validates a predecessor, and `2.0` validates an inherited current-schema peer. |
 | `mixed` | `current`, `history_only` | Forbidden; existing current/history contracts apply. |
 
 Mixed describes explicit row review, not a requirement to include both formats.
@@ -256,10 +258,15 @@ It may contain only one predecessor type or only valid current/history rows.
 record. History-only preserves its existing location, missing-record and history
 constraints; record-bearing active roots cannot use it.
 
-Convert and defer share the declared-source validation rule over the **original
-raw snapshot**: `1.0` uses public `taskRecordSchema.parse`, `legacy` uses positive
-`isKnownLegacyTaskRecord`. A mismatch rejects; never try another parser or
-classify from live partial targets. Conversion then uses unchanged
+Predecessor conversion and deferral validate the declared source over the
+**original raw snapshot**: `1.0` uses public `taskRecordSchema.parse`, and
+`legacy` uses positive `isKnownLegacyTaskRecord`. A mismatch rejects; never try
+another parser or classify from live partial targets. A `2.0` selector is valid
+only for `defer`; it uses public `parseTaskRecordV2` and requires the peer's
+complete parsed record to equal the unique current authority's parsed record
+for the same TaskId and generation. The original branch binding and live
+checkout still select that authority. A malformed peer, unequal record, missing
+or multiple authority, or invalid binding rejects before writes. Conversion then uses unchanged
 `validateTaskV2Projection` and all existing fact/authority gates. Legacy default
 generation and immutable source/business/tree preservation remain unchanged.
 Retired personnel/status survive as exact original migration history, not
@@ -267,10 +274,11 @@ schema2 lifecycle authority. Historical outcomes cannot manufacture current gate
 
 Defer prepares raw preserve, with equal pre/post bytes and mode; it does not
 serialize, default fields, create migration/Delivery artifacts or call writers.
-Every Task descendant still needs an explicit file decision. Complete inventory,
-path safety, identity/provenance collision rules and unique binding authority
-remain unchanged. A same-ID legacy/schema1 pair cannot bypass those checks
-merely because the plan is mixed.
+A current-schema peer stays outside lifecycle, session selection and Guru
+private-owner conversion. Every Task descendant still needs an explicit file
+decision. Complete inventory, path safety, identity/provenance collision rules
+and unique binding authority remain unchanged. A same-ID predecessor pair or
+current-schema peer cannot bypass those checks merely because the plan is mixed.
 
 Partial replay keeps the same frozen plan, selector and original snapshot even
 when live Task files already contain schema2 targets. Existing source-or-target
@@ -283,8 +291,9 @@ and removes only added paths/empty directories.
 
 | Condition | Required behavior |
 | --- | --- |
-| Missing/bad mixed selector, homogeneous override or selector on current/history | Closed schema error at the Task row before repository processing/writes. |
-| Declared type does not match original source, malformed/unknown predecessor | Existing strict source validation error, no parser fallback and no writes. |
+| Missing/bad mixed selector, homogeneous override, `2.0` on a non-deferred row or selector on current/history | Closed schema error at the Task row before repository processing/writes. |
+| Declared type does not match original source, malformed/unknown predecessor, malformed or unequal current-schema peer | Existing strict source validation error, no parser fallback and no writes. |
+| Current-schema duplicate has no unique current authority or original binding | Existing identity/binding rejection before writes. |
 | Current projection, nonempty active history-only or illegal location | Existing disposition rejection before writes. |
 | Omitted workspace/Task/artifact/session, invalid binding/collision/unsafe path | Existing inventory/authority/safety rejection before writes. |
 | Original/target/binding raw bytes or modes are a third state | Existing conflict/rejection; execution/retry writes nothing. |

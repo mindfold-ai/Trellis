@@ -2624,6 +2624,78 @@ describe("binding-reviewed inherited registered Task copies", () => {
 });
 
 describe("inherited copy compatibility boundaries", () => {
+  it("AC1 preserves a semantically equal current-schema peer with its original bytes and mode", async () => {
+    const { sibling } = currentSchemaInheritedCopies();
+    const authorityPath = file(`${ref}/task.json`);
+    const peerPath = path.join(sibling, ref, "task.json");
+    const authorityBytes = fs.readFileSync(authorityPath);
+    const peerBytes = fs.readFileSync(peerPath);
+    const before = snapshot(),
+      peerBefore = snapshot(sibling);
+
+    const preview = await execute(true);
+    expect(preview.conflicts).toEqual([]);
+    expect(snapshot()).toEqual(before);
+    expect(snapshot(sibling)).toEqual(peerBefore);
+    expect(
+      preview.actions.find((action) => action.path === peerPath),
+    ).toMatchObject({
+      action: "preserve",
+      before_sha256: rawMigrationDigest(peerBytes),
+      after_sha256: rawMigrationDigest(peerBytes),
+      before_mode: 0o600,
+      after_mode: 0o600,
+    });
+
+    const writer = vi.spyOn(atomic, "writeFileAtomic");
+    await execute();
+    expect(writer.mock.calls.some(([target]) => target === peerPath)).toBe(
+      false,
+    );
+    expect(fs.readFileSync(authorityPath)).toEqual(authorityBytes);
+    expect(fs.statSync(authorityPath).mode & 0o777).toBe(0o640);
+    expect(fs.readFileSync(peerPath)).toEqual(peerBytes);
+    expect(fs.statSync(peerPath).mode & 0o777).toBe(0o600);
+    expect(fs.existsSync(path.join(sibling, ref, "migration"))).toBe(false);
+    expect(fs.existsSync(path.join(sibling, ref, "deliveries"))).toBe(false);
+
+    writer.mockClear();
+    const applied = snapshot(),
+      peerApplied = snapshot(sibling);
+    await execute();
+    expect(writer).not.toHaveBeenCalled();
+    expect(snapshot()).toEqual(applied);
+    expect(snapshot(sibling)).toEqual(peerApplied);
+  });
+
+  it("AC2 rejects a current-schema peer whose complete parsed record differs before writes", async () => {
+    currentSchemaInheritedCopies();
+    const peer = required(
+      plan.tasks.find(
+        (task) => task.workspace === "sibling" && task.task_ref === ref,
+      ),
+    );
+    replaceSource(peer, (record) => {
+      record.title = "Changed current Task content";
+    });
+
+    await rejectMixed(/Current-schema Task peer record mismatch/);
+  });
+
+  it("AC2 rejects a malformed current-schema peer before writes", async () => {
+    currentSchemaInheritedCopies();
+    const peer = required(
+      plan.tasks.find(
+        (task) => task.workspace === "sibling" && task.task_ref === ref,
+      ),
+    );
+    replaceSource(peer, (record) => {
+      record.unknown_field = "unsupported";
+    });
+
+    await rejectMixed(/source_task_schema=2\.0.*invalid_record/);
+  });
+
   it.each(["current", "legacy"])(
     "supports reviewed %s authority sources with preserved peers",
     async (kind) => {
@@ -2811,11 +2883,62 @@ function mixedSource(task: PlanTask, schema: "legacy" | "1.0"): void {
   for (const fact of task.legacy_facts ?? [])
     fact.reason.revision = `sha256:${required(task.source).sha256}`;
 }
+function mixedCurrentSource(
+  task: PlanTask,
+  record: Record<string, unknown>,
+): void {
+  const source = required(task.source);
+  const bytes = JSON.stringify(record);
+  task.source = raw(bytes, source.mode);
+  task.source_task_schema = "2.0";
+  const workspace = required(
+    plan.workspaces.find((entry) => entry.id === task.workspace),
+  );
+  const full = path.join(workspace.root, task.task_ref, "task.json");
+  fs.writeFileSync(full, bytes);
+  fs.chmodSync(full, source.mode);
+}
 function mixedInheritedCopies(): ReturnType<typeof inheritedCopies> {
   const result = inheritedCopies();
   plan.source.task_schema = "mixed";
   for (const task of plan.tasks)
     mixedSource(task, task.task_ref === ref ? "1.0" : "legacy");
+  return result;
+}
+function currentSchemaInheritedCopies(): ReturnType<typeof inheritedCopies> {
+  const result = mixedInheritedCopies();
+  const authority = required(
+    plan.tasks.find(
+      (task) => task.workspace === "main" && task.task_ref === ref,
+    ),
+  );
+  const peer = required(
+    plan.tasks.find(
+      (task) => task.workspace === "sibling" && task.task_ref === ref,
+    ),
+  );
+  const record = structuredClone(
+    authority.record as ReturnType<typeof emptyTaskRecordV2>,
+  );
+  const authoritySource = required(authority.source);
+  const authorityBytes = JSON.stringify(record);
+  authority.source = raw(authorityBytes, authoritySource.mode);
+  authority.disposition = "current";
+  delete authority.record;
+  delete authority.legacy_facts;
+  delete authority.source_task_schema;
+  write(`${ref}/task.json`, authorityBytes, authoritySource.mode);
+
+  const peerRecord = Object.fromEntries(Object.entries(record).reverse());
+  const peerBytes = ` \n${JSON.stringify(peerRecord, null, 4)}\n\n`;
+  peer.source = raw(peerBytes, 0o600);
+  peer.source_task_schema = "2.0";
+  const sibling = required(
+    plan.workspaces.find((workspace) => workspace.id === "sibling"),
+  ).root;
+  const peerPath = path.join(sibling, ref, "task.json");
+  fs.writeFileSync(peerPath, peerBytes);
+  fs.chmodSync(peerPath, 0o600);
   return result;
 }
 function relocateTask(task: PlanTask, nextRef: string): void {
@@ -3004,15 +3127,30 @@ describe("mixed source closed input and compatibility matrix", () => {
     async (disposition) => {
       plan.source.task_schema = "mixed";
       const task = required(plan.tasks[0]);
+      const currentRecord = structuredClone(
+        task.record as Record<string, unknown>,
+      );
       mixedSource(task, "1.0");
       mixedDisposition(task, disposition);
-      for (const selector of [undefined, null, "mixed", "2.0", "", 1, {}, []]) {
+      if (disposition === "defer")
+        mixedCurrentSource(task, currentRecord);
+      const invalidSelectors: unknown[] = [
+        undefined,
+        null,
+        "mixed",
+        "",
+        1,
+        {},
+        [],
+      ];
+      if (disposition !== "defer") invalidSelectors.push("2.0");
+      for (const selector of invalidSelectors) {
         const row = task as unknown as Record<string, unknown>;
         if (selector === undefined) delete row.source_task_schema;
         else row.source_task_schema = selector;
         await rejectMixed(/source_task_schema/);
       }
-      task.source_task_schema = "1.0";
+      task.source_task_schema = disposition === "defer" ? "2.0" : "1.0";
       expect((await execute(true)).conflicts).toEqual([]);
     },
   );
@@ -3059,8 +3197,13 @@ describe("mixed source closed input and compatibility matrix", () => {
       const task = required(plan.tasks[0]);
       plan.source.task_schema = "mixed";
       mixedDisposition(task, disposition);
-      task.source_task_schema = "1.0";
-      await rejectMixed(/forbidden/);
+      for (const [selector, diagnostic] of [
+        ["1.0", /forbidden/],
+        ["2.0", /Current Task schema selector is only valid for defer/],
+      ] as const) {
+        task.source_task_schema = selector;
+        await rejectMixed(diagnostic);
+      }
       delete task.source_task_schema;
       expect((await execute(true)).conflicts).toEqual([]);
     },

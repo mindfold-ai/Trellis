@@ -91,7 +91,7 @@ export const migrationPlan2Schema = z
             "history_only",
           ]),
           source: rawSnapshotSchema.nullable(),
-          source_task_schema: z.enum(["legacy", "1.0"]).optional(),
+          source_task_schema: z.enum(["legacy", "1.0", "2.0"]).optional(),
           record: z.unknown().optional(),
           legacy_facts: z
             .array(
@@ -199,6 +199,15 @@ export const migrationPlan2Schema = z
           code: "custom",
           path: ["tasks", index, "source_task_schema"],
           message: "Mixed predecessor disposition requires source_task_schema",
+        });
+      else if (
+        task.source_task_schema === "2.0" &&
+        task.disposition !== "defer"
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["tasks", index, "source_task_schema"],
+          message: "Current Task schema selector is only valid for defer",
         });
       else if (!requiresSelector && task.source_task_schema !== undefined)
         context.addIssue({
