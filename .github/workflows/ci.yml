@@ -107,7 +107,7 @@ jobs:
             scenario: py
           - os: ubuntu-24.04
             scenario: python3
-          - os: macos-14
+          - os: macos-15
             scenario: python3
     steps:
       - name: Checkout candidate and independent driver

@@ -84,9 +84,14 @@ function validatePredecessor(
   mode: MigrationPlan2["source"]["task_schema"],
   task: MigrationPlan2["tasks"][number],
   source: unknown,
-): void {
+): TaskRecordV2 | undefined {
   const schema = mode === "mixed" ? required(task.source_task_schema) : mode;
   try {
+    if (schema === "2.0") {
+      if (task.disposition !== "defer")
+        throw new Error("Current Task schema selector is only valid for defer");
+      return parseTaskRecordV2(source);
+    }
     if (schema === "1.0") {
       taskRecordSchema.parse(source); // Retain canonical field-level diagnostics.
       if (classifyMaintenanceTask(source).kind !== "schema1")
@@ -495,6 +500,8 @@ export async function migrate2(
     active: boolean;
     disposition: string;
     workspace: string;
+    source_task_schema?: MigrationPlan2["tasks"][number]["source_task_schema"];
+    record?: TaskRecordV2;
   }
   const identities = new Map<string, SourceIdentity[]>();
   const taskDirectories = new Map<string, string>();
@@ -553,12 +560,13 @@ export async function migrate2(
       /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(header.id)
         ? header.id
         : null;
+    let sourceIdentity: SourceIdentity | undefined;
     if (!validId && task.disposition !== "history_only")
       throw new Error("Invalid source Task identity");
     if (validId) {
       const identity = validId.toLowerCase();
       const members = identities.get(identity) ?? [];
-      members.push({
+      sourceIdentity = {
         id: validId,
         generation: isKnownLegacyTaskRecord(source)
           ? 0
@@ -567,7 +575,9 @@ export async function migrate2(
         active,
         disposition: task.disposition,
         workspace: task.workspace,
-      });
+        source_task_schema: task.source_task_schema,
+      };
+      members.push(sourceIdentity);
       identities.set(identity, members);
     } else {
       const visible = path.posix.basename(task.task_ref);
@@ -591,6 +601,7 @@ export async function migrate2(
             ),
           )
         : parseTaskRecordV2(source);
+      if (sourceIdentity) sourceIdentity.record = record;
       if (!converted && task.record !== undefined)
         throw new Error("Current Task must preserve raw bytes");
       const key = `${record.id}/${record.lifecycle_generation}`;
@@ -618,8 +629,15 @@ export async function migrate2(
         throw new Error(
           "Deferred/history Task cannot project execution authority",
         );
-      if (task.disposition === "defer")
-        validatePredecessor(plan.source.task_schema, task, source);
+      if (task.disposition === "defer") {
+        const deferredRecord = validatePredecessor(
+          plan.source.task_schema,
+          task,
+          source,
+        );
+        if (task.source_task_schema === "2.0" && sourceIdentity)
+          sourceIdentity.record = required(deferredRecord);
+      }
       prepare(root, `${task.task_ref}/task.json`, "preserve", task.source);
     }
   }
@@ -637,7 +655,12 @@ export async function migrate2(
   // same source identity and provenance even after an ordinary partial write.
   const duplicateKeys = new Set<string>();
   for (const members of identities.values()) {
-    if (members.length === 1) continue;
+    const currentPeers = members.filter(
+      (member) =>
+        member.disposition === "defer" && member.source_task_schema === "2.0",
+    );
+    // Even a lone current-schema peer requires a selected authority.
+    if (members.length === 1 && currentPeers.length === 0) continue;
     const first = required(members[0]);
     const authorities = members.filter(
       (member) =>
@@ -661,6 +684,18 @@ export async function migrate2(
     )
       throw new Error(`Task identity collision ${first.id}`);
     duplicateKeys.add(`${first.id}/${String(first.generation)}`);
+    if (currentPeers.length) {
+      const authority = required(
+        projected.get(`${first.id}/${String(first.generation)}`),
+      );
+      if (
+        currentPeers.some(
+          (peer) =>
+            !peer.record || !isDeepStrictEqual(authority.record, peer.record),
+        )
+      )
+        throw new Error(`Current-schema Task peer record mismatch ${first.id}`);
+    }
   }
 
   const bindings = new Map<string, { branch: string; workspace: string }>();
