@@ -655,7 +655,12 @@ export async function migrate2(
   // same source identity and provenance even after an ordinary partial write.
   const duplicateKeys = new Set<string>();
   for (const members of identities.values()) {
-    if (members.length === 1) continue;
+    const currentPeers = members.filter(
+      (member) =>
+        member.disposition === "defer" && member.source_task_schema === "2.0",
+    );
+    // Even a lone current-schema peer requires a selected authority.
+    if (members.length === 1 && currentPeers.length === 0) continue;
     const first = required(members[0]);
     const authorities = members.filter(
       (member) =>
@@ -679,10 +684,6 @@ export async function migrate2(
     )
       throw new Error(`Task identity collision ${first.id}`);
     duplicateKeys.add(`${first.id}/${String(first.generation)}`);
-    const currentPeers = members.filter(
-      (member) =>
-        member.disposition === "defer" && member.source_task_schema === "2.0",
-    );
     if (currentPeers.length) {
       const authority = required(
         projected.get(`${first.id}/${String(first.generation)}`),

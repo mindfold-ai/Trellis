@@ -265,7 +265,9 @@ another parser or classify from live partial targets. A `2.0` selector is valid
 only for `defer`; it uses public `parseTaskRecordV2` and requires the peer's
 complete parsed record to equal the unique current authority's parsed record
 for the same TaskId and generation. The original branch binding and live
-checkout still select that authority. A malformed peer, unequal record, missing
+checkout still select that authority. A lone `2.0` deferred record is not a
+standalone preservation mode: it must also have a selected authority, including
+in Git-free inventories. A malformed peer, unequal record, missing
 or multiple authority, or invalid binding rejects before writes. Conversion then uses unchanged
 `validateTaskV2Projection` and all existing fact/authority gates. Legacy default
 generation and immutable source/business/tree preservation remain unchanged.
@@ -293,7 +295,7 @@ and removes only added paths/empty directories.
 | --- | --- |
 | Missing/bad mixed selector, homogeneous override, `2.0` on a non-deferred row or selector on current/history | Closed schema error at the Task row before repository processing/writes. |
 | Declared type does not match original source, malformed/unknown predecessor, malformed or unequal current-schema peer | Existing strict source validation error, no parser fallback and no writes. |
-| Current-schema duplicate has no unique current authority or original binding | Existing identity/binding rejection before writes. |
+| Current-schema deferred record (including a singleton) has no unique current authority, or its duplicate group lacks the original binding | Existing identity/binding rejection before writes. |
 | Current projection, nonempty active history-only or illegal location | Existing disposition rejection before writes. |
 | Omitted workspace/Task/artifact/session, invalid binding/collision/unsafe path | Existing inventory/authority/safety rejection before writes. |
 | Original/target/binding raw bytes or modes are a third state | Existing conflict/rejection; execution/retry writes nothing. |

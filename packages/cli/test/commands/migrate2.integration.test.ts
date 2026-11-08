@@ -2624,6 +2624,25 @@ describe("binding-reviewed inherited registered Task copies", () => {
 });
 
 describe("inherited copy compatibility boundaries", () => {
+  it.each(["git-free", "git"])(
+    "AC2 rejects a lone current-schema deferred Task without an authority before writes (%s)",
+    async (kind) => {
+      if (kind === "git") execFileSync("git", ["init", root]);
+      plan.source.task_schema = "mixed";
+      const task = required(plan.tasks[0]);
+      const record = structuredClone(task.record as Record<string, unknown>);
+      mixedDisposition(task, "defer");
+      mixedCurrentSource(task, record);
+
+      const before = fullTree();
+      await expect(execute(true)).rejects.toThrow(
+        "Task identity collision main-task",
+      );
+      expect(fullTree()).toEqual(before);
+      await rejectMixed("Task identity collision main-task");
+    },
+  );
+
   it("AC1 preserves a semantically equal current-schema peer with its original bytes and mode", async () => {
     const { sibling } = currentSchemaInheritedCopies();
     const authorityPath = file(`${ref}/task.json`);
@@ -3127,13 +3146,8 @@ describe("mixed source closed input and compatibility matrix", () => {
     async (disposition) => {
       plan.source.task_schema = "mixed";
       const task = required(plan.tasks[0]);
-      const currentRecord = structuredClone(
-        task.record as Record<string, unknown>,
-      );
       mixedSource(task, "1.0");
       mixedDisposition(task, disposition);
-      if (disposition === "defer")
-        mixedCurrentSource(task, currentRecord);
       const invalidSelectors: unknown[] = [
         undefined,
         null,
@@ -3150,7 +3164,7 @@ describe("mixed source closed input and compatibility matrix", () => {
         else row.source_task_schema = selector;
         await rejectMixed(/source_task_schema/);
       }
-      task.source_task_schema = disposition === "defer" ? "2.0" : "1.0";
+      task.source_task_schema = "1.0";
       expect((await execute(true)).conflicts).toEqual([]);
     },
   );
