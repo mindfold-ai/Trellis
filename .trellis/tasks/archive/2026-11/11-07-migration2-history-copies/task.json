@@ -1,0 +1,27 @@
+{
+  "id": "migration2-history-copies",
+  "name": "migration2-history-copies",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Preserve repeated historical Tasks during worktree migration",
+  "description": "Allow Plan2 migration to preserve the same historical archived Task identity across registered worktrees without treating those copies as active authorities. Keep current active duplicate identity and branch binding checks strict. Use the resulting complete source to continue the Guru installation upgrade in k8s-infra.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-11-07",
+  "completedAt": "2026-11-08",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/migration2-history-copies"
+}

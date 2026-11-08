@@ -13,6 +13,50 @@ describe("selected maintenance domain boundary", () => {
     expect(() => classifyMaintenanceTask({ ...old, lifecycle_generation: undefined })).toThrow("unsupported_source");
     expect(() => classifyMaintenanceTask({ ...old, schema_version: "1.0" })).toThrow("unsupported_source");
   });
+  it("projects legacy Guru metadata as raw history without native lifecycle results", () => {
+    const legacy = {
+      id: "old-guru",
+      name: "old-guru",
+      title: "Old Guru task",
+      status: "completed",
+      creator: "old",
+      assignee: "old",
+      commit: "old-commit",
+      completedAt: "2026-07-20",
+      guru_chain: "light",
+      guru_gates: { planning: { confirmed_by: "old", status: "passed" } },
+      design_package: null,
+      requirement_package: null,
+      require_req_uc: true,
+      risk: "high",
+      route: "lite_task",
+      meta: { retained_business_fact: "original" },
+    };
+    const original = JSON.stringify(legacy);
+    const target = emptyTaskRecordV2({
+      id: legacy.id,
+      name: legacy.name,
+      title: legacy.title,
+      meta: legacy.meta,
+    });
+    expect(classifyMaintenanceTask(legacy)).toEqual({
+      kind: "legacy",
+      task_id: legacy.id,
+      generation: 0,
+    });
+    const reason = { locator: "migration/source-task.json", revision: "original-owner" };
+    const record = validateSelectedTaskProjection(legacy, target, [
+      { field: "commit", disposition: "source_snapshot", owner_id: "original-owner", reason },
+      { field: "completedAt", disposition: "source_snapshot", owner_id: "original-owner", reason },
+    ]);
+    expect(record).toEqual(target);
+    expect(record.deliveries).toEqual([]);
+    expect(record.completion_results).toEqual([]);
+    expect(record.closure_results).toEqual([]);
+    expect(record.accepted_scope).toBeNull();
+    expect(JSON.stringify(legacy)).toBe(original);
+    expect(() => classifyMaintenanceTask({ ...target, guru_chain: legacy.guru_chain })).toThrow();
+  });
   it("requires explicit old fact attribution and preserves dates without fabricating results", () => {
     expect(() => validateSelectedTaskProjection(old, projection)).toThrow("legacy_fact_attribution_required");
     const reason = { locator: "history.md", revision: "original-owner" };

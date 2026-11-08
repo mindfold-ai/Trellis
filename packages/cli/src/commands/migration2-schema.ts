@@ -19,6 +19,9 @@ const sha = z.string().regex(/^[a-f0-9]{64}$/);
 export const rawSnapshotSchema = z
   .object({ content_base64: z.string(), sha256: sha, mode })
   .strict();
+const preservedTaskArtifactSnapshotSchema = z
+  .object({ sha256: sha, mode })
+  .strict();
 const projectTarget = z
   .object({
     kind: z.literal("project"),
@@ -179,7 +182,9 @@ export const migrationPlan2Schema = z
           target: projectTarget,
           owner: z.enum(["template", "workflow", "artifact", "preserve"]),
           action: z.enum(["write", "preserve", "remove"]),
-          source: rawSnapshotSchema.nullable(),
+          source: z
+            .union([rawSnapshotSchema, preservedTaskArtifactSnapshotSchema])
+            .nullable(),
           target_content_base64: z.string().optional(),
           target_mode: mode.optional(),
         })
@@ -217,6 +222,26 @@ export const migrationPlan2Schema = z
             "source_task_schema is forbidden for this source mode/disposition",
         });
     }
+    for (const [index, file] of plan.files.entries()) {
+      if (
+        file.source !== null &&
+        !("content_base64" in file.source) &&
+        !(
+          file.owner === "preserve" &&
+          file.action === "preserve" &&
+          file.target.path.startsWith(".trellis/tasks/")
+        )
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["files", index, "source"],
+          message:
+            "Content-free snapshots are limited to preserved Task artifacts",
+        });
+    }
   });
 export type MigrationPlan2 = z.infer<typeof migrationPlan2Schema>;
 export type RawSnapshot = z.infer<typeof rawSnapshotSchema>;
+export type PreservedTaskArtifactSnapshot = z.infer<
+  typeof preservedTaskArtifactSnapshotSchema
+>;

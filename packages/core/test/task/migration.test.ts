@@ -45,6 +45,45 @@ describe("explicit legacy task projection", () => {
     }
   });
 
+  it("recognizes the closed legacy Guru metadata set without accepting it as current schema", () => {
+    const old = {
+      id: "legacy-guru-task",
+      name: "legacy-guru-task",
+      title: "Legacy Guru task",
+      status: "in_progress",
+      creator: "old",
+      assignee: "old",
+      guru_chain: "full",
+      guru_gates: { planning: { confirmed_by: "old" } },
+      design_package: "docs/design/legacy-task",
+      requirement_package: "docs/requirements/legacy-task",
+      require_req_uc: true,
+      risk: "medium",
+      route: "full_chain",
+    };
+    expect(isKnownLegacyTaskRecord(old)).toBe(true);
+    expect(
+      isKnownLegacyTaskRecord({
+        ...old,
+        design_package: null,
+        requirement_package: null,
+      }),
+    ).toBe(true);
+    expect(() => taskRecordSchema.parse(old)).toThrow();
+    expect(isKnownLegacyTaskRecord({ ...old, unexpected: true })).toBe(false);
+    for (const [field, invalid] of [
+      ["design_package", {}],
+      ["requirement_package", []],
+      ["guru_chain", null],
+      ["guru_gates", []],
+      ["guru_gates", null],
+      ["require_req_uc", "true"],
+      ["risk", false],
+      ["route", {}],
+    ] as const)
+      expect(isKnownLegacyTaskRecord({ ...old, [field]: invalid })).toBe(false);
+  });
+
   it("#1 migrates complete personnel records while the normal schema rejects them", () => {
     const base = Object.fromEntries(
       Object.entries(current).filter(
