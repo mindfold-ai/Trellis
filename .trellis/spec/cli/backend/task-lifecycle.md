@@ -215,6 +215,25 @@ its id with the requested identity.
 Correct: use `read_task_id_reservation` for occupation; use `read_json_checked`
 for the selected task before consuming generation or any other lifecycle field.
 
+## Closed Legacy Guru Extensions
+
+`isKnownLegacyTaskRecord` may recognize the historical Guru extension fields
+`design_package`, `guru_chain`, `guru_gates`, `require_req_uc`,
+`requirement_package`, `risk`, and `route` on legacy predecessor records.
+Package paths `design_package` and `requirement_package` may be strings or null;
+`guru_chain`, `risk` and `route` are strings, `require_req_uc` is boolean, and
+`guru_gates` is a non-null object. This compatibility check only classifies
+an old record for a reviewed migration disposition. It does not add these
+fields to `taskRecordSchema`, current readers, session selection, or lifecycle
+authority. Migration preserves the complete original bytes in its source
+snapshot and makes a reviewed projection for current records.
+
+During complete migration inventory, a recordless active evidence root may share
+its visible basename with a record-bearing `history_only` archive in the same
+workspace. Preserve both only when the archive TaskId matches the basename
+after the existing date-prefix normalization. This admits no active authority
+and does not permit malformed or record-bearing roots to claim the alias.
+
 ## Operation-local historical identity observations
 
 Task creation scans live registered workspaces independently from immutable Git

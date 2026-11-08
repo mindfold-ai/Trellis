@@ -134,7 +134,7 @@ The closed plan fields and their consumers are:
 | `tasks` | Exact active/archive ref and `convert_active`, `convert_archive`, `current`, `defer` or `history_only`; original raw snapshot (null only for missing-record `history_only` roots); complete owner-reviewed v2 record for conversions. |
 | `legacy_facts` within a converted Task | Every nonempty old commit/PR/date fact has an explicit producer-owned disposition: matching normalized result, or retained `source_snapshot` with reason ref. Dates cannot manufacture Completion. |
 | `sessions` | Exact common-dir or workspace-local session filename, source snapshot and optional reviewed schema-3 projection. Preserve Task/generation; Delivery selection is null or a valid current-generation nonterminal identity. |
-| `branch_bindings` (optional, default `[]`) | Exact TaskId/generation and raw snapshot of its existing fixed common-dir binding. Required for admitted inherited-copy groups and projected active Tasks with existing bindings; preserve-only, never a binding writer. |
+| `branch_bindings` (optional, default `[]`) | Exact TaskId/generation and raw snapshot of its existing fixed common-dir binding. Required for a live session selection, inherited active-copy authority, or sibling execution authority; preserve-only, never a binding writer. |
 | `workflows` | Per-workspace required `template_id` and exact target runtime contract, matched by the actual supplied workflow content. No replacement fallback or inferred template identity for custom workflows. |
 | `templates` | Frozen candidate digest and exact owned path/raw hash/mode set from the prospective collector. |
 | `files` | Typed project target, owner (`template`, `workflow`, `artifact`, `preserve`), exact action/source snapshot and optional target bytes/full mode. Ownership bounds the action; preserve grants no write capability. |
@@ -145,9 +145,20 @@ An explicitly obsolete sibling is not a missing required migration workspace;
 all eligible live roots still require exact reviewed inventory. Git failures
 never silently convert the invocation into a Git-free migration target.
 
+Each installation row freezes that workspace's exact `.trellis/.version` and
+receipt snapshots. `source.version` remains bound to the invocation workspace
+and the public `--from` value. Validate each installation version independently
+as a supported predecessor of the target CLI; mixed versions do not reduce the
+complete workspace or file inventory.
+
 A raw snapshot is `{content_base64,sha256,mode}`. The canonical base64 bytes and
 raw digest must agree. Converted source Task bytes/mode remain under
 `<task_ref>/migration/source-task.json` as history, never execution authority.
+For `files[]` entries that preserve a Task artifact under `.trellis/tasks/`,
+`source` may instead contain only `{sha256,mode}`. The executor compares that
+state with the live file before writing and rechecks the complete preimage set.
+Content-free snapshots cannot authorize template, workflow, Task, binding,
+session, write or removal inputs.
 Identity, source, generation and business/tree metadata survive projection.
 The caller chooses each Delivery scope/plan/outcome attribution; old status
 never creates a Delivery or a gate. Unknown history-only archives remain raw
@@ -217,16 +228,17 @@ registered sibling worktrees and common sessions, raw modes, stale zero-write,
 ordinary-failure replay and exact rollback. Plan-1 regressions remain required.
 These upstream tests do not supply Guru's private migration or joint acceptance.
 
-## Scenario: explicit mixed predecessor records
+## Scenario: mixed predecessor and current-schema peer records
 
 ### 1. Scope / Trigger
 
-A complete Plan2 inventory can contain both strict schema-1 and positively
-known legacy records. The caller may convert selected Tasks and defer the
-others while preserving their raw data. No incomplete inventory, source-version
-spoofing or private preprocessing is needed. This upstream contract has
-independent synthetic acceptance; downstream business cutover remains with
-its owner.
+A complete Plan2 inventory can contain strict schema-1 records, positively
+known legacy records, and equivalent current-schema Tasks inherited by multiple
+registered worktrees. The caller may convert selected predecessor Tasks, select
+one current authority, and defer its equivalent peers while preserving their raw
+data. No incomplete inventory, source-version spoofing or private preprocessing
+is needed. This upstream contract has independent synthetic acceptance;
+downstream business cutover remains with its owner.
 
 ### 2. Signatures
 
@@ -235,7 +247,7 @@ RawSnapshot shape are unchanged:
 
 ```ts
 source.task_schema: "legacy" | "1.0" | "mixed";
-tasks[index].source_task_schema?: "legacy" | "1.0";
+tasks[index].source_task_schema?: "legacy" | "1.0" | "2.0";
 ```
 
 These declarations are fields inside the complete reviewed plan, not standalone
@@ -247,7 +259,8 @@ Plan2 permits existing same-package-version schema cutover.
 | Global source | Task disposition | Row selector |
 | --- | --- | --- |
 | `legacy` / `1.0` | Any | Forbidden; the global declaration is the sole predecessor source. |
-| `mixed` | `convert_active`, `convert_archive`, `defer` | Required, exactly `legacy` or `1.0`. |
+| `mixed` | `convert_active`, `convert_archive` | Required, exactly `legacy` or `1.0`. |
+| `mixed` | `defer` | Required; `legacy` or `1.0` validates a predecessor, and `2.0` validates an inherited current-schema peer. |
 | `mixed` | `current`, `history_only` | Forbidden; existing current/history contracts apply. |
 
 Mixed describes explicit row review, not a requirement to include both formats.
@@ -256,10 +269,17 @@ It may contain only one predecessor type or only valid current/history rows.
 record. History-only preserves its existing location, missing-record and history
 constraints; record-bearing active roots cannot use it.
 
-Convert and defer share the declared-source validation rule over the **original
-raw snapshot**: `1.0` uses public `taskRecordSchema.parse`, `legacy` uses positive
-`isKnownLegacyTaskRecord`. A mismatch rejects; never try another parser or
-classify from live partial targets. Conversion then uses unchanged
+Predecessor conversion and deferral validate the declared source over the
+**original raw snapshot**: `1.0` uses public `taskRecordSchema.parse`, and
+`legacy` uses positive `isKnownLegacyTaskRecord`. A mismatch rejects; never try
+another parser or classify from live partial targets. A `2.0` selector is valid
+only for `defer`; it uses public `parseTaskRecordV2` and requires the peer's
+complete parsed record to equal the unique current authority's parsed record
+for the same TaskId and generation. The original branch binding and live
+checkout still select that authority. A lone `2.0` deferred record is not a
+standalone preservation mode: it must also have a selected authority, including
+in Git-free inventories. A malformed peer, unequal record, missing
+or multiple authority, or invalid binding rejects before writes. Conversion then uses unchanged
 `validateTaskV2Projection` and all existing fact/authority gates. Legacy default
 generation and immutable source/business/tree preservation remain unchanged.
 Retired personnel/status survive as exact original migration history, not
@@ -267,10 +287,11 @@ schema2 lifecycle authority. Historical outcomes cannot manufacture current gate
 
 Defer prepares raw preserve, with equal pre/post bytes and mode; it does not
 serialize, default fields, create migration/Delivery artifacts or call writers.
-Every Task descendant still needs an explicit file decision. Complete inventory,
-path safety, identity/provenance collision rules and unique binding authority
-remain unchanged. A same-ID legacy/schema1 pair cannot bypass those checks
-merely because the plan is mixed.
+A current-schema peer stays outside lifecycle, session selection and Guru
+private-owner conversion. Every Task descendant still needs an explicit file
+decision. Complete inventory, path safety, identity/provenance collision rules
+and unique binding authority remain unchanged. A same-ID predecessor pair or
+current-schema peer cannot bypass those checks merely because the plan is mixed.
 
 Partial replay keeps the same frozen plan, selector and original snapshot even
 when live Task files already contain schema2 targets. Existing source-or-target
@@ -283,8 +304,9 @@ and removes only added paths/empty directories.
 
 | Condition | Required behavior |
 | --- | --- |
-| Missing/bad mixed selector, homogeneous override or selector on current/history | Closed schema error at the Task row before repository processing/writes. |
-| Declared type does not match original source, malformed/unknown predecessor | Existing strict source validation error, no parser fallback and no writes. |
+| Missing/bad mixed selector, homogeneous override, `2.0` on a non-deferred row or selector on current/history | Closed schema error at the Task row before repository processing/writes. |
+| Declared type does not match original source, malformed/unknown predecessor, malformed or unequal current-schema peer | Existing strict source validation error, no parser fallback and no writes. |
+| Current-schema deferred record (including a singleton) has no unique current authority, or its duplicate group lacks the original binding | Existing identity/binding rejection before writes. |
 | Current projection, nonempty active history-only or illegal location | Existing disposition rejection before writes. |
 | Omitted workspace/Task/artifact/session, invalid binding/collision/unsafe path | Existing inventory/authority/safety rejection before writes. |
 | Original/target/binding raw bytes or modes are a third state | Existing conflict/rejection; execution/retry writes nothing. |
@@ -355,7 +377,8 @@ portable IDs and nonnegative safe-integer generations. Decoded JSON has exactly
 safe-integer `binding_revision`, and nonempty `branch_name`. No arbitrary path,
 target bytes, action, normalization, repair or producer API is accepted.
 
-An admitted repeated-ID group has identical case-exact ID/generation and
+An admitted repeated `(TaskId, lifecycle_generation)` group has identical
+case-exact ID/generation and
 semantic immutable source (including disposition); mutable branch metadata and
 planning may differ. Known legacy absence alone defaults generation to zero.
 Exactly one active row is `convert_active` or `current`; every peer is valid
@@ -369,15 +392,28 @@ Matching `history_only` archive rows may repeat that same ID/generation/source
 across distinct registered workspaces. They remain raw history, do not count as
 active authorities, and do not add a branch-binding obligation. If a group also
 contains active rows, validate the active subset with the existing unique
-authority and binding rules. Same-workspace repeats, mixed identity facts, and
+authority and binding rules. Within one workspace, at most one active row and one history-only archive may
+coexist. Multiple active or multiple archived rows, mixed identity facts, and
 non-history archived dispositions still reject before writes.
 
-Projected active Tasks with existing bindings require reviewed snapshots even
-without copies. In Git topology, an extension marker file at
-`.trellis/guru-team/extension.json` in any eligible root also requires existing
-bindings for projected active Tasks, matching the public reader for invocation
-from those roots. Git-free resolution bypasses the marker and rejects supplied
-common binding rows. No unrelated historical-binding inventory is introduced.
+An existing binding selects its exact authority and requires a reviewed
+snapshot. A source or target session selecting a Task requires that binding,
+including preserved canonical identity2/3 sources in effective native storage
+(common-dir in Git, local in Git-free). Obsolete Git-local, unsupported path
+carriers and invalid object-shaped carriers remain reviewed raw history, not
+selection authority. Invalid JSON and invalid target projections still reject. A unique current v2
+record in the invocation workspace may remain raw and unbound only when no
+session selects it and no existing binding was omitted. This is installation
+preservation, not native selection. Sibling execution authorities and inherited
+current-v2 peers retain their existing reviewed binding requirement.
+
+Repeated positively validated completed legacy/schema1 records may all remain
+`defer` history, regardless of invocation location, only when no source or target
+session selects that identity. They create no current projection, Completion,
+Delivery, binding or reopen. Other repeated all-defer active groups reject. A
+single predecessor defer retains its existing preservation contract. Never
+infer authority from branch names, Task paths or old completion metadata.
+Git-free resolution rejects supplied common binding rows.
 
 Preview includes raw binding preserve actions with equal pre/post bytes/modes.
 Deferred descendants and selected root planning stay raw; only authority-owned
@@ -392,14 +428,19 @@ does not add locking or transactionality during the subsequent writes.
 | Condition | Required behavior |
 | --- | --- |
 | Missing, invalid, duplicate or unrelated reviewed binding | Reject before writes; never infer authority. |
-| Different case/generation/source, two authorities or all-defer duplicates | Identity collision/ambiguity; no exception. |
-| Same canonical root/Task directory, mixed identity facts, or non-history archive duplicate | Reject copy admission. |
+| Different case/source within one TaskId/generation group, two authorities or a repeated all-defer group that is not unselected completed predecessor history | Identity collision/ambiguity; no exception. |
+| Same TaskId at different lifecycle generations | Validate each generation as a separate identity group. |
+| Same canonical root/Task directory, mixed identity facts, or any workspace with multiple active or multiple history copies | Reject copy admission. |
+| One active copy and one `history_only` copy in the same workspace | Permit only when the complete TaskId/generation group retains its exact spelling and provenance, and any execution authority remains unique; unselected completed predecessor history may have none. |
+| Missing positively recognized legacy `source` on a deferred or history-only row | Preserve raw bytes and treat provenance as unasserted; the row supplies no authority. All asserted provenance must match independently of row order. |
 | Matching history-only archive copies across distinct workspaces | Preserve each raw copy without creating active authority or binding obligations. |
 | Detached, absent, ambiguous or deferred-peer branch selection | Checkout authority error before writes. |
 | Binding raw byte/mode drift | Existing third-state conflict; execution/retry write nothing. |
 | Unsafe binding path or changed topology/checkout/absence/marker predicate | Containment or preflight error before first mutation. |
 | Missing workspace/Task/session/artifact or added peer Delivery target | Existing completeness/ownership rejection. |
 | Exact completed/partial source-or-target replay | Resume; preserve files are not rewritten. |
+| Preserved Task artifact with hash/mode-only preimage | Compare exact live digest/mode; reject third state before writes. |
+| Recordless active evidence root and matching record-bearing history archive in one workspace | Preserve both only when their visible TaskRef basename and archive TaskId match; do not project active authority. |
 
 ### 5. Good/Base/Bad Cases
 
@@ -428,6 +469,22 @@ Wrong: reject all inherited IDs unconditionally or choose the invocation copy
 after creating multiple execution authorities. Correct: validate the complete
 reviewed identity group and existing binding first, project one authority, and
 preserve every peer without new lifecycle facts.
+
+## Scenario: heterogeneous workspace versions and current Task copies
+
+Plan2 accepts a complete set of registered workspaces whose installed Core
+versions differ, when every exact version is a supported predecessor of the
+same target CLI. The public `--from` value still identifies only the invocation
+workspace. Each installation row's frozen version snapshot determines that
+workspace's source version and preview action.
+
+Current peers retain the complete-record equality and binding rules above.
+Unselected completed predecessor groups and a unique unbound invocation current
+record use the bounded preservation rules above; workspace location alone never
+makes all-deferred active data historical.
+
+Large preserved Task artifacts use the closed digest/mode source contract in
+[Plan2 preserved artifacts](./migration2-preserved-artifacts.md).
 
 ## Independent maintenance boundary
 

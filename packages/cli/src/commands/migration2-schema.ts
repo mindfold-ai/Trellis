@@ -19,6 +19,9 @@ const sha = z.string().regex(/^[a-f0-9]{64}$/);
 export const rawSnapshotSchema = z
   .object({ content_base64: z.string(), sha256: sha, mode })
   .strict();
+const preservedTaskArtifactSnapshotSchema = z
+  .object({ sha256: sha, mode })
+  .strict();
 const projectTarget = z
   .object({
     kind: z.literal("project"),
@@ -91,7 +94,7 @@ export const migrationPlan2Schema = z
             "history_only",
           ]),
           source: rawSnapshotSchema.nullable(),
-          source_task_schema: z.enum(["legacy", "1.0"]).optional(),
+          source_task_schema: z.enum(["legacy", "1.0", "2.0"]).optional(),
           record: z.unknown().optional(),
           legacy_facts: z
             .array(
@@ -179,7 +182,9 @@ export const migrationPlan2Schema = z
           target: projectTarget,
           owner: z.enum(["template", "workflow", "artifact", "preserve"]),
           action: z.enum(["write", "preserve", "remove"]),
-          source: rawSnapshotSchema.nullable(),
+          source: z
+            .union([rawSnapshotSchema, preservedTaskArtifactSnapshotSchema])
+            .nullable(),
           target_content_base64: z.string().optional(),
           target_mode: mode.optional(),
         })
@@ -200,6 +205,15 @@ export const migrationPlan2Schema = z
           path: ["tasks", index, "source_task_schema"],
           message: "Mixed predecessor disposition requires source_task_schema",
         });
+      else if (
+        task.source_task_schema === "2.0" &&
+        task.disposition !== "defer"
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["tasks", index, "source_task_schema"],
+          message: "Current Task schema selector is only valid for defer",
+        });
       else if (!requiresSelector && task.source_task_schema !== undefined)
         context.addIssue({
           code: "custom",
@@ -208,6 +222,26 @@ export const migrationPlan2Schema = z
             "source_task_schema is forbidden for this source mode/disposition",
         });
     }
+    for (const [index, file] of plan.files.entries()) {
+      if (
+        file.source !== null &&
+        !("content_base64" in file.source) &&
+        !(
+          file.owner === "preserve" &&
+          file.action === "preserve" &&
+          file.target.path.startsWith(".trellis/tasks/")
+        )
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["files", index, "source"],
+          message:
+            "Content-free snapshots are limited to preserved Task artifacts",
+        });
+    }
   });
 export type MigrationPlan2 = z.infer<typeof migrationPlan2Schema>;
 export type RawSnapshot = z.infer<typeof rawSnapshotSchema>;
+export type PreservedTaskArtifactSnapshot = z.infer<
+  typeof preservedTaskArtifactSnapshotSchema
+>;

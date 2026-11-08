@@ -48,6 +48,7 @@ import { writeFileAtomic } from "../utils/atomic-write.js";
 import {
   migrationPlan2Schema,
   type MigrationPlan2,
+  type PreservedTaskArtifactSnapshot,
   type RawSnapshot,
 } from "./migration2-schema.js";
 import { compareVersions } from "../utils/compare-versions.js";
@@ -67,6 +68,7 @@ function required<T>(value: T | undefined | null): T {
 }
 const json = (bytes: Buffer): unknown =>
   JSON.parse(bytes.toString("utf8")) as unknown;
+type FileSnapshot = RawSnapshot | PreservedTaskArtifactSnapshot;
 function decode(value: string): Buffer {
   const bytes = Buffer.from(value, "base64");
   if (bytes.toString("base64") !== value)
@@ -79,14 +81,24 @@ function snapshotBytes(snapshot: RawSnapshot): Buffer {
     throw new Error("Snapshot raw SHA mismatch");
   return bytes;
 }
+function fileSnapshotWithBytes(snapshot: FileSnapshot): RawSnapshot {
+  if (!("content_base64" in snapshot))
+    throw new Error("Reviewed file snapshot does not contain source bytes");
+  return snapshot;
+}
 /** Validate only the reviewed original; live partial targets are not predecessors. */
 function validatePredecessor(
   mode: MigrationPlan2["source"]["task_schema"],
   task: MigrationPlan2["tasks"][number],
   source: unknown,
-): void {
+): TaskRecordV2 | undefined {
   const schema = mode === "mixed" ? required(task.source_task_schema) : mode;
   try {
+    if (schema === "2.0") {
+      if (task.disposition !== "defer")
+        throw new Error("Current Task schema selector is only valid for defer");
+      return parseTaskRecordV2(source);
+    }
     if (schema === "1.0") {
       taskRecordSchema.parse(source); // Retain canonical field-level diagnostics.
       if (classifyMaintenanceTask(source).kind !== "schema1")
@@ -225,8 +237,20 @@ function liveState(full: string): State | null {
   const stat = fs.lstatSync(full, { throwIfNoEntry: false });
   if (!stat) return null;
   if (!stat.isFile()) throw new Error(`Non-file migration target ${full}`);
+  const digest = createHash("sha256");
+  const descriptor = fs.openSync(full, "r");
+  try {
+    const chunk = Buffer.allocUnsafe(
+      Math.max(1, Math.min(stat.size, 1024 * 1024)),
+    );
+    let count: number;
+    while ((count = fs.readSync(descriptor, chunk, 0, chunk.length, null)) > 0)
+      digest.update(chunk.subarray(0, count));
+  } finally {
+    fs.closeSync(descriptor);
+  }
   return {
-    sha256: rawMigrationDigest(fs.readFileSync(full)),
+    sha256: digest.digest("hex"),
     mode: stat.mode & 0o777,
   };
 }
@@ -377,12 +401,10 @@ export async function migrate2(
   const plan = migrationPlan2Schema.parse(input);
   if (options.from !== plan.source.version || plan.target.version !== VERSION)
     throw new Error("Migration source/target version mismatch");
-  if (
-    !/^(?:0\.6\.(?:0|[1-9]\d*)|0\.7\.0-castbox\.[1-9]\d*)$/.test(
-      plan.source.version,
-    ) ||
-    compareVersions(plan.source.version, VERSION) > 0
-  )
+  const supportedPredecessor = (version: string): boolean =>
+    /^(?:0\.6\.(?:0|[1-9]\d*)|0\.7\.0-castbox\.[1-9]\d*)$/.test(version) &&
+    compareVersions(version, VERSION) <= 0;
+  if (!supportedPredecessor(plan.source.version))
     throw new Error("Unsupported migration source version");
   const cwd = fs.realpathSync(process.cwd());
   const repo = repository(cwd);
@@ -419,6 +441,9 @@ export async function migrate2(
   }
   if (![...roots.values()].includes(cwd))
     throw new Error("Invocation workspace omitted");
+  const invocationWorkspace = required(
+    [...roots].find(([, root]) => root === cwd),
+  )[0];
   const liveRoots = [...repo.roots]
     .map((top) => path.resolve(top, repo.suffix ?? ""))
     .filter((root) => fs.existsSync(path.join(root, ".trellis")))
@@ -437,13 +462,15 @@ export async function migrate2(
     root: string,
     name: string,
     action: MigrationAction["action"],
-    source: RawSnapshot | null,
+    source: FileSnapshot | null,
     bytes?: Buffer,
     mode?: number,
   ): Prepared {
     const full = contained(root, name, root !== repo.common);
     if (byFull.has(full)) throw new Error(`Duplicate write target ${full}`);
-    if (source) snapshotBytes(source);
+    if (source && "content_base64" in source) snapshotBytes(source);
+    else if (source && action !== "preserve")
+      throw new Error(`Content-free snapshot cannot authorize ${action}`);
     const before = source ? { sha256: source.sha256, mode: source.mode } : null;
     const after =
       action === "preserve"
@@ -485,7 +512,12 @@ export async function migrate2(
   }
   const projected = new Map<
     string,
-    { record: TaskRecordV2; active: boolean; workspace: string }
+    {
+      record: TaskRecordV2;
+      active: boolean;
+      workspace: string;
+      current: boolean;
+    }
   >();
   const refs = new Map<string, Set<string>>();
   interface SourceIdentity {
@@ -495,10 +527,23 @@ export async function migrate2(
     active: boolean;
     disposition: string;
     workspace: string;
+    task_ref: string;
+    known_legacy: boolean;
+    completed_predecessor: boolean;
+    source_task_schema?: MigrationPlan2["tasks"][number]["source_task_schema"];
+    record?: TaskRecordV2;
   }
   const identities = new Map<string, SourceIdentity[]>();
   const taskDirectories = new Map<string, string>();
-  const unknownArchiveNames = new Set<string>();
+  const unknownArchiveNames = new Map<
+    string,
+    {
+      workspace: string;
+      visible_name: string;
+      missing_record: boolean;
+      active: boolean;
+    }[]
+  >();
   for (const task of plan.tasks) {
     const root = rootOf(task.workspace);
     const taskPath = contained(root, task.task_ref);
@@ -553,26 +598,43 @@ export async function migrate2(
       /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(header.id)
         ? header.id
         : null;
+    let sourceIdentity: SourceIdentity | undefined;
     if (!validId && task.disposition !== "history_only")
       throw new Error("Invalid source Task identity");
     if (validId) {
-      const identity = validId.toLowerCase();
+      const knownLegacy = isKnownLegacyTaskRecord(source);
+      const generation = knownLegacy ? 0 : header?.lifecycle_generation;
+      const identity = `${validId.toLowerCase()}/${String(generation)}`;
       const members = identities.get(identity) ?? [];
-      members.push({
+      sourceIdentity = {
         id: validId,
-        generation: isKnownLegacyTaskRecord(source)
-          ? 0
-          : header?.lifecycle_generation,
+        generation,
         provenance: header?.source,
         active,
         disposition: task.disposition,
         workspace: task.workspace,
-      });
+        task_ref: task.task_ref,
+        known_legacy: knownLegacy,
+        completed_predecessor: false,
+        source_task_schema: task.source_task_schema,
+      };
+      members.push(sourceIdentity);
       identities.set(identity, members);
     } else {
       const visible = path.posix.basename(task.task_ref);
-      unknownArchiveNames.add(visible.toLowerCase());
-      unknownArchiveNames.add(visible.replace(/^\d+-\d+-/, "").toLowerCase());
+      for (const name of new Set([
+        visible.toLowerCase(),
+        visible.replace(/^\d+-\d+-/, "").toLowerCase(),
+      ])) {
+        const entries = unknownArchiveNames.get(name) ?? [];
+        entries.push({
+          workspace: task.workspace,
+          visible_name: visible,
+          missing_record: task.source === null,
+          active,
+        });
+        unknownArchiveNames.set(name, entries);
+      }
     }
     const converted =
       task.disposition === "convert_active" ||
@@ -591,11 +653,17 @@ export async function migrate2(
             ),
           )
         : parseTaskRecordV2(source);
+      if (sourceIdentity) sourceIdentity.record = record;
       if (!converted && task.record !== undefined)
         throw new Error("Current Task must preserve raw bytes");
       const key = `${record.id}/${record.lifecycle_generation}`;
       if (projected.has(key)) throw new Error(`Ambiguous Task identity ${key}`);
-      projected.set(key, { record, active, workspace: task.workspace });
+      projected.set(key, {
+        record,
+        active,
+        workspace: task.workspace,
+        current: !converted,
+      });
       prepare(
         root,
         `${task.task_ref}/task.json`,
@@ -618,8 +686,17 @@ export async function migrate2(
         throw new Error(
           "Deferred/history Task cannot project execution authority",
         );
-      if (task.disposition === "defer")
-        validatePredecessor(plan.source.task_schema, task, source);
+      if (task.disposition === "defer") {
+        const deferredRecord = validatePredecessor(
+          plan.source.task_schema,
+          task,
+          source,
+        );
+        if (task.source_task_schema === "2.0" && sourceIdentity)
+          sourceIdentity.record = required(deferredRecord);
+        else if (sourceIdentity)
+          sourceIdentity.completed_predecessor = header?.status === "completed";
+      }
       prepare(root, `${task.task_ref}/task.json`, "preserve", task.source);
     }
   }
@@ -629,38 +706,148 @@ export async function migrate2(
     )
       throw new Error(`Incomplete active/archive Task inventory ${id}`);
   }
-  for (const identity of identities.keys())
-    if (unknownArchiveNames.has(identity))
+  const selectedBySession = new Set<string>();
+  for (const session of plan.sessions) {
+    if (session.record !== undefined) {
+      const record = sessionRecord(session.record, 3);
+      selectedBySession.add(
+        `${record.task_id.toLowerCase()}/${record.lifecycle_generation}`,
+      );
+    }
+    // Native readers consume common storage in Git and local storage otherwise.
+    if (
+      repo.common
+        ? session.target.kind !== "common_session"
+        : session.target.kind !== "local_session"
+    )
+      continue;
+    const source = json(snapshotBytes(session.source));
+    if (source === null || typeof source !== "object" || Array.isArray(source))
+      continue;
+    const version = (source as Record<string, unknown>).schema_version;
+    if (version !== 2 && version !== 3) continue;
+    try {
+      const record = sessionRecord(source, version);
+      selectedBySession.add(
+        `${record.task_id.toLowerCase()}/${record.lifecycle_generation}`,
+      );
+    } catch (error) {
+      // Explicitly preserved invalid carriers grant no current selection authority.
+      if (
+        !(error instanceof Error) ||
+        !/^Invalid session (?:record|fields|Delivery selection)$/.test(
+          error.message,
+        )
+      )
+        throw error;
+    }
+  }
+  const identitiesById = new Map<string, SourceIdentity[]>();
+  for (const members of identities.values())
+    for (const member of members) {
+      const key = member.id.toLowerCase();
+      const all = identitiesById.get(key) ?? [];
+      all.push(member);
+      identitiesById.set(key, all);
+    }
+  for (const [identity, members] of identitiesById) {
+    const first = required(members[0]);
+    if (
+      members.length > 1 &&
+      members.some(
+        (member) =>
+          member.id !== first.id ||
+          !Number.isSafeInteger(member.generation) ||
+          Number(member.generation) < 0,
+      )
+    )
+      throw new Error(`Task identity collision ${first.id}`);
+    const unknownEntries = unknownArchiveNames.get(identity) ?? [];
+    const matchingEvidenceAlias = unknownEntries.every(
+      (entry) =>
+        entry.missing_record &&
+        entry.active &&
+        members.some(
+          (member) =>
+            member.workspace === entry.workspace &&
+            !member.active &&
+            member.disposition === "history_only" &&
+            path.posix.basename(member.task_ref) === entry.visible_name,
+        ),
+    );
+    if (unknownEntries.length && !matchingEvidenceAlias)
       throw new Error(`Historical visible-name occupation ${identity}`);
+  }
 
   // Group frozen originals, never live migrated targets: replay must use the
   // same source identity and provenance even after an ordinary partial write.
   const duplicateKeys = new Set<string>();
   for (const members of identities.values()) {
-    if (members.length === 1) continue;
+    const currentPeers = members.filter(
+      (member) =>
+        member.disposition === "defer" && member.source_task_schema === "2.0",
+    );
+    // Even a lone current-schema peer requires a selected authority.
+    if (members.length === 1 && currentPeers.length === 0) continue;
     const first = required(members[0]);
     const activeMembers = members.filter((member) => member.active);
     const historyMembers = members.filter((member) => !member.active);
     const authorities = activeMembers.filter((member) =>
       ["convert_active", "current"].includes(member.disposition),
     );
+    const completedDeferredHistory =
+      activeMembers.length > 0 &&
+      authorities.length === 0 &&
+      activeMembers.every(
+        (member) =>
+          member.disposition === "defer" && member.completed_predecessor,
+      ) &&
+      !selectedBySession.has(
+        `${first.id.toLowerCase()}/${String(first.generation)}`,
+      );
+    const membersByWorkspace = new Map<string, SourceIdentity[]>();
+    for (const member of members) {
+      const workspaceMembers = membersByWorkspace.get(member.workspace) ?? [];
+      workspaceMembers.push(member);
+      membersByWorkspace.set(member.workspace, workspaceMembers);
+    }
+    const duplicateWorkspacesAreActiveHistoryPairs = [
+      ...membersByWorkspace.values(),
+    ].every((workspaceMembers) => {
+      if (workspaceMembers.length === 1) return true;
+      return (
+        workspaceMembers.length === 2 &&
+        workspaceMembers.filter((member) => member.active).length === 1 &&
+        workspaceMembers.filter((member) => !member.active).length === 1 &&
+        workspaceMembers.some((member) => member.disposition === "history_only")
+      );
+    });
+    const assertedProvenance = members.find(
+      (member) => member.provenance !== undefined,
+    )?.provenance;
+    const provenanceMatchesOrIsUnassertedDefer = members.every(
+      (member) =>
+        isDeepStrictEqual(member.provenance, assertedProvenance) ||
+        (member.provenance === undefined &&
+          member.known_legacy &&
+          ["defer", "history_only"].includes(member.disposition)),
+    );
     if (
       !Number.isSafeInteger(first.generation) ||
       Number(first.generation) < 0 ||
-      new Set(members.map((member) => member.workspace)).size !==
-        members.length ||
+      !duplicateWorkspacesAreActiveHistoryPairs ||
       members.some(
         (member) =>
-          member.id !== first.id ||
-          member.generation !== first.generation ||
-          !isDeepStrictEqual(member.provenance, first.provenance),
+          member.id !== first.id || member.generation !== first.generation,
       )
     )
+      throw new Error(`Task identity collision ${first.id}`);
+    if (!provenanceMatchesOrIsUnassertedDefer)
       throw new Error(`Task identity collision ${first.id}`);
     if (
       historyMembers.some((member) => member.disposition !== "history_only") ||
       (activeMembers.length > 0 &&
-        (authorities.length !== 1 ||
+        ((!completedDeferredHistory && authorities.length !== 1) ||
           activeMembers.some(
             (member) =>
               !["convert_active", "current", "defer"].includes(
@@ -671,6 +858,18 @@ export async function migrate2(
       throw new Error(`Task identity collision ${first.id}`);
     if (activeMembers.length > 1)
       duplicateKeys.add(`${first.id}/${String(first.generation)}`);
+    if (currentPeers.length) {
+      const authority = required(
+        projected.get(`${first.id}/${String(first.generation)}`),
+      );
+      if (
+        currentPeers.some(
+          (peer) =>
+            !peer.record || !isDeepStrictEqual(authority.record, peer.record),
+        )
+      )
+        throw new Error(`Current-schema Task peer record mismatch ${first.id}`);
+    }
   }
 
   const bindings = new Map<string, { branch: string; workspace: string }>();
@@ -738,7 +937,15 @@ export async function migrate2(
     if (bindings.has(key)) continue;
     if (fs.lstatSync(full, { throwIfNoEntry: false }) || duplicateKeys.has(key))
       throw new Error(`Missing reviewed branch binding ${key}`);
-    if ([...markers.values()].some(Boolean))
+    const unselectedInvocationCurrent =
+      task.current &&
+      task.workspace === invocationWorkspace &&
+      !selectedBySession.has(key.toLowerCase());
+    if (
+      selectedBySession.has(key.toLowerCase()) ||
+      task.workspace !== invocationWorkspace ||
+      ([...markers.values()].some(Boolean) && !unselectedInvocationCurrent)
+    )
       throw new Error(`binding_required: ${key}`);
     absentBindings.push(full);
   }
@@ -775,7 +982,12 @@ export async function migrate2(
       new Map(
         plan.files
           .filter((file) => file.target.workspace === entry.workspace)
-          .map((file) => [file.target.path, file.source]),
+          .map((file) => [
+            file.target.path,
+            file.source === null || !("content_base64" in file.source)
+              ? null
+              : file.source,
+          ]),
       ),
     );
     if (
@@ -846,8 +1058,9 @@ export async function migrate2(
           expected !== undefined ||
           !ownsRetired(name) ||
           !file.source ||
-          computeHash(snapshotBytes(file.source).toString("utf8")) !==
-            receipt[name]
+          computeHash(
+            snapshotBytes(fileSnapshotWithBytes(file.source)).toString("utf8"),
+          ) !== receipt[name]
         )
           throw new Error(`No receipt-owned retirement authority ${name}`);
       } else if (
@@ -863,7 +1076,7 @@ export async function migrate2(
       const content =
         file.action === "write"
           ? bytes
-          : file.source && snapshotBytes(file.source);
+          : file.source && snapshotBytes(fileSnapshotWithBytes(file.source));
       if (
         !content ||
         !isDeepStrictEqual(
@@ -922,10 +1135,26 @@ export async function migrate2(
     if (
       name === ".trellis/.version" ||
       name === ".trellis/.template-hashes.json" ||
-      /\/task\.json$/.test(name)
+      plan.tasks.some(
+        (task) =>
+          task.workspace === file.target.workspace &&
+          name === `${task.task_ref}/task.json`,
+      )
     )
       throw new Error(
         "Fixed installation/Task target cannot be a file decision",
+      );
+    if (
+      file.source &&
+      !("content_base64" in file.source) &&
+      !plan.tasks.some(
+        (task) =>
+          task.workspace === file.target.workspace &&
+          name.startsWith(`${task.task_ref}/`),
+      )
+    )
+      throw new Error(
+        `Content-free snapshot is not a reviewed Task artifact ${name}`,
       );
     prepare(root, name, file.action, file.source, bytes, file.target_mode);
   }
@@ -1176,11 +1405,15 @@ export async function migrate2(
     if (installationIds.has(installation.workspace))
       throw new Error("Duplicate installation");
     installationIds.add(installation.workspace);
+    const installationVersion = snapshotBytes(installation.version_source)
+      .toString("utf8")
+      .trim();
     if (
-      snapshotBytes(installation.version_source).toString("utf8").trim() !==
-      plan.source.version
+      !supportedPredecessor(installationVersion) ||
+      (installation.workspace === invocationWorkspace &&
+        installationVersion !== plan.source.version)
     )
-      throw new Error("Source installation version mismatch");
+      throw new Error("Unsupported source installation version");
     let hashes = frozenHashes(installation.receipt_source);
     for (const name of Object.keys(hashes))
       if (
@@ -1217,7 +1450,9 @@ export async function migrate2(
     const workflowContent =
       workflow.facts.action === "write"
         ? required(workflow.bytes)
-        : snapshotBytes(required(workflowDecision.source));
+        : snapshotBytes(
+            fileSnapshotWithBytes(required(workflowDecision.source)),
+          );
     hashes = projectWorkflowHashes(
       hashes,
       required(

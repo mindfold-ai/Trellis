@@ -9,6 +9,15 @@ export function isKnownLegacyTaskRecord(value: unknown): boolean {
   if (value === null || typeof value !== "object" || Array.isArray(value))
     return false;
   const old = value as Record<string, unknown>;
+  const legacyExtensionFields = new Set([
+    "design_package",
+    "guru_chain",
+    "guru_gates",
+    "require_req_uc",
+    "requirement_package",
+    "risk",
+    "route",
+  ]);
   const allowed = new Set([
     ...TASK_RECORD_FIELD_ORDER.filter(
       (field) => field !== "source" && field !== "lifecycle_generation",
@@ -17,6 +26,7 @@ export function isKnownLegacyTaskRecord(value: unknown): boolean {
     "creator",
     "assignee",
     "subtasks",
+    ...legacyExtensionFields,
   ]);
   if (Object.keys(old).some((field) => !allowed.has(field))) return false;
   if (
@@ -38,6 +48,8 @@ export function isKnownLegacyTaskRecord(value: unknown): boolean {
     "pr_url",
     "parent",
     "branch",
+    "design_package",
+    "requirement_package",
   ];
   const arrays = ["children", "relatedFiles", "subtasks"];
   return (
@@ -56,6 +68,14 @@ export function isKnownLegacyTaskRecord(value: unknown): boolean {
         (Array.isArray(old[field]) &&
           old[field].every((item: unknown) => typeof item === "string")),
     ) &&
+    ["guru_chain", "risk", "route"].every(
+      (field) => !(field in old) || typeof old[field] === "string",
+    ) &&
+    (!("guru_gates" in old) ||
+      (old.guru_gates !== null &&
+        typeof old.guru_gates === "object" &&
+        !Array.isArray(old.guru_gates))) &&
+    (!("require_req_uc" in old) || typeof old.require_req_uc === "boolean") &&
     (!("meta" in old) ||
       (old.meta !== null &&
         typeof old.meta === "object" &&

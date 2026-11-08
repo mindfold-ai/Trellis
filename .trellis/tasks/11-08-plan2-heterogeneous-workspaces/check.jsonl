@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/cli/backend/commands-migrate.md", "reason": "Review Plan2 source/version/task/binding/session behavior against the migration contract."}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Check identity, generation, branch, session, and archive preservation."}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Check write set, preimage validation, complete inventory, and no-write failure paths."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Review regression coverage and test isolation."}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Review complete Plan2 integration fixture behavior."}
+{"file": ".trellis/spec/cli/backend/migration2-preserved-artifacts.md", "reason": "Closed digest/mode-only preserved artifact source shape and bounded hashing."}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Matching CLI/Core source, package build order and public export boundaries."}
+{"file": ".trellis/tasks/11-08-plan2-heterogeneous-workspaces/research/legacy-source-evidence.md", "reason": "Actual historical Guru extension field source and nullable package path evidence."}

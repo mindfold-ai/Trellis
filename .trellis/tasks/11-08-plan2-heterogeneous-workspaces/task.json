@@ -1,0 +1,26 @@
+{
+  "id": "plan2-heterogeneous-workspaces",
+  "name": "plan2-heterogeneous-workspaces",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Support heterogeneous Plan2 workspace migrations",
+  "description": "Converge the original public Plan2 migration candidates against current main, verify honest historical/session authority and exact preservation, independently review the full range, merge to main, and report a clean matching CLI/Core build source.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P1",
+  "createdAt": "2026-11-08",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": "/Users/wumengye/Documents/GoProjects/Trellis-worktrees/plan2-workspace-version-and-bindings",
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
