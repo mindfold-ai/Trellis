@@ -75,7 +75,7 @@ exercises actual Delivery preflight and `py -3` argv execution. Baseline runs
 stop at their first precise expected defect; candidate runs cover the full chain.
 
 `CI` runs the baseline comparison automatically for PRs and main on
-`windows-2022` (python3 and py). `ubuntu-24.04` and `macos-14` run the full
+`windows-2022` (python3 and py). `ubuntu-24.04` and `macos-15` run the full
 candidate python3 regression, recording baseline comparison as not applicable.
 The affected static-alias selection defect is specific to Windows; the old
 Unix baseline also lacks the newly required automatic-failure-before-update

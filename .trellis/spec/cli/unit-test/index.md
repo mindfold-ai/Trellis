@@ -92,7 +92,7 @@ After writing tests:
 
 Issue 53 adds `scripts/native-python-regression.mjs` as an implementation-independent
 built public-CLI driver. CI runs `windows-2022` with real isolated `python3` and
-`py -3`, and targeted `ubuntu-24.04` / `macos-14` python3 scenarios. Windows
+`py -3`, and targeted `ubuntu-24.04` / `macos-15` python3 scenarios. Windows
 compares independently built affected baseline and candidate with fresh projects;
 Unix runs the complete candidate chain and explicitly records baseline comparison
 as not applicable. Preserve raw subprocess exits and exact assertion failures,
