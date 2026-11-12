@@ -10,6 +10,7 @@ import {
   inspectToolsTarget,
   type ToolsInstallationInput,
   parseToolsInstallationInput,
+  validateToolsInstallation,
 } from "../../src/commands/maintenance/tools.js";
 import {
   applyPlan,
@@ -131,6 +132,21 @@ afterEach(() => {
 });
 
 describe("independent single-checkout tools installation", () => {
+  it("reports the failed native probe stage and exit without echoing Git diagnostics", async () => {
+    const root = temp();
+    seed(root);
+    vi.stubEnv("TRELLIS_PYTHON_CMD", python);
+    const plan = await prepareToolsInstallation(input(root));
+    await applyPlan(plan, path.join(temp(), "state"));
+    // A normal broken Git entry makes native context fail after contract succeeds.
+    write(root, ".git", `gitdir: ${path.join(root, "private-git-diagnostic")}\n`);
+    const before = scan(root);
+    expect(() => validateToolsInstallation(plan, python)).toThrow(
+      /^incomplete_operation: target native context failed: exit 1 \(10000 ms budget\)$/,
+    );
+    expect(scan(root)).toEqual(before);
+  });
+
   it("freezes custom AGENTS before preparation and preserves Core receipts through replay and rollback", async () => {
     const root = temp();
     seed(root);

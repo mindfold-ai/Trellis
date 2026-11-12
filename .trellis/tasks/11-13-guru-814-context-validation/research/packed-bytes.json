@@ -1,0 +1,37 @@
+{
+  "source_head": "aa898d090fc27c9ce6145cfa3c787a6f400da4e2",
+  "requested_source_head": "aa898d090fc27c9ce6145cfa3c787a6f400da4e2",
+  "route": "pnpm pack -> paired local-tarball npm install, isolated prefix; no npm publish",
+  "passed": true,
+  "version": "0.7.0-castbox.6",
+  "cli_core_dependency": "0.7.0-castbox.6",
+  "total_installed_file_count": 1021,
+  "total_verified_file_count": 1021,
+  "expected_file_count": 1021,
+  "checks": [
+    {
+      "package": "@mindfoldhq/trellis-core",
+      "filename": "mindfoldhq-trellis-core-0.7.0-castbox.6.tgz",
+      "sha256": "6528f26f23dc78763737fff28f12d80900b2ffe56558598b4b4a0469048044de",
+      "bytes": 234453,
+      "installed_file_count": 278,
+      "verified_file_count": 278,
+      "byte_and_mode_mismatches": [],
+      "version": "0.7.0-castbox.6",
+      "extra_installed_files": []
+    },
+    {
+      "package": "@mindfoldhq/trellis",
+      "filename": "mindfoldhq-trellis-0.7.0-castbox.6.tgz",
+      "sha256": "d59a3725348d95a8969ce59eccbf201c68536120758f3abafb8294857a5d8ba4",
+      "bytes": 878118,
+      "installed_file_count": 743,
+      "verified_file_count": 743,
+      "byte_and_mode_mismatches": [],
+      "version": "0.7.0-castbox.6",
+      "extra_installed_files": []
+    }
+  ],
+  "raw_report_sha256": "4e21003f52b6ae438c0a1e4bd2d8f23b935ef27080ba7d3168d6fb0726b887cb",
+  "raw_report_location": "Retained with the private packed-pair fixture."
+}
