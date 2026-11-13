@@ -192,3 +192,14 @@ git diff --cached --check
 git diff --cached
 git commit -m 'fix(cli): reduce worktree identity discovery cost'
 ```
+
+## Merged Fork outcome
+
+PR #68 merged as `7a9c62e842001b1d91d6b7feeed36ddd38370da7`.
+Reviewed head `e44ebbb8f0dba9060a25442a2ebb1e888b454113` is reachable
+from live main. The merge tree equals the reviewed tree.
+Main CI run `43336565520` passed all five jobs.
+The native legacy finish owner assessed AC1-AC5 across the whole Fork Task;
+no accepted Fork implementation remains unfinished.
+No natural historical timeout was reproduced. Guru source-lock adoption,
+downstream acceptance and #814 Completion remain separate.
