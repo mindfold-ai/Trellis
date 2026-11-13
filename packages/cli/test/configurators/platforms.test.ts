@@ -338,11 +338,11 @@ describe("configurePlatform", () => {
     }
   });
 
-  it("configurePlatform and collectTemplates agree under Windows python rendering", async () => {
+  it.each(["python", "py -3"])("configurePlatform and collectTemplates agree under Windows %s rendering", async (command) => {
     // `collectPlatformTemplates` rewrites python3 → python for the whole map in
     // one place; `configure` has to reach the same bytes. A site that writes
     // raw content is invisible on macOS/Linux, where the rewrite is a no-op.
-    setResolvedPythonCommand("python");
+    setResolvedPythonCommand(command);
     try {
       for (const id of PLATFORM_IDS) {
         const platformDir = fs.mkdtempSync(
@@ -968,8 +968,8 @@ describe("configurePlatform", () => {
     // CodeRabbit hardening: short child timeout, session isolation, UTF-8 bytes, full log preserve
     expect(hookPy).toContain("timeout=5");
     expect(hookPy).not.toContain("timeout=15");
-    expect(hookPy).toContain("_current_session_ids");
-    expect(hookPy).toContain("never pick by mtime");
+    expect(hookPy).toContain("return resolve_active_task(repo");
+    expect(hookPy).toContain("task_workspace_root");
     expect(hookPy).not.toContain("st_mtime");
     expect(hookPy).toContain('encoded = text.encode("utf-8")');
     expect(hookPy).toContain("full_context = build_context");
@@ -1054,7 +1054,7 @@ describe("configurePlatform", () => {
         path.join(tmpDir, ".dsh", "skills", "trellis-start", "SKILL.md"),
         "utf-8",
       ),
-    ).toContain("--platform dsh");
+    ).toContain("get_context.py --mode continuation");
 
     // Shared workflow skills land in .agents/skills/, entry skills stay private
     expect(

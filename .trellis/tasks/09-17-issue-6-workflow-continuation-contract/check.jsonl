@@ -1,0 +1,7 @@
+{"file":".trellis/spec/cli/backend/commands-workflow.md","reason":"Verify official workflow validity, switch immediacy, update conflict, and .new exclusion contracts."}
+{"file":".trellis/spec/cli/backend/workflow-state-contract.md","reason":"Verify breadcrumbs remain broad lifecycle guidance and do not become a second continuation route table."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Verify meaningful exact assertions cover the bug and avoid tautological template tests."}
+{"file":".trellis/spec/cli/unit-test/integration-patterns.md","reason":"Verify end-to-end init/update/switch and no-op/conflict scenarios use real filesystem flows."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Review data flow across active-task resolution, runtime extraction, workflow files, entry templates, and platform projections."}
+{"file":".trellis/spec/guides/cross-platform-thinking-guide.md","reason":"Verify every generated platform entry and Python runtime path follows the same continuation contract."}
+{"file":".trellis/tasks/09-17-issue-6-workflow-continuation-contract/research/code-map.md","reason":"Focused verification map for canonical sources, exact tests, official workflow files, and out-of-scope resolver ownership."}

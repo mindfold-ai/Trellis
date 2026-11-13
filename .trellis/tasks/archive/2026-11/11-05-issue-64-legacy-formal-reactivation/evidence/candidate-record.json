@@ -1,0 +1,46 @@
+{
+  "repository": "https://github.com/castbox/Trellis",
+  "source_commit": "619133c62d1487c5fbecbf9e00cea9e3f5ea52a6",
+  "tag": "issue-64-candidate-619133c62d14",
+  "maintenance_api": "1.0",
+  "task_schema": "2.0",
+  "version": "0.7.0-castbox.6",
+  "cli_core_dependency": "0.7.0-castbox.6",
+  "candidate_build": {
+    "cli_version": "0.7.0-castbox.6",
+    "core_version": "0.7.0-castbox.6",
+    "cli_digest": "3a6c2830dd4809203223f43642ea27f68f083ac6ad7bbc635570fddf31f879d2",
+    "core_digest": "02f1ffae5c231d9d8a9201eedf773ac51cf61e6877274cd3ed3049af6e6b2c9a"
+  },
+  "packages": [
+    {
+      "filename": "mindfoldhq-trellis-0.7.0-castbox.6.tgz",
+      "sha256": "fca4692419687e89fa9b16b12cab8eed7a0178b6057628d92f45d222085f2fe2"
+    },
+    {
+      "filename": "mindfoldhq-trellis-core-0.7.0-castbox.6.tgz",
+      "sha256": "bf97fe4a875b135899c5e98b3a3e6451db13c68aef986563e9e8f1dbf1cfa2d1"
+    }
+  ],
+  "probe_report_sha256": "d28f648ddd53f38dba95489baf5ca5337b3838b361eb8901fd90764b8f184a04",
+  "probe_status": "passed",
+  "public_subprocess_count": 40,
+  "local_validation": {
+    "core_full_passed": 529,
+    "core_full_skipped": 1,
+    "cli_full_passed": 2434,
+    "targeted_core": 50,
+    "targeted_formal": 42,
+    "targeted_cli_native": 68,
+    "independent_ts_python_parity": 16,
+    "python": "3.9.6",
+    "platform": "macOS",
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": "passed"
+  },
+  "limits": [
+    "Separately pinned Issue 64 build at the existing paired .6 version; does not replace published castbox-v0.7.0-castbox.6 artifacts.",
+    "No npm publication, Guru target installation, historical qualification or joint acceptance."
+  ]
+}

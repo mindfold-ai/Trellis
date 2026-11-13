@@ -1,0 +1,19 @@
+{
+  "frozen_at_utc": "2026-10-17T01:59:12.917153+00:00",
+  "harness_sha256": "39078bb3b6699022de0ac8473e902114e7d4221bcee182b65ff02b3dac75055f",
+  "source_baseline": "b0d87f952043058e21001a002b661bf2db56b1fa",
+  "scenarios": [
+    [
+      2,
+      24
+    ],
+    [
+      6,
+      96
+    ]
+  ],
+  "warmups": 1,
+  "repetitions": 2,
+  "schedule": "sequential; run after main large cohort with no unrelated test/build load",
+  "measurement": "Task object-read=wall time of Git show/ls-tree/cat-file commands; metadata parse=json.loads directly called by task_store.py; other=complete CLI wall minus those disjoint components. Supplemental only, primary acceptance uses frozen benchmark.py total."
+}

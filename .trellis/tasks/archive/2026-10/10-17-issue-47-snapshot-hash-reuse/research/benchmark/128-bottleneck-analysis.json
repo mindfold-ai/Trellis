@@ -1,0 +1,579 @@
+{
+  "scope": "Read-only analysis of retained actual controlled-policy samples; no new invocation, no code or threshold changes.",
+  "cpu_definition": "Sum of each Python process own ru_utime/ru_stime; excludes children and avoids process-group RSS/CPU double counting. Not additive wall attribution.",
+  "component_caveat": "Independent one-observation commit_candidate probe, not nested within wrapper wall; use magnitude only, no subtraction claimed as precise attribution.",
+  "samples": {
+    "128-repeated": {
+      "control-before": {
+        "manual_wall_median_seconds": 0.7031244999961928,
+        "query2_wall_median_seconds": 0.6508882709895261,
+        "separate_component_one_observation_seconds": 0.10206574993208051,
+        "operations": {
+          "manual": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.100493,
+                  "own_system_cpu_seconds": 0.056251999999999996
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.114577,
+                  "own_system_cpu_seconds": 0.031416999999999994
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.118945,
+                  "own_system_cpu_seconds": 0.041073
+                }
+              },
+              "git_process_count": 11,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-list --first-parent 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "diff --name-status 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "rev-parse --verify 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "ls-tree -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.099385,
+                  "own_system_cpu_seconds": 0.054751999999999995
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.116924,
+                  "own_system_cpu_seconds": 0.033497
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.110923,
+                  "own_system_cpu_seconds": 0.03442
+                }
+              },
+              "git_process_count": 11,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-list --first-parent 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "diff --name-status 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "rev-parse --verify 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "ls-tree -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch"
+              ]
+            }
+          ],
+          "query2": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.102917,
+                  "own_system_cpu_seconds": 0.057381999999999996
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.11366099999999998,
+                  "own_system_cpu_seconds": 0.032785999999999996
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.079786,
+                  "own_system_cpu_seconds": 0.029137999999999997
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "rev-list --first-parent --parents 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-parse --git-path shallow",
+                "rev-parse --verify 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "ls-tree -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch",
+                "rev-parse --verify 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "show -s --format=%B 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.103917,
+                  "own_system_cpu_seconds": 0.056784999999999995
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.110066,
+                  "own_system_cpu_seconds": 0.029764
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.078175,
+                  "own_system_cpu_seconds": 0.027501
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "rev-list --first-parent --parents 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-parse --git-path shallow",
+                "rev-parse --verify 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "ls-tree -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch",
+                "rev-parse --verify 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "show -s --format=%B 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f"
+              ]
+            }
+          ]
+        }
+      },
+      "after": {
+        "manual_wall_median_seconds": 0.7166536459699273,
+        "query2_wall_median_seconds": 0.6308290209854022,
+        "separate_component_one_observation_seconds": 0.049698667018674314,
+        "operations": {
+          "manual": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.09152099999999999,
+                  "own_system_cpu_seconds": 0.037481
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.117982,
+                  "own_system_cpu_seconds": 0.034324
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.11624299999999999,
+                  "own_system_cpu_seconds": 0.040453
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-list --first-parent 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "diff --name-status 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m ls-tree -t -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m cat-file --batch-command"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.100421,
+                  "own_system_cpu_seconds": 0.045735
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.12295999999999999,
+                  "own_system_cpu_seconds": 0.036972
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.123125,
+                  "own_system_cpu_seconds": 0.047497
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-list --first-parent 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "diff --name-status 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 --",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m ls-tree -t -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m cat-file --batch-command"
+              ]
+            }
+          ],
+          "query2": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.092869,
+                  "own_system_cpu_seconds": 0.038713
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.115031,
+                  "own_system_cpu_seconds": 0.031677
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.080222,
+                  "own_system_cpu_seconds": 0.029002999999999998
+                }
+              },
+              "git_process_count": 8,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "rev-list --first-parent --parents 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-parse --git-path shallow",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m ls-tree -t -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m cat-file --batch-command",
+                "show -s --format=%B 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.096287,
+                  "own_system_cpu_seconds": 0.038963
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.126278,
+                  "own_system_cpu_seconds": 0.039298
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.081383,
+                  "own_system_cpu_seconds": 0.030757
+                }
+              },
+              "git_process_count": 8,
+              "git_argv": [
+                "cat-file -e 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f^{commit}",
+                "rev-list --first-parent --parents 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "rev-parse --git-path shallow",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m ls-tree -t -z 73530e98dfd85ebb0d668ef04bc05f5060efd7b9 -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m cat-file --batch-command",
+                "show -s --format=%B 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f",
+                "cat-file -e 73530e98dfd85ebb0d668ef04bc05f5060efd7b9^{commit}",
+                "rev-list --parents -n 1 6eb0a42b19f18e876ad522d13b4ccbb6a1abce7f"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "128-mixed": {
+      "control-before": {
+        "manual_wall_median_seconds": 0.7371779165114276,
+        "query2_wall_median_seconds": 0.6683644169825129,
+        "separate_component_one_observation_seconds": 0.10276366700418293,
+        "operations": {
+          "manual": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.104671,
+                  "own_system_cpu_seconds": 0.058213999999999995
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.108136,
+                  "own_system_cpu_seconds": 0.028277999999999998
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.12009900000000001,
+                  "own_system_cpu_seconds": 0.044073999999999995
+                }
+              },
+              "git_process_count": 11,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-list --first-parent 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "diff --name-status 421bda9bacbc95ea9aade703a371289191c5976d 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "rev-parse --verify 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "ls-tree -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.102639,
+                  "own_system_cpu_seconds": 0.058067
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.119535,
+                  "own_system_cpu_seconds": 0.035977999999999996
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.11671,
+                  "own_system_cpu_seconds": 0.039188
+                }
+              },
+              "git_process_count": 11,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-list --first-parent 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "diff --name-status 421bda9bacbc95ea9aade703a371289191c5976d 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "rev-parse --verify 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "ls-tree -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch"
+              ]
+            }
+          ],
+          "query2": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.100878,
+                  "own_system_cpu_seconds": 0.054973999999999995
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.114794,
+                  "own_system_cpu_seconds": 0.034714999999999996
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.076159,
+                  "own_system_cpu_seconds": 0.026101
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "rev-list --first-parent --parents 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-parse --git-path shallow",
+                "rev-parse --verify 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "ls-tree -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch",
+                "rev-parse --verify 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "show -s --format=%B 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.10722899999999999,
+                  "own_system_cpu_seconds": 0.060629999999999996
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.118652,
+                  "own_system_cpu_seconds": 0.035026
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.081841,
+                  "own_system_cpu_seconds": 0.029016
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "rev-list --first-parent --parents 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-parse --git-path shallow",
+                "rev-parse --verify 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "ls-tree -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "cat-file --batch",
+                "rev-parse --verify 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "show -s --format=%B 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d"
+              ]
+            }
+          ]
+        }
+      },
+      "after": {
+        "manual_wall_median_seconds": 0.7313601250061765,
+        "query2_wall_median_seconds": 0.6347855830099434,
+        "separate_component_one_observation_seconds": 0.059252833016216755,
+        "operations": {
+          "manual": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.098552,
+                  "own_system_cpu_seconds": 0.044109999999999996
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.122169,
+                  "own_system_cpu_seconds": 0.037939999999999995
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.12025699999999998,
+                  "own_system_cpu_seconds": 0.044830999999999996
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-list --first-parent 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "diff --name-status 421bda9bacbc95ea9aade703a371289191c5976d 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr ls-tree -t -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr cat-file --batch-command"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.096022,
+                  "own_system_cpu_seconds": 0.040981
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.118617,
+                  "own_system_cpu_seconds": 0.034387
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 6,
+                  "own_user_cpu_seconds": 0.12161,
+                  "own_system_cpu_seconds": 0.046037999999999996
+                }
+              },
+              "git_process_count": 10,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-list --first-parent 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "diff --name-status 421bda9bacbc95ea9aade703a371289191c5976d 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "diff --name-status dacc3ddeeed8a46254e521e7fcf2809614d0a944 421bda9bacbc95ea9aade703a371289191c5976d --",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr ls-tree -t -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr cat-file --batch-command"
+              ]
+            }
+          ],
+          "query2": [
+            {
+              "iteration": 1,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.096691,
+                  "own_system_cpu_seconds": 0.040929
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.11618399999999998,
+                  "own_system_cpu_seconds": 0.03296
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.081491,
+                  "own_system_cpu_seconds": 0.031624
+                }
+              },
+              "git_process_count": 8,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "rev-list --first-parent --parents 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-parse --git-path shallow",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr ls-tree -t -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr cat-file --batch-command",
+                "show -s --format=%B 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d"
+              ]
+            },
+            {
+              "iteration": 2,
+              "python_categories": {
+                "normal_command": {
+                  "process_count": 1,
+                  "own_user_cpu_seconds": 0.100321,
+                  "own_system_cpu_seconds": 0.041663
+                },
+                "managed_runtime_validation": {
+                  "process_count": 3,
+                  "own_user_cpu_seconds": 0.124304,
+                  "own_system_cpu_seconds": 0.037079
+                },
+                "fixed_provider_fixture": {
+                  "process_count": 4,
+                  "own_user_cpu_seconds": 0.082368,
+                  "own_system_cpu_seconds": 0.030519
+                }
+              },
+              "git_process_count": 8,
+              "git_argv": [
+                "cat-file -e 23dbdc011e5302febd27c7499f0cadfca91ba05d^{commit}",
+                "rev-list --first-parent --parents 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "rev-parse --git-path shallow",
+                "--literal-pathspecs -C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr ls-tree -t -z 421bda9bacbc95ea9aade703a371289191c5976d -- .trellis/scripts/common/__pycache__/__init__.cpython-314.pyc .trellis/scripts/common/__pycache__/active_task.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc .trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc .trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc .trellis/scripts/common/__pycache__/io.cpython-314.pyc .trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc .trellis/scripts/common/__pycache__/paths.cpython-314.pyc .trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc .trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc .trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc .trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc app.txt payload/deleted.bin payload/f00000.bin payload/f00001.bin payload/f00002.bin payload/f00003.bin payload/f00004.bin payload/f00005.bin payload/f00006.bin payload/f00007.bin payload/f00008.bin payload/f00009.bin payload/f00010.bin payload/f00011.bin payload/f00012.bin payload/f00013.bin payload/f00014.bin payload/f00015.bin payload/f00016.bin payload/f00017.bin payload/f00018.bin payload/f00019.bin payload/f00020.bin payload/f00021.bin payload/f00022.bin payload/f00023.bin payload/f00024.bin payload/f00025.bin payload/f00026.bin payload/f00027.bin payload/f00028.bin payload/f00029.bin payload/f00030.bin payload/f00031.bin payload/f00032.bin payload/f00033.bin payload/f00034.bin payload/f00035.bin payload/f00036.bin payload/f00037.bin payload/f00038.bin payload/f00039.bin payload/f00040.bin payload/f00041.bin payload/f00042.bin payload/f00043.bin payload/f00044.bin payload/f00045.bin payload/f00046.bin payload/f00047.bin payload/f00048.bin payload/f00049.bin payload/f00050.bin payload/f00051.bin payload/f00052.bin payload/f00053.bin payload/f00054.bin payload/f00055.bin payload/f00056.bin payload/f00057.bin payload/f00058.bin payload/f00059.bin payload/f00060.bin payload/f00061.bin payload/f00062.bin payload/f00063.bin payload/f00064.bin payload/f00065.bin payload/f00066.bin payload/f00067.bin payload/f00068.bin payload/f00069.bin payload/f00070.bin payload/f00071.bin payload/f00072.bin payload/f00073.bin payload/f00074.bin payload/f00075.bin payload/f00076.bin payload/f00077.bin payload/f00078.bin payload/f00079.bin payload/f00080.bin payload/f00081.bin payload/f00082.bin payload/f00083.bin payload/f00084.bin payload/f00085.bin payload/f00086.bin payload/f00087.bin payload/f00088.bin payload/f00089.bin payload/f00090.bin payload/f00091.bin payload/f00092.bin payload/f00093.bin payload/f00094.bin payload/f00095.bin payload/f00096.bin payload/f00097.bin payload/f00098.bin payload/f00099.bin payload/f00100.bin payload/f00101.bin payload/f00102.bin payload/f00103.bin payload/f00104.bin payload/f00105.bin payload/f00106.bin payload/f00107.bin payload/f00108.bin payload/f00109.bin payload/f00110.bin payload/f00111.bin",
+                "-C /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr cat-file --batch-command",
+                "show -s --format=%B 23dbdc011e5302febd27c7499f0cadfca91ba05d",
+                "cat-file -e 421bda9bacbc95ea9aade703a371289191c5976d^{commit}",
+                "rev-list --parents -n 1 23dbdc011e5302febd27c7499f0cadfca91ba05d"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

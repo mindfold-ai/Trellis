@@ -1,0 +1,140 @@
+{
+  "exact_base": "fdb88e8e220b42df0f0b78f8b939e072d36b9be1",
+  "base_tree": "b1967d4637e092c4db481705a838a40ff6a38a57",
+  "fixed_predecessor_source": "1e40014023de53ddfd9368b3fb4d0a7a31e92293",
+  "fixed_cli_tar_sha256": "185ed1db6865b72138bb10b6d799225721bf50fddfb370f84d8ec330558f472d",
+  "fixed_core_tar_sha256": "45bbfee507ed4964649610f703a90ba01c5f5cea21fb95d0845f92ed45302967",
+  "task_schema": "2.0",
+  "delivery_api": "1.0",
+  "plan_schema": "2.0",
+  "future_product_write_set": [
+    {
+      "path": "packages/cli/src/commands/migration2-schema.ts",
+      "base_sha256": "baf5d7f62b4ff6e16a6f32f9e75dc18f41652539ba4da1f0e99244076d1664ee"
+    },
+    {
+      "path": "packages/cli/src/commands/migration2.ts",
+      "base_sha256": "70ae76e4e504a0f60e5753b38a3a7cebb6afcb5b66ef5bfb319378b24165659a"
+    },
+    {
+      "path": "packages/cli/test/commands/migrate2.integration.test.ts",
+      "base_sha256": "2ada5d51874741577c14244a2aa08e5c99b5197d42f5dbf5c05b031a086edf94"
+    },
+    {
+      "path": ".trellis/spec/cli/backend/commands-migrate.md",
+      "base_sha256": "0ee123a93712fb52016eade2ce9e1ce30823e78c932ad5e62bbf4a85df7fc50b"
+    }
+  ],
+  "source_version_for_real_sample": "0.7.0-castbox.3",
+  "real_sample_read_only": "/private/tmp/531-406-history-validation-20261013/406",
+  "kind": "authorized_offline_candidate_validation",
+  "task_ref": ".trellis/tasks/10-13-plan2-mixed-source",
+  "task_source": {
+    "kind": "no_issue"
+  },
+  "authorized": [
+    "task_creation_and_exact_session_binding",
+    "formal_planning_and_review",
+    "task_activation",
+    "four_file_implementation",
+    "regression_and_ordinary_quality_build_tests",
+    "offline_candidate_build_pack_install_rehearsal"
+  ],
+  "candidate_sha": null,
+  "candidate_cli_tar_sha256": "5aeeb81ca72508081b7dd94ddb7a19f69444714f78b3a38858d908196cc77916",
+  "full_plan2_dryrun_executed": false,
+  "proposal_inputs": {
+    "proposal.md": "23ec76dd1245538a5afe3cfa80b642dbe7b257d0be56373a7c33916abf49eb1b",
+    "validation.md": "c202f54c612dbff4efc242be1fbaf6758ff4551dd46f9c3cdb636545118e363f",
+    "write-set.json": "c0d1be10a93b5306346d5bd2f41f028e6625dab5da2a57a307aef27ef44b8e5f"
+  },
+  "not_authorized": [
+    "branch_worktree_creation",
+    "existing_or_real_sample_writes",
+    "commit_push_PR_merge",
+    "Issue_mutation",
+    "release",
+    "outbound_messages"
+  ],
+  "authorization_events": [
+    {
+      "date": "2026-10-13",
+      "user_reply": "确认继续",
+      "approved": "activate Task and implement four-file change with regression and ordinary quality build/tests",
+      "excluded": "offline candidate pack/install/rehearsal, branch/worktree creation, commit/push/PR/merge/release, existing or real sample writes, outbound messages"
+    },
+    {
+      "date": "2026-10-13",
+      "user_reply": "确认继续",
+      "approved": "candidate-validation-plan.md exact offline root, build/pack/install, synthetic full mixed proof and independent audit",
+      "excluded": "commit/push/PR/merge/release, Trellis branch/worktree, existing/real sample writes, outbound messages, old-resource cleanup",
+      "proposal_sha256": "f78831839b7246b3eda385a899b5aef9ecae26d0555968c39b8fec55960a1ae8"
+    }
+  ],
+  "source_quality_snapshot": {
+    "base": "fdb88e8e220b42df0f0b78f8b939e072d36b9be1",
+    "four_file_diff_sha256": "dd98725f2a3d6e4d3d888d5ca21e8dc1ae9da69a1dc4f6d132255348fa42f2e0",
+    "files": [
+      {
+        "path": "packages/cli/src/commands/migration2-schema.ts",
+        "sha256": "64b4be715920c020a7adb27fa03ee49e1c8bea5f04699b195b1b4f45a9728767"
+      },
+      {
+        "path": "packages/cli/src/commands/migration2.ts",
+        "sha256": "6302b38b813832b019df843b8645a6e0e4e97ad745a783d7a766094f3675a80b"
+      },
+      {
+        "path": "packages/cli/test/commands/migrate2.integration.test.ts",
+        "sha256": "29499492eae77ad93b3be114adfff94cd888d9bb1a27f1a606968561e4af24f0"
+      },
+      {
+        "path": ".trellis/spec/cli/backend/commands-migrate.md",
+        "sha256": "2271680d0455f66e9b096dbc2ad1ef8ed01dd479bcaf3f447072631adedfe13a"
+      }
+    ],
+    "source_quality_review": "research/quality-review.md",
+    "whole_task_complete": false,
+    "packed_public_entry_proof": "passed_independent_audit",
+    "candidate_root_proposed": "/tmp/plan2-mixed-source-candidate-9981ff40b934"
+  },
+  "candidate_root": "/tmp/plan2-mixed-source-candidate-9981ff40b934",
+  "candidate_core_tar_sha256": "45bbfee507ed4964649610f703a90ba01c5f5cea21fb95d0845f92ed45302967",
+  "candidate_source_manifest_sha256": "2dd21f6287f0b4ee5d3ed7e8734feeaacdf2df5ca07106a0e261e46b4d3aac68",
+  "candidate_product_commit": null,
+  "candidate_packages": [
+    {
+      "kind": "cli",
+      "archive": "/tmp/plan2-mixed-source-candidate-9981ff40b934/packs/mindfoldhq-trellis-0.7.0-castbox.3.tgz",
+      "tar_sha256": "5aeeb81ca72508081b7dd94ddb7a19f69444714f78b3a38858d908196cc77916",
+      "installed": "/tmp/plan2-mixed-source-candidate-9981ff40b934/installed/node_modules/@mindfoldhq/trellis",
+      "files": 713
+    },
+    {
+      "kind": "core",
+      "archive": "/tmp/plan2-worktree-copies-candidate-q9h3iZ/packs/mindfoldhq-trellis-core-0.7.0-castbox.3.tgz",
+      "tar_sha256": "45bbfee507ed4964649610f703a90ba01c5f5cea21fb95d0845f92ed45302967",
+      "installed": "/tmp/plan2-mixed-source-candidate-9981ff40b934/installed/node_modules/@mindfoldhq/trellis-core",
+      "files": 270
+    }
+  ],
+  "candidate_tool_versions": {
+    "node": "v26.9.0",
+    "pnpm": "10.32.1",
+    "npm": "11.19.1",
+    "python": "Python 3.9.6",
+    "git": "git version 2.54.0 (Apple Git-157)"
+  },
+  "full_plan2_synthetic_dryrun_executed": true,
+  "synthetic_proof_status": "passed",
+  "synthetic_proof_sha256": "867e15a18d779880d35a1b49b4eded999aa6dcee4993f374dcc472c14e990f48",
+  "candidate_evidence": "research/candidate-evidence.json",
+  "real_full_plan2_dryrun_executed": false,
+  "independent_candidate_review": {
+    "path": "research/candidate-quality-review.md",
+    "sha256": "a2da2c063eb14e66930b37b0c615ef93abbd8787cc7f71fd6b86f9cfbb6d8388",
+    "verdict": "passed",
+    "rounds": 1,
+    "acceptance": "R1-R7 and AC1-AC7 within declared synthetic environment",
+    "formal_lifecycle_record": false
+  }
+}

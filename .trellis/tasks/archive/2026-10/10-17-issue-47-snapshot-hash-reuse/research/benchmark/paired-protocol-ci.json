@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "protocol_id": "issue47-ubuntu2404-cohort1",
+  "preregistered_at_utc": "2026-10-17T06:46:34.584067+00:00",
+  "purpose": "One complete paired replication in an isolated standard GitHub-hosted Ubuntu job. Preserve all previous Mac failures. Use original absolute caps plus same-job paired gains; hardware speed alone cannot establish implementation benefit.",
+  "cases": [
+    [
+      3,
+      "repeated"
+    ],
+    [
+      30,
+      "repeated"
+    ],
+    [
+      128,
+      "repeated"
+    ],
+    [
+      128,
+      "mixed"
+    ],
+    [
+      10001,
+      "repeated"
+    ],
+    [
+      10001,
+      "mixed"
+    ]
+  ],
+  "phase_order": [
+    "control-before",
+    "after"
+  ],
+  "repetitions_per_phase": {
+    "first_fresh_manual_warmup": 1,
+    "timed_idempotent_manual_and_query2": 2
+  },
+  "python_version": "3.14.8",
+  "pinned_refs": {
+    "guru": "f70b64b026725b27d59fed17ed710cc2f831439f",
+    "fork_before": "0e3b23a3045357b76e69ca91e84b97b294dfb147"
+  },
+  "after_production_source_commit": "69033a662d68701610f09caa97f1d292bccd1076",
+  "locale": "C",
+  "runner": {
+    "label": "ubuntu-24.04",
+    "image_version": "20261012.334.1",
+    "git_version": "git version 2.55.0",
+    "resource_class": "Standard public GitHub-hosted x64 runner; same fresh VM for all phases; record actual CPU/memory/cgroup and do not select hosts by measured speed.",
+    "scheduling": "Runner default, no taskpolicy or priority changes; no build/test workload in this job."
+  },
+  "source_mtime": 1792204308,
+  "benchmark_directory": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark",
+  "before_runtime_source_checksums": {
+    "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+    "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+    "cli_adapter.py": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+    "config.py": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+    "continuation_contract.py": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+    "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+    "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+    "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+    "delivery_store.py": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+    "git.py": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+    "git_context.py": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+    "git_objects.py": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+    "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+    "log.py": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+    "maintenance.py": "07345928fd631825ac79a5fb949b4cad2b22ea0d198a5b674a02dd1f643d62e2",
+    "packages_context.py": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+    "path_boundary.py": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+    "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+    "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+    "safe_commit.py": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+    "session_context.py": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+    "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+    "task_artifacts.py": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+    "task_context.py": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+    "task_queue.py": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+    "task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+    "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+    "tasks.py": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+    "trellis_config.py": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+    "types.py": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+    "workflow_phase.py": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d"
+  },
+  "after_runtime_source_checksums": {
+    "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+    "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+    "cli_adapter.py": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+    "config.py": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+    "continuation_contract.py": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+    "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+    "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+    "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+    "delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171",
+    "git.py": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+    "git_context.py": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+    "git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+    "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+    "log.py": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+    "maintenance.py": "07345928fd631825ac79a5fb949b4cad2b22ea0d198a5b674a02dd1f643d62e2",
+    "packages_context.py": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+    "path_boundary.py": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+    "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+    "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+    "safe_commit.py": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+    "session_context.py": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+    "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+    "task_artifacts.py": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+    "task_context.py": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+    "task_queue.py": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+    "task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+    "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+    "tasks.py": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+    "trellis_config.py": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+    "types.py": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+    "workflow_phase.py": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d"
+  },
+  "consumer_source_checksums": {
+    "control-before": {
+      "manual_recovery.py": "8d330dea4071cd5fa6e80319d839de8b49ff1fe4aace58753ed4db236ca9bf3f",
+      "history.py": "b221f6fa3725a7e7212fd4bd27c4b8ff4dc281e6262fbd3e3c3b95ed566c2bae"
+    },
+    "after": {
+      "manual_recovery.py": "a825d90a4c04d8f132605ac721bfcfdd7c9f422ddf81fc870635704cfe270500",
+      "history.py": "3bdfa3be274d519f4f6426a44b5b302a7ac64bba6c85e7d43bc9f672a9ea5deb"
+    }
+  },
+  "measurement_tools_checksums": {
+    "residual_benchmark.py": "750174d7db36f4450efc9d1d028bb3d80a475cb1524dc9b3f5bd939e931a3047",
+    "sitecustomize_metrics.py": "6ecc57e946ea8209814560c9444618b298c69efe56c93799295e634195ae8060",
+    "sitecustomize_batch_command_metrics.py": "cc20228c2c8937e151c1fc8eafdd413688a363ef4918645bbc1a712c23fd6363",
+    "evaluate_results.py": "90f1623ad308d02f518e6c460746bd3c36ef1b4116549d0bc011608d02d3b5b5",
+    "prepare_exports.py": "ce7b76c8bb204b2b5abb1331f61b05d5d6edea5c7dd55c4371e4db6a22bc60f4",
+    "prepare_after_projection.py": "7dd51f4d78ec4a2f35675814c976d1ed4613a6eb06073be967288b4433ac4ecd",
+    "isolated-consumer-projection.patch": "4c455a5f384754c575a85d6f9349b4801a81f819c145630616e970c4802f425c",
+    "isolated-consumer-projection-checksums.json": "2801e1cb62ead78ae3c22821b8ec9e9bf2c4029ee4af68201cb2c993b4a699b7",
+    "ci_cohort.py": "f429459ca6e535bde0edc10d82fde5dd1948862c25ebbea5eae384d2c2bfb26b",
+    "ci_fixture.py": "96ead91baa70e49cc56936003b4c843be92ad52546c0749b628cf0b866f5bdac",
+    "ci_phase.py": "a336db8fd9ed5ab3e8511561b5ceb77e7cae3b0daa13b691b4ab1b0fb7a131f6",
+    "ci_support.py": "678a8708baf2abd24b48467eb42b01cf3ab6ea280d67521ffda8f7a05d407750"
+  },
+  "frozen_files_checksums": {
+    "frozen-standards.json": "1a939a9d13f3f92f7aec25bf6d206b15117122d5b0e48956841069a5ba1daffd",
+    "freeze-checksums.json": "de156cf12fad859b50e88dd83bee8cb61b24a5ccbb8712ae6fd0349b1d0c1542",
+    "before-3-repeated.json": "34756b6f110e72eb917e39d4148b04933697534fa6350068f3130eb28a8ee6c9",
+    "control-before-input-3-repeated.json": "2d3c0f861eb2f3ffea41204c214fa10617b43172655828befcd7c566fb0e7c01",
+    "before-30-repeated.json": "7458b1d728b83a2b8b6c0e0a893c75c4daa73522da9532767b80adfe7ad4fa0d",
+    "control-before-input-30-repeated.json": "5b798c925f749ca283dc76d37b93661828646db008864b58ab4dd0d5237d9d5f",
+    "before-128-repeated.json": "8101b3c4bdfaeef913a5206a7e2cb1e5b6cc9b43d5b45428ebe4192bace2f56a",
+    "control-before-input-128-repeated.json": "307f963c7c6cd08e4e83274caf03b981894d6d594d5a8cd97b465539d3da1110",
+    "before-128-mixed.json": "71ee40db464938391587269767cf01d55a0fdf8810108de7f8bd94617f90efe6",
+    "control-before-input-128-mixed.json": "d1fd3605db7cc9abd579b7f6a7596e9d711470efa46294c7fd45e2e1ffa717ba",
+    "before-10001-repeated.json": "d999ff05ca4a5e83a83edfa2d3d34d9a03a3af8fa48a26d14e5e68bcb59979e0",
+    "control-before-input-10001-repeated.json": "c3d95f77b6f77a53794056875ed2fe9ae50d6ec1c892f09e76df4de202675261",
+    "before-10001-mixed.json": "bd5528940b1f3c4fe2c2e3f8f69b02eb4eb5f943b09730c1157d177a87055671",
+    "control-before-input-10001-mixed.json": "d75844d436bfb44f27ece6ad91999915cc30cdeca750a024294308adfb15c8e2"
+  },
+  "workflow_path": ".github/workflows/issue47-benchmark.yml",
+  "workflow_sha256": "3ddc48c8603eddbdd26c2550a6d6b5cd5c86ec51b3dcfe35e1b59ab40f2e809c",
+  "required_absolute_gate": "All original 188 checks and unchanged original evaluator/caps. Do not recompute caps from CI control-before.",
+  "additional_fresh_paired_gates": {
+    "128_paths_manual_and_query2_min_gain_percent": 5,
+    "10001_paths_manual_and_query2_min_gain_percent": 30,
+    "first_fresh_manual_after_max_times_control_before": 1.05
+  },
+  "rss_measurement": {
+    "python": "Every Python process own ru_maxrss Linux KiB multiplied by 1024.",
+    "git": "Every Git process GNU time %M KiB multiplied by 1024; paired args/RSS/exit records must be present.",
+    "scope": "Not concurrent process-group RSS. Missing records or invalid units fail before original evaluation."
+  },
+  "exact_inputs": "Original full commits, candidate paths, modes, deletion entries, blobs and all 14 original pyc identities. Reproduce source mtime and original /var/folders -> /private/var/folders alias; no lifecycle record edits or alternate OIDs.",
+  "setup_policy": {
+    "maintenance": "Set repo-local gc.auto=0 and maintenance.auto=false immediately after each fixture git init, before any commit, identically in preflight/before/after; preserve input OIDs. Record effective values and narrow configuration sources.",
+    "state": "No modifications to local user HOME/global Git, Guru production repository, old archives, Task/gate/Publication facts or original measurement files.",
+    "one_attempt": "Only the registration commit, whose parent is registration_parent and whose latest manifest change is HEAD, may run. Subsequent docs commits skip the job. GITHUB_RUN_ATTEMPT must be 1; O_EXCL markers and fresh outputs prohibit retries. No case selection, unchanged re-registration or alternate runner search."
+  },
+  "preflight": "Pyc/input/runtime/observer/protocol integrity setup checks run before any accepted timing. A setup mismatch is a retained setup failure, never a performance pass. Do not start timings without exact inputs.",
+  "provider": "Same synthetic protocol/semantic fixtures and zero network within measured operations; not live GitHub, AI semantics, or downstream adoption.",
+  "preservation": "Upload complete raw phase metrics and output on success/failure. Preserve all original Mac failures and report this new environment separately.",
+  "limitations": "A pass is limited to this preregistered Ubuntu runner, and does not prove original Mac/default/all-platform performance or downstream Task Completion.",
+  "registration_parent": "a2045aa8f2d960a4487d68af3628655e380713e0"
+}

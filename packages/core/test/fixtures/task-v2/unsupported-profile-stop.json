@@ -1,0 +1,615 @@
+{
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "native-readiness",
+      "publication": "native-publication",
+      "delivery": "native-delivery",
+      "completion": "native-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "schema_version": "2.0",
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 0,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "accepted_scope": {
+      "locator": "requirements.md",
+      "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "deliveries": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "lifecycle_generation": 0,
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "planning_root": "deliveries/11111111-1111-4111-8111-111111111111",
+        "profile": "manual",
+        "phase": "planning",
+        "plan_ref": null,
+        "candidate": null,
+        "results": {
+          "planning": null,
+          "check": null,
+          "full_review": null,
+          "readiness": null
+        },
+        "publication_result": null,
+        "delivery_result": null,
+        "stop_result": null
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "lifecycle_generation": 0,
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "planning_root": "deliveries/22222222-2222-4222-8222-222222222222",
+        "profile": "local_commit",
+        "phase": "implementing",
+        "plan_ref": {
+          "locator": "plan.md",
+          "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "candidate": null,
+        "results": {
+          "planning": {
+            "result_id": "local-plan",
+            "owner_role": "planning",
+            "owner_id": "native-planning",
+            "outcome": "accepted",
+            "scope_ref": {
+              "authority": {
+                "locator": "requirements.md",
+                "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "anchors": [
+                "R1"
+              ]
+            },
+            "plan_ref": {
+              "locator": "plan.md",
+              "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "candidate": null,
+            "predecessor_result_id": null,
+            "obligations": [],
+            "evidence": [
+              {
+                "locator": "https://example.test/evidence",
+                "revision": "1"
+              }
+            ]
+          },
+          "check": null,
+          "full_review": null,
+          "readiness": null
+        },
+        "publication_result": null,
+        "delivery_result": null,
+        "stop_result": null
+      }
+    ],
+    "completion_results": [],
+    "closure_results": []
+  },
+  "steps": [
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "33333333-3333-4333-8333-333333333333"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "manual"
+      },
+      "expect_error": "unsupported_delivery_profile"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "implementation",
+        "owner_id": "native-implementation",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "stop-manual",
+          "owner_id": "native-implementation",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expect_error": "owner_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "implementing",
+        "result": {
+          "result_id": "stop-manual",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expect_error": "stale_phase"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "stop-manual",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expect_error": "delivery_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      },
+      "expect_error": "unsupported_delivery_profile"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "begin_check",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "implementation",
+        "owner_id": "native-implementation",
+        "expected_phase": "implementing",
+        "candidate": {
+          "kind": "git_free",
+          "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "paths": [
+            "artifact.txt"
+          ],
+          "head_ref": null,
+          "base_ref": null
+        }
+      },
+      "expect_error": "unsupported_delivery_profile"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "d1-delivered",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "manual",
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "artifact": {
+            "locator": "artifact.txt",
+            "revision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      },
+      "expect_error": "unsupported_delivery_profile"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "rework",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "target_role": "planning",
+        "reason": {
+          "locator": "https://example.test/scope-withdrawal",
+          "revision": "1"
+        },
+        "affected_results": []
+      },
+      "expect_error": "unsupported_delivery_profile"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "stop-manual",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expected_phase": "stopped",
+      "expected_changed": true
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "stop-manual",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expected_phase": "stopped",
+      "expected_changed": false
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "stop-manual",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "2"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expect_error": "result_identity_conflict"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "stopped",
+        "result": {
+          "result_id": "second-stop",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expect_error": "terminal_delivery"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "33333333-3333-4333-8333-333333333333"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "local_commit"
+      },
+      "expect_error": "unsupported_delivery_profile"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "22222222-2222-4222-8222-222222222222"
+        },
+        "owner_role": "implementation",
+        "owner_id": "native-implementation",
+        "expected_phase": "implementing",
+        "result": {
+          "result_id": "stop-local_commit",
+          "owner_id": "native-implementation",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expected_phase": "stopped",
+      "expected_changed": true
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "22222222-2222-4222-8222-222222222222"
+        },
+        "owner_role": "implementation",
+        "owner_id": "native-implementation",
+        "expected_phase": "implementing",
+        "result": {
+          "result_id": "stop-local_commit",
+          "owner_id": "native-implementation",
+          "evidence": [
+            {
+              "locator": "https://example.test/scope-withdrawal",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          },
+          "scope_decision": {
+            "locator": "https://example.test/scope-withdrawal",
+            "revision": "1"
+          }
+        }
+      },
+      "expected_phase": "stopped",
+      "expected_changed": false
+    }
+  ]
+}

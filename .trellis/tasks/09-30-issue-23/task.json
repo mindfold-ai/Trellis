@@ -1,0 +1,30 @@
+{
+  "id": "issue-23",
+  "name": "issue-23",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 23,
+    "disposition": "exact_source"
+  },
+  "title": "解决 Issue #23",
+  "description": "调查并修复 castbox/Trellis Issue #23",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-09-30",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/issue-23-retire-task-personnel"
+}

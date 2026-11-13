@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { init } from "../commands/init.js";
 import { update } from "../commands/update.js";
+import { migrate } from "../commands/migrate.js";
 import { upgrade } from "../commands/upgrade.js";
 import { uninstall } from "../commands/uninstall.js";
 import { ablate, restore } from "../commands/ablate.js";
@@ -12,6 +13,7 @@ import {
   runWorkflowCommand,
   WorkflowCommandError,
 } from "../commands/workflow.js";
+import { registerMaintenanceCommand } from "../commands/maintenance/command.js";
 import { registerChannelCommand } from "../commands/channel/index.js";
 import { DIR_NAMES } from "../constants/paths.js";
 import { PACKAGE_NAME, VERSION } from "../constants/version.js";
@@ -55,7 +57,11 @@ function checkForUpdates(cwd: string): void {
 
 // Check for updates at CLI startup (only if .trellis exists)
 const cwd = process.cwd();
-if (fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
+if (
+  process.argv[2] !== "migrate" &&
+  process.argv[2] !== "maintain" &&
+  fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))
+) {
   checkForUpdates(cwd);
 }
 
@@ -99,10 +105,6 @@ program
     "Install the Trellis statusLine for Claude Code (off by default)",
   )
   .option("-y, --yes", "Skip prompts and use defaults")
-  .option(
-    "-u, --user <name>",
-    "Initialize developer identity with specified name",
-  )
   .option("-f, --force", "Overwrite existing files without asking")
   .option("-s, --skip-existing", "Skip existing files without asking")
   .option("--monorepo", "Force monorepo mode")
@@ -122,7 +124,7 @@ program
   )
   .option(
     "--workflow <id>",
-    "Workflow template id for .trellis/workflow.md (default: native; e.g., tdd, channel-driven-subagent-dispatch)",
+    "Workflow template id for .trellis/workflow.md (new-install default: native-delivery-v1; native: temporary legacy compatibility)",
   )
   .option(
     "--workflow-source <source>",
@@ -154,14 +156,35 @@ program
   });
 
 program
+  .command("migrate")
+  .description(
+    "Explicit reviewed migration: predecessor plan 1.0 or Task/Delivery plan 2.0",
+  )
+  .requiredOption(
+    "--from <version>",
+    "Exact source core version (plan 2.0 also supports same-version schema cutover)",
+  )
+  .requiredOption(
+    "--plan <file>",
+    "Private reviewed versioned core/task projection; back up preview paths before execution",
+  )
+  .option("--dry-run", "Print exact migration actions without writes")
+  .action(async (options: { from: string; plan: string; dryRun?: boolean }) => {
+    try {
+      console.log(JSON.stringify(await migrate(options)));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+program
   .command("update")
   .description("Update trellis configuration and commands to latest version")
   .option("--dry-run", "Preview changes without applying them")
   .option("-f, --force", "Overwrite all changed files without asking")
   .option("-s, --skip-all", "Skip all changed files without asking")
   .option("-n, --create-new", "Create .new copies for all changed files")
-  .option("--allow-downgrade", "Allow downgrading to an older version")
-  .option("--migrate", "Apply pending file migrations (renames/deletions)")
   .action(async (options: Record<string, unknown>) => {
     try {
       await update({
@@ -169,8 +192,6 @@ program
         force: options.force as boolean,
         skipAll: options.skipAll as boolean,
         createNew: options.createNew as boolean,
-        allowDowngrade: options.allowDowngrade as boolean,
-        migrate: options.migrate as boolean,
       });
     } catch (error) {
       console.error(
@@ -312,11 +333,11 @@ program
 program
   .command("workflow")
   .description(
-    "List or switch the project's .trellis/workflow.md template (native, tdd, channel-driven-subagent-dispatch, or marketplace)",
+    "List or switch .trellis/workflow.md (native-delivery-v1: new-install default; native: temporary legacy compatibility; or marketplace)",
   )
   .option(
     "-t, --template <id>",
-    "Workflow template id (e.g., native, tdd, channel-driven-subagent-dispatch)",
+    "Workflow template id (native-delivery-v1, native for legacy compatibility, or marketplace)",
   )
   .option(
     "-m, --marketplace <source>",
@@ -394,6 +415,7 @@ program
     }
   });
 
+registerMaintenanceCommand(program);
 registerChannelCommand(program);
 
 program.parse();

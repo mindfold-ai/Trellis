@@ -48,7 +48,7 @@ export async function listWorkers(
   input: ListWorkersInput,
 ): Promise<WorkerState[]> {
   const ref = resolve(input);
-  const events = await readChannelEvents(input.channel, ref.project);
+  const events = await readChannelEvents(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events, ref);
   return input.includeTerminal
     ? registry.workers
@@ -69,7 +69,7 @@ export async function* watchWorkers(
   input: WatchWorkersInput,
 ): AsyncGenerator<WorkerState[], void, unknown> {
   const ref = resolve(input);
-  const events = await readChannelEvents(input.channel, ref.project);
+  const events = await readChannelEvents(input.channel, ref.project, undefined, input.cwd);
 
   const snapshot = (): WorkerState[] => {
     const registry = reduceWorkerRegistry(events, ref);
@@ -85,7 +85,9 @@ export async function* watchWorkers(
     project: string;
     sinceSeq: number;
     signal?: AbortSignal;
+    cwd?: string;
   } = { project: ref.project, sinceSeq: input.sinceSeq ?? lastSeq };
+  if (input.cwd !== undefined) watchOpts.cwd = input.cwd;
   if (input.signal) watchOpts.signal = input.signal;
 
   for await (const ev of watchEvents(
@@ -145,15 +147,15 @@ export async function probeWorkerRuntime(
   input: ProbeWorkerRuntimeInput,
 ): Promise<WorkerRuntimeObservation[]> {
   const ref = resolve(input);
-  const events = await readChannelEvents(input.channel, ref.project);
+  const events = await readChannelEvents(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events, ref);
   const observedAt = new Date().toISOString();
   return registry.workers.map((w) => {
     const pid = readPidFile(
-      workerFile(input.channel, w.workerId, "pid", ref.project),
+      workerFile(input.channel, w.workerId, "pid", ref.project, input.cwd),
     );
     const workerPid = readPidFile(
-      workerFile(input.channel, w.workerId, "worker-pid", ref.project),
+      workerFile(input.channel, w.workerId, "worker-pid", ref.project, input.cwd),
     );
     const obs: WorkerRuntimeObservation = {
       workerId: w.workerId,
@@ -194,7 +196,7 @@ export async function reconcileWorkerLiveness(
   input: ReconcileWorkerLivenessInput,
 ): Promise<ReconcileWorkerLivenessResult> {
   const ref = resolve(input);
-  const events = await readChannelEvents(input.channel, ref.project);
+  const events = await readChannelEvents(input.channel, ref.project, undefined, input.cwd);
   const registry = reduceWorkerRegistry(events, ref);
   const observations = await probeWorkerRuntime(input);
   const obsById = new Map(observations.map((o) => [o.workerId, o]));
@@ -230,6 +232,7 @@ export async function reconcileWorkerLiveness(
           input.channel,
           partial as Parameters<typeof appendEvent>[1],
           ref.project,
+          input.cwd,
         ),
       );
     }

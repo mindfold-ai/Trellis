@@ -105,7 +105,6 @@ describe("channel storage and forum channels", () => {
       title: "Channel thread mode",
       description: "Track thread-channel feedback.",
       labels: "channel,ux",
-      assignees: "arch",
     });
     await channelThreadPost("roadmap", {
       as: "arch",
@@ -151,7 +150,6 @@ describe("channel storage and forum channels", () => {
       title: "Channel thread mode",
       status: "processed",
       labels: ["channel", "reviewed"],
-      assignees: ["arch"],
       summary: "Thread channel behavior reviewed.",
       lastSeq: events.at(-1)?.seq,
       comments: 1,

@@ -1,0 +1,14 @@
+{"file": ".trellis/spec/core/backend/index.md", "reason": "Core domain boundary and package-owned validation"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Public exports, CLI/Core ownership, version lock and build order"}
+{"file": ".trellis/spec/cli/backend/commands-migrate.md", "reason": "Preserve Plan1/Plan2, source formats, inherited-copy and same-plan contracts"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Strict current Task/Delivery authority and native migration consumers"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Exact identity, session ownership and retained legacy behavior"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Minimum Python and shipped/dogfood parity"}
+{"file": ".trellis/tasks/10-15-40-independent-install-maintenance/research/tools-installation.md", "reason": "Current tool collector, ownership, public packaging and rollback evidence"}
+{"file": ".trellis/tasks/10-15-40-independent-install-maintenance/research/task-maintenance.md", "reason": "Conversion, historical archive, old carrier retirement and native-reader evidence"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI package guideline map"}
+{"file": ".trellis/spec/cli/backend/commands-update.md", "reason": "Managed files, conflict choices, receipts and ordinary update invariants"}
+{"file": ".trellis/spec/cli/backend/commands-workflow.md", "reason": "Explicit workflow marketplace identity and sidecar/apply semantics"}
+{"file": ".trellis/spec/cli/backend/installed-version.md", "reason": "Ordinary exact-version boundary versus explicit maintenance"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Existing bounded path, ownership and write rules"}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Public independent maintenance contracts, bounded recovery and native acceptance"}

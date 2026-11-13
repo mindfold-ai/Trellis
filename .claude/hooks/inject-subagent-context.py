@@ -28,9 +28,13 @@ warnings.filterwarnings("ignore")
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
+
+# Context injection is read-only, including import caches in a user workspace.
+sys.dont_write_bytecode = True
 
 # Hook hosts send UTF-8 JSON regardless of the process locale.
 _stdin_reconfigure = getattr(sys.stdin, "reconfigure", None)
@@ -74,14 +78,14 @@ AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_RESEARCH)
 
 def find_repo_root(start_path: str) -> str | None:
     """
-    Find git repo root from start_path upwards
+    Find the nearest Trellis workspace or Git repo root from start_path upwards.
 
     Returns:
         Repo root path, or None if not found
     """
     current = Path(start_path).resolve()
     while current != current.parent:
-        if (current / ".git").exists():
+        if (current / ".trellis").is_dir() or (current / ".git").exists():
             return str(current)
         current = current.parent
     return None
@@ -136,7 +140,7 @@ def _detect_platform(input_data: dict) -> str | None:
     return None
 
 
-def get_current_task(
+def _resolve_active_task(
     repo_root: str,
     input_data: dict,
     *,
@@ -144,15 +148,12 @@ def get_current_task(
     allow_single_session_fallback: bool = True,
     allow_environment_context: bool = True,
     require_existing: bool = False,
-) -> str | None:
+):
     """Resolve current task directory through the unified active task resolver."""
     scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
-    try:
-        from common.active_task import resolve_active_task  # type: ignore[import-not-found]
-    except Exception:
-        return None
+    from common.active_task import resolve_active_task  # type: ignore[import-not-found]
 
     active = resolve_active_task(
         Path(repo_root),
@@ -161,7 +162,14 @@ def get_current_task(
         allow_single_session_fallback=allow_single_session_fallback,
         allow_environment_context=allow_environment_context,
     )
-    if require_existing and active.stale:
+    return active
+
+
+def get_current_task(repo_root: str, input_data: dict, **kwargs) -> str | None:
+    """Relative-reference compatibility reader; injection uses ActiveTask fields."""
+    active = _resolve_active_task(repo_root, input_data, **kwargs)
+    if active.error or active.stale:
+        print(f"Trellis task binding error: {active.error or 'stale binding'}", file=sys.stderr)
         return None
     return active.task_path
 
@@ -379,7 +387,8 @@ def _materialize_directory(
         md_files = sorted(
             f
             for f in os.listdir(full_path)
-            if f.endswith(".md") and os.path.isfile(os.path.join(full_path, f))
+            if f.endswith(".md")
+            and os.path.isfile(os.path.join(full_path, f))
         )
         for filename in md_files[:max_files]:
             relative_path = os.path.join(dir_path, filename)
@@ -681,8 +690,25 @@ All the information you need has been prepared for you:
 - Report list of modified/created files when done"""
 
 
-def build_check_prompt(original_prompt: str, context: str) -> str:
+def build_check_prompt(original_prompt: str, context: str, profile: str = "quality") -> str:
     """Build complete prompt for Check"""
+    if profile in ("delivery_check", "delivery_review"):
+        obligations = (
+            "Independent read-only full-range review. Do not edit, self-fix, record gates or dispatch implementation. Report findings to the declared full_review owner."
+            if profile == "delivery_review" else
+            "Follow the active workflow Check owner and exact candidate. Mechanical fixes return to implementation for candidate refresh before any pass."
+        )
+        return f"""<!-- trellis-hook-injected -->
+# Formal Delivery Carrier
+Profile: {profile}
+{obligations}
+Require exact DeliveryKey, candidate, PlanningRoot and applicable owner inputs.
+Carrier identity grants no additional semantic writer.
+
+{context}
+
+## Your Task
+{original_prompt}"""
     return f"""<!-- trellis-hook-injected -->
 # Check Agent Task
 
@@ -910,6 +936,62 @@ Active task: {task_dir}
 {context}"""
 
 
+def _is_legacy_task_record(task_path: Path) -> bool:
+    """Only an explicitly legacy record may use root Task artifacts."""
+    from common.io import read_json_checked  # type: ignore[import-not-found]
+    record, _reason = read_json_checked(task_path / "task.json")
+    return record is not None and "schema_version" not in record
+
+
+def _is_legacy_delivery_query(query: dict, task_path: Path) -> bool:
+    return query.get("code") == "unsupported_task_schema" and _is_legacy_task_record(task_path)
+
+
+def _checker_profile(prompt: str | None, metadata: dict) -> str:
+    """Only an explicit profile field or whole dispatch line selects a gate.
+
+    Codex SubagentStart normally has no prompt/profile. Its unspecified envelope
+    may carry Task scope, but cannot assert a formal Check or Review dispatch.
+    """
+    values = []
+    if "profile" in metadata:
+        values.append(metadata["profile"])
+    if isinstance(prompt, str):
+        values.extend(re.findall(r"^Profile: ([a-z_]+)\s*$", prompt, re.MULTILINE))
+    if not values:
+        return "unspecified" if prompt is None else "quality"
+    if len(set(str(value) for value in values)) != 1 or values[0] not in ("quality", "delivery_check", "delivery_review"):
+        return "invalid_profile"
+    return values[0]
+
+
+def get_task_scope_quality_context(repo_root: str, task_path: Path) -> str:
+    """Read exact Task acceptance only; no root development-plan fallback."""
+    from common.io import read_json_checked  # type: ignore[import-not-found]
+    from common.task_artifacts import artifact_context, authority_locator  # type: ignore[import-not-found]
+    record, reason = read_json_checked(task_path / "task.json")
+    if record is None or record.get("schema_version") != "2.0":
+        raise ValueError(f"task_scope_context_invalid: {reason}")
+    key = {"task_id": record["id"], "lifecycle_generation": record["lifecycle_generation"]}
+    scope = record["accepted_scope"]
+    parts = [
+        "Context mode: task_scope_only\n"
+        "Quality/evidence verification only. No formal Delivery context was loaded.\n"
+        "Do not record lifecycle results, select a Delivery, or use root Task artifacts as Delivery planning.\n"
+        "If the actual dispatch is delivery_check or delivery_review, stop with delivery_selection_required.\n"
+        f"TaskKey: {json.dumps(key)}\nAccepted Task scope: {json.dumps(scope)}",
+    ]
+    if scope and not re.match(r"[a-z][a-z0-9+.-]*://", scope["locator"], re.I):
+        locator = authority_locator(scope, artifact_context(task_path, Path(repo_root), record))
+        limits = _get_limits(repo_root)
+        block = _materialize_artifact(repo_root, locator, "Accepted Task scope (quality only)",
+                                      "Task acceptance context; current contents are not a formal gate result",
+                                      limits, _Budget(limits["max_total_bytes"]))
+        if block:
+            parts.append(block)
+    return "\n\n".join(parts)
+
+
 def _handle_codex_subagent_start(input_data: dict) -> None:
     """Emit Codex developer context for a recognised native Trellis subagent.
 
@@ -918,8 +1000,12 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
     a task from another Codex window when that parent id is absent or stale.
     """
     subagent_type = _codex_subagent_type(input_data)
+    check_profile = _checker_profile(None, input_data) if subagent_type == AGENT_CHECK else None
     parent_session_id = _string_value(input_data.get("session_id"))
     if not subagent_type or not parent_session_id:
+        return
+    if check_profile == "invalid_profile":
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": "invalid_check_profile: conflicting or unsupported explicit profile"}}))
         return
 
     # Payload cwd first, then our own — some hosts (CodeBuddy IDE 4.10.4)
@@ -934,7 +1020,7 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
     if not repo_root:
         return
 
-    task_dir = get_current_task(
+    active = _resolve_active_task(
         repo_root,
         {"session_id": parent_session_id},
         platform="codex",
@@ -942,7 +1028,40 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
         allow_environment_context=False,
         require_existing=True,
     )
-    if not task_dir:
+    if active.error or active.stale:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "SubagentStart",
+            "additionalContext": f"Trellis task binding error: {active.error or 'stale binding'}",
+        }}))
+        return
+    if not active.resolved_task_path:
+        return
+    repo_root = str(active.task_workspace_root)
+    task_dir = (
+        active.task_path if active.task_workspace_root == active.invocation_root
+        else str(active.resolved_task_path)
+    )
+
+    from common.delivery_session import get_current_delivery, planning_directory  # type: ignore[import-not-found]
+    query = get_current_delivery(
+        active.invocation_root, {"session_id": parent_session_id}, "codex",
+        allow_environment_context=False,
+    )
+    if query["kind"] in ("current", "terminal_delivery"):
+        task_dir = str(planning_directory(active.resolved_task_path, active.task_workspace_root, query["key"]["delivery_id"]))
+    elif query["kind"] == "error" and not _is_legacy_delivery_query(query, active.resolved_task_path):
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": f"Trellis Delivery context error: {query['code']}: {query['message']}"}}))
+        return
+    elif query["kind"] == "no_current_delivery":
+        if subagent_type == AGENT_CHECK and check_profile in ("quality", "unspecified"):
+            context = get_task_scope_quality_context(repo_root, active.resolved_task_path)
+            context = f"Caller workspace: {active.invocation_root}\nTask workspace: {repo_root}\n\n{context}"
+            print(json.dumps({"hookSpecificOutput": {
+                "hookEventName": "SubagentStart",
+                "additionalContext": build_codex_subagent_context(subagent_type, task_dir, context),
+            }}, ensure_ascii=False))
+            return
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": "delivery_selection_required: no implementation/check context without an explicitly selected Delivery"}}))
         return
 
     if subagent_type in AGENTS_REQUIRE_TASK:
@@ -960,6 +1079,16 @@ def _handle_codex_subagent_start(input_data: dict) -> None:
     if not context:
         return
 
+    if subagent_type == AGENT_CHECK:
+        if check_profile in ("delivery_check", "delivery_review"):
+            context = build_check_prompt("", context, check_profile)
+        else:
+            context = "Quality context only; hook envelope does not assert a formal gate dispatch.\n" + context
+
+    context = (
+        f"Caller workspace: {active.invocation_root}\n"
+        f"Task workspace: {repo_root}\n\n{context}"
+    )
     output = {
         "hookSpecificOutput": {
             "hookEventName": "SubagentStart",
@@ -1103,18 +1232,22 @@ def main():
     if _hook_event_name(input_data) == "SubagentStart":
         try:
             _handle_codex_subagent_start(input_data)
-        except Exception:
+        except Exception as error:
             # A native context hook must never prevent Codex from spawning the
             # requested child when its runtime state is unavailable or stale.
-            pass
+            print(f"Trellis task context error: {error}", file=sys.stderr)
         sys.exit(0)
 
     subagent_type, original_prompt, tool_input = _parse_hook_input(input_data)
+    check_profile = _checker_profile(original_prompt, tool_input) if subagent_type == AGENT_CHECK else None
     cwd = input_data.get("cwd", os.getcwd())
 
     # Only handle subagent types we care about
     if subagent_type not in AGENTS_ALL:
         sys.exit(0)
+    if check_profile == "invalid_profile":
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "invalid_check_profile: conflicting or unsupported explicit profile"}}))
+        return
 
     # Find repo root
     repo_root = find_repo_root(cwd)
@@ -1122,31 +1255,53 @@ def main():
         sys.exit(0)
 
     # Get current task directory (research doesn't require it)
-    task_dir = get_current_task(repo_root, input_data)
+    platform = _detect_platform(input_data)
+    active = _resolve_active_task(
+        repo_root,
+        input_data,
+        platform=platform,
+        allow_single_session_fallback=True,
+    )
+    if active.error or active.stale:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": f"Trellis task binding error: {active.error or 'stale binding'}",
+        }}))
+        return
+    task_dir = (
+        active.task_path if active.task_workspace_root == active.invocation_root
+        else str(active.resolved_task_path) if active.resolved_task_path else None
+    )
+    repo_root = str(active.task_workspace_root or repo_root)
+
+    if active.resolved_task_path:
+        from common.delivery_session import get_current_delivery, planning_directory  # type: ignore[import-not-found]
+        query = get_current_delivery(active.invocation_root, input_data, platform=platform)
+        if query["kind"] in ("current", "terminal_delivery"):
+            task_dir = str(planning_directory(active.resolved_task_path, active.task_workspace_root, query["key"]["delivery_id"]))
+        elif query["kind"] == "error" and not _is_legacy_delivery_query(query, active.resolved_task_path):
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": f"Trellis Delivery context error: {query['code']}: {query['message']}"}}))
+            return
+        elif query["kind"] == "no_current_delivery":
+            if subagent_type == AGENT_CHECK and check_profile == "quality":
+                context = get_task_scope_quality_context(repo_root, active.resolved_task_path)
+                new_prompt = build_check_prompt(original_prompt, context)
+                new_prompt += f"\n\nCaller workspace: {active.invocation_root}\nTask workspace: {repo_root}"
+                print(json.dumps(_updated_prompt_output(tool_input, new_prompt, platform), ensure_ascii=False))
+                return
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "delivery_selection_required: no implementation/check context without an explicitly selected Delivery"}}))
+            return
+        elif not _is_legacy_task_record(active.resolved_task_path):
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": f"context_required: exact session identity is required for Delivery context ({query['kind']}); no Task-root planning context was loaded"}}))
+            return
 
     # implement/check need task directory
     if subagent_type in AGENTS_REQUIRE_TASK:
         if not task_dir:
             sys.exit(0)
-        # Contain the pointer before reading anything through it. `task.py` now
-        # refuses to store a ref that leaves the repo, but a session file
-        # written before that fix can still hold one, and `trellis update`
-        # does not rewrite session files — so a poisoned pointer outlives the
-        # upgrade that closed the writer. This is the last hop before the
-        # task's prd.md/design.md reach the model prompt, so it checks again.
-        try:
-            root_real = os.path.realpath(repo_root)
-            # `.trellis` may itself be a symlink into a store outside the
-            # repo (#567); its real location is a second legitimate base.
-            workflow_real = os.path.realpath(os.path.join(repo_root, ".trellis"))
-            task_dir_full = os.path.realpath(os.path.join(repo_root, task_dir))
-            if not _real_path_contained(root_real, task_dir_full) and not (
-                _real_path_contained(workflow_real, task_dir_full)
-            ):
-                sys.exit(0)
-        except OSError:
-            sys.exit(0)
-        if not os.path.exists(task_dir_full):
+        # The resolver validates live worktree membership and the effective
+        # tasks root, including supported external tasks-directory symlinks.
+        if not os.path.isdir(os.path.join(repo_root, task_dir)):
             sys.exit(0)
 
     # Check for [finish] marker in prompt (check agent with finish context)
@@ -1159,14 +1314,14 @@ def main():
         new_prompt = build_implement_prompt(original_prompt, context)
     elif subagent_type == AGENT_CHECK:
         assert task_dir is not None  # validated above
-        if is_finish_phase:
+        if is_finish_phase and check_profile == "quality":
             # Finish phase: use finish context (lighter, focused on final verification)
             context = get_finish_context(repo_root, task_dir)
             new_prompt = build_finish_prompt(original_prompt, context)
         else:
             # Regular check phase: use check context (full specs for self-fix loop)
             context = get_check_context(repo_root, task_dir)
-            new_prompt = build_check_prompt(original_prompt, context)
+            new_prompt = build_check_prompt(original_prompt, context, check_profile or "quality")
     elif subagent_type == AGENT_RESEARCH:
         # Research can work without task directory
         context = get_research_context(repo_root, task_dir)
@@ -1177,11 +1332,21 @@ def main():
     if not context:
         sys.exit(0)
 
+    new_prompt += (
+        f"\n\nCaller workspace: {active.invocation_root}\n"
+        f"Task workspace: {repo_root}"
+    )
     # Return updated input. Most platforms ignore unrecognized fields, so we
     # include multiple formats. ZCode is stricter; live probing confirmed the
     # nested Claude-compatible shape below reaches the sub-agent prompt.
+    print(json.dumps(_updated_prompt_output(tool_input, new_prompt, platform), ensure_ascii=False))
+    sys.exit(0)
+
+
+def _updated_prompt_output(tool_input: dict, new_prompt: str, platform: str | None) -> dict:
+    """Preserve each host's existing prompt-replacement envelope."""
     updated = {**tool_input, "prompt": new_prompt}
-    if _detect_platform(input_data) == "zcode":
+    if platform == "zcode":
         output = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -1204,8 +1369,7 @@ def main():
             "updatedInput": updated,
         }
 
-    print(json.dumps(output, ensure_ascii=False))
-    sys.exit(0)
+    return output
 
 
 if __name__ == "__main__":

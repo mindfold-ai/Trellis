@@ -63,7 +63,6 @@ task_path = tasks_dir / name / "task.json"
 data = _read_json_file(task_path)
 title = data.get("title") or data.get("name", "")
 status = data.get("status", "planning")
-assignee = data.get("assignee", "")
 ```
 
 ```python
@@ -73,7 +72,6 @@ class TaskInfo:
     name: str
     title: str
     status: str
-    assignee: str
     priority: str
     directory: Path
 
@@ -127,7 +125,6 @@ from typing import TypedDict, Required, NotRequired
 class TaskData(TypedDict):
     title: Required[str]
     status: Required[str]
-    assignee: NotRequired[str]
     priority: NotRequired[str]
     parent: NotRequired[str]
     children: NotRequired[list[str]]

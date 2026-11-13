@@ -1,0 +1,14 @@
+{
+  "gc.auto": {
+    "effective": "0",
+    "origins": [
+      "local\tfile:.git/config\t0"
+    ]
+  },
+  "maintenance.auto": {
+    "effective": "false",
+    "origins": [
+      "local\tfile:.git/config\tfalse"
+    ]
+  }
+}

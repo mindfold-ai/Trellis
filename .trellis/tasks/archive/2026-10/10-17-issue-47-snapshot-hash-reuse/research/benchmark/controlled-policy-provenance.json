@@ -1,0 +1,23 @@
+{
+  "policy_argv_prefix": [
+    "/usr/sbin/taskpolicy",
+    "-a",
+    "-d",
+    "default",
+    "-t",
+    "0",
+    "-l",
+    "0"
+  ],
+  "process_scoped": true,
+  "global_changes": false,
+  "requires_elevation": false,
+  "manpage": "TASKPOLICY(8), Darwin December4,2025: all children inherit these policies; -a application resource-management policies; -d process disk I/O default; -t throughput tier; -l latency tier.",
+  "capability_probe_only_not_performance_sample": {
+    "returncode": 0,
+    "stdout": "{\"pid\": 43797, \"uid\": 501, \"nice\": 0, \"python\": \"3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]\"}\n",
+    "stderr": ""
+  },
+  "policy_binary_sha256": "68ccc2cfed29e7a14b4124cd5402285eefc0fe323724ce802e66cc566c77dce2",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O"
+}

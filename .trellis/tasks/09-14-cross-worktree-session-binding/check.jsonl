@@ -1,0 +1,6 @@
+{"file":".trellis/spec/cli/backend/identity-free-task-lifecycle.md","reason":"Verify session isolation and historical-data invariants"}
+{"file":".trellis/spec/cli/backend/filesystem-safety.md","reason":"Verify atomic writes and dogfood twins"}
+{"file":".trellis/spec/cli/backend/quality-guidelines.md","reason":"Review every routing consumer"}
+{"file":".trellis/spec/cli/backend/workflow-state-contract.md","reason":"Verify real hook task status"}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Reject mocked membership and tautological tests"}
+{"file":".trellis/tasks/09-14-cross-worktree-session-binding/research/reproduction.md","reason":"Compare fixed outcomes with baseline evidence"}

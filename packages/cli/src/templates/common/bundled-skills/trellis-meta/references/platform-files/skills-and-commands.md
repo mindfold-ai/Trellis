@@ -64,7 +64,7 @@ Commands, prompts, and workflows are usually single files. Their content should 
 - Which scripts to run.
 - How to report after completion.
 
-They should not store task state; task state belongs in `.trellis/tasks/` and `.trellis/.runtime/`.
+They should not store task state or workflow-specific continuation routes. Task state belongs in `.trellis/tasks/` and `.trellis/.runtime/`; active-task continuation belongs in `.trellis/workflow.md`.
 
 ## Local Change Scenarios
 
@@ -74,13 +74,14 @@ They should not store task state; task state belongs in `.trellis/tasks/` and `.
 | Change user command behavior | The corresponding command/prompt/workflow file. |
 | Add a project-local skill | Platform skill directory, or shared `.agents/skills/`. |
 | Let multiple platforms share one capability | Write equivalent skills in each platform skill directory, or use the `.agents/skills/` shared layer on platforms that support it. |
-| Change finish/continue entry points | Platform commands/prompts/workflows. |
+| Change finish entry points | Platform commands/prompts/workflows. |
+| Change active-task continuation | The workflow's `[trellis-continuation]` block, not platform entries. |
 
 ## Modification Principles
 
 1. **Keep entry files short; references carry long content**. This matters especially for multi-file skills like `trellis-meta`.
 2. **Make trigger descriptions specific**. A description that is too broad can mis-trigger; one that is too narrow may not trigger.
-3. **Keep the same semantics consistent across platforms**. File formats can differ, but behavior descriptions should match.
+3. **Keep the same semantics consistent across platforms**. Canonical start/continue files are projections of the shared templates and load the current workflow contract instead of embedding a route table.
 4. **Put project-specific capabilities in local skills**. Do not put team-private flows into public `trellis-meta`.
 
 If the user only wants local AI to know one more project rule, usually create a project-local skill or update `.trellis/spec/` instead of changing a Trellis built-in workflow skill.

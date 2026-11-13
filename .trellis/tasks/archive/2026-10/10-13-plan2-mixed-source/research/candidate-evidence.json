@@ -1,0 +1,1670 @@
+{
+  "base": "fdb88e8e220b42df0f0b78f8b939e072d36b9be1",
+  "four_file_diff_sha256": "dd98725f2a3d6e4d3d888d5ca21e8dc1ae9da69a1dc4f6d132255348fa42f2e0",
+  "source_manifest_digest": "2dd21f6287f0b4ee5d3ed7e8734feeaacdf2df5ca07106a0e261e46b4d3aac68",
+  "candidate_product_commit": null,
+  "packages": [
+    {
+      "kind": "cli",
+      "archive": "/tmp/plan2-mixed-source-candidate-9981ff40b934/packs/mindfoldhq-trellis-0.7.0-castbox.3.tgz",
+      "tar_sha256": "5aeeb81ca72508081b7dd94ddb7a19f69444714f78b3a38858d908196cc77916",
+      "installed": "/tmp/plan2-mixed-source-candidate-9981ff40b934/installed/node_modules/@mindfoldhq/trellis",
+      "files": 713
+    },
+    {
+      "kind": "core",
+      "archive": "/tmp/plan2-worktree-copies-candidate-q9h3iZ/packs/mindfoldhq-trellis-core-0.7.0-castbox.3.tgz",
+      "tar_sha256": "45bbfee507ed4964649610f703a90ba01c5f5cea21fb95d0845f92ed45302967",
+      "installed": "/tmp/plan2-mixed-source-candidate-9981ff40b934/installed/node_modules/@mindfoldhq/trellis-core",
+      "files": 270
+    }
+  ],
+  "versions": {
+    "node": "v26.9.0",
+    "pnpm": "10.32.1",
+    "npm": "11.19.1",
+    "python": "Python 3.9.6",
+    "git": "git version 2.54.0 (Apple Git-157)"
+  },
+  "proof_manifest": "/tmp/plan2-mixed-source-candidate-9981ff40b934/synthetic-proof-attempt5.json",
+  "proof_sha256": "867e15a18d779880d35a1b49b4eded999aa6dcee4993f374dcc472c14e990f48",
+  "proof": {
+    "status": "passed",
+    "python": "Python 3.9.6",
+    "readonly_isolation": {
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "GIT_OPTIONAL_LOCKS": "0"
+    },
+    "installed": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/installed",
+    "harness_sha256": {
+      "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/harness/fixture.mjs": "85285b73474e2928cfac8b47a67c61d61d0df87a5eea072628ebc7c5377b4d46",
+      "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/harness/verify-packages.py": "b328a2f33b2dcc6670430070ab65ac3725a31b2703c56605a736104e47613c50",
+      "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/harness/source-manifest.py": "268940ca238cc7a4a22ed93854fe016c0be2f74a11292cc675a5e1979a924e05",
+      "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/harness/README.md": "d613d61376841cf91ad7dcb97f626a96d16390318b97814a53f59ade6b502205",
+      "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/harness/installed-proof.py": "b61dde58b1da9c28b54952e29f0521cbde9ff10dc27c6e2d337227981cfa8be5",
+      "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/harness/writer-probe.mjs": "c64d1b035f76a641bc934beae1d4135c20a7aa1e554a73b3cc91681453e25303"
+    },
+    "results": [
+      {
+        "status": "passed",
+        "variant": "inventory-schema1",
+        "fixture": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-schema1-attempt5",
+        "plan_sha256": "cd8c34df217fd444a9549838f8b56aa7d6e3e54052834a8786d3ddf4112fb607",
+        "templates": [
+          {
+            "workspace": "left",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          }
+        ],
+        "task_rows": 31,
+        "predecessors": {
+          "1.0": 28,
+          "legacy": 3
+        },
+        "converted": 1,
+        "deferred": 30,
+        "preview_actions": 264,
+        "preview_zero_write": true,
+        "fault_after_schema2": true,
+        "same_frozen_plan_recovery": true,
+        "preserve_zero_writers": true,
+        "completed_replay_zero_writers": true,
+        "installed_python_routes": [
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-schema1-attempt5/left",
+            "task_id": "synthetic-0",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-schema1-attempt5/left",
+            "delivery_id": "00000000-0000-0000-0000-000000000001"
+          }
+        ],
+        "deferred_exact_selection_rejection": false,
+        "third_states": [
+          "source-bytes",
+          "source-mode",
+          "target-bytes",
+          "target-mode"
+        ],
+        "third_states_zero_write": true,
+        "exact_rollback": true,
+        "original_entries": 645,
+        "commands": 21
+      },
+      {
+        "status": "passed",
+        "variant": "inventory-legacy",
+        "fixture": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-legacy-attempt5",
+        "plan_sha256": "12f5785b41cec176349179d182a3e7217c0a36a0f16e2e327d020ccebb79c828",
+        "templates": [
+          {
+            "workspace": "left",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          }
+        ],
+        "task_rows": 31,
+        "predecessors": {
+          "1.0": 28,
+          "legacy": 3
+        },
+        "converted": 1,
+        "deferred": 30,
+        "preview_actions": 264,
+        "preview_zero_write": true,
+        "fault_after_schema2": true,
+        "same_frozen_plan_recovery": true,
+        "preserve_zero_writers": true,
+        "completed_replay_zero_writers": true,
+        "installed_python_routes": [
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-legacy-attempt5/left",
+            "task_id": "synthetic-28",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-legacy-attempt5/left",
+            "delivery_id": "00000000-0000-0000-0000-000000000029"
+          }
+        ],
+        "deferred_exact_selection_rejection": false,
+        "third_states": [
+          "source-bytes",
+          "source-mode",
+          "target-bytes",
+          "target-mode"
+        ],
+        "third_states_zero_write": true,
+        "exact_rollback": true,
+        "original_entries": 645,
+        "commands": 21
+      },
+      {
+        "status": "passed",
+        "variant": "inventory-archive",
+        "fixture": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/inventory-archive-attempt5",
+        "plan_sha256": "a3757fbf58f0f7bb572d3cb939e394d63ee90ab3d714a097bf055235a77178bd",
+        "templates": [
+          {
+            "workspace": "left",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          }
+        ],
+        "task_rows": 31,
+        "predecessors": {
+          "1.0": 28,
+          "legacy": 3
+        },
+        "converted": 1,
+        "deferred": 30,
+        "preview_actions": 263,
+        "preview_zero_write": true,
+        "fault_after_schema2": true,
+        "same_frozen_plan_recovery": true,
+        "preserve_zero_writers": true,
+        "completed_replay_zero_writers": true,
+        "installed_python_routes": [],
+        "deferred_exact_selection_rejection": false,
+        "third_states": [
+          "source-bytes",
+          "source-mode",
+          "target-bytes",
+          "target-mode"
+        ],
+        "third_states_zero_write": true,
+        "exact_rollback": true,
+        "original_entries": 648,
+        "commands": 15
+      },
+      {
+        "status": "passed",
+        "variant": "siblings",
+        "fixture": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5",
+        "plan_sha256": "b4b9fc0c9b95c95e53c9b49854b459359c6b1cfbbdf94bf555ca2a97fdbbcda4",
+        "templates": [
+          {
+            "workspace": "left",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          },
+          {
+            "workspace": "right",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          }
+        ],
+        "task_rows": 4,
+        "predecessors": {
+          "1.0": 2,
+          "legacy": 2
+        },
+        "converted": 2,
+        "deferred": 2,
+        "preview_actions": 124,
+        "preview_zero_write": true,
+        "fault_after_schema2": true,
+        "same_frozen_plan_recovery": true,
+        "preserve_zero_writers": true,
+        "completed_replay_zero_writers": true,
+        "installed_python_routes": [
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/left",
+            "task_id": "synthetic-0",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/left",
+            "delivery_id": "00000000-0000-0000-0000-000000000001"
+          },
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/left",
+            "task_id": "synthetic-1",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/right",
+            "delivery_id": "00000000-0000-0000-0000-000000000002"
+          },
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/right",
+            "task_id": "synthetic-0",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/left",
+            "delivery_id": "00000000-0000-0000-0000-000000000001"
+          },
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/right",
+            "task_id": "synthetic-1",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-attempt5/right",
+            "delivery_id": "00000000-0000-0000-0000-000000000002"
+          }
+        ],
+        "deferred_exact_selection_rejection": true,
+        "third_states": [
+          "source-bytes",
+          "source-mode",
+          "target-bytes",
+          "target-mode",
+          "binding-bytes",
+          "binding-mode"
+        ],
+        "third_states_zero_write": true,
+        "exact_rollback": true,
+        "original_entries": 160,
+        "commands": 47
+      },
+      {
+        "status": "passed",
+        "variant": "siblings-reverse",
+        "fixture": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5",
+        "plan_sha256": "77285a6b1a8158c745037ea615355d294da8386436b9a0226869e74ab0a151a2",
+        "templates": [
+          {
+            "workspace": "left",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          },
+          {
+            "workspace": "right",
+            "candidate_sha256": "214d0816c4490819b2832290678477065697f9e06c63372d5e5f759e82cc184b",
+            "files": [
+              {
+                "path": ".trellis/agents/check.md",
+                "sha256": "129925e13e91e59ac7e02834387f5e57cc80681c2da313f24b798f55c6585e5a",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/agents/implement.md",
+                "sha256": "b5cec5542f8749977db7363ca18fd427b6a78993dfa6034b55ea8d5fc3e371e5",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/delivery-contract.md",
+                "sha256": "c3ef6ee039283f2d3e12b649a3b00f47e624c18e1514ce59bad99e7898c55d75",
+                "mode": 420
+              },
+              {
+                "path": ".trellis/scripts/__init__.py",
+                "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/__init__.py",
+                "sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/active_task.py",
+                "sha256": "decabb799de5cdfda94ddc58450e3a33fc926a639e02f46b163b0324a21f043e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/cli_adapter.py",
+                "sha256": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/config.py",
+                "sha256": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/continuation_contract.py",
+                "sha256": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_operations.py",
+                "sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_schema.py",
+                "sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_session.py",
+                "sha256": "f58f16b9e25acb6e7bdb1e67af638fbb76b820973fafa70207b3e2eef9c49ad2",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/delivery_store.py",
+                "sha256": "7feea8298eea9b07f7910b9900b4232d8a38e26dbb5e5220bec7ce9b8fd5b663",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git_context.py",
+                "sha256": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/git.py",
+                "sha256": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/io.py",
+                "sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/log.py",
+                "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/packages_context.py",
+                "sha256": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/path_boundary.py",
+                "sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/paths.py",
+                "sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/runtime_contract.py",
+                "sha256": "01c018e1fc86be014a0ddda9eb594f5988eeb39af5df58de09bbc8297f0d7754",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/safe_commit.py",
+                "sha256": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_context.py",
+                "sha256": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/session_storage.py",
+                "sha256": "ae1b904107f704664d5218ef0621b2977b37afc917a0e2200fb19e636c2077b0",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_artifacts.py",
+                "sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_context.py",
+                "sha256": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_queue.py",
+                "sha256": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_store.py",
+                "sha256": "7edb4a62ca9e48864a70d220def7d9b8228a371dae88e49e6a3b386f5797447a",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/task_utils.py",
+                "sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/tasks.py",
+                "sha256": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/trellis_config.py",
+                "sha256": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/types.py",
+                "sha256": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/common/workflow_phase.py",
+                "sha256": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/delivery.py",
+                "sha256": "8c40c05f10d5ba6ca99d8c5cfb46b2d3a637e3ff7dc267d007705ec2bb5c802c",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/get_context.py",
+                "sha256": "99383d8a93115d27390018939a3ddee757576f1840b2b5d1c435d06ddd41cd62",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/hooks/linear_sync.py",
+                "sha256": "cbaa3c1cdbe25ad3ba82b0eec7bec17d2529922bd505110dfb3b98760c542996",
+                "mode": 493
+              },
+              {
+                "path": ".trellis/scripts/task.py",
+                "sha256": "5602e3f1fff5f9debd478860344ab04614626973c8076df29b49848c065c6943",
+                "mode": 493
+              }
+            ]
+          }
+        ],
+        "task_rows": 4,
+        "predecessors": {
+          "1.0": 2,
+          "legacy": 2
+        },
+        "converted": 2,
+        "deferred": 2,
+        "preview_actions": 124,
+        "preview_zero_write": true,
+        "fault_after_schema2": true,
+        "same_frozen_plan_recovery": true,
+        "preserve_zero_writers": true,
+        "completed_replay_zero_writers": true,
+        "installed_python_routes": [
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/left",
+            "task_id": "synthetic-0",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/left",
+            "delivery_id": "00000000-0000-0000-0000-000000000001"
+          },
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/left",
+            "task_id": "synthetic-1",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/right",
+            "delivery_id": "00000000-0000-0000-0000-000000000002"
+          },
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/right",
+            "task_id": "synthetic-0",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/left",
+            "delivery_id": "00000000-0000-0000-0000-000000000001"
+          },
+          {
+            "invocation_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/right",
+            "task_id": "synthetic-1",
+            "generation": 0,
+            "resolved_root": "/private/tmp/plan2-mixed-source-candidate-9981ff40b934/fixtures/siblings-reverse-attempt5/right",
+            "delivery_id": "00000000-0000-0000-0000-000000000002"
+          }
+        ],
+        "deferred_exact_selection_rejection": true,
+        "third_states": [
+          "source-bytes",
+          "source-mode",
+          "target-bytes",
+          "target-mode",
+          "binding-bytes",
+          "binding-mode"
+        ],
+        "third_states_zero_write": true,
+        "exact_rollback": true,
+        "original_entries": 160,
+        "commands": 47
+      }
+    ]
+  },
+  "artifact_index": "/tmp/plan2-mixed-source-candidate-9981ff40b934/evidence-index.json",
+  "artifact_index_sha256": "a988d4d686e1b02ad8f158e587031b90a97b08abecf77813175a4a30ede661ff",
+  "artifact_index_entries": 6450,
+  "build_install_commands": [
+    {
+      "command": "pnpm build:cli",
+      "cwd": "/Users/wumengye/Documents/GoProjects/Trellis",
+      "exit_code": 0,
+      "log": "/tmp/plan2-mixed-source-candidate-9981ff40b934/logs/build-cli.log",
+      "log_sha256": "dac1875c055259b60e2d4955198f9498b4c224610a8b5252fafd09a6e94398d8"
+    },
+    {
+      "command": "pnpm --dir packages/cli pack --pack-destination /tmp/plan2-mixed-source-candidate-9981ff40b934/packs",
+      "cwd": "/Users/wumengye/Documents/GoProjects/Trellis",
+      "exit_code": 0,
+      "log": "/tmp/plan2-mixed-source-candidate-9981ff40b934/logs/pack-cli.log",
+      "log_sha256": "8bb8017a36a9b2a00a719896e7ec9264fa088d28a8c4cbf84bc4186de4fb3b43"
+    },
+    {
+      "command": "npm install --prefix /tmp/plan2-mixed-source-candidate-9981ff40b934/installed --cache /tmp/plan2-mixed-source-candidate-9981ff40b934/npm-cache --ignore-scripts --no-audit --no-fund /tmp/plan2-mixed-source-candidate-9981ff40b934/packs/mindfoldhq-trellis-0.7.0-castbox.3.tgz /tmp/plan2-worktree-copies-candidate-q9h3iZ/packs/mindfoldhq-trellis-core-0.7.0-castbox.3.tgz",
+      "cwd": "/Users/wumengye/Documents/GoProjects/Trellis",
+      "exit_code": 0,
+      "log": "/tmp/plan2-mixed-source-candidate-9981ff40b934/logs/install.log",
+      "log_sha256": "8a95c1cad425447fa5eae016a2e615cf50c93d618d8ad2b9422ad21bb261aa62"
+    },
+    {
+      "command": "python3 /tmp/plan2-mixed-source-candidate-9981ff40b934/harness/verify-packages.py",
+      "cwd": "/Users/wumengye/Documents/GoProjects/Trellis",
+      "exit_code": 0,
+      "log": "/tmp/plan2-mixed-source-candidate-9981ff40b934/logs/package-verification.log",
+      "log_sha256": "83e0b703f606da407736582fa7079848e34f8e2a206901c030a5733e34e0d9a4"
+    }
+  ],
+  "selected_artifact_sha256": {
+    "source-before.json": "3447f8585865010e2126eda812ba5aaf3522f40ab08241cdc3238e9bdc8584a3",
+    "source-after-pack.json": "3447f8585865010e2126eda812ba5aaf3522f40ab08241cdc3238e9bdc8584a3",
+    "source-after-proof.json": "3447f8585865010e2126eda812ba5aaf3522f40ab08241cdc3238e9bdc8584a3",
+    "package-install-manifest.json": "e364d0cd84dc79e2d83fd97fbc1c1692bff627997219ba817697736fbe1fe79a",
+    "logs/package-verification-after-proof.log": "83e0b703f606da407736582fa7079848e34f8e2a206901c030a5733e34e0d9a4"
+  }
+}

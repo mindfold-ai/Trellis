@@ -79,15 +79,34 @@ describe("ablate()/restore() integration", () => {
 
   async function initialize(): Promise<void> {
     fs.writeFileSync(path.join(projectDir, "application.txt"), "unchanged\n");
-    await init({ yes: true, codex: true, claude: true, force: true });
+    await init({
+      yes: true,
+      codex: true,
+      claude: true,
+      force: true,
+    });
   }
 
   function projectFingerprint(): PathFingerprint {
     return fingerprintPath(projectDir);
   }
 
+  it("preserves unknown project files through ablate and restore", async () => {
+    await initialize();
+    const unknown = path.join(projectDir, ".trellis", "custom", "note.txt");
+    fs.mkdirSync(path.dirname(unknown), { recursive: true });
+    fs.writeFileSync(unknown, "user content");
+    await ablate({ yes: true });
+    expect(fs.readFileSync(unknown, "utf8")).toBe("user content");
+    const transaction = getTransactionPaths(projectDir);
+    expect(fs.existsSync(path.join(transaction.backupDir, ".trellis/custom/note.txt"))).toBe(false);
+    await restore({ yes: true });
+    expect(fs.readFileSync(unknown, "utf8")).toBe("user content");
+  });
   it("#1 performs a complete exact round trip while preserving user neighbors", async () => {
     await initialize();
+    if (process.platform !== "win32")
+      fs.chmodSync(path.join(projectDir, ".trellis"), 0o700);
     const sensitiveTask = path.join(
       projectDir,
       ".trellis",
@@ -206,7 +225,11 @@ describe("ablate()/restore() integration", () => {
   it.skipIf(process.platform === "win32")(
     "#7 refuses parent-symlink traversal without touching the target",
     async () => {
-      await init({ yes: true, codex: true, force: true });
+      await init({
+        yes: true,
+        codex: true,
+        force: true,
+      });
       const originalCodex = path.join(projectDir, ".codex");
       const externalCodex = fs.mkdtempSync(
         path.join(os.tmpdir(), "trellis-ablate-external-"),
@@ -264,7 +287,11 @@ describe("ablate()/restore() integration", () => {
   it.skipIf(process.platform === "win32")(
     "#10 apply failure rolls back exactly and removes the unused transaction",
     async () => {
-      await init({ yes: true, codex: true, force: true });
+      await init({
+        yes: true,
+        codex: true,
+        force: true,
+      });
       const blockedRelative = Object.keys(loadHashes(projectDir)).find(
         (entry) => entry.startsWith(".codex/hooks/"),
       );

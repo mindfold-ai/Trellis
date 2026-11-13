@@ -1,0 +1,29 @@
+{
+  "id": "31-native-delivery-lifecycle",
+  "name": "31-native-delivery-lifecycle",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 31,
+    "disposition": "exact_source"
+  },
+  "title": "Issue #31: Native Delivery lifecycle and Task phase migration",
+  "description": "Independently deliver and accept upstream Task schema 2.0 / Delivery API 1.0, native workflow/default adoption, reviewed migration and platform/interface validation; downstream integration, joint acceptance and global legacy retirement are outside this Task.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-12",
+  "completedAt": "2026-10-13",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "bd18d5c91ffb10e3ee9e783f04dadc5cb3fccd14",
+  "pr_url": "https://github.com/castbox/Trellis/pull/34",
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Whole revised upstream scope accepted after two complete clean reviews on source5181ab66. D1/D2 PR32/33 and final PR34 merged; actual Ubuntu CI38323886406 passed. Issue31 separately closed completed. See implement.md section7. No downstream prerequisite/joint acceptance or release claimed.",
+  "meta": {}
+}

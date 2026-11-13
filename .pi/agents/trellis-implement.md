@@ -11,24 +11,45 @@ This platform does NOT auto-inject task context via hook. Before doing anything 
 
 ### Step 1: Find the active task path
 
-Try in order — stop at the first one that yields a task path:
+Resolve both the task path and its workspace before reading context:
 
-1. **Look at the dispatch prompt** you received from the main agent. If its first line is `Active task: <path>` (e.g. `Active task: .trellis/tasks/04-17-foo`), use that path. The main agent is required to include this line on class-2 platforms.
-2. **Run** `python3 ./.trellis/scripts/task.py current --source` and read the `Current task:` line.
-3. **If both fail** (no `Active task:` line in the prompt and `task.py current` returns no task), ask the user which task to work on; do NOT guess.
+1. **Look at the dispatch prompt** for `Active task: <path>` and an explicit `Task workspace:`. An absolute task path under `<workspace>/.trellis/tasks/` identifies its workspace. A relative task path alone does not identify which Git worktree owns it.
+2. **Run** `python3 ./.trellis/scripts/task.py current --json` when workspace identity is missing. Require a successful, non-stale result without `error`; use `resolved_task_path` and `task_workspace_root`, not a path joined to the invoking checkout. If a dispatch hint conflicts with the validated binding, ask the main agent to reconcile it.
+3. **If neither source supplies an unambiguous task workspace**, ask the main agent or user for the absolute task path/workspace. Do NOT select a same-named local task or another session's task.
+
+For human-readable inspection, `python3 ./.trellis/scripts/task.py current --source` also shows `Current task:` and `Task workspace:`. Cross-worktree task paths are absolute. Use the JSON fields above when loading context programmatically.
+
+### Delivery context and profiles
+
+For a schema-2 Task, query `python3 .trellis/scripts/delivery.py current --json`
+from the verified workspace unless dispatch supplies an exact DeliveryKey and
+planning_root. Use the selected Delivery planning_root as `<task-path>` below;
+root Task PRD remains whole-scope authority. Missing/stale selection is an error,
+never root-artifact fallback. For `Profile: delivery_review`, remain read-only,
+review the complete intended range, report findings, and perform no self-fixes,
+lifecycle writes or implementation dispatch. The formal owner records outcomes.
 
 ### Step 2: Load task context from the resolved path
 
 1. Read `<task-path>/implement.jsonl` — JSONL list of spec/research files relevant to this agent.
-2. For each entry in the JSONL, Read its `file` path — these are the specs and research notes you must follow.
+2. For each entry in the JSONL, resolve a relative `file` path against `task_workspace_root`, never the invocation checkout or the manifest directory. Read these specs/research files within the existing context trust and historical-data boundaries.
    **Skip rows without a `"file"` field** (e.g. `{"_example": "..."}` placeholder rows left over from an older `task.py create`).
 3. Read the task's `prd.md` (requirements), then `design.md` if present (technical design), then `implement.md` if present (execution plan).
 
-If `implement.jsonl` has no curated entries (empty, only a placeholder row, or the file is missing), fall back to: read the task artifacts, list available specs with `python3 ./.trellis/scripts/get_context.py --mode packages`, and pick the specs that match the task domain yourself. Do NOT block on the missing jsonl — lightweight tasks may be PRD-only, while complex tasks may also include `design.md` and `implement.md`.
+If `implement.jsonl` has no curated entries (empty, only a placeholder row, or the file is missing), fall back to: read the task artifacts, run `python3 ./.trellis/scripts/get_context.py --mode packages` from `task_workspace_root`, and pick the specs that match the task domain yourself. Do NOT block on the missing jsonl — lightweight tasks may be PRD-only, while complex tasks may also include `design.md` and `implement.md`.
 
 If the resolved task path has no `prd.md`, ask the user what to work on; do NOT proceed without context.
 
 ---
+
+## Delivery context boundary
+
+For schema-2 Tasks, read the exact DeliveryKey/planning_root supplied by dispatch,
+or query delivery.py current --json from the verified workspace. Load manifests
+and PRD/design/implement from that selected Delivery, plus root Task accepted
+scope. Never infer selection from inventory or fall back to root Task planning.
+A missing/stale Delivery selection stops implementation with a concrete diagnostic.
+
 
 # Implement Agent
 

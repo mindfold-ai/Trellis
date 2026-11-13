@@ -1,0 +1,143 @@
+{
+  "scope": "This preregistered Ubuntu runner only; previous Mac failures remain unchanged",
+  "protocol_sha256": "2c3acea9c855001d26d5c6ab2a9f751b41c82f111b7801eda03c7c21e5c60ead",
+  "absolute_check_count": 188,
+  "absolute_checks_passed": false,
+  "paired_checks": [
+    {
+      "check": "3-repeated/exact_head",
+      "passed": true
+    },
+    {
+      "check": "3-repeated/same_candidate_count",
+      "passed": true
+    },
+    {
+      "check": "30-repeated/exact_head",
+      "passed": true
+    },
+    {
+      "check": "30-repeated/same_candidate_count",
+      "passed": true
+    },
+    {
+      "check": "128-repeated/exact_head",
+      "passed": true
+    },
+    {
+      "check": "128-repeated/same_candidate_count",
+      "passed": true
+    },
+    {
+      "check": "128-repeated/manual_paired_gain",
+      "passed": true,
+      "before_seconds": 0.853465460999999,
+      "after_seconds": 0.8002187140000103,
+      "after_max_seconds": 0.810792187949999
+    },
+    {
+      "check": "128-repeated/query2_paired_gain",
+      "passed": true,
+      "before_seconds": 0.774637925499988,
+      "after_seconds": 0.7086789385000003,
+      "after_max_seconds": 0.7359060292249886
+    },
+    {
+      "check": "128-repeated/fresh_manual_no_regression",
+      "passed": true,
+      "before_seconds": 0.9056608879999999,
+      "after_seconds": 0.8772779980000109,
+      "after_max_seconds": 0.9509439324
+    },
+    {
+      "check": "128-mixed/exact_head",
+      "passed": true
+    },
+    {
+      "check": "128-mixed/same_candidate_count",
+      "passed": true
+    },
+    {
+      "check": "128-mixed/manual_paired_gain",
+      "passed": false,
+      "before_seconds": 0.8450813749999924,
+      "after_seconds": 0.8153372430000019,
+      "after_max_seconds": 0.8028273062499927
+    },
+    {
+      "check": "128-mixed/query2_paired_gain",
+      "passed": false,
+      "before_seconds": 0.7743191039999999,
+      "after_seconds": 0.7402350960000064,
+      "after_max_seconds": 0.7356031487999999
+    },
+    {
+      "check": "128-mixed/fresh_manual_no_regression",
+      "passed": true,
+      "before_seconds": 0.910264939000001,
+      "after_seconds": 0.8763055350000002,
+      "after_max_seconds": 0.9557781859500012
+    },
+    {
+      "check": "10001-repeated/exact_head",
+      "passed": true
+    },
+    {
+      "check": "10001-repeated/same_candidate_count",
+      "passed": true
+    },
+    {
+      "check": "10001-repeated/manual_paired_gain",
+      "passed": true,
+      "before_seconds": 4.919971660000016,
+      "after_seconds": 1.854791399999982,
+      "after_max_seconds": 3.443980162000011
+    },
+    {
+      "check": "10001-repeated/query2_paired_gain",
+      "passed": true,
+      "before_seconds": 4.572528250000005,
+      "after_seconds": 1.5539909530000102,
+      "after_max_seconds": 3.200769775000003
+    },
+    {
+      "check": "10001-repeated/fresh_manual_no_regression",
+      "passed": true,
+      "before_seconds": 5.34672699699999,
+      "after_seconds": 2.306707081000013,
+      "after_max_seconds": 5.61406334684999
+    },
+    {
+      "check": "10001-mixed/exact_head",
+      "passed": true
+    },
+    {
+      "check": "10001-mixed/same_candidate_count",
+      "passed": true
+    },
+    {
+      "check": "10001-mixed/manual_paired_gain",
+      "passed": true,
+      "before_seconds": 5.220020354500036,
+      "after_seconds": 2.273483432500001,
+      "after_max_seconds": 3.654014248150025
+    },
+    {
+      "check": "10001-mixed/query2_paired_gain",
+      "passed": true,
+      "before_seconds": 4.9027674945000115,
+      "after_seconds": 1.9767419849999897,
+      "after_max_seconds": 3.431937246150008
+    },
+    {
+      "check": "10001-mixed/fresh_manual_no_regression",
+      "passed": true,
+      "before_seconds": 5.673448656000005,
+      "after_seconds": 2.731838495999966,
+      "after_max_seconds": 5.9571210888000055
+    }
+  ],
+  "paired_checks_passed": false,
+  "passed": false,
+  "completed_utc": "2026-10-17T06:56:42.109078+00:00"
+}

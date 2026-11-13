@@ -162,6 +162,27 @@ Per-platform skill directories (`.claude/skills/`, `.cursor/skills/`, `.qoder/sk
 
 **Command-as-skill fallback files under `.agents/skills/`** (currently `trellis-start/SKILL.md`, `trellis-continue/SKILL.md`, and `trellis-finish-work/SKILL.md`, written via `resolveAllAsSkillsNeutral()` by Codex) may use per-platform `{{CLI_FLAG}}` / `{{PYTHON_CMD}}` because they are user-invoked fallback entrypoints. They still go through the neutral helper to keep `{{CMD_REF}}` neutralized for consistency with the surrounding shared skills. Platforms with their own private command and skill roots should not write `.agents/skills/`; for example, ZCode writes workflow/bundled skills under `.zcode/skills/` and keeps slash commands under `.zcode/commands/trellis/*.md`.
 
+### Canonical start/continue projection
+
+`src/templates/common/commands/start.md` and `continue.md` are the only
+semantic sources for generated platform entry files. Every projection must:
+
+- use the active-task resolver's exact current-session binding as current-task
+  authority and treat project inventory as display-only;
+- invoke `get_context.py --mode continuation` for an exact active task;
+- keep workflow-specific lifecycle/status/artifact/owner routes out of the
+  entry text;
+- make `trellis-continue` return `no_current_task` when no exact binding exists;
+- stop on resolver or `invalid_continuation_contract` diagnostics without
+  native, legacy-route, or inventory-based fallback.
+
+For an exact binding, the extractor reads the validated Task workspace's
+`.trellis/workflow.md`, including linked worktrees. The invocation checkout
+supplies session identity and resolver facts. Without a binding, it owns the
+initial entry; an invalid binding stops instead of selecting its workflow.
+Platform projections must not cache continuation text, so a workflow switch
+in the authoritative workspace changes both entries immediately.
+
 **Wrong**:
 
 ```typescript
@@ -1209,13 +1230,31 @@ Platform's hook either does not expose a sub-agent-start event or cannot inject 
 
 #### Active task discovery on class-2 platforms (issue #225)
 
-Sub-agents on class-2 platforms run as **separate sessions** with their own session ids, and no session identity reaches them: the parent's key is not exported into the child, and on most platforms no session env var exists to export in the first place (see `### Active Task Resolution`). So the session-scoped resolver returns `None` for the sub-agent's own session key. To bridge that gap the prelude (`buildPullBasedPrelude` in `src/configurators/shared.ts`) tells sub-agents to discover the active task in this order:
+A dispatched child may have no parent session identity. `buildPullBasedPrelude`
+in `src/configurators/shared.ts` must resolve the exact Task and its workspace,
+then load role/profile context without inventing a selection:
 
-1. **`Active task: <path>` line in dispatch prompt** — primary path. The main agent is required by `workflow.md`'s `[workflow-state:in_progress]` breadcrumb to prefix every sub-agent dispatch (including `trellis-research`, since 0.5.8) with `Active task: <path from task.py current>`. The breadcrumb fires on every `UserPromptSubmit` while `task.json.status == in_progress`, so the rule is reinjected per turn.
-2. **`task.py current --source`** — secondary. Resolves via the session-scoped runtime store. Returns `Source: session:<key>` on a precise match, or `Source: session-fallback:<key>` when the runtime contains exactly one session file (single-window inference; see `_resolve_single_session_fallback` in `active_task.py`). Returns nothing when ≥2 session files exist — refuses to guess across windows so 04-21's multi-session isolation contract holds.
-3. **Ask the user** — terminal fallback when both above yield nothing.
+1. Use `Active task: <path>` plus explicit Task workspace; an absolute managed Task path identifies its workspace, a relative hint alone does not.
+2. If workspace identity is missing, use successful, non-stale `task.py current --json` fields `resolved_task_path` and `task_workspace_root`. A conflict/error is reconciled by the main agent; never join a hint to the invoking checkout or choose from inventory. `current --source` is human-readable inspection only. Schema-2 identity must not be inferred from a single-session fallback.
+3. If the exact workspace remains unavailable, ask the main agent for it. No replacement Task or Delivery is created or selected.
 
-When changing the prelude, the dispatch protocol, or the `session-fallback` semantics, all three layers must stay aligned. `regression.test.ts > [issue-225]` and `regression.test.ts > [session-fallback]` are the contract tests; `templates/trellis.test.ts > [issue-225]` asserts the workflow.md breadcrumb still carries the protocol. Manual e2e runbook lives in the historical task `.trellis/tasks/<archive>/05-04-fix-codex-subagent-missing-active-task/manual-verify.md`.
+The checker prelude itself separates default/explicit quality from formal
+`delivery_check` / `delivery_review`. Schema-2 quality reads verified TaskKey,
+accepted scope and caller quality/evidence inputs/specs even with no Delivery;
+root design/implement/manifests are not substitute slice planning. Implementation
+and explicit formal profiles require exact DeliveryKey, current candidate,
+validated planning_root and applicable owner obligations. Stale/invalid identity
+never downgrades into quality. Context consumers record no lifecycle outcomes;
+formal full Review remains read-only. Retained legacy loading keeps its root
+artifact/JSONL behavior. These rules must precede context-loading steps rather
+than depend on a later carrier override.
+
+Generated Gemini/Qoder/Copilot ingress and the shared Markdown/TOML insertion
+helpers need regression coverage for these profiles. Actual Codex collection
+uses its native marker-gated TOML fallback; helper tests do not prove helper
+insertion into Codex output. Hook/extension quality-vs-formal tests supply
+executable noDelivery/stale/missing-selection evidence. Historical issue-225 and
+session-fallback regression tests continue to guard retained legacy discovery.
 
 ### Class-3 — Extension-backed (2 platforms)
 
@@ -1365,14 +1404,21 @@ staff confirmations, Claude Code canary test) lives in the archived task:
 
 ### Scope / Trigger
 
-Task planning is artifact-driven:
+The root planning and Task-start lifecycle below describe retained legacy
+compatibility. Schema-2 Task creation owns overall scope PRD only; each Delivery
+owns its planning_root and manifests, and Task start is selection only. Default
+checker quality uses exact Task/scope and caller inputs/specs even without a
+Delivery; implementation and explicit formal Check/Review require exact selected
+Delivery planning and owner inputs. See [Delivery Lifecycle](./delivery-lifecycle.md).
+
+Retained legacy Task planning is artifact-driven:
 
 - `prd.md` is created by `task.py create` and stores requirements, constraints, and acceptance criteria.
 - `design.md` is required for complex tasks and stores technical design, boundaries, data flow, contracts, and tradeoffs.
 - `implement.md` is required for complex tasks and stores execution order, checklist, validation commands, and rollback points.
 - `implement.jsonl` / `check.jsonl` are spec and research manifests for implement/check context. They do not replace `implement.md`.
 
-Lightweight tasks may be PRD-only. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start` moves the task into implementation.
+Retained legacy lightweight tasks may be PRD-only. Their complex tasks require `prd.md`, `design.md`, and `implement.md` before Task start activation. Schema-2 planning acceptance belongs to the Delivery Planning owner; Task start never activates implementation.
 
 ### Lifecycle
 
@@ -1594,7 +1640,7 @@ python3 ./.trellis/scripts/task.py remove-subtask <parent-dir> <child-dir>
 | Unlink                | `task_store.py`                               | `remove-subtask` removes the child from the parent's `children` and clears the child's `parent`.                                  |
 | Parent responsibility | workflow / skills                             | Parent task owns source requirements, task map, cross-child acceptance, and final integration review.                             |
 | Child responsibility  | workflow / skills                             | Child task owns one independently verifiable deliverable, including its own dependencies and acceptance criteria.                 |
-| Archive progress      | `script-conventions.md` / `children_progress` | Parent `children` is historical. Archiving a child does not prune it from the parent; missing active children count as completed. |
+| Archive progress      | `script-conventions.md` / `children_progress` | Parent `children` is historical; archive never prunes it. Only legacy compatibility may count missing active children as complete. Schema 2 requires an actual matching current-generation/scope Completion result; missing/archive presence/legacy status never prove completion. |
 
 ### Good / Base / Bad Cases
 
@@ -1906,7 +1952,7 @@ Codex has even tighter limits — users report 40-80 KB payloads consuming most 
 | Block                |       Size | Notes                                                                                                                                 |
 | -------------------- | ---------: | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `<session-context>`  |     0.1 KB | Fixed                                                                                                                                 |
-| `<current-state>`    |     0.3 KB | Compact developer/git/task state                                                                                                      |
+| `<current-state>`    |     0.3 KB | Compact git/task state                                                                                                      |
 | `<trellis-workflow>` |     4.4 KB | Compact Phase Index after stripping workflow-state blocks, comments, and platform markers; detailed phase bodies are loaded on demand |
 | `<guidelines>`       |     0.5 KB | Context order + spec index paths only                                                                                                 |
 | `<ready>`            |     0.1 KB | Fixed                                                                                                                                 |
@@ -1927,12 +1973,15 @@ index on demand after the task and phase are known.
 
 ### Task Status Guidance
 
-`SessionStart` reports task status and artifact presence, but it does not
-approve implementation. Planning tasks stay behind the review gate: lightweight
-tasks may be PRD-only, while complex tasks need `prd.md`, `design.md`, and
-`implement.md` before `task.py start`.
+For retained legacy Tasks, `SessionStart` reports status and root artifact
+presence, never implementation approval. Their lightweight tasks may be PRD-only;
+complex legacy planning needs root PRD/design/implement before Task start.
+Schema-2 context reports exact Task/nullable Delivery, public phase and applicable
+result availability under the active workflow; Task start selects only. Delivery
+Planning owns acceptance and its planning_root; quality-only checks never turn
+Task selection or artifact presence into implementation approval.
 
-For `in_progress` tasks, `SessionStart` points the AI to the per-turn
+For retained legacy `in_progress` tasks, `SessionStart` points the AI to the per-turn
 `<workflow-state>` block and restates the implementation/check context order.
 Dispatch-vs-inline behavior belongs to workflow-state, skills, and agent
 definitions, not to a large SessionStart instruction block.
@@ -1946,7 +1995,7 @@ instead of the actual workflow guidance.
 
 **Decision**: SessionStart now injects only compact orientation:
 
-1. compact current state (developer, git summary, active task, journal, spec
+1. compact current state (git summary, active task, spec
    index count)
 2. compact `<trellis-workflow>` Phase Index
 3. artifact read order and spec index paths
@@ -2089,69 +2138,16 @@ This keeps state minimal, avoids the "task.json drifts from filesystem reality" 
 
 ---
 
-## Bootstrap & Joiner Task Auto-Generation
+## Bootstrap Task Generation
 
-`trellis init` generates a first-session task based on checkout state. Three branches dispatch off two filesystem flags:
+See [Task Lifecycle](./task-lifecycle.md) for the current task record, preservation and compatibility contract.
 
-| `.trellis/` exists? | `.trellis/.developer` exists? | Meaning                                                           | Task generated                           |
-| ------------------- | ----------------------------- | ----------------------------------------------------------------- | ---------------------------------------- |
-| no                  | n/a                           | First-time `init` on this project                                 | `00-bootstrap-guidelines` (creator flow) |
-| yes                 | no                            | Fresh clone / per-checkout first-init (new machine, new teammate) | `00-join-<slug>` (joiner flow)           |
-| yes                 | yes                           | Same dev re-running init                                          | none (no-op)                             |
-
-### Design Decision: `.developer` File Is the Per-Checkout Signal
-
-**Context**: we need a signal for "this checkout has never been init'd by this developer before" to trigger joiner onboarding.
-
-**Options Considered**:
-
-1. `.trellis/workspace/<name>/` directory existence — ❌ this dir is committed to git, so a fresh clone already has it
-2. A registry file listing onboarded developers — ❌ needs migration + bookkeeping, over-engineered for single-user checkouts
-3. `.trellis/.developer` file existence — ✅ **chosen**
-
-**Decision**: Use `.trellis/.developer` (gitignored) as the per-checkout onboarding signal.
-
-**Why**: `.trellis/.developer` is declared in `.trellis/.gitignore` (template `gitignore.txt`), so it is never committed. A fresh clone has an empty `.developer` slot by construction; the first `init` writes it. Subsequent same-machine re-inits see the file and no-op.
-
-**Consequence (accepted)**: Same developer on two machines (laptop A + laptop B) gets a joiner task on laptop B. This is fine — it's a chance to re-read the spec, and archiving is one command.
-
-**Anti-pattern**: Do not use `.trellis/workspace/<name>/` existence as "this developer already onboarded" — that directory is the journal archive and belongs to git.
-
-### Gotcha: Joiner Dispatch Must Be Wired in Two Places
-
-`trellis init` has two code paths that both reach the end of initialization but through different branches of `init()`. Any new init-time trigger (joiner onboarding, future first-session tasks, etc.) must be registered in **both**:
-
-**Path 1 — Main dispatch** (`src/commands/init.ts`, near the end of `init()`):
-
-- Reached only when `!isFirstInit` is false **OR** `options.force` / `options.skipExisting` is set
-- Fires from the block that runs after `createWorkflowStructure` + `init_developer.py`
-
-**Path 2 — Re-init fast path** (`handleReinit`, inside `doAddDeveloper` branch):
-
-- Reached when `.trellis/` already exists AND user runs default `trellis init --user <name>` (no `--force`, no `--skip-existing`)
-- `init()` short-circuits via `if (!isFirstInit && !options.force && !options.skipExisting) { await handleReinit(...); return; }` — main dispatch is **never executed**
-
-Both paths must capture the pre-existing `.developer` state **before** running `init_developer.py` (which writes the file), then use that snapshot to decide whether joiner generation applies.
-
-```typescript
-// Path 1 (init end) — snapshot at init() start
-const hadDeveloperFileAtStart = fs.existsSync(developerFilePath);
-// ... later, after init_developer.py:
-if (!isFirstInit && !hadDeveloperFileAtStart) {
-  createJoinerOnboardingTask(cwd, developerName);
-}
-
-// Path 2 (handleReinit) — snapshot just before init_developer.py
-const hadDeveloperFileBefore = fs.existsSync(developerFilePath);
-execSync(`${pythonCmd} ${initDeveloperScript} "${devName}"`, { ... });
-if (!hadDeveloperFileBefore) {
-  createJoinerOnboardingTask(cwd, devName);
-}
-```
-
-**Test coverage requirement**: integration tests must cover BOTH paths. The quick way to detect regressions is to run `init` without `force: true` and assert joiner-task creation — tests that all pass `{ force: true }` will miss Path 2 bugs entirely.
-
----
+Init derives bootstrap eligibility from installation/spec state, never identity
+file presence. New bootstrap tasks omit personnel fields; existing task JSON
+is preserved without interpreting historical personnel data. Re-init and adding
+a platform do not create per-developer joiner tasks. Test both the main init path
+and re-init fast path, including noninteractive task creation. Registry-derived
+platform tests must cover generated hooks, skills and enabled context paths.
 
 ## Common Mistakes
 
@@ -2307,13 +2303,13 @@ Note this is *only* about `{{…}}` placeholders. The separate `python3` → `py
 
 ### Added an init-time trigger but forgot the `handleReinit` fast path
 
-**Symptom**: The trigger works when users pass `--force` / `--skip-existing` / run init on an empty dir, but the default `trellis init --user <name>` on an existing checkout silently does nothing. Integration tests pass.
+**Symptom**: The trigger works when users pass `--force` / `--skip-existing` / run init on an empty dir, but the default `trellis init` on an existing checkout silently does nothing. Integration tests pass.
 
 **Cause**: `init()` at `src/commands/init.ts` early-returns into `handleReinit` when `.trellis/` already exists and neither `--force` nor `--skip-existing` is set. Main dispatch at the end of `init()` is never reached. If the new trigger is only wired into main dispatch, the most common real-user path is uncovered.
 
-**Fix**: Wire the trigger into BOTH (a) the main-dispatch block near the end of `init()` AND (b) `handleReinit`'s `doAddDeveloper` / `doAddPlatforms` branch, whichever is relevant. Capture any pre-init filesystem state (e.g., `.developer` existence) in each path separately, before scripts that mutate it run.
+**Fix**: Wire the trigger into BOTH (a) the main-dispatch block near the end of `init()` AND (b) `handleReinit` platform branch, whichever is relevant. Use installation/spec state.
 
-**Prevention**: Integration tests must cover the default path WITHOUT `force: true`. Any test using `force: true` bypasses `handleReinit` and is not testing real-user behavior. See "Bootstrap & Joiner Task Auto-Generation" above for the canonical two-point wiring pattern.
+**Prevention**: Integration tests must cover the default path WITHOUT `force: true`. Any test using `force: true` bypasses `handleReinit` and is not testing real-user behavior. See "Bootstrap Task Generation" above for the current contract.
 
 ---
 
@@ -2325,4 +2321,3 @@ Note this is *only* about `{{…}}` placeholders. The separate `python3` → `py
 | main                          | Antigravity      | Workflows + skills from `common/`              | No physical template dir — one `collectBothTemplates()` call; no Codex coupling                |
 | #71                           | Qoder            | Skills (like Codex/Kiro)                       | Skills with YAML frontmatter; Trae was dropped (IDE-only, no deterministic invocation trigger) |
 | feat/v0.5.0-beta              | All platforms (13 at the time; 21 today) | Unified template architecture | Common templates + shared hooks + `createTemplateReader()` factory                    |
-| `04-21-bootstrap-onboard-gap` | n/a              | Three-branch init dispatch + joiner onboarding | `.developer` file as per-checkout signal; documents the `handleReinit` two-point wiring        |

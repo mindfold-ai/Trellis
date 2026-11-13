@@ -1,0 +1,23 @@
+{
+  "trellis": {
+    "dist_files": 736,
+    "dist_manifest_sha256": "4b07ad911f8a8d4ade5faf4f5e2cd3e1a9cc8ea179bffc9ab28a014c59580e9e"
+  },
+  "trellis-core": {
+    "dist_files": 272,
+    "dist_manifest_sha256": "adef9caf1516ce34134013e961bc20d6049f04f90a71f04a13ec3a9ec682a8d6"
+  },
+  "mindfoldhq-trellis-0.7.0-castbox.4.tgz": {
+    "sha256": "091454d3fb0f7b10369e6f289cd7dd4329896733566454e8df3b37c0a9625fc8",
+    "bytes": 859095,
+    "path": "/tmp/trellis-issue46-CZ3wUgfx/final/mindfoldhq-trellis-0.7.0-castbox.4.tgz"
+  },
+  "mindfoldhq-trellis-core-0.7.0-castbox.4.tgz": {
+    "sha256": "ba96fd0bcbc8c06e6328bb2c4d178243d59d185e78ee2acd27bb89f10763ab05",
+    "bytes": 229727,
+    "path": "/tmp/trellis-issue46-CZ3wUgfx/final/mindfoldhq-trellis-core-0.7.0-castbox.4.tgz"
+  },
+  "pair_prefix": "/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules",
+  "source_commit": "a06b1f764f003001b35fe125177203211fb2152c",
+  "committed_rebuild_matches_installed_pair": true
+}

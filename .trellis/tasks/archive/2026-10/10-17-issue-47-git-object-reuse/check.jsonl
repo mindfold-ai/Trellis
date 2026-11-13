@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Issue 47 owner, compatibility and validation contract"}
+{"file": ".trellis/tasks/10-17-issue-47-git-object-reuse/research/caller-map.md", "reason": "Issue 47 owner, compatibility and validation contract"}

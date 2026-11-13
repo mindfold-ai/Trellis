@@ -10,27 +10,23 @@ This page only describes files that are visible and editable inside the user pro
 .trellis/
 ├── workflow.md
 ├── config.yaml
-├── .developer
 ├── .version
 ├── .template-hashes.json
 ├── .runtime/
 ├── scripts/
 ├── spec/
-├── tasks/
-└── workspace/
+└── tasks/
 ```
 
 | Path | Usually editable? | Notes |
 | --- | --- | --- |
 | `.trellis/workflow.md` | Yes | Local workflow documentation and AI routing rules. |
-| `.trellis/config.yaml` | Yes | Project configuration, hooks, packages, journal line limits, and related settings. |
+| `.trellis/config.yaml` | Yes | Project configuration, hooks, packages, task archive settings, and related settings. |
 | `.trellis/spec/` | Yes | Project specs, intended to be updated regularly by users and AI. |
 | `.trellis/tasks/` | Yes | Task material and research artifacts, maintained by the task workflow. |
-| `.trellis/workspace/` | Yes | Session records, usually written by `add_session.py`. |
 | `.trellis/scripts/` | Carefully | Local runtime. It can be customized, but only after understanding the call chain. |
 | `.trellis/.runtime/` | No | Runtime state, usually written automatically by hooks/scripts. |
-| `.trellis/.developer` | Carefully | Current developer identity. |
-| `.trellis/.version` | No | Trellis version record used by update/migration logic. |
+| `.trellis/.version` | No | Trellis version record used to require an exact version match for update. |
 | `.trellis/.template-hashes.json` | No | Template hash record. Do not hand-write business rules here. |
 
 ## Platform Directories
@@ -55,7 +51,7 @@ When modifying a platform directory, also confirm whether `.trellis/workflow.md`
 | --- | --- |
 | File was not modified by the user | It can be updated automatically. |
 | File was modified by the user | Prompt the user to overwrite, keep, or generate `.new`. |
-| File is no longer a current template | It may be deleted, renamed, or preserved according to migration rules. |
+| File is no longer a current template | It is outside current-version template reapplication. |
 
 When an AI customizes local Trellis files, it does not need to maintain hashes manually. It is normal for Trellis update to recognize the result as "modified by the user."
 

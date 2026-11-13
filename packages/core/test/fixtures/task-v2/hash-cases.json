@@ -1,0 +1,69 @@
+{
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "manual",
+      "local_commit",
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "native-readiness",
+      "publication": "native-publication",
+      "delivery": "native-delivery",
+      "completion": "native-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 0,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "schema_version": "2.0",
+    "accepted_scope": null,
+    "deliveries": [],
+    "completion_results": [],
+    "closure_results": []
+  },
+  "steps": [],
+  "hash_cases": [
+    {
+      "name": "UTF8 paths and deletion",
+      "paths": [
+        "资料.txt",
+        "😀.txt",
+        ".txt",
+        "removed.txt"
+      ],
+      "files": {
+        "资料.txt": "content:资料.txt\n",
+        "😀.txt": "content:😀.txt\n",
+        ".txt": "content:.txt\n"
+      },
+      "content_ref": "sha256:36ac2ef1063386c0d4d1407baa413a34bd95c12839e3a78f30aba31d7662785d"
+    }
+  ]
+}

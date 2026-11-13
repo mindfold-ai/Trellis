@@ -19,10 +19,7 @@ Configuration:
     {
       "linear": {
         "team": "TEAM_KEY",
-        "project": "Project Name",
-        "assignees": {
-          "dev-name": "linear-user-id"
-        }
+        "project": "Project Name"
       }
     }
 """
@@ -34,6 +31,15 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+# This nested CLI entry point uses the installed scripts package.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from common.io import read_json_checked, write_json
+from common.path_boundary import require_project_path
+from common.paths import FILE_TASK_JSON, get_repo_root, get_tasks_dir
+from common.runtime_contract import require_task_runtime
+from common.tasks import task_lifecycle_inventory
+from common.task_utils import find_task_by_name, resolve_task_dir
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -47,14 +53,9 @@ STATUS_DONE = "Done"
 
 def _load_config() -> dict:
     """Load local hook config from .trellis/hooks.local.json."""
-    task_json_path = os.environ.get("TASK_JSON_PATH", "")
-    if task_json_path:
-        # Walk up from task.json to find .trellis/
-        trellis_dir = Path(task_json_path).parent.parent.parent
-    else:
-        trellis_dir = Path(".trellis")
-
-    config_path = trellis_dir / "hooks.local.json"
+    root = get_repo_root()
+    config_path = root / ".trellis" / "hooks.local.json"
+    require_project_path(config_path, root)
     try:
         with open(config_path, encoding="utf-8") as f:
             return json.load(f)
@@ -62,29 +63,36 @@ def _load_config() -> dict:
         return {}
 
 
-CONFIG = _load_config()
-LINEAR_CFG = CONFIG.get("linear", {})
-
-TEAM = LINEAR_CFG.get("team", "")
-PROJECT = LINEAR_CFG.get("project", "")
-ASSIGNEE_MAP = LINEAR_CFG.get("assignees", {})
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 
-def _read_task() -> tuple[dict, str]:
+def _read_task() -> tuple[dict, Path]:
     path = os.environ.get("TASK_JSON_PATH", "")
     if not path:
         print("TASK_JSON_PATH not set", file=sys.stderr)
         sys.exit(1)
-    with open(path, encoding="utf-8") as f:
-        return json.load(f), path
+    root = get_repo_root()
+    task_json = Path(path)
+    if not task_json.is_absolute():
+        task_json = root / task_json
+    if task_json.name != FILE_TASK_JSON or task_json.is_symlink():
+        raise ValueError(f"invalid_task_locator: {task_json}: expected non-symlink task.json")
+    directory = resolve_task_dir(str(task_json.parent), root)
+    if directory is None:
+        raise ValueError(f"invalid_task_locator: {task_json}")
+    task_json = directory / FILE_TASK_JSON
+    require_project_path(task_json, root)
+    data, reason = read_json_checked(task_json)
+    if data is None:
+        raise ValueError(f"task_metadata_{reason}: {task_json}")
+    require_task_runtime(root, data)
+    return data, task_json
 
 
-def _write_task(data: dict, path: str) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+def _write_task(data: dict, path: Path) -> None:
+    require_project_path(path, get_repo_root())
+    if not write_json(path, data):
+        raise ValueError(f"task_metadata_write_failed: {path}: existing Task unchanged")
 
 
 def _linearis(*args: str) -> dict | None:
@@ -115,11 +123,13 @@ def _get_linear_issue(task: dict) -> str | None:
 
 
 def cmd_create() -> None:
-    if not TEAM:
+    task, path = _read_task()
+    config = _load_config().get("linear", {})
+    team = config.get("team", "")
+    project = config.get("project", "")
+    if not team:
         print("No linear.team configured in hooks.local.json", file=sys.stderr)
         sys.exit(1)
-
-    task, path = _read_task()
 
     # Skip if already linked
     if _get_linear_issue(task):
@@ -127,7 +137,7 @@ def cmd_create() -> None:
         return
 
     title = task.get("title") or task.get("name") or "Untitled"
-    args = ["issues", "create", title, "--team", TEAM]
+    args = ["issues", "create", title, "--team", team]
 
     # Map priority
     priority = PRIORITY_MAP.get(task.get("priority", ""), 0)
@@ -135,14 +145,8 @@ def cmd_create() -> None:
         args.extend(["-p", str(priority)])
 
     # Set project
-    if PROJECT:
-        args.extend(["--project", PROJECT])
-
-    # Assign to Linear user
-    assignee = task.get("assignee", "")
-    linear_user_id = ASSIGNEE_MAP.get(assignee)
-    if linear_user_id:
-        args.extend(["--assignee", linear_user_id])
+    if project:
+        args.extend(["--project", project])
 
     # Link to parent's Linear issue if available
     parent_issue = _resolve_parent_linear_issue(task)
@@ -160,6 +164,9 @@ def cmd_create() -> None:
 
 def cmd_start() -> None:
     task, _ = _read_task()
+    if task.get("schema_version") == "2.0":
+        # Task start is binding, never Delivery implementation or description sync.
+        return
     issue = _get_linear_issue(task)
     if not issue:
         return
@@ -170,6 +177,8 @@ def cmd_start() -> None:
 
 def cmd_archive() -> None:
     task, _ = _read_task()
+    if task.get("schema_version") == "2.0" and not task_lifecycle_inventory(task).completion_result_id:
+        raise ValueError("current_completion_required: archive sync requires Completion matching current generation and accepted scope")
     issue = _get_linear_issue(task)
     if not issue:
         return
@@ -179,15 +188,15 @@ def cmd_archive() -> None:
 
 def cmd_sync() -> None:
     """Sync prd.md content to Linear issue description."""
-    task, _ = _read_task()
+    task, task_json = _read_task()
     issue = _get_linear_issue(task)
     if not issue:
         print("No linear_issue in meta, run create first", file=sys.stderr)
         sys.exit(1)
 
     # Find prd.md next to task.json
-    task_json_path = os.environ.get("TASK_JSON_PATH", "")
-    prd_path = Path(task_json_path).parent / "prd.md"
+    prd_path = task_json.parent / "prd.md"
+    require_project_path(prd_path, get_repo_root())
     if not prd_path.is_file():
         print(f"No prd.md found at {prd_path}", file=sys.stderr)
         sys.exit(1)
@@ -206,22 +215,16 @@ def _resolve_parent_linear_issue(task: dict) -> str | None:
     if not parent_name:
         return None
 
-    task_json_path = os.environ.get("TASK_JSON_PATH", "")
-    if not task_json_path:
-        return None
-
-    current_task_dir = Path(task_json_path).parent
-    tasks_dir = current_task_dir.parent
-    parent_json = tasks_dir / parent_name / "task.json"
-
-    if parent_json.exists():
-        try:
-            with open(parent_json, encoding="utf-8") as f:
-                parent_task = json.load(f)
-            return _get_linear_issue(parent_task)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return None
+    root = get_repo_root()
+    directory = find_task_by_name(parent_name, get_tasks_dir(root), root)
+    if directory is None:
+        raise ValueError(f"invalid_parent_task: {parent_name}")
+    parent_json = directory / FILE_TASK_JSON
+    require_project_path(parent_json, root)
+    parent_task, reason = read_json_checked(parent_json)
+    if parent_task is None:
+        raise ValueError(f"parent_task_metadata_{reason}: {parent_json}")
+    return _get_linear_issue(parent_task)
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -236,7 +239,11 @@ if __name__ == "__main__":
     }
     fn = actions.get(action)
     if fn:
-        fn()
+        try:
+            fn()
+        except (ValueError, OSError) as exc:
+            print(f"Linear sync error: {exc}", file=sys.stderr)
+            sys.exit(1)
     else:
         print(f"Unknown action: {action}", file=sys.stderr)
         print(f"Valid actions: {', '.join(actions)}", file=sys.stderr)

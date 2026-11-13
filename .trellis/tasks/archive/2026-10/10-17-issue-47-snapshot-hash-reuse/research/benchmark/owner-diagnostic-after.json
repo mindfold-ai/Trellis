@@ -1,0 +1,239 @@
+{
+  "kind": "after",
+  "elapsed_seconds": 0.36002816597465426,
+  "typed_exit": "delivered",
+  "subprocesses": [
+    {
+      "argv": [
+        "gh",
+        "auth",
+        "status"
+      ],
+      "seconds": 0.021472624968737364
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/example/repo"
+      ],
+      "seconds": 0.02189229102805257
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/example/repo/pulls/9"
+      ],
+      "seconds": 0.020922625088132918
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/example/repo/git/commits/787e537725d4095257132b7560cc4555a936ec1f"
+      ],
+      "seconds": 0.02096641599200666
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/example/repo/git/ref/heads/main"
+      ],
+      "seconds": 0.021632542018778622
+    },
+    {
+      "argv": [
+        "git",
+        "cat-file",
+        "-e",
+        "787e537725d4095257132b7560cc4555a936ec1f^{commit}"
+      ],
+      "seconds": 0.009445874951779842
+    },
+    {
+      "argv": [
+        "git",
+        "cat-file",
+        "-e",
+        "de78fa6252c28787354829c2394ebb14bcb1df02^{commit}"
+      ],
+      "seconds": 0.009388333070091903
+    },
+    {
+      "argv": [
+        "git",
+        "cat-file",
+        "-e",
+        "787e537725d4095257132b7560cc4555a936ec1f^{commit}"
+      ],
+      "seconds": 0.009969125036150217
+    },
+    {
+      "argv": [
+        "git",
+        "cat-file",
+        "-e",
+        "de78fa6252c28787354829c2394ebb14bcb1df02^{commit}"
+      ],
+      "seconds": 0.010641125030815601
+    },
+    {
+      "argv": [
+        "git",
+        "rev-list",
+        "--parents",
+        "-n",
+        "1",
+        "787e537725d4095257132b7560cc4555a936ec1f"
+      ],
+      "seconds": 0.010286916978657246
+    },
+    {
+      "argv": [
+        "git",
+        "rev-list",
+        "--first-parent",
+        "787e537725d4095257132b7560cc4555a936ec1f"
+      ],
+      "seconds": 0.010675250086933374
+    },
+    {
+      "argv": [
+        "gh",
+        "pr",
+        "view",
+        "9",
+        "--repo",
+        "example/repo",
+        "--json",
+        "number,headRefOid,statusCheckRollup,reviewDecision"
+      ],
+      "seconds": 0.021039416082203388
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--name-status",
+        "de78fa6252c28787354829c2394ebb14bcb1df02",
+        "de78fa6252c28787354829c2394ebb14bcb1df02",
+        "--"
+      ],
+      "seconds": 0.011369834071956575
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--name-status",
+        "dacc3ddeeed8a46254e521e7fcf2809614d0a944",
+        "de78fa6252c28787354829c2394ebb14bcb1df02",
+        "--"
+      ],
+      "seconds": 0.010649916948750615
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "rev-parse",
+        "--verify",
+        "de78fa6252c28787354829c2394ebb14bcb1df02^{commit}"
+      ],
+      "seconds": 0.009470499935559928
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "ls-tree",
+        "-r",
+        "-t",
+        "-z",
+        "de78fa6252c28787354829c2394ebb14bcb1df02"
+      ],
+      "seconds": 0.010058750049211085
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "cat-file",
+        "--batch"
+      ],
+      "seconds": 0.01678320800419897
+    },
+    {
+      "argv": [
+        "gh",
+        "pr",
+        "view",
+        "9",
+        "--repo",
+        "example/repo",
+        "--json",
+        "number,headRefOid,baseRefName,state,mergeCommit,url,body"
+      ],
+      "seconds": 0.021095208008773625
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "rev-parse",
+        "--git-common-dir"
+      ],
+      "seconds": 0.010325124952942133
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "rev-parse",
+        "--show-toplevel"
+      ],
+      "seconds": 0.009752832935191691
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "worktree",
+        "list",
+        "--porcelain",
+        "-z"
+      ],
+      "seconds": 0.009774375008419156
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "rev-parse",
+        "--show-toplevel"
+      ],
+      "seconds": 0.009643833036534488
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpd2om2osv",
+        "rev-parse",
+        "--git-common-dir"
+      ],
+      "seconds": 0.008981166989542544
+    }
+  ],
+  "subprocess_total_seconds": 0.3162372902734205,
+  "non_subprocess_seconds": 0.043790875701233745
+}

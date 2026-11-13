@@ -106,12 +106,12 @@ describe("python3 rewrite reaches the previously-raw write sites", () => {
     }
   });
 
-  it("rewrites the literal under Windows rendering, matching collectTemplates", async () => {
-    setResolvedPythonCommand("python");
+  it.each(["python", "py -3"])("rewrites the literal under Windows %s rendering, matching collectTemplates", async (command) => {
+    setResolvedPythonCommand(command);
     for (const [id, relPath] of RAW_WRITE_SITES) {
       const written = await configureInto(id, relPath);
       expect(written, `${id}: ${relPath}`).toContain(
-        "python ./.trellis/scripts/task.py",
+        `${command} ./.trellis/scripts/task.py`,
       );
       expect(written, `${id}: ${relPath}`).not.toContain("python3");
       expect(written, `${id}: ${relPath} must match the collected bytes`).toBe(

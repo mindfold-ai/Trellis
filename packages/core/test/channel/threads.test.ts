@@ -65,7 +65,6 @@ describe("thread reducer and lifecycle", () => {
       thread: "t1",
       title: "Title",
       labels: ["a"],
-      assignees: ["arch"],
     });
     await postThread({
       channel: "b",
@@ -102,7 +101,6 @@ describe("thread reducer and lifecycle", () => {
       title: "Title",
       status: "processed",
       labels: ["a", "b"],
-      assignees: ["arch"],
       comments: 1,
     });
     const events = await readChannelEvents({ channel: "b" });

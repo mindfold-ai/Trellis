@@ -7,3 +7,5 @@
 
 export { VERSION } from "./constants/version.js";
 export { init } from "./commands/init.js";
+
+export * as maintenance from "./commands/maintenance/api.js";

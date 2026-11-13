@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python3.9 and canonical/dogfood parity"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Digest and independent validation contracts"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Boundary and temporary resource safety"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Quality gates"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Behavioral regression conventions"}
+{"file": ".agents/skills/python-design/SKILL.md", "reason": "Public deep module boundary"}
+{"file": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/caller-continuation.md", "reason": "Pinned actual recovery and query2 caller research"}
+{"file": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/runner-contract-review.md", "reason": "Historical runner replication contract; original failures stay visible. Current timing acceptance is superseded by the explicit user revision."}
+{"file": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/acceptance-revision.md", "reason": "Current user-authorized acceptance: correctness/deduplication/resources mandatory; estimated time cutoffs historical, no resampling."}

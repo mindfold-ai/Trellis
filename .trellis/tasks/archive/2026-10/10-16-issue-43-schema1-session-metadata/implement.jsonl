@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/core/backend/index.md", "reason": "Core domain ownership and required checks"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Public package boundary and matching Core/CLI build"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Implementation quality and routing consistency"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Regression scope and test isolation"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Real filesystem and byte preservation integration"}
+{"file": ".trellis/tasks/10-16-issue-43-schema1-session-metadata/research/compatibility.md", "reason": "Exact writer provenance and remote baseline findings"}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Independent maintenance ownership, carrier and recovery contract"}

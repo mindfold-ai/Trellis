@@ -1,0 +1,523 @@
+{
+  "diagnostic_only": true,
+  "acceptance": false,
+  "work_directory": "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG",
+  "sources": {
+    "guru": "f70b64b026725b27d59fed17ed710cc2f831439f",
+    "fork_before": "0e3b23a3045357b76e69ca91e84b97b294dfb147",
+    "after_production": "69033a662d68701610f09caa97f1d292bccd1076",
+    "after_source_checksums": {
+      "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+      "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+      "cli_adapter.py": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+      "config.py": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+      "continuation_contract.py": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+      "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+      "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+      "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+      "delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171",
+      "git.py": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+      "git_context.py": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+      "git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+      "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+      "log.py": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+      "maintenance.py": "07345928fd631825ac79a5fb949b4cad2b22ea0d198a5b674a02dd1f643d62e2",
+      "packages_context.py": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+      "path_boundary.py": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+      "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+      "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+      "safe_commit.py": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+      "session_context.py": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+      "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+      "task_artifacts.py": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+      "task_context.py": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+      "task_queue.py": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+      "task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+      "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+      "tasks.py": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+      "trellis_config.py": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+      "types.py": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+      "workflow_phase.py": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d"
+    },
+    "projection_patch_sha256": "4c455a5f384754c575a85d6f9349b4801a81f819c145630616e970c4802f425c",
+    "harness_sha256": "750174d7db36f4450efc9d1d028bb3d80a475cb1524dc9b3f5bd939e931a3047",
+    "diagnostic_script_sha256": "029689409a6ac78b4a79580185b6bc8c0b11fcbb6a8c9a771baa5a06626c4a7c",
+    "sitecustomize_sha256": "f68b9ae03a2b50a1a87a9e42402ef0456cfca3e1e21017211735fe2f38a074d6"
+  },
+  "input": {
+    "head": "421bda9bacbc95ea9aade703a371289191c5976d",
+    "candidate": {
+      "kind": "git",
+      "content_ref": "sha256:68d57306aa06bf80c2778b5f5b84735cb5f193d3878c14e8ce7c7782e4f207a8",
+      "paths": [
+        ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+        ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+        "app.txt",
+        "payload/deleted.bin",
+        "payload/f00000.bin",
+        "payload/f00001.bin",
+        "payload/f00002.bin",
+        "payload/f00003.bin",
+        "payload/f00004.bin",
+        "payload/f00005.bin",
+        "payload/f00006.bin",
+        "payload/f00007.bin",
+        "payload/f00008.bin",
+        "payload/f00009.bin",
+        "payload/f00010.bin",
+        "payload/f00011.bin",
+        "payload/f00012.bin",
+        "payload/f00013.bin",
+        "payload/f00014.bin",
+        "payload/f00015.bin",
+        "payload/f00016.bin",
+        "payload/f00017.bin",
+        "payload/f00018.bin",
+        "payload/f00019.bin",
+        "payload/f00020.bin",
+        "payload/f00021.bin",
+        "payload/f00022.bin",
+        "payload/f00023.bin",
+        "payload/f00024.bin",
+        "payload/f00025.bin",
+        "payload/f00026.bin",
+        "payload/f00027.bin",
+        "payload/f00028.bin",
+        "payload/f00029.bin",
+        "payload/f00030.bin",
+        "payload/f00031.bin",
+        "payload/f00032.bin",
+        "payload/f00033.bin",
+        "payload/f00034.bin",
+        "payload/f00035.bin",
+        "payload/f00036.bin",
+        "payload/f00037.bin",
+        "payload/f00038.bin",
+        "payload/f00039.bin",
+        "payload/f00040.bin",
+        "payload/f00041.bin",
+        "payload/f00042.bin",
+        "payload/f00043.bin",
+        "payload/f00044.bin",
+        "payload/f00045.bin",
+        "payload/f00046.bin",
+        "payload/f00047.bin",
+        "payload/f00048.bin",
+        "payload/f00049.bin",
+        "payload/f00050.bin",
+        "payload/f00051.bin",
+        "payload/f00052.bin",
+        "payload/f00053.bin",
+        "payload/f00054.bin",
+        "payload/f00055.bin",
+        "payload/f00056.bin",
+        "payload/f00057.bin",
+        "payload/f00058.bin",
+        "payload/f00059.bin",
+        "payload/f00060.bin",
+        "payload/f00061.bin",
+        "payload/f00062.bin",
+        "payload/f00063.bin",
+        "payload/f00064.bin",
+        "payload/f00065.bin",
+        "payload/f00066.bin",
+        "payload/f00067.bin",
+        "payload/f00068.bin",
+        "payload/f00069.bin",
+        "payload/f00070.bin",
+        "payload/f00071.bin",
+        "payload/f00072.bin",
+        "payload/f00073.bin",
+        "payload/f00074.bin",
+        "payload/f00075.bin",
+        "payload/f00076.bin",
+        "payload/f00077.bin",
+        "payload/f00078.bin",
+        "payload/f00079.bin",
+        "payload/f00080.bin",
+        "payload/f00081.bin",
+        "payload/f00082.bin",
+        "payload/f00083.bin",
+        "payload/f00084.bin",
+        "payload/f00085.bin",
+        "payload/f00086.bin",
+        "payload/f00087.bin",
+        "payload/f00088.bin",
+        "payload/f00089.bin",
+        "payload/f00090.bin",
+        "payload/f00091.bin",
+        "payload/f00092.bin",
+        "payload/f00093.bin",
+        "payload/f00094.bin",
+        "payload/f00095.bin",
+        "payload/f00096.bin",
+        "payload/f00097.bin",
+        "payload/f00098.bin",
+        "payload/f00099.bin",
+        "payload/f00100.bin",
+        "payload/f00101.bin",
+        "payload/f00102.bin",
+        "payload/f00103.bin",
+        "payload/f00104.bin",
+        "payload/f00105.bin",
+        "payload/f00106.bin",
+        "payload/f00107.bin",
+        "payload/f00108.bin",
+        "payload/f00109.bin",
+        "payload/f00110.bin",
+        "payload/f00111.bin"
+      ],
+      "head_ref": "421bda9bacbc95ea9aade703a371289191c5976d",
+      "base_ref": "dacc3ddeeed8a46254e521e7fcf2809614d0a944"
+    },
+    "git_tree": "100644 blob 12c1dadfc4055bb3824e8e6cee638157bd6ec41d\t.trellis/scripts/common/__pycache__/__init__.cpython-314.pyc\n100644 blob 1c234b3eaf7b3c5ae76b61762c4770240f7da482\t.trellis/scripts/common/__pycache__/active_task.cpython-314.pyc\n100644 blob c629d28f3682565cc1b925d4dcc29ff5c3f50406\t.trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc\n100644 blob d2d0b8cbfa96335d24f780e88528b1cfa67a637c\t.trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc\n100644 blob ff68259b96e0e3af46afd4e266102b6da49e36af\t.trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc\n100644 blob 6fffb98e08b395076a3008896a84eabf000c457c\t.trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc\n100644 blob b83d76f10a1fc0905c17054c32317ebc18431f9b\t.trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc\n100644 blob 1eebec267070dc8f06d0aa63e2f96667ecc20bb5\t.trellis/scripts/common/__pycache__/io.cpython-314.pyc\n100644 blob 0b10311f99efaf3878034a1a2987a12f262bf118\t.trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc\n100644 blob 0195a35a39ee237071a35d2f1a04e4a11f1b6c04\t.trellis/scripts/common/__pycache__/paths.cpython-314.pyc\n100644 blob 44864616c90008ea6dbe86d159275def163384ed\t.trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc\n100644 blob 8061ffe0a8bef68875735cc352ffe1af4d611df0\t.trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc\n100644 blob cf03879c1c428241119e196dc87515cdf0d1c8bc\t.trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc\n100644 blob b7e79cdb683c29f05e833d048edf9dc8656ca587\t.trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc\n100644 blob a7453f07505c42ea8d6fdda75fa91710c81c53d6\tapp.txt\n100755 blob 246250e5defed81080af15486f33076dcef7c723\tpayload/f00000.bin\n100644 blob 085ad89a20c91140c9f3346816571835debd175d\tpayload/f00001.bin\n100644 blob 3a8515cad2afbfb55805fc9b2d14457595d53aaa\tpayload/f00002.bin\n100644 blob 0513a14af8488bc474087c47fc30bee27a0d2d57\tpayload/f00003.bin\n100644 blob 7e362344d2f4ed6486a770500509bf0c09ecee6e\tpayload/f00004.bin\n100644 blob 4775195c4cf8f92262b5a0eea4378b9ad33ee637\tpayload/f00005.bin\n100644 blob f95067bc222cd9bd18358b34cb512c4534154d7d\tpayload/f00006.bin\n100644 blob 46afb967c3da8a0e5c1fe7cf19bbc1e4147aaf5a\tpayload/f00007.bin\n100644 blob 6a1f14d124da06ff058f3428fe213ee5522060ed\tpayload/f00008.bin\n100644 blob 90139ce85d7bfa6586fb6dce5b4dba97dd913ae6\tpayload/f00009.bin\n100644 blob bfc7447d6c5edccc763f45c430cd6f9579e6a221\tpayload/f00010.bin\n100644 blob f34dc98e9d3b8007325e6d6a1cfd19a605d57c8d\tpayload/f00011.bin\n100644 blob 5bf85273288e595ebcf1a1c74bf6e1112d9caddf\tpayload/f00012.bin\n100644 blob f0cb64aedd433e320b128bdaf3dfebf929ab7c9b\tpayload/f00013.bin\n100644 blob cdf5f7f498426bceaa77b413e434ba9a67ecb98f\tpayload/f00014.bin\n100644 blob d2432c6277cc760e47a98cce87e2fee835064c1a\tpayload/f00015.bin\n100644 blob 1abd101e423b1d5ca0b290758a18273574fd5007\tpayload/f00016.bin\n100755 blob 2d858136667b50b79a05be3a6ec9c3a5a4dc0360\tpayload/f00017.bin\n100644 blob ce5b1a750101606222cfe9142be0685edd395e76\tpayload/f00018.bin\n100644 blob c983adda3f5e68f6c0cba7c651894431beafd5c5\tpayload/f00019.bin\n100644 blob 6e475dd374f71f732a137872c6a1479f96d7ddbd\tpayload/f00020.bin\n100644 blob 81ab1287fd0d904322f906c4858099f6c8b529ec\tpayload/f00021.bin\n100644 blob 6861bf54206a555a87b0c479ba11b035fe39497d\tpayload/f00022.bin\n100644 blob 5e5a753fea56570deef330a6f93a58b434a35330\tpayload/f00023.bin\n100644 blob fc309c5fcc8258ab855127a637d8473b6ce31b32\tpayload/f00024.bin\n100644 blob 9e6c097a48b6f248d6d0b9669dbe5ba88330cfca\tpayload/f00025.bin\n100644 blob 9793de29a26e3ff513d20a5a68fab5742d25f2b3\tpayload/f00026.bin\n100644 blob 13ce4934b01e56480e8e0589a1dbaffeec98995f\tpayload/f00027.bin\n100644 blob 532f60132e86871b87fc2550e895062c89764c9c\tpayload/f00028.bin\n100644 blob 7ff2feff7dc94a22f02b8266ac1b4459f09c34f9\tpayload/f00029.bin\n100644 blob f3f05d9716ed60cb4a3f6dccc822a664cf1740fc\tpayload/f00030.bin\n100644 blob 6faf0cf06bef6a5f2da01b97bc49f27df4acb7a1\tpayload/f00031.bin\n100644 blob a414f003777991ebcd36e81f58ecc86a451fe694\tpayload/f00032.bin\n100644 blob 26a6fd287f9b00d878064b78435d605359b668fd\tpayload/f00033.bin\n100755 blob d4c10298901fd54594c0138024cdef8e8726ca89\tpayload/f00034.bin\n100644 blob 64d0ef346b3f25f336d3df31c8b852e5088d8fef\tpayload/f00035.bin\n100644 blob 29df4cad7b3ddfe56d970095d1f314dd995443b1\tpayload/f00036.bin\n100644 blob 15edd9bb967234bbab805d626f6159bc50082449\tpayload/f00037.bin\n100644 blob 8e8bbd006801b9f6c60d28985f98218c9fa0eadd\tpayload/f00038.bin\n100644 blob b0f7ce7529b3d3927a9fb9e40bb46eca9b9e4fd6\tpayload/f00039.bin\n100644 blob 3a3eb003ef0dc2649d6d076694474b78e7e98a3d\tpayload/f00040.bin\n100644 blob 703376e7d7d83a94835b7841fee3132423a10b66\tpayload/f00041.bin\n100644 blob e4432ef0a7087ad1e7c3f300ce44ab963812e098\tpayload/f00042.bin\n100644 blob 6ad98c13127c034a47c070cc965b638d5a5bc390\tpayload/f00043.bin\n100644 blob d2fb21415b44dc123d3e435d7d3fb5798ea037b0\tpayload/f00044.bin\n100644 blob 18b00a7c60f9b2f11ff56f4c276f91fcd793dada\tpayload/f00045.bin\n100644 blob f3cf97977f8fdd283b5af25d795e77a25f39c025\tpayload/f00046.bin\n100644 blob 6f6e404ae4e40a1bf2406d4dd0e30582de8699d5\tpayload/f00047.bin\n100644 blob 0f69d86203ca47c98bd9d070f0a60a6766b7e920\tpayload/f00048.bin\n100644 blob 017622ae5774bfa0a125dbcbfe2c2a0d6a558d3c\tpayload/f00049.bin\n100644 blob 1c3861155d0ae979facdfb6b39fe4f4126bced79\tpayload/f00050.bin\n100755 blob 4f724c9bf7b256aa107fb334829fd5abafe1dff7\tpayload/f00051.bin\n100644 blob 733eb1e4d8c83ae5884ddf14d42cd8bb60020bf0\tpayload/f00052.bin\n100644 blob 92d84c7941e12c2810aeece1783177de147a315f\tpayload/f00053.bin\n100644 blob be952c36b0cedb64ea8fedd603b5cb3541ed41e8\tpayload/f00054.bin\n100644 blob 6c7ce32e643648e2850e93760d429700a9b9cf45\tpayload/f00055.bin\n100644 blob 2c34fd3bc62dfd4b1727a3c07554b489cf0e355f\tpayload/f00056.bin\n100644 blob fb9dabdab791014aeccde739deaec432c288d6ec\tpayload/f00057.bin\n100644 blob 9541662c9da117c4333512ee6d6a98c7a1919d77\tpayload/f00058.bin\n100644 blob 45f372a8e25440831dc5d192342720569f6bb24a\tpayload/f00059.bin\n100644 blob 86e91110bbbe4d68e335c018db05ae189e7f9f82\tpayload/f00060.bin\n100644 blob 19dd62f70cb81c190ea2cd4154021dc7203d4d65\tpayload/f00061.bin\n100644 blob f78e393d1bb711c4f7e13f726a113b6e4d228cd3\tpayload/f00062.bin\n100644 blob b35f3da699544471ea90dea44f33a8c980b09ea9\tpayload/f00063.bin\n100644 blob 16c8563d4d1a04b86e3feafda5cb2a3c5cb78b6e\tpayload/f00064.bin\n100644 blob 0f18329ba55173064a0d7c86d12a47e4e84d14fc\tpayload/f00065.bin\n100644 blob 89ef4e2dca775e8c3dd0eab264874b8d06cd2776\tpayload/f00066.bin\n100644 blob 60300e3d67d0e1c08433969c5f63c8945c390de3\tpayload/f00067.bin\n100755 blob af8ae19896127d1fa573ee921019c693c6900cf7\tpayload/f00068.bin\n100644 blob 763f08d031a367e2e80b7ecb175653e492b1abd2\tpayload/f00069.bin\n100644 blob 224be09589258435740c01739c26075b1daad648\tpayload/f00070.bin\n100644 blob f2a6639c0bd57f22b4c6f6e27c124fd12bbdef2b\tpayload/f00071.bin\n100644 blob 05e7c448d0c2025df76d6ca5b319e36fc796400a\tpayload/f00072.bin\n100644 blob 8f8cf845d64ed45db6f79332341d38e4c6b29a85\tpayload/f00073.bin\n100644 blob 62474d3de937f872d4d5d408f5b564144d3c0b79\tpayload/f00074.bin\n100644 blob 5d00fa2e4e13447f599c969d4647478901797a33\tpayload/f00075.bin\n100644 blob 0e93282fb928cb8ceaf24d4611adb93b5e5e6600\tpayload/f00076.bin\n100644 blob dc6260af04df35789eb850afe778bcaed8a5f0ce\tpayload/f00077.bin\n100644 blob f632a560f0bfb9167358c220542e143e572c9d76\tpayload/f00078.bin\n100644 blob bad48c439313b1b38f82f931cb9ac9205d366c2c\tpayload/f00079.bin\n100644 blob da2194434c032de11f045be958b51bf269cdb10e\tpayload/f00080.bin\n100644 blob 280abdaf0d69545caaef76924264fa311da9cc36\tpayload/f00081.bin\n100644 blob 86aa85dc6fb5d62a0102a6fe5ebe068422e1e20c\tpayload/f00082.bin\n100644 blob 578ace75fbdd38ec5df96cc095b121c927061b12\tpayload/f00083.bin\n100644 blob 4e65e4d5bf97dc465a9b2380cf31069fdceccacb\tpayload/f00084.bin\n100755 blob 10a9046acac7a2204fa22e06122f06e723a7033a\tpayload/f00085.bin\n100644 blob 34a5966299789997979bd5898a1d07d10df530f9\tpayload/f00086.bin\n100644 blob c5dbce9285a0289e6563a5f1078cd0fc8758e92a\tpayload/f00087.bin\n100644 blob 1bc9b2c9049793d1409f12b4a03d77cb33f2cbd3\tpayload/f00088.bin\n100644 blob a4bf9ef9bd95548ac79c2dd819518b1118cb2af1\tpayload/f00089.bin\n100644 blob f485f26d4ca03341d7e937875d8f5bd05d4380ce\tpayload/f00090.bin\n100644 blob ff204a5e8390564091dad03e4c034bc928820aaf\tpayload/f00091.bin\n100644 blob d37ac382f6cbdc5fbc16314f098df5a21fc199c3\tpayload/f00092.bin\n100644 blob a5b2a105af8e58b225f7c6bb91bed7331c5dfb52\tpayload/f00093.bin\n100644 blob 764b19c0d0742d36e13d66723d82a15aaa6b342d\tpayload/f00094.bin\n100644 blob 45117262c5fbcf7bf782dff6c68b2802bf59a47b\tpayload/f00095.bin\n100644 blob 5196b292fc3b83bf44ae13e543a4a1b1ea6fd939\tpayload/f00096.bin\n100644 blob 8df0217e5178bdf50cf4ca37a55217760f4acf3d\tpayload/f00097.bin\n100644 blob 58b18dae2a7cf1576e03bd11453d9c5d048a8299\tpayload/f00098.bin\n100644 blob 1484b8e75f315d6cf5e2877d5888c5353c8c626a\tpayload/f00099.bin\n100644 blob 81a05b29dda134af48b53ace6d8e942c8d28f652\tpayload/f00100.bin\n100644 blob 95f57217a37a816d93d65b9c24e83c392ef4811f\tpayload/f00101.bin\n100755 blob c96b624dda1c02ea1848bb23817ef091194be833\tpayload/f00102.bin\n100644 blob f251b9558ce3a3d7613e3fe8688c05f8bbd639a2\tpayload/f00103.bin\n100644 blob b4fab5799c0914e6af6aee3db4c67dd10f00ff7d\tpayload/f00104.bin\n100644 blob 82bbff2b91c9ccff64aa688409118d10020e13ae\tpayload/f00105.bin\n100644 blob 272764b1643bc17e04ef075d8ff67ac171a1bf5e\tpayload/f00106.bin\n100644 blob 2cd47bbbe30dbce77250761dd9cfd23ce9f02113\tpayload/f00107.bin\n100644 blob 4504060c8833513c862731119394c27e21e7d088\tpayload/f00108.bin\n100644 blob 494ceb3f521270a609bbd1007b9c360db94aa8e9\tpayload/f00109.bin\n100644 blob c54f84c75910e98c400445ec788cdd4730696038\tpayload/f00110.bin\n100644 blob 04c5ca7f2fb54e45e75271a1010366891682e0e6\tpayload/f00111.bin\n",
+    "original_full_head_and_candidate_tree_match": true
+  },
+  "environment": {
+    "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "version": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+    "git": "git version 2.54.0 (Apple Git-157)",
+    "platform": "darwin",
+    "clock": "mach_absolute_time()"
+  },
+  "setup_first_manual_exit": "delivered",
+  "rows": [
+    {
+      "operation": "manual",
+      "wrapper_start_ns": 978776050325916,
+      "wrapper_end_ns": 978776651236166,
+      "wrapper_wall_seconds": 0.60091025,
+      "nonoverlapping_public_content_ref_seconds": 0.050467417,
+      "outside_public_content_ref_wall_seconds": 0.550442833,
+      "original_absolute_median_cap_seconds": 0.6393437262566294,
+      "observed_outside_exceeds_cap": false,
+      "typed_result": {
+        "exit_id": "delivered",
+        "task_key": {
+          "lifecycle_generation": 0,
+          "task_id": "flow-task"
+        },
+        "task_ref": ".trellis/tasks/flow-task"
+      },
+      "command_observation": {
+        "diagnostic_only": true,
+        "pid": 64949,
+        "argv": [
+          "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG/guru/trellis/skills/guru-team/runtime/command.py",
+          "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG/guru/trellis/skills/guru-team/packages/guru-merge-task-delivery",
+          "invoke-guru-merge-task-delivery",
+          "--root",
+          "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr",
+          "--input",
+          "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr/.trellis/.runtime/test-inputs/manual.json",
+          "--review-input",
+          "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr/.trellis/.runtime/test-inputs/manual-review.json"
+        ],
+        "python": "/Users/wumengye/Library/Caches/guru-team/python/f0b89dabd24ef812b1244b8b/venv/bin/python",
+        "version": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+        "clock": {
+          "name": "perf_counter_ns",
+          "implementation": "mach_absolute_time()",
+          "monotonic": true,
+          "resolution_seconds": 4.166666666666666e-08
+        },
+        "installations": [
+          {
+            "module": "guru_delivery_target_e5055111dbf6b48c.delivery_store",
+            "source": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr/.trellis/scripts/common/delivery_store.py",
+            "method": "GitCandidateContent.content_ref"
+          }
+        ],
+        "intervals": [
+          {
+            "start_ns": 978776587325416,
+            "end_ns": 978776637792833,
+            "exact_commit": "421bda9bacbc95ea9aade703a371289191c5976d",
+            "path_count": 128,
+            "method": "GitCandidateContent.content_ref",
+            "module": "guru_delivery_target_e5055111dbf6b48c.delivery_store"
+          }
+        ]
+      },
+      "outside_segments": [
+        {
+          "start_ns": 978776050325916,
+          "end_ns": 978776587325416,
+          "seconds": 0.5369995
+        },
+        {
+          "start_ns": 978776637792833,
+          "end_ns": 978776651236166,
+          "seconds": 0.013443333
+        }
+      ],
+      "content_ref_wall_fraction": 0.08398494949953009,
+      "outside_headroom_to_original_cap_seconds": 0.08890089325662942
+    },
+    {
+      "operation": "query2",
+      "wrapper_start_ns": 978776651925875,
+      "wrapper_end_ns": 978777186264875,
+      "wrapper_wall_seconds": 0.534339,
+      "nonoverlapping_public_content_ref_seconds": 0.0444565,
+      "outside_public_content_ref_wall_seconds": 0.4898825,
+      "original_absolute_median_cap_seconds": 0.5728397875354858,
+      "observed_outside_exceeds_cap": false,
+      "typed_result": {
+        "base_ref": "main",
+        "cutoff_commit": "23dbdc011e5302febd27c7499f0cadfca91ba05d",
+        "deliveries": [
+          {
+            "base_ref": "main",
+            "delivery_key": {
+              "delivery_id": "43134b50-2c8b-4d70-b114-218a735a82e2",
+              "lifecycle_generation": 0,
+              "task_id": "flow-task"
+            },
+            "merge_commit_sha": "23dbdc011e5302febd27c7499f0cadfca91ba05d",
+            "pr_number": 9,
+            "reviewed_head": "421bda9bacbc95ea9aade703a371289191c5976d",
+            "task_identity": "flow-task"
+          }
+        ],
+        "repo_ref": "example/repo",
+        "schema_version": "3.0",
+        "status": "discovered",
+        "task_identity": "flow-task"
+      },
+      "command_observation": {
+        "diagnostic_only": true,
+        "pid": 64988,
+        "argv": [
+          "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG/guru/trellis/skills/guru-team/runtime/command.py",
+          "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG/guru/trellis/skills/guru-team/packages/guru-merge-task-delivery",
+          "discover-task-deliveries",
+          "--root",
+          "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr",
+          "--input",
+          "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr/.trellis/.runtime/test-inputs/history-bench.json"
+        ],
+        "python": "/Users/wumengye/Library/Caches/guru-team/python/f0b89dabd24ef812b1244b8b/venv/bin/python",
+        "version": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+        "clock": {
+          "name": "perf_counter_ns",
+          "implementation": "mach_absolute_time()",
+          "monotonic": true,
+          "resolution_seconds": 4.166666666666666e-08
+        },
+        "installations": [
+          {
+            "module": "guru_delivery_target_e5055111dbf6b48c.delivery_store",
+            "source": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr/.trellis/scripts/common/delivery_store.py",
+            "method": "GitCandidateContent.content_ref"
+          }
+        ],
+        "intervals": [
+          {
+            "start_ns": 978777063764916,
+            "end_ns": 978777108221416,
+            "exact_commit": "421bda9bacbc95ea9aade703a371289191c5976d",
+            "path_count": 128,
+            "method": "GitCandidateContent.content_ref",
+            "module": "guru_delivery_target_e5055111dbf6b48c.delivery_store"
+          }
+        ]
+      },
+      "outside_segments": [
+        {
+          "start_ns": 978776651925875,
+          "end_ns": 978777063764916,
+          "seconds": 0.411839041
+        },
+        {
+          "start_ns": 978777108221416,
+          "end_ns": 978777186264875,
+          "seconds": 0.078043459
+        }
+      ],
+      "content_ref_wall_fraction": 0.08319905528138505,
+      "outside_headroom_to_original_cap_seconds": 0.08295728753548581
+    }
+  ],
+  "first_failed_diagnostic": {
+    "diagnostic_only": true,
+    "acceptance": false,
+    "kind": "instrumentation_startup_guard_failure",
+    "reason": "launch.sh uses -m runtime.command; sys.argv[0] is -m during sitecustomize startup, so filename guard did not activate",
+    "diagnostic_operations_executed": {
+      "manual": 1,
+      "query2": 0
+    },
+    "nested_intervals_available": false,
+    "wrapper_time_not_persisted": true,
+    "elapsed_time_not_used_for_selection": true,
+    "paths": {
+      "run.py": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/run.py",
+        "sha256": "029689409a6ac78b4a79580185b6bc8c0b11fcbb6a8c9a771baa5a06626c4a7c",
+        "bytes": 9342
+      },
+      "sitecustomize.py": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/sitecustomize.py",
+        "sha256": "eb31cf8a84fd8fee7cc60155ddb2f17ee677501db9401dfccbb33fdefd658af0",
+        "bytes": 2867
+      },
+      "started.json": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/started.json",
+        "sha256": "a48f4b7ee96d09cd661bd607356619d7d0f49582dfb905da76c4de8472fd1470",
+        "bytes": 157
+      },
+      "stdout.log": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/stdout.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr.log": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/stderr.log",
+        "sha256": "4398af6cf35d6f2ad39982fbab003d7afaf566db7f418263f2e5bda59788240e",
+        "bytes": 1499
+      }
+    },
+    "stderr": "Traceback (most recent call last):\n  File \"/tmp/trellis47-nested-owner-998qizil/run.py\", line 166, in <module>\n    exec(compile(source, str(harness), 'exec'), {'__file__': str(harness), '__name__': '__main__', 'observe_ready': observe_ready})\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/wumengye/Documents/GoProjects/Trellis/.trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/residual_benchmark.py\", line 50, in <module>\n    fixture=m.ManualRecoveryTests();fixture.setUp()\n    \n  File \"/tmp/trellis47-nested-owner-998qizil/run.py\", line 122, in observe_ready\n    observation = json.loads(log.read_text())\n                             ~~~~~~~~~~~~~^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.8_2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 787, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.8_2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 771, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/trellis47-nested-owner-998qizil/manual-intervals.json'\n"
+  },
+  "correction_authority": "Parent explicitly authorized one technical correction after harmless startup/import verification; manual/query2 each observed once after correction; failed attempt retained; no acceptance rerun or timing selection.",
+  "harmless_probes": {
+    "positive_stdout": {
+      "orig_argv": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.8_2/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+        "-m",
+        "runtime.command"
+      ],
+      "argv": [
+        "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG/probe/runtime/command.py"
+      ],
+      "actual_public_method_wrapped": true,
+      "no_business_calls": true
+    },
+    "positive_observation": {
+      "diagnostic_only": true,
+      "pid": 62980,
+      "argv": [
+        "/private/tmp/trellis47-nested-owner-corrected-o2L4L0qG/probe/runtime/command.py"
+      ],
+      "python": "/opt/homebrew/bin/python3.14",
+      "version": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+      "clock": {
+        "name": "perf_counter_ns",
+        "implementation": "mach_absolute_time()",
+        "monotonic": true,
+        "resolution_seconds": 4.166666666666666e-08
+      },
+      "installations": [
+        {
+          "module": "guru_delivery_target_probe.delivery_store",
+          "source": "/Users/wumengye/Documents/GoProjects/Trellis/.trellis/scripts/common/delivery_store.py",
+          "method": "GitCandidateContent.content_ref"
+        }
+      ],
+      "intervals": []
+    },
+    "negative_stdout": {
+      "orig_argv": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.8_2/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+        "-c",
+        "import json,sys;print(json.dumps({\"orig_argv\":sys.orig_argv,\"provider_style_probe\":True,\"no_business_calls\":True}))"
+      ],
+      "provider_style_probe": true,
+      "no_business_calls": true
+    },
+    "negative_log_absent": true
+  },
+  "script_evidence": {
+    "failed": {
+      "run.py": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/run.py",
+        "bytes": 9342,
+        "sha256": "029689409a6ac78b4a79580185b6bc8c0b11fcbb6a8c9a771baa5a06626c4a7c",
+        "text": "\"\"\"One nonacceptance nested observation each for manual recovery and query2.\"\"\"\nfrom pathlib import Path\nimport hashlib\nimport importlib.util\nimport io\nimport json\nimport os\nimport shutil\nimport subprocess\nimport sys\nimport tarfile\nimport tempfile\nimport time\n\nWORK = Path(__file__).resolve().parent\nREPO = Path('/Users/wumengye/Documents/GoProjects/Trellis')\nBENCHMARK = REPO / '.trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark'\nGURU_REF = 'f70b64b026725b27d59fed17ed710cc2f831439f'\nFORK_REF = '0e3b23a3045357b76e69ca91e84b97b294dfb147'\nAFTER_REF = '69033a662d68701610f09caa97f1d292bccd1076'\nAFTER = REPO / '.trellis/scripts/common'\nprotocol = json.loads((BENCHMARK / 'paired-protocol-ci.json').read_text())\n\ndef digest(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\n\ndef hashes(directory):\n    return {p.name: digest(p) for p in sorted(directory.glob('*.py'))}\n\nassert hashes(AFTER) == protocol['after_runtime_source_checksums']\nwith (WORK / 'started.json').open('x') as stream:\n    json.dump({'diagnostic_only': True, 'no_acceptance': True,\n               'operation_count': {'manual': 1, 'query2': 1},\n               'setup_manual': 'normal first record, not timed or selected'}, stream)\nfor name, source, ref in [('guru', Path('/Users/wumengye/Documents/GoProjects/guru-trellis'), GURU_REF),\n                          ('fork', REPO, FORK_REF)]:\n    target = WORK / name\n    target.mkdir()\n    raw = subprocess.check_output(['git', '-C', str(source), 'archive', ref])\n    with tarfile.open(fileobj=io.BytesIO(raw)) as archive:\n        archive.extractall(target, filter='data')\npackage = WORK / 'guru/trellis/skills/guru-team/packages/guru-merge-task-delivery'\nsubprocess.run(['git', 'apply', '--unsafe-paths', str(BENCHMARK / 'isolated-consumer-projection.patch')],\n               cwd=package, check=True)\nassert {name: digest(package / 'runtime' / name) for name in protocol['consumer_source_checksums']['after']} == protocol['consumer_source_checksums']['after']\nguru = WORK / 'guru'\nsubprocess.run([sys.executable, str(guru / 'trellis/skills/guru-team/runtime/bootstrap.py'),\n                '--repo', str(guru), '--runtime-assets', str(guru / 'trellis/skills/guru-team/runtime'),\n                '--python', sys.executable, '--json'], check=True, stdout=subprocess.PIPE)\nbaseline = json.loads((BENCHMARK / 'before-128-mixed.json').read_text())\nfrozen = json.loads((BENCHMARK / 'control-before-input-128-mixed.json').read_text())\ncommand = next(v for v in baseline['resources']['0-manual']['python_processes'] if '--root' in v['argv'])\nfixed_root = Path(command['argv'][command['argv'].index('--root') + 1])\nassert not fixed_root.exists(), 'Do not reuse an occupied original fixture path'\noriginal_temporary = tempfile.TemporaryDirectory\nfirst = True\n\nclass ExactDirectory:\n    def __init__(self):\n        self.name = str(fixed_root)\n        fixed_root.mkdir()\n    def cleanup(self):\n        shutil.rmtree(fixed_root)\n    def __enter__(self):\n        return self.name\n    def __exit__(self, *args):\n        self.cleanup()\n\ndef exact_directory(*args, **kwargs):\n    global first\n    if first:\n        first = False\n        return ExactDirectory()\n    return original_temporary(*args, **kwargs)\n\ntempfile.TemporaryDirectory = exact_directory\nos.environ.update(PINNED_GURU=str(guru), PINNED_FORK=str(WORK / 'fork'),\n                  BENCH_COUNT='128', BENCH_VARIANT='mixed')\nos.environ.pop('BENCH_METRICS_DIR', None)\nos.environ.pop('NESTED_DIAGNOSTIC_LOG', None)\n\ndef observe_ready(fixture):\n    try:\n        candidate = fixture.publication['candidate']\n        tree = fixture.flow.git('ls-tree', '-r', fixture.actual, '--', *candidate['paths'])\n        assert fixture.actual == baseline['git_commit'] == frozen['exact_head']\n        assert candidate == frozen['candidate'] and tree == frozen['git_tree']\n        common = fixture.repo / '.trellis/scripts/common'\n        shutil.copytree(AFTER, common, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))\n        from runtime.delivery_projection.adapter import upstream_modules\n        namespace = 'guru_delivery_target_' + hashlib.sha256(str(common.resolve()).encode()).hexdigest()[:16]\n        for key in list(sys.modules):\n            if key == namespace or key.startswith(namespace + '.'):\n                del sys.modules[key]\n        fixture.projection.api = upstream_modules(fixture.repo)\n        assert Path(fixture.projection.api.delivery_store.GitCandidateContent.content_ref.__code__.co_filename).resolve() == (common / 'delivery_store.py').resolve()\n        assert hashes(common) == hashes(AFTER)\n        # Establish the ordinary merged Delivery once, before either diagnostic.\n        first_result = fixture.invoke()\n        assert first_result['exit_id'] == 'delivered'\n        task = fixture.repo / fixture.flow.task_ref / 'task.json'\n        prior_task = task.read_bytes()\n        rows = []\n        for operation in ('manual', 'query2'):\n            log = WORK / (operation + '-intervals.json')\n            os.environ['NESTED_DIAGNOSTIC_LOG'] = str(log)\n            started = time.perf_counter_ns()\n            if operation == 'manual':\n                result = fixture.invoke()\n            else:\n                query = {'schema_version': '2.0', 'task_identity': 'flow-task', 'repo_ref': 'example/repo',\n                         'base_ref': 'main', 'task_ref': fixture.flow.task_ref}\n                result = fixture.flow.wrapper(package.name, 'discover-task-deliveries.sh',\n                    '--input', fixture.flow.write('history-bench.json', query))\n            ended = time.perf_counter_ns()\n            os.environ.pop('NESTED_DIAGNOSTIC_LOG')\n            if operation == 'manual':\n                assert result['exit_id'] == 'delivered'\n            else:\n                assert [v['merge_commit_sha'] for v in result['deliveries']] == [fixture.merge]\n            assert task.read_bytes() == prior_task\n            observation = json.loads(log.read_text())\n            assert len(observation['installations']) == 1\n            intervals = sorted(observation['intervals'], key=lambda v: v['start_ns'])\n            assert intervals and all(started <= v['start_ns'] < v['end_ns'] <= ended for v in intervals)\n            assert all(a['end_ns'] <= b['start_ns'] for a, b in zip(intervals, intervals[1:]))\n            assert all(v['path_count'] == 128 and v['exact_commit'] == fixture.actual for v in intervals)\n            nested = sum(v['end_ns'] - v['start_ns'] for v in intervals)\n            wall = ended - started\n            cap = protocol and json.loads((BENCHMARK / 'frozen-standards.json').read_text())['cases']['128-mixed']['after_median_max_seconds'][operation]\n            rows.append({'operation': operation, 'wrapper_start_ns': started, 'wrapper_end_ns': ended,\n                         'wrapper_wall_seconds': wall / 1e9, 'nonoverlapping_public_content_ref_seconds': nested / 1e9,\n                         'outside_public_content_ref_wall_seconds': (wall - nested) / 1e9,\n                         'original_absolute_median_cap_seconds': cap,\n                         'observed_outside_exceeds_cap': (wall - nested) / 1e9 > cap,\n                         'typed_result': result, 'command_observation': observation})\n        output = {'diagnostic_only': True, 'acceptance': False, 'work_directory': str(WORK),\n                  'sources': {'guru': GURU_REF, 'fork_before': FORK_REF, 'after_production': AFTER_REF,\n                              'after_source_checksums': hashes(AFTER),\n                              'projection_patch_sha256': digest(BENCHMARK / 'isolated-consumer-projection.patch'),\n                              'harness_sha256': digest(BENCHMARK / 'residual_benchmark.py'),\n                              'diagnostic_script_sha256': digest(WORK / 'run.py'),\n                              'sitecustomize_sha256': digest(WORK / 'sitecustomize.py')},\n                  'input': {'head': fixture.actual, 'candidate': candidate, 'git_tree': tree,\n                            'original_full_head_and_candidate_tree_match': True},\n                  'environment': {'python': sys.executable, 'version': sys.version,\n                                  'git': subprocess.check_output(['git', '--version'], text=True).strip(),\n                                  'platform': sys.platform, 'clock': time.get_clock_info('perf_counter').implementation},\n                  'setup_first_manual_exit': first_result['exit_id'], 'rows': rows}\n        with (WORK / 'result.json').open('x') as stream:\n            json.dump(output, stream, indent=2)\n            stream.write('\\n')\n    finally:\n        fixture.doCleanups()\n    raise SystemExit(0)\n\nharness = BENCHMARK / 'residual_benchmark.py'\nsource = harness.read_text()\nold = \"shutil.copyfile(HERE/'sitecustomize_metrics.py',SKILLS/'sitecustomize.py')\"\nassert source.count(old) == 1\nsource = source.replace(old, \"shutil.copyfile(Path(\" + repr(str(WORK / 'sitecustomize.py')) + \"),SKILLS/'sitecustomize.py')\")\nhook = 'fixture=m.ManualRecoveryTests();fixture.setUp()'\nassert source.count(hook) == 1\nsource = source.replace(hook, hook + ';observe_ready(fixture)')\ntry:\n    exec(compile(source, str(harness), 'exec'), {'__file__': str(harness), '__name__': '__main__', 'observe_ready': observe_ready})\nfinally:\n    tempfile.TemporaryDirectory = original_temporary\n"
+      },
+      "sitecustomize.py": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/sitecustomize.py",
+        "bytes": 2867,
+        "sha256": "eb31cf8a84fd8fee7cc60155ddb2f17ee677501db9401dfccbb33fdefd658af0",
+        "text": "\"\"\"Diagnostic only: time the public content_ref inside one actual command process.\"\"\"\nimport os\nimport sys\n\nif os.environ.get('NESTED_DIAGNOSTIC_LOG') and sys.argv[0].endswith('runtime/command.py'):\n    import atexit\n    import functools\n    import importlib.abc\n    import importlib.machinery\n    import json\n    import time\n    from pathlib import Path\n\n    intervals = []\n    installations = []\n\n    class PublicContentFinder(importlib.abc.MetaPathFinder):\n        def find_spec(self, fullname, path=None, target=None):\n            if not (fullname.startswith('guru_delivery_target_') and fullname.endswith('.delivery_store')):\n                return None\n            spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)\n            if spec is None or spec.loader is None:\n                return None\n            original_exec = spec.loader.exec_module\n\n            def observe_module(module):\n                original_exec(module)\n                content_type = module.GitCandidateContent\n                original = content_type.content_ref\n                installations.append({'module': fullname, 'source': original.__code__.co_filename,\n                                      'method': original.__qualname__})\n\n                @functools.wraps(original)\n                def observed(instance, *args, **kwargs):\n                    started = time.perf_counter_ns()\n                    try:\n                        return original(instance, *args, **kwargs)\n                    finally:\n                        ended = time.perf_counter_ns()\n                        intervals.append({'start_ns': started, 'end_ns': ended,\n                                          'exact_commit': args[0] if args else kwargs.get('exact_commit'),\n                                          'path_count': len(args[1] if len(args) > 1 else kwargs['paths']),\n                                          'method': original.__qualname__, 'module': fullname})\n                content_type.content_ref = observed\n            spec.loader.exec_module = observe_module\n            return spec\n\n    sys.meta_path.insert(0, PublicContentFinder())\n\n    def finish():\n        value = {'diagnostic_only': True, 'pid': os.getpid(), 'argv': sys.argv,\n                 'python': sys.executable, 'version': sys.version,\n                 'clock': {'name': 'perf_counter_ns', 'implementation': time.get_clock_info('perf_counter').implementation,\n                           'monotonic': time.get_clock_info('perf_counter').monotonic,\n                           'resolution_seconds': time.get_clock_info('perf_counter').resolution},\n                 'installations': installations, 'intervals': intervals}\n        with Path(os.environ['NESTED_DIAGNOSTIC_LOG']).open('x') as stream:\n            json.dump(value, stream, indent=2)\n            stream.write('\\n')\n    atexit.register(finish)\n"
+      },
+      "stdout.log": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "text": ""
+      },
+      "stderr.log": {
+        "path": "/tmp/trellis47-nested-owner-998qizil/stderr.log",
+        "bytes": 1499,
+        "sha256": "4398af6cf35d6f2ad39982fbab003d7afaf566db7f418263f2e5bda59788240e",
+        "text": "Traceback (most recent call last):\n  File \"/tmp/trellis47-nested-owner-998qizil/run.py\", line 166, in <module>\n    exec(compile(source, str(harness), 'exec'), {'__file__': str(harness), '__name__': '__main__', 'observe_ready': observe_ready})\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/wumengye/Documents/GoProjects/Trellis/.trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/residual_benchmark.py\", line 50, in <module>\n    fixture=m.ManualRecoveryTests();fixture.setUp()\n    \n  File \"/tmp/trellis47-nested-owner-998qizil/run.py\", line 122, in observe_ready\n    observation = json.loads(log.read_text())\n                             ~~~~~~~~~~~~~^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.8_2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 787, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.8_2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 771, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/trellis47-nested-owner-998qizil/manual-intervals.json'\n"
+      }
+    },
+    "corrected": {
+      "run.py": {
+        "path": "/tmp/trellis47-nested-owner-corrected-o2L4L0qG/run.py",
+        "bytes": 9342,
+        "sha256": "029689409a6ac78b4a79580185b6bc8c0b11fcbb6a8c9a771baa5a06626c4a7c",
+        "text": "\"\"\"One nonacceptance nested observation each for manual recovery and query2.\"\"\"\nfrom pathlib import Path\nimport hashlib\nimport importlib.util\nimport io\nimport json\nimport os\nimport shutil\nimport subprocess\nimport sys\nimport tarfile\nimport tempfile\nimport time\n\nWORK = Path(__file__).resolve().parent\nREPO = Path('/Users/wumengye/Documents/GoProjects/Trellis')\nBENCHMARK = REPO / '.trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark'\nGURU_REF = 'f70b64b026725b27d59fed17ed710cc2f831439f'\nFORK_REF = '0e3b23a3045357b76e69ca91e84b97b294dfb147'\nAFTER_REF = '69033a662d68701610f09caa97f1d292bccd1076'\nAFTER = REPO / '.trellis/scripts/common'\nprotocol = json.loads((BENCHMARK / 'paired-protocol-ci.json').read_text())\n\ndef digest(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\n\ndef hashes(directory):\n    return {p.name: digest(p) for p in sorted(directory.glob('*.py'))}\n\nassert hashes(AFTER) == protocol['after_runtime_source_checksums']\nwith (WORK / 'started.json').open('x') as stream:\n    json.dump({'diagnostic_only': True, 'no_acceptance': True,\n               'operation_count': {'manual': 1, 'query2': 1},\n               'setup_manual': 'normal first record, not timed or selected'}, stream)\nfor name, source, ref in [('guru', Path('/Users/wumengye/Documents/GoProjects/guru-trellis'), GURU_REF),\n                          ('fork', REPO, FORK_REF)]:\n    target = WORK / name\n    target.mkdir()\n    raw = subprocess.check_output(['git', '-C', str(source), 'archive', ref])\n    with tarfile.open(fileobj=io.BytesIO(raw)) as archive:\n        archive.extractall(target, filter='data')\npackage = WORK / 'guru/trellis/skills/guru-team/packages/guru-merge-task-delivery'\nsubprocess.run(['git', 'apply', '--unsafe-paths', str(BENCHMARK / 'isolated-consumer-projection.patch')],\n               cwd=package, check=True)\nassert {name: digest(package / 'runtime' / name) for name in protocol['consumer_source_checksums']['after']} == protocol['consumer_source_checksums']['after']\nguru = WORK / 'guru'\nsubprocess.run([sys.executable, str(guru / 'trellis/skills/guru-team/runtime/bootstrap.py'),\n                '--repo', str(guru), '--runtime-assets', str(guru / 'trellis/skills/guru-team/runtime'),\n                '--python', sys.executable, '--json'], check=True, stdout=subprocess.PIPE)\nbaseline = json.loads((BENCHMARK / 'before-128-mixed.json').read_text())\nfrozen = json.loads((BENCHMARK / 'control-before-input-128-mixed.json').read_text())\ncommand = next(v for v in baseline['resources']['0-manual']['python_processes'] if '--root' in v['argv'])\nfixed_root = Path(command['argv'][command['argv'].index('--root') + 1])\nassert not fixed_root.exists(), 'Do not reuse an occupied original fixture path'\noriginal_temporary = tempfile.TemporaryDirectory\nfirst = True\n\nclass ExactDirectory:\n    def __init__(self):\n        self.name = str(fixed_root)\n        fixed_root.mkdir()\n    def cleanup(self):\n        shutil.rmtree(fixed_root)\n    def __enter__(self):\n        return self.name\n    def __exit__(self, *args):\n        self.cleanup()\n\ndef exact_directory(*args, **kwargs):\n    global first\n    if first:\n        first = False\n        return ExactDirectory()\n    return original_temporary(*args, **kwargs)\n\ntempfile.TemporaryDirectory = exact_directory\nos.environ.update(PINNED_GURU=str(guru), PINNED_FORK=str(WORK / 'fork'),\n                  BENCH_COUNT='128', BENCH_VARIANT='mixed')\nos.environ.pop('BENCH_METRICS_DIR', None)\nos.environ.pop('NESTED_DIAGNOSTIC_LOG', None)\n\ndef observe_ready(fixture):\n    try:\n        candidate = fixture.publication['candidate']\n        tree = fixture.flow.git('ls-tree', '-r', fixture.actual, '--', *candidate['paths'])\n        assert fixture.actual == baseline['git_commit'] == frozen['exact_head']\n        assert candidate == frozen['candidate'] and tree == frozen['git_tree']\n        common = fixture.repo / '.trellis/scripts/common'\n        shutil.copytree(AFTER, common, dirs_exist_ok=True, ignore=shutil.ignore_patterns('__pycache__'))\n        from runtime.delivery_projection.adapter import upstream_modules\n        namespace = 'guru_delivery_target_' + hashlib.sha256(str(common.resolve()).encode()).hexdigest()[:16]\n        for key in list(sys.modules):\n            if key == namespace or key.startswith(namespace + '.'):\n                del sys.modules[key]\n        fixture.projection.api = upstream_modules(fixture.repo)\n        assert Path(fixture.projection.api.delivery_store.GitCandidateContent.content_ref.__code__.co_filename).resolve() == (common / 'delivery_store.py').resolve()\n        assert hashes(common) == hashes(AFTER)\n        # Establish the ordinary merged Delivery once, before either diagnostic.\n        first_result = fixture.invoke()\n        assert first_result['exit_id'] == 'delivered'\n        task = fixture.repo / fixture.flow.task_ref / 'task.json'\n        prior_task = task.read_bytes()\n        rows = []\n        for operation in ('manual', 'query2'):\n            log = WORK / (operation + '-intervals.json')\n            os.environ['NESTED_DIAGNOSTIC_LOG'] = str(log)\n            started = time.perf_counter_ns()\n            if operation == 'manual':\n                result = fixture.invoke()\n            else:\n                query = {'schema_version': '2.0', 'task_identity': 'flow-task', 'repo_ref': 'example/repo',\n                         'base_ref': 'main', 'task_ref': fixture.flow.task_ref}\n                result = fixture.flow.wrapper(package.name, 'discover-task-deliveries.sh',\n                    '--input', fixture.flow.write('history-bench.json', query))\n            ended = time.perf_counter_ns()\n            os.environ.pop('NESTED_DIAGNOSTIC_LOG')\n            if operation == 'manual':\n                assert result['exit_id'] == 'delivered'\n            else:\n                assert [v['merge_commit_sha'] for v in result['deliveries']] == [fixture.merge]\n            assert task.read_bytes() == prior_task\n            observation = json.loads(log.read_text())\n            assert len(observation['installations']) == 1\n            intervals = sorted(observation['intervals'], key=lambda v: v['start_ns'])\n            assert intervals and all(started <= v['start_ns'] < v['end_ns'] <= ended for v in intervals)\n            assert all(a['end_ns'] <= b['start_ns'] for a, b in zip(intervals, intervals[1:]))\n            assert all(v['path_count'] == 128 and v['exact_commit'] == fixture.actual for v in intervals)\n            nested = sum(v['end_ns'] - v['start_ns'] for v in intervals)\n            wall = ended - started\n            cap = protocol and json.loads((BENCHMARK / 'frozen-standards.json').read_text())['cases']['128-mixed']['after_median_max_seconds'][operation]\n            rows.append({'operation': operation, 'wrapper_start_ns': started, 'wrapper_end_ns': ended,\n                         'wrapper_wall_seconds': wall / 1e9, 'nonoverlapping_public_content_ref_seconds': nested / 1e9,\n                         'outside_public_content_ref_wall_seconds': (wall - nested) / 1e9,\n                         'original_absolute_median_cap_seconds': cap,\n                         'observed_outside_exceeds_cap': (wall - nested) / 1e9 > cap,\n                         'typed_result': result, 'command_observation': observation})\n        output = {'diagnostic_only': True, 'acceptance': False, 'work_directory': str(WORK),\n                  'sources': {'guru': GURU_REF, 'fork_before': FORK_REF, 'after_production': AFTER_REF,\n                              'after_source_checksums': hashes(AFTER),\n                              'projection_patch_sha256': digest(BENCHMARK / 'isolated-consumer-projection.patch'),\n                              'harness_sha256': digest(BENCHMARK / 'residual_benchmark.py'),\n                              'diagnostic_script_sha256': digest(WORK / 'run.py'),\n                              'sitecustomize_sha256': digest(WORK / 'sitecustomize.py')},\n                  'input': {'head': fixture.actual, 'candidate': candidate, 'git_tree': tree,\n                            'original_full_head_and_candidate_tree_match': True},\n                  'environment': {'python': sys.executable, 'version': sys.version,\n                                  'git': subprocess.check_output(['git', '--version'], text=True).strip(),\n                                  'platform': sys.platform, 'clock': time.get_clock_info('perf_counter').implementation},\n                  'setup_first_manual_exit': first_result['exit_id'], 'rows': rows}\n        with (WORK / 'result.json').open('x') as stream:\n            json.dump(output, stream, indent=2)\n            stream.write('\\n')\n    finally:\n        fixture.doCleanups()\n    raise SystemExit(0)\n\nharness = BENCHMARK / 'residual_benchmark.py'\nsource = harness.read_text()\nold = \"shutil.copyfile(HERE/'sitecustomize_metrics.py',SKILLS/'sitecustomize.py')\"\nassert source.count(old) == 1\nsource = source.replace(old, \"shutil.copyfile(Path(\" + repr(str(WORK / 'sitecustomize.py')) + \"),SKILLS/'sitecustomize.py')\")\nhook = 'fixture=m.ManualRecoveryTests();fixture.setUp()'\nassert source.count(hook) == 1\nsource = source.replace(hook, hook + ';observe_ready(fixture)')\ntry:\n    exec(compile(source, str(harness), 'exec'), {'__file__': str(harness), '__name__': '__main__', 'observe_ready': observe_ready})\nfinally:\n    tempfile.TemporaryDirectory = original_temporary\n"
+      },
+      "sitecustomize.py": {
+        "path": "/tmp/trellis47-nested-owner-corrected-o2L4L0qG/sitecustomize.py",
+        "bytes": 2986,
+        "sha256": "f68b9ae03a2b50a1a87a9e42402ef0456cfca3e1e21017211735fe2f38a074d6",
+        "text": "\"\"\"Diagnostic only: time the public content_ref inside one actual command process.\"\"\"\nimport os\nimport sys\n\nif os.environ.get('NESTED_DIAGNOSTIC_LOG') and any(\n        arg == '-m' and index + 1 < len(sys.orig_argv) and sys.orig_argv[index + 1] == 'runtime.command'\n        for index, arg in enumerate(sys.orig_argv)):\n    import atexit\n    import functools\n    import importlib.abc\n    import importlib.machinery\n    import json\n    import time\n    from pathlib import Path\n\n    intervals = []\n    installations = []\n\n    class PublicContentFinder(importlib.abc.MetaPathFinder):\n        def find_spec(self, fullname, path=None, target=None):\n            if not (fullname.startswith('guru_delivery_target_') and fullname.endswith('.delivery_store')):\n                return None\n            spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)\n            if spec is None or spec.loader is None:\n                return None\n            original_exec = spec.loader.exec_module\n\n            def observe_module(module):\n                original_exec(module)\n                content_type = module.GitCandidateContent\n                original = content_type.content_ref\n                installations.append({'module': fullname, 'source': original.__code__.co_filename,\n                                      'method': original.__qualname__})\n\n                @functools.wraps(original)\n                def observed(instance, *args, **kwargs):\n                    started = time.perf_counter_ns()\n                    try:\n                        return original(instance, *args, **kwargs)\n                    finally:\n                        ended = time.perf_counter_ns()\n                        intervals.append({'start_ns': started, 'end_ns': ended,\n                                          'exact_commit': args[0] if args else kwargs.get('exact_commit'),\n                                          'path_count': len(args[1] if len(args) > 1 else kwargs['paths']),\n                                          'method': original.__qualname__, 'module': fullname})\n                content_type.content_ref = observed\n            spec.loader.exec_module = observe_module\n            return spec\n\n    sys.meta_path.insert(0, PublicContentFinder())\n\n    def finish():\n        value = {'diagnostic_only': True, 'pid': os.getpid(), 'argv': sys.argv,\n                 'python': sys.executable, 'version': sys.version,\n                 'clock': {'name': 'perf_counter_ns', 'implementation': time.get_clock_info('perf_counter').implementation,\n                           'monotonic': time.get_clock_info('perf_counter').monotonic,\n                           'resolution_seconds': time.get_clock_info('perf_counter').resolution},\n                 'installations': installations, 'intervals': intervals}\n        with Path(os.environ['NESTED_DIAGNOSTIC_LOG']).open('x') as stream:\n            json.dump(value, stream, indent=2)\n            stream.write('\\n')\n    atexit.register(finish)\n"
+      },
+      "stdout.log": {
+        "path": "/tmp/trellis47-nested-owner-corrected-o2L4L0qG/stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "text": ""
+      },
+      "stderr.log": {
+        "path": "/tmp/trellis47-nested-owner-corrected-o2L4L0qG/stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "text": ""
+      }
+    }
+  },
+  "measurement_scope": {
+    "diagnostic_operations_after_correction": {
+      "manual": 1,
+      "query2": 1
+    },
+    "setup_first_manual": "normal recording only; not timed or considered a performance sample",
+    "count_or_rss_observer": "Not active; BENCH_METRICS_DIR unset",
+    "git_shim": "Frozen harness shim present but metrics inactive, so exec real Git without time wrapper",
+    "production_oracle": "Normal public wrappers returned delivered and exact historical merge; Task bytes unchanged after both operations",
+    "scope_is_public_content_ref_method": "Constructor, context entry/exit and other candidate owner code outside this method remain in complement",
+    "no_owner_bypass": true,
+    "no_sys_setprofile": true
+  },
+  "conclusion": {
+    "both_observed_complements_below_original_caps": true,
+    "supports_even_zero_content_ref_still_over_cap": false,
+    "proves_feasibility_or_acceptance": false,
+    "scope": "This corrected instrumented Mac observation only; no inference to original CI timing, other platforms or universal feasibility"
+  },
+  "limitations": [
+    "Only one observation per operation, no median/population/inference and no sample selection.",
+    "Import hook, wrapper function, perf_counter reads, bookkeeping and atexit JSON write add unquantified overhead. Complement contains instrumentation overhead and public owner work outside content_ref.",
+    "Hypothetical content_ref=0 removes validation and Git I/O as well as SHA work; that is an analytical boundary, not an admissible implementation.",
+    "Same exact frozen candidate does not make this different observer setup equivalent to acceptance instrumentation or original CI environment.",
+    "Failed first instrument invocation has no nested log and no persisted wrapper duration; it cannot be used in a timing comparison."
+  ]
+}

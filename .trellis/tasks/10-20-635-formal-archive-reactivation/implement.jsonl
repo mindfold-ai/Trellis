@@ -1,0 +1,16 @@
+{"file": ".trellis/spec/core/backend/index.md", "reason": "Core public API and package quality requirements"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI pre-development and quality requirements"}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Existing public maintenance inputs, executor, recovery and manual resume compatibility"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Public imports, pure Core boundary and matching package build contract"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Task identity, session selection and native lifecycle consumers"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Task v2, historical outcomes, authority resolution and ordinary reopen"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Bounded filesystem actions, ownership and template/dogfood parity"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Typed public diagnostics and CLI error behavior"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Implementation quality and forbidden patterns"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python 3.9 and native script conventions if a reader gap requires changes"}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Affected test quality requirements"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Regression scope, isolation and real Git fixture cleanup"}
+{"file": ".trellis/spec/cli/unit-test/mock-strategies.md", "reason": "Minimal mocking for actual Git/native behavior"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "CLI and packed-pair integration patterns"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Core/CLI/native data flow and authority handoff"}
+{"file": ".trellis/tasks/10-20-635-formal-archive-reactivation/research/current-boundaries.md", "reason": "Inspected source constraints, sample provenance and ownership decisions"}

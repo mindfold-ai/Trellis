@@ -1,0 +1,26 @@
+{
+  "id": "plan2-mixed-source",
+  "name": "plan2-mixed-source",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Plan2 explicit mixed-source migration",
+  "description": "Support an explicitly reviewed mixture of strict schema-1 and known-legacy Task records in one complete Plan2 inventory, preserving deferred records and existing migration safeguards.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-13",
+  "completedAt": "2026-10-14",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "52477a94fe4f64ddd320c532dde7d10cf9199d11",
+  "pr_url": "https://github.com/castbox/Trellis/pull/38",
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

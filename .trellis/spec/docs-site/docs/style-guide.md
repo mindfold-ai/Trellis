@@ -83,7 +83,7 @@ Open technical architecture pages with the system thesis, then immediately groun
 
 **Good:**
 
-> Trellis is a Team-level Agent Harness with built-in LLM wiki. In implementation terms, that means two systems share the same project files: the agent harness controls workflow execution, and the LLM wiki stores specs, tasks, research, and journals.
+> Trellis is a Team-level Agent Harness with built-in LLM wiki. In implementation terms, that means two systems share the same project files: the agent harness controls workflow execution, and the LLM wiki stores specs, tasks, and research.
 
 **Avoid:**
 
@@ -247,22 +247,14 @@ Release notes (`docs-site/changelog/v*.mdx` and `docs-site/zh/changelog/v*.mdx`)
 
 **Why**: A user scanning a changelog wants to answer "does this affect me, and what do I do?" in seconds. Narrative background ("then what? then nothing") pushes the actual change further down the page and tells readers how to feel rather than what changed. It also ages badly — in six months the only reader is an AI grepping for `phase.py` or `init.ts:1370`, not someone reliving the UX story.
 
-**Example (changelog entry)**:
+**Technical voice example**:
 
 ```markdown
-### Joiner onboarding task
+### Bootstrap task
 
-`trellis init` now dispatches on two filesystem flags:
-
-| `.trellis/` | `.trellis/.developer` | Generated task |
-|---|---|---|
-| missing | n/a | `00-bootstrap-guidelines` (creator, unchanged) |
-| present | missing | `00-join-<slug>` (new: joiner flow) |
-| present | present | none (same-dev re-init) |
-
-`.trellis/.developer` is the per-checkout signal because it's listed in
-`.trellis/.gitignore` and therefore absent on fresh clones.
-`.trellis/workspace/<name>/` cannot serve this role — it's committed to git.
+`trellis init` creates a bootstrap task when the project needs its first
+guideline pass. Reinitializing an already configured project does not create
+another bootstrap task.
 ```
 
 **Related**: `Best Practices > DON'T > use vague language` above. Changelog narrative flourishes are the same anti-pattern at document level.
@@ -272,30 +264,26 @@ Release notes (`docs-site/changelog/v*.mdx` and `docs-site/zh/changelog/v*.mdx`)
 **Problem**:
 
 ```markdown
-### Joiner 引导任务——新开发者不再进来一脸懵
+### Setup that makes everything effortless
 
-这个版本之前，新开发者在一个已有 Trellis 项目上第一次跑 `trellis init` 几乎啥都不做：
-只往 `.trellis/.developer` 写了个身份文件，然后呢？然后就没然后了。打开 AI 工具面对
-的是一片空白，不知道 Trellis 是什么、团队约定在哪、自己该做什么。队友只能反复在
-群里解释工作流。
-
-beta.9 起，`trellis init` 按两个文件的存在状态分三种场景派发：
+Just run the setup command and your whole team will instantly understand
+the project. It changes a few files and handles every future task for you.
 ```
 
 **Why it's bad**:
 
 - Rhetorical questions ("然后呢？然后就没然后了") and emotional framing ("一脸懵", "反复在群里解释") don't help an upgrade decision.
-- The actual change (dispatch on two flags → three branches) is buried three paragraphs in.
-- Language ages badly. In six months "一脸懵" reads as noise; the dispatch table still holds.
-- Title is an outcome statement ("不再进来一脸懵"), not a feature name. Hard to grep for.
+- The actual file and task changes are absent.
+- The claims cannot be checked against a release.
+- The title is an outcome claim, not a feature name.
 
 **Instead**:
 
 ```markdown
-### Joiner onboarding task
+### Bootstrap task
 
-`trellis init` now dispatches on (`.trellis/`, `.trellis/.developer`) presence
-to generate three task types: creator bootstrap, joiner onboarding, or no task.
+`trellis init` creates the initial guideline task when project setup requires
+one. Reinitialization leaves existing task records unchanged.
 ```
 
 Lead with the change. Background (if any) goes into a second paragraph or a collapsed "Why" subsection — not in the opening sentence.
@@ -314,7 +302,7 @@ Lead with the change. Background (if any) goes into a second paragraph or a coll
 
 ### Section heading rules
 
-- **Use feature names, not outcomes**: `### Joiner onboarding task`, not `### New developers aren't thrown into a black box anymore`.
+- **Use feature names, not outcomes**: `### Session binding`, not `### Sessions are easier to manage`.
 - **Stable across translations**: same technical nouns in both `docs-site/changelog/` and `docs-site/zh/changelog/`.
 - **Greppable**: include exact identifiers users might search for (`task.json`, `trellis init`, `/trellis:finish-work`).
 
@@ -409,7 +397,7 @@ When content becomes obsolete because a feature was removed, **delete the conten
 Tombstone sections:
 
 - Pollute the TOC and in-page sidebar
-- Repeat migration guidance that belongs in the changelog / migration manifest, not the reference docs
+- Repeat release guidance that belongs in the changelog, not the reference docs
 - Teach readers to skim-ignore sections — the "noise sections" train them to tune out legit content too
 - Accumulate across versions (every release adds one; none ever removes one)
 
@@ -418,7 +406,7 @@ Tombstone sections:
 When a feature is removed:
 
 1. Delete the sections / pages that documented it.
-2. Put the "what to do instead" guidance in **one place** — the release changelog or migration manifest's `notes` field. Link to it from the top-of-page `<Note>` for the one release that removes it, then drop the note the release after.
+2. Put the "what to do instead" guidance in **one place** — the release changelog. Link to it from the top-of-page `<Note>` for the one release that removes it, then drop the note the release after.
 3. If a former section is heavily cross-referenced, check for incoming links and redirect them; don't keep the tombstone just to preserve URLs.
 
 ### Example

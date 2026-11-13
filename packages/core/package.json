@@ -1,7 +1,7 @@
 {
   "name": "@mindfoldhq/trellis-core",
-  "version": "0.6.17",
-  "description": "Trellis core SDK — channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
+  "version": "0.7.0-castbox.6",
+  "description": "Trellis core SDK \u2014 channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,10 +27,30 @@
       "import": "./dist/task/index.js",
       "default": "./dist/task/index.js"
     },
+    "./task/v2": {
+      "types": "./dist/task/v2/index.d.ts",
+      "import": "./dist/task/v2/index.js",
+      "default": "./dist/task/v2/index.js"
+    },
+    "./task/legacy-migration": {
+      "types": "./dist/task/legacy-migration.d.ts",
+      "import": "./dist/task/legacy-migration.js",
+      "default": "./dist/task/legacy-migration.js"
+    },
+    "./task/migration-v2": {
+      "types": "./dist/task/migration-v2.d.ts",
+      "import": "./dist/task/migration-v2.js",
+      "default": "./dist/task/migration-v2.js"
+    },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing/index.js",
       "default": "./dist/testing/index.js"
+    },
+    "./task/maintenance": {
+      "types": "./dist/task/maintenance.d.ts",
+      "import": "./dist/task/maintenance.js",
+      "default": "./dist/task/maintenance.js"
     }
   },
   "files": [

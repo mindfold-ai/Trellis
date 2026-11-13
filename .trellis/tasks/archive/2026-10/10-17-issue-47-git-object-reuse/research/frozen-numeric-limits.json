@@ -1,0 +1,231 @@
+{
+  "frozen_at_utc": "2026-10-17T02:00:51.814846+00:00",
+  "baseline_source": "b0d87f952043058e21001a002b661bf2db56b1fa",
+  "harness_sha256": "accf0fe622ae1eb88bdfdb24ef5847b6257bf8ce1a7c2b57aad2c62905c2e849",
+  "resource_ceilings_bytes": {
+    "python_individual_max": 268435456,
+    "git_individual_max": 67108864
+  },
+  "limits": {
+    "task-h2-p24::task_create": {
+      "before_median_seconds": 0.7060346874641255,
+      "after_max_median_seconds": 0.3530173437320627,
+      "primary_ratio": 0.5
+    },
+    "task-h6-p96::task_create": {
+      "before_median_seconds": 6.145890687475912,
+      "after_max_median_seconds": 3.072945343737956,
+      "primary_ratio": 0.5
+    },
+    "delivery-repeated-p128::candidate": {
+      "before_median_seconds": 0.1085835620178841,
+      "after_max_median_seconds": 0.3585835620178841,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p128::begin_check": {
+      "before_median_seconds": 0.12332060397602618,
+      "after_max_median_seconds": 0.3733206039760262,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p128::record_gate_check": {
+      "before_median_seconds": 0.1268910420476459,
+      "after_max_median_seconds": 0.3768910420476459,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p128::record_gate_full_review": {
+      "before_median_seconds": 0.12936754198744893,
+      "after_max_median_seconds": 0.37936754198744893,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p128::record_gate_readiness": {
+      "before_median_seconds": 0.13029127096524462,
+      "after_max_median_seconds": 0.3802912709652446,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p128::record_delivery": {
+      "before_median_seconds": 2.9362126254709437,
+      "after_max_median_seconds": 1.4681063127354719,
+      "primary_ratio": 0.5
+    },
+    "delivery-repeated-p128::record_delivery_retry": {
+      "before_median_seconds": 0.151904875470791,
+      "after_max_median_seconds": 0.401904875470791,
+      "primary_ratio": null
+    },
+    "delivery-unique-p128::candidate": {
+      "before_median_seconds": 0.09891862497897819,
+      "after_max_median_seconds": 0.3489186249789782,
+      "primary_ratio": null
+    },
+    "delivery-unique-p128::begin_check": {
+      "before_median_seconds": 0.11540654202690348,
+      "after_max_median_seconds": 0.3654065420269035,
+      "primary_ratio": null
+    },
+    "delivery-unique-p128::record_gate_check": {
+      "before_median_seconds": 0.11863910447573289,
+      "after_max_median_seconds": 0.3686391044757329,
+      "primary_ratio": null
+    },
+    "delivery-unique-p128::record_gate_full_review": {
+      "before_median_seconds": 0.12311997899087146,
+      "after_max_median_seconds": 0.37311997899087146,
+      "primary_ratio": null
+    },
+    "delivery-unique-p128::record_gate_readiness": {
+      "before_median_seconds": 0.12649831199087203,
+      "after_max_median_seconds": 0.376498311990872,
+      "primary_ratio": null
+    },
+    "delivery-unique-p128::record_delivery": {
+      "before_median_seconds": 2.643608687503729,
+      "after_max_median_seconds": 1.3218043437518645,
+      "primary_ratio": 0.5
+    },
+    "delivery-unique-p128::record_delivery_retry": {
+      "before_median_seconds": 0.1402409995207563,
+      "after_max_median_seconds": 0.3902409995207563,
+      "primary_ratio": null
+    },
+    "delivery-larger-p128::candidate": {
+      "before_median_seconds": 0.0989670209819451,
+      "after_max_median_seconds": 0.3489670209819451,
+      "primary_ratio": null
+    },
+    "delivery-larger-p128::begin_check": {
+      "before_median_seconds": 0.11632947908947244,
+      "after_max_median_seconds": 0.36632947908947244,
+      "primary_ratio": null
+    },
+    "delivery-larger-p128::record_gate_check": {
+      "before_median_seconds": 0.12127412494737655,
+      "after_max_median_seconds": 0.37127412494737655,
+      "primary_ratio": null
+    },
+    "delivery-larger-p128::record_gate_full_review": {
+      "before_median_seconds": 0.12781883351271972,
+      "after_max_median_seconds": 0.3778188335127197,
+      "primary_ratio": null
+    },
+    "delivery-larger-p128::record_gate_readiness": {
+      "before_median_seconds": 0.1314790835021995,
+      "after_max_median_seconds": 0.3814790835021995,
+      "primary_ratio": null
+    },
+    "delivery-larger-p128::record_delivery": {
+      "before_median_seconds": 2.6585536875063553,
+      "after_max_median_seconds": 1.3292768437531777,
+      "primary_ratio": 0.5
+    },
+    "delivery-larger-p128::record_delivery_retry": {
+      "before_median_seconds": 0.13845320796826854,
+      "after_max_median_seconds": 0.38845320796826854,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p10001::candidate": {
+      "before_median_seconds": 2.867609021021053,
+      "after_max_median_seconds": 4.30141353153158,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p10001::begin_check": {
+      "before_median_seconds": 2.1739107705070637,
+      "after_max_median_seconds": 3.2608661557605956,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p10001::record_gate_check": {
+      "before_median_seconds": 2.4583785834838636,
+      "after_max_median_seconds": 3.6875678752257954,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p10001::record_gate_full_review": {
+      "before_median_seconds": 2.7212338960380293,
+      "after_max_median_seconds": 4.081850844057044,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p10001::record_gate_readiness": {
+      "before_median_seconds": 2.995456041477155,
+      "after_max_median_seconds": 4.493184062215732,
+      "primary_ratio": null
+    },
+    "delivery-repeated-p10001::record_delivery": {
+      "before_median_seconds": 229.56177572894376,
+      "after_max_median_seconds": 45.91235514578875,
+      "primary_ratio": 0.2
+    },
+    "delivery-repeated-p10001::record_delivery_retry": {
+      "before_median_seconds": 1.2650516040157527,
+      "after_max_median_seconds": 1.897577406023629,
+      "primary_ratio": null
+    },
+    "delivery-unique-p10001::candidate": {
+      "before_median_seconds": 2.993847707984969,
+      "after_max_median_seconds": 4.4907715619774535,
+      "primary_ratio": null
+    },
+    "delivery-unique-p10001::begin_check": {
+      "before_median_seconds": 2.157583500025794,
+      "after_max_median_seconds": 3.236375250038691,
+      "primary_ratio": null
+    },
+    "delivery-unique-p10001::record_gate_check": {
+      "before_median_seconds": 2.434980583493598,
+      "after_max_median_seconds": 3.6524708752403967,
+      "primary_ratio": null
+    },
+    "delivery-unique-p10001::record_gate_full_review": {
+      "before_median_seconds": 2.730106520524714,
+      "after_max_median_seconds": 4.095159780787071,
+      "primary_ratio": null
+    },
+    "delivery-unique-p10001::record_gate_readiness": {
+      "before_median_seconds": 3.0107679995708168,
+      "after_max_median_seconds": 4.516151999356225,
+      "primary_ratio": null
+    },
+    "delivery-unique-p10001::record_delivery": {
+      "before_median_seconds": 229.86582912498852,
+      "after_max_median_seconds": 45.97316582499771,
+      "primary_ratio": 0.2
+    },
+    "delivery-unique-p10001::record_delivery_retry": {
+      "before_median_seconds": 1.2662744169938378,
+      "after_max_median_seconds": 1.8994116254907567,
+      "primary_ratio": null
+    },
+    "delivery-larger-p10001::candidate": {
+      "before_median_seconds": 2.98913027101662,
+      "after_max_median_seconds": 4.48369540652493,
+      "primary_ratio": null
+    },
+    "delivery-larger-p10001::begin_check": {
+      "before_median_seconds": 2.1491302080103196,
+      "after_max_median_seconds": 3.2236953120154794,
+      "primary_ratio": null
+    },
+    "delivery-larger-p10001::record_gate_check": {
+      "before_median_seconds": 2.4173927294905297,
+      "after_max_median_seconds": 3.6260890942357946,
+      "primary_ratio": null
+    },
+    "delivery-larger-p10001::record_gate_full_review": {
+      "before_median_seconds": 2.7371344795101322,
+      "after_max_median_seconds": 4.105701719265198,
+      "primary_ratio": null
+    },
+    "delivery-larger-p10001::record_gate_readiness": {
+      "before_median_seconds": 3.01665468752617,
+      "after_max_median_seconds": 4.524982031289255,
+      "primary_ratio": null
+    },
+    "delivery-larger-p10001::record_delivery": {
+      "before_median_seconds": 230.01115641649812,
+      "after_max_median_seconds": 46.00223128329963,
+      "primary_ratio": 0.2
+    },
+    "delivery-larger-p10001::record_delivery_retry": {
+      "before_median_seconds": 1.2534523124340922,
+      "after_max_median_seconds": 1.8801784686511382,
+      "primary_ratio": null
+    }
+  }
+}

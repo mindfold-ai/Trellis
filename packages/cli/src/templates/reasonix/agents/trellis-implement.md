@@ -4,6 +4,16 @@ description: Code implementation expert. Understands Trellis specs and requireme
 runAs: subagent
 allowed-tools: read_file,write_file,edit_file,multi_edit,search_content,search_files,glob,run_command,list_directory,directory_tree,create_directory,delete_file,move_file
 ---
+
+## Delivery context boundary
+
+For schema-2 Tasks, read the exact DeliveryKey/planning_root supplied by dispatch,
+or query delivery.py current --json from the verified workspace. Load manifests
+and PRD/design/implement from that selected Delivery, plus root Task accepted
+scope. Never infer selection from inventory or fall back to root Task planning.
+A missing/stale Delivery selection stops implementation with a concrete diagnostic.
+
+
 # Implement Agent
 
 You are the Implement Agent in the Trellis workflow.

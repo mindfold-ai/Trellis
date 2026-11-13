@@ -1,31 +1,16 @@
 /**
- * Self-heal poisoned `.template-hashes.json` manifests.
+ * Limit `.template-hashes.json` entries to files owned by this installation.
  *
- * Versions before this fix walked `.codex/`, `.claude/`, etc. with a blind
- * recursive scan when computing the manifest, so they hashed user-owned
- * runtime data (`.codex/sessions/*`, `.claude/projects/*.jsonl`, pre-existing
- * `AGENTS.md`, user-added `.codex/skills/<custom>/`, …). On uninstall, every
- * manifest entry is unlinked, which silently deletes user data.
- *
- * `pruneOrphanManifestKeys` removes any manifest entry that no current
- * platform configurator owns. The two entry points that consume it are
- * `trellis update` (before migration classification) and `trellis uninstall`
- * (before plan building). Together they ensure existing poisoned manifests
- * self-correct on the next routine command.
+ * `pruneOrphanManifestKeys` removes entries that no current platform
+ * configurator owns before uninstall builds its deletion plan.
  *
  * Rules:
- *   - `.trellis/*` entries are ALWAYS kept. `trellis uninstall` removes
- *     `.trellis/` wholesale via `fs.rmSync(..., { recursive: true })`, so
- *     manifest accuracy there doesn't affect uninstall data-loss. `update`
- *     also relies on these entries to detect user-modified workflow files.
+ *   - `.trellis/*` entries are kept. `trellis uninstall` removes known owned
+ *     children while leaving unknown entries untouched. `update` relies on
+ *     these hashes to detect modified workflow files.
  *   - Root-level `AGENTS.md` is kept only when it still looks Trellis-managed
  *     (contains the managed block markers) or is missing on disk. This
- *     self-heals old poisoned manifests for user-owned AGENTS.md files that
- *     predated init and were skipped.
- *   - Paths referenced by `from`/`to` of any migration manifest entry
- *     (rename, rename-dir, delete, safe-file-delete) are preserved. Pruning
- *     them would prevent legitimate pending migrations from finding their
- *     source/target.
+ *     keeps a pre-existing, unmanaged AGENTS.md outside the deletion plan.
  *   - Everything else: if the path is not in the union of
  *     `collectPlatformTemplates()` for currently-configured platforms, it is
  *     pruned. This matches "files trellis actually wrote during init/update".
@@ -36,12 +21,12 @@ import path from "node:path";
 
 import { collectPlatformTemplates } from "../configurators/index.js";
 import { FILE_NAMES } from "../constants/paths.js";
-import { getAllMigrations } from "../migrations/index.js";
 import { saveHashes } from "./template-hash.js";
 import { toPosix } from "./posix.js";
+import { assertProjectPath } from "./path-boundary.js";
 import { TRELLIS_BLOCK_END, TRELLIS_BLOCK_START } from "./managed-paths.js";
 import type { AITool } from "../types/ai-tools.js";
-import type { TemplateHashes } from "../types/migration.js";
+import type { TemplateHashes } from "../types/template-hashes.js";
 
 export interface PruneResult {
   /** Manifest keys removed (POSIX-style relative paths). */
@@ -54,8 +39,6 @@ export interface PruneResult {
  * Compute the union of "what trellis writes" across:
  *   - every configured platform's collectTemplates() output
  *   - root-level AGENTS.md when it still carries Trellis managed-block markers
- *   - every migration manifest's from/to path (preserve so legitimate
- *     pending migrations can find their source/target)
  */
 function buildKnownKeys(configuredPlatforms: readonly AITool[]): Set<string> {
   const known = new Set<string>();
@@ -66,26 +49,16 @@ function buildKnownKeys(configuredPlatforms: readonly AITool[]): Set<string> {
       known.add(toPosix(key));
     }
   }
-  // Preserve any path referenced by a migration: legitimate pending
-  // rename/delete operations need to resolve their `from` (and the target's
-  // hash record for `to`) even if the current registry doesn't list it.
-  for (const migration of getAllMigrations()) {
-    if (migration.from) known.add(toPosix(migration.from));
-    if (migration.to) known.add(toPosix(migration.to));
-  }
-
   return known;
 }
 
 /**
- * Root-level AGENTS.md needs special handling because it has no platform
- * registry owner. New fixed inits record it only when written, but old
- * manifests may contain a user-owned AGENTS.md that init skipped. The
- * managed block markers are the least destructive ownership signal: no
- * markers means preserve the user's file by pruning the stale manifest key.
+ * Root-level AGENTS.md has no platform registry owner. Managed block markers
+ * distinguish it from a pre-existing file that the installer did not write.
  */
 function shouldKeepAgentsMd(cwd: string): boolean {
   const fullPath = path.join(cwd, FILE_NAMES.AGENTS);
+  assertProjectPath(fullPath, cwd);
   if (!fs.existsSync(fullPath)) {
     return true;
   }

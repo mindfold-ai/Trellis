@@ -1,0 +1,29 @@
+{
+  "id": "issue-43-schema1-session-metadata",
+  "name": "issue-43-schema1-session-metadata",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 43,
+    "disposition": "exact_source"
+  },
+  "title": "修复旧原生 schema-1 会话维护兼容",
+  "description": "承接 castbox/Trellis#43，兼容原生 writer 的 schema-1 元数据并验证公开维护路径",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-16",
+  "completedAt": "2026-10-16",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "e28e44b7d45533584732aad74fd869a8bec7b466",
+  "pr_url": "https://github.com/castbox/Trellis/pull/44",
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Issue #43 delivered via PR #44; merge 2a6f10ba; PR CI 38851508674 and merged-main CI 38851816688 passed. Guru adoption remains downstream-owned.",
+  "meta": {}
+}

@@ -1,0 +1,198 @@
+{
+  "case": "128-repeated",
+  "phase": "control-before",
+  "host_before": {
+    "utc": "2026-10-17T06:52:03.326205+00:00",
+    "load_average_1_5_15": [
+      0.8203125,
+      0.298828125,
+      0.1103515625
+    ],
+    "logical_cpu_count": 4,
+    "process_count": 160,
+    "top_cpu_processes": [
+      {
+        "pid": 2182,
+        "ppid": 2164,
+        "cpu_percent": 3.7,
+        "memory_percent": 0.8,
+        "executable": "Runner.Worker"
+      },
+      {
+        "pid": 1,
+        "ppid": 0,
+        "cpu_percent": 2.9,
+        "memory_percent": 0.0,
+        "executable": "systemd"
+      },
+      {
+        "pid": 2164,
+        "ppid": 2092,
+        "cpu_percent": 1.5,
+        "memory_percent": 0.6,
+        "executable": "Runner.Listener"
+      },
+      {
+        "pid": 2645,
+        "ppid": 2644,
+        "cpu_percent": 1.1,
+        "memory_percent": 0.1,
+        "executable": "python"
+      },
+      {
+        "pid": 2322,
+        "ppid": 2,
+        "cpu_percent": 1.0,
+        "memory_percent": 0.0,
+        "executable": "u16:5-events_power_efficient"
+      },
+      {
+        "pid": 47,
+        "ppid": 2,
+        "cpu_percent": 0.7,
+        "memory_percent": 0.0,
+        "executable": "u16:2-events_power_efficient"
+      },
+      {
+        "pid": 1441,
+        "ppid": 1042,
+        "cpu_percent": 0.7,
+        "memory_percent": 0.2,
+        "executable": "python3"
+      },
+      {
+        "pid": 2127,
+        "ppid": 2125,
+        "cpu_percent": 0.6,
+        "memory_percent": 0.5,
+        "executable": "provjobd2489088"
+      },
+      {
+        "pid": 23,
+        "ppid": 2,
+        "cpu_percent": 0.4,
+        "memory_percent": 0.0,
+        "executable": "2"
+      },
+      {
+        "pid": 29,
+        "ppid": 2,
+        "cpu_percent": 0.4,
+        "memory_percent": 0.0,
+        "executable": "1"
+      },
+      {
+        "pid": 35,
+        "ppid": 2,
+        "cpu_percent": 0.4,
+        "memory_percent": 0.0,
+        "executable": "3"
+      },
+      {
+        "pid": 12,
+        "ppid": 2,
+        "cpu_percent": 0.3,
+        "memory_percent": 0.0,
+        "executable": "u16:0-kvfree_rcu_reclaim"
+      }
+    ]
+  },
+  "returncode": 0,
+  "stderr": "",
+  "host_after": {
+    "utc": "2026-10-17T06:52:14.990433+00:00",
+    "load_average_1_5_15": [
+      0.8486328125,
+      0.322265625,
+      0.1201171875
+    ],
+    "logical_cpu_count": 4,
+    "process_count": 160,
+    "top_cpu_processes": [
+      {
+        "pid": 2182,
+        "ppid": 2164,
+        "cpu_percent": 3.3,
+        "memory_percent": 0.8,
+        "executable": "Runner.Worker"
+      },
+      {
+        "pid": 1,
+        "ppid": 0,
+        "cpu_percent": 2.7,
+        "memory_percent": 0.0,
+        "executable": "systemd"
+      },
+      {
+        "pid": 2164,
+        "ppid": 2092,
+        "cpu_percent": 1.3,
+        "memory_percent": 0.6,
+        "executable": "Runner.Listener"
+      },
+      {
+        "pid": 2645,
+        "ppid": 2644,
+        "cpu_percent": 1.0,
+        "memory_percent": 0.1,
+        "executable": "python"
+      },
+      {
+        "pid": 2322,
+        "ppid": 2,
+        "cpu_percent": 0.9,
+        "memory_percent": 0.0,
+        "executable": "u16:5-events_power_efficient"
+      },
+      {
+        "pid": 47,
+        "ppid": 2,
+        "cpu_percent": 0.6,
+        "memory_percent": 0.0,
+        "executable": "u16:2-events_power_efficient"
+      },
+      {
+        "pid": 1441,
+        "ppid": 1042,
+        "cpu_percent": 0.6,
+        "memory_percent": 0.2,
+        "executable": "python3"
+      },
+      {
+        "pid": 2127,
+        "ppid": 2125,
+        "cpu_percent": 0.6,
+        "memory_percent": 0.5,
+        "executable": "provjobd2489088"
+      },
+      {
+        "pid": 23,
+        "ppid": 2,
+        "cpu_percent": 0.4,
+        "memory_percent": 0.0,
+        "executable": "2"
+      },
+      {
+        "pid": 29,
+        "ppid": 2,
+        "cpu_percent": 0.4,
+        "memory_percent": 0.0,
+        "executable": "1"
+      },
+      {
+        "pid": 35,
+        "ppid": 2,
+        "cpu_percent": 0.4,
+        "memory_percent": 0.0,
+        "executable": "3"
+      },
+      {
+        "pid": 12,
+        "ppid": 2,
+        "cpu_percent": 0.3,
+        "memory_percent": 0.0,
+        "executable": "u16:0-kvfree_rcu_reclaim"
+      }
+    ]
+  }
+}

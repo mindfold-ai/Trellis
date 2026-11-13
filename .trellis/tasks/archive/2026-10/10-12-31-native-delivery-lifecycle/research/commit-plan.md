@@ -1,0 +1,217 @@
+# Proposed D1 local commit
+
+User explicitly approved this exact local commit plan on 2026-10-12. This
+document captures the approved pre-commit scope; Git history records execution.
+
+- Repository: `/Users/wumengye/Documents/GoProjects/Trellis`
+- Branch: `codex/31-native-delivery-lifecycle`
+- Current HEAD/base: `5c760463680ffc10a3f26957b330c57a4b0c3ff8`
+- One coherent D1 work commit: `feat(task): add opt-in native Delivery lifecycle`
+- Scope: explicit Core v2, equivalent shipped Python runtime, native opt-in workflow/owner/platform/install changes, tests/fixtures, synchronized dogfood copies, durable specs and this Task’s planning/evidence.
+- No push, PR, merge, release, Task migration/Completion, Issue closure, archive or cleanup in this plan.
+- No unrecognized dirty files were found in the current live inventory.
+- Exact included paths: 195.
+
+## Included file list
+
+- `.agents/skills/trellis-brainstorm/SKILL.md`
+- `.agents/skills/trellis-check/SKILL.md`
+- `.agents/skills/trellis-complete-task/SKILL.md`
+- `.agents/skills/trellis-continue/SKILL.md`
+- `.agents/skills/trellis-deliver/SKILL.md`
+- `.agents/skills/trellis-finish-work/SKILL.md`
+- `.agents/skills/trellis-review-delivery/SKILL.md`
+- `.agents/skills/trellis-start/SKILL.md`
+- `.claude/agents/trellis-check.md`
+- `.claude/agents/trellis-implement.md`
+- `.claude/commands/trellis/continue.md`
+- `.claude/commands/trellis/finish-work.md`
+- `.claude/hooks/inject-subagent-context.py`
+- `.claude/hooks/inject-workflow-state.py`
+- `.claude/hooks/session-start.py`
+- `.claude/hooks/statusline.py`
+- `.claude/skills/trellis-brainstorm/SKILL.md`
+- `.claude/skills/trellis-check/SKILL.md`
+- `.claude/skills/trellis-complete-task/SKILL.md`
+- `.claude/skills/trellis-deliver/SKILL.md`
+- `.claude/skills/trellis-review-delivery/SKILL.md`
+- `.codex/agents/trellis-check.toml`
+- `.codex/agents/trellis-implement.toml`
+- `.codex/hooks/inject-subagent-context.py`
+- `.codex/hooks/inject-workflow-state.py`
+- `.codex/hooks/session-start.py`
+- `.cursor/agents/trellis-check.md`
+- `.cursor/agents/trellis-implement.md`
+- `.cursor/commands/trellis-continue.md`
+- `.cursor/commands/trellis-finish-work.md`
+- `.cursor/hooks/inject-subagent-context.py`
+- `.cursor/hooks/session-start.py`
+- `.cursor/skills/trellis-brainstorm/SKILL.md`
+- `.cursor/skills/trellis-check/SKILL.md`
+- `.cursor/skills/trellis-complete-task/SKILL.md`
+- `.cursor/skills/trellis-deliver/SKILL.md`
+- `.cursor/skills/trellis-review-delivery/SKILL.md`
+- `.opencode/agents/trellis-check.md`
+- `.opencode/agents/trellis-implement.md`
+- `.opencode/commands/trellis/continue.md`
+- `.opencode/commands/trellis/finish-work.md`
+- `.opencode/commands/trellis/start.md`
+- `.opencode/lib/trellis-context.js`
+- `.opencode/plugins/inject-subagent-context.js`
+- `.opencode/plugins/inject-workflow-state.js`
+- `.opencode/skills/trellis-brainstorm/SKILL.md`
+- `.opencode/skills/trellis-check/SKILL.md`
+- `.opencode/skills/trellis-complete-task/SKILL.md`
+- `.opencode/skills/trellis-deliver/SKILL.md`
+- `.opencode/skills/trellis-review-delivery/SKILL.md`
+- `.pi/agents/trellis-check.md`
+- `.pi/agents/trellis-implement.md`
+- `.pi/extensions/trellis/index.ts`
+- `.pi/prompts/trellis-continue.md`
+- `.pi/prompts/trellis-finish-work.md`
+- `.pi/prompts/trellis-start.md`
+- `.trellis/agents/check.md`
+- `.trellis/agents/implement.md`
+- `.trellis/delivery-contract.md`
+- `.trellis/scripts/common/active_task.py`
+- `.trellis/scripts/common/delivery_operations.py`
+- `.trellis/scripts/common/delivery_schema.py`
+- `.trellis/scripts/common/delivery_session.py`
+- `.trellis/scripts/common/delivery_store.py`
+- `.trellis/scripts/common/git_context.py`
+- `.trellis/scripts/common/io.py`
+- `.trellis/scripts/common/runtime_contract.py`
+- `.trellis/scripts/common/session_context.py`
+- `.trellis/scripts/common/session_storage.py`
+- `.trellis/scripts/common/task_context.py`
+- `.trellis/scripts/common/task_queue.py`
+- `.trellis/scripts/common/task_store.py`
+- `.trellis/scripts/common/tasks.py`
+- `.trellis/scripts/delivery.py`
+- `.trellis/scripts/get_context.py`
+- `.trellis/scripts/task.py`
+- `.trellis/spec/cli/backend/commands-migrate.md`
+- `.trellis/spec/cli/backend/commands-workflow.md`
+- `.trellis/spec/cli/backend/delivery-lifecycle.md`
+- `.trellis/spec/cli/backend/index.md`
+- `.trellis/spec/cli/backend/task-lifecycle.md`
+- `.trellis/spec/cli/backend/trellis-core-sdk.md`
+- `.trellis/spec/cli/backend/workflow-state-contract.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/check.jsonl`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/design.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/implement.jsonl`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/implement.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/prd.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/commit-plan.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/core-api.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/current-contracts.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/execution.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/installed-review-final.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/installed-review.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/native-samples.py`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/source-anchors.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/research/source-issue.md`
+- `.trellis/tasks/10-12-31-native-delivery-lifecycle/task.json`
+- `packages/cli/src/commands/init.ts`
+- `packages/cli/src/commands/update.ts`
+- `packages/cli/src/commands/workflow.ts`
+- `packages/cli/src/configurators/shared.ts`
+- `packages/cli/src/configurators/workflow.ts`
+- `packages/cli/src/templates/claude/agents/trellis-check.md`
+- `packages/cli/src/templates/claude/agents/trellis-implement.md`
+- `packages/cli/src/templates/claude/hooks/statusline.py`
+- `packages/cli/src/templates/codebuddy/agents/trellis-check.md`
+- `packages/cli/src/templates/codebuddy/agents/trellis-implement.md`
+- `packages/cli/src/templates/codex/agents/trellis-check.toml`
+- `packages/cli/src/templates/codex/agents/trellis-implement.toml`
+- `packages/cli/src/templates/codex/hooks/session-start.py`
+- `packages/cli/src/templates/common/commands/finish-work.md`
+- `packages/cli/src/templates/common/commands/start.md`
+- `packages/cli/src/templates/common/skills/brainstorm.md`
+- `packages/cli/src/templates/common/skills/check.md`
+- `packages/cli/src/templates/common/skills/complete-task.md`
+- `packages/cli/src/templates/common/skills/deliver.md`
+- `packages/cli/src/templates/common/skills/review-delivery.md`
+- `packages/cli/src/templates/copilot/hooks/session-start.py`
+- `packages/cli/src/templates/cursor/agents/trellis-check.md`
+- `packages/cli/src/templates/cursor/agents/trellis-implement.md`
+- `packages/cli/src/templates/gemini/agents/trellis-check.md`
+- `packages/cli/src/templates/gemini/agents/trellis-implement.md`
+- `packages/cli/src/templates/grok/agents/trellis-check.md`
+- `packages/cli/src/templates/grok/agents/trellis-implement.md`
+- `packages/cli/src/templates/kimi/agents/trellis-check.md`
+- `packages/cli/src/templates/kimi/agents/trellis-implement.md`
+- `packages/cli/src/templates/kiro/agents/trellis-check.json`
+- `packages/cli/src/templates/kiro/agents/trellis-implement.json`
+- `packages/cli/src/templates/omp/agents/trellis-check.md`
+- `packages/cli/src/templates/omp/agents/trellis-implement.md`
+- `packages/cli/src/templates/omp/extensions/trellis/index.ts.txt`
+- `packages/cli/src/templates/opencode/agents/trellis-check.md`
+- `packages/cli/src/templates/opencode/agents/trellis-implement.md`
+- `packages/cli/src/templates/opencode/lib/trellis-context.js`
+- `packages/cli/src/templates/opencode/plugins/inject-subagent-context.js`
+- `packages/cli/src/templates/opencode/plugins/inject-workflow-state.js`
+- `packages/cli/src/templates/pi/agents/trellis-check.md`
+- `packages/cli/src/templates/pi/agents/trellis-implement.md`
+- `packages/cli/src/templates/pi/extensions/trellis/index.ts.txt`
+- `packages/cli/src/templates/qoder/agents/trellis-check.md`
+- `packages/cli/src/templates/qoder/agents/trellis-implement.md`
+- `packages/cli/src/templates/reasonix/agents/trellis-check.md`
+- `packages/cli/src/templates/reasonix/agents/trellis-implement.md`
+- `packages/cli/src/templates/shared-hooks/inject-subagent-context.py`
+- `packages/cli/src/templates/shared-hooks/inject-workflow-state.py`
+- `packages/cli/src/templates/shared-hooks/session-start.py`
+- `packages/cli/src/templates/snow/agents/trellis-check.md`
+- `packages/cli/src/templates/snow/agents/trellis-implement.md`
+- `packages/cli/src/templates/trae/agents/trellis-check.md`
+- `packages/cli/src/templates/trae/agents/trellis-implement.md`
+- `packages/cli/src/templates/trellis/agents/check.md`
+- `packages/cli/src/templates/trellis/agents/implement.md`
+- `packages/cli/src/templates/trellis/delivery-contract.md`
+- `packages/cli/src/templates/trellis/index.ts`
+- `packages/cli/src/templates/trellis/scripts/common/active_task.py`
+- `packages/cli/src/templates/trellis/scripts/common/delivery_operations.py`
+- `packages/cli/src/templates/trellis/scripts/common/delivery_schema.py`
+- `packages/cli/src/templates/trellis/scripts/common/delivery_session.py`
+- `packages/cli/src/templates/trellis/scripts/common/delivery_store.py`
+- `packages/cli/src/templates/trellis/scripts/common/git_context.py`
+- `packages/cli/src/templates/trellis/scripts/common/io.py`
+- `packages/cli/src/templates/trellis/scripts/common/runtime_contract.py`
+- `packages/cli/src/templates/trellis/scripts/common/session_context.py`
+- `packages/cli/src/templates/trellis/scripts/common/session_storage.py`
+- `packages/cli/src/templates/trellis/scripts/common/task_context.py`
+- `packages/cli/src/templates/trellis/scripts/common/task_queue.py`
+- `packages/cli/src/templates/trellis/scripts/common/task_store.py`
+- `packages/cli/src/templates/trellis/scripts/common/tasks.py`
+- `packages/cli/src/templates/trellis/scripts/delivery.py`
+- `packages/cli/src/templates/trellis/scripts/get_context.py`
+- `packages/cli/src/templates/trellis/scripts/task.py`
+- `packages/cli/src/templates/trellis/workflow-delivery-v1.md`
+- `packages/cli/src/templates/zcode/agents/trellis-check.md`
+- `packages/cli/src/templates/zcode/agents/trellis-implement.md`
+- `packages/cli/src/utils/delivery-workflow.ts`
+- `packages/cli/src/utils/trellis-owned-data.ts`
+- `packages/cli/src/utils/workflow-resolver.ts`
+- `packages/cli/test/commands/delivery-workflow.integration.test.ts`
+- `packages/cli/test/scripts/delivery-v2.integration.test.ts`
+- `packages/cli/test/templates/delivery-fixture.ts`
+- `packages/cli/test/templates/omp.test.ts`
+- `packages/cli/test/templates/pi.test.ts`
+- `packages/core/package.json`
+- `packages/core/src/task/v2/index.ts`
+- `packages/core/src/task/v2/operations.ts`
+- `packages/core/src/task/v2/schema.ts`
+- `packages/core/src/task/v2/store.ts`
+- `packages/core/src/task/v2/types.ts`
+- `packages/core/test/fixtures/task-v2/guru-public-mapping.json`
+- `packages/core/test/fixtures/task-v2/hash-cases.json`
+- `packages/core/test/fixtures/task-v2/invalid-inputs.json`
+- `packages/core/test/fixtures/task-v2/native-multi.json`
+- `packages/core/test/fixtures/task-v2/profile-recovery.json`
+- `packages/core/test/task/v2.test.ts`
+
+## Validation and candidate boundary
+
+Core437PASS +1existingSKIP; CLI1921PASS; lint/typecheck/build/Python3.9/parity checks pass. Final independent D1 quality review found no remaining actionable D1 defect. Both isolated native samples passed exact-candidate Review/gates/delivery/retry/Completion/Closure. See `execution.md` and `installed-review-final.md`.
+
+Final local tarball identity: `/tmp/trellis-31-final-candidate-JQj4nW/candidate.json`. This is an uncommitted installation candidate; no remotely delivered candidate or release is claimed. D2 and actual Guru joint evidence remain pending.

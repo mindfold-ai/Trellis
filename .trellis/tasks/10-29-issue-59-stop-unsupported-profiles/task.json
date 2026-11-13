@@ -1,0 +1,30 @@
+{
+  "id": "issue-59-stop-unsupported-profiles",
+  "name": "issue-59-stop-unsupported-profiles",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 59,
+    "disposition": "exact_source"
+  },
+  "title": "Fix stopping retained unsupported Delivery profiles",
+  "description": "Resolve castbox/Trellis#59 by allowing the original stage owner to stop an existing schema-2 Delivery whose profile is no longer enabled, while preserving ordinary execution restrictions and historical facts.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "core",
+  "priority": "P2",
+  "createdAt": "2026-10-29",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/59-stop-unsupported-profiles"
+}

@@ -18,6 +18,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { emptyTaskRecord } from "@mindfoldhq/trellis-core/task";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
@@ -113,7 +114,7 @@ function makeTask(tmp: string, dirName: string): string {
   fs.mkdirSync(taskDir, { recursive: true });
   fs.writeFileSync(
     path.join(taskDir, "task.json"),
-    JSON.stringify({ id: dirName, title: dirName, status: "in_progress" }) +
+    JSON.stringify({ ...emptyTaskRecord({ id: dirName, name: dirName, title: dirName }), status: "in_progress" }) +
       "\n",
     "utf-8",
   );

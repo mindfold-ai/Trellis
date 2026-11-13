@@ -1,0 +1,41 @@
+{
+  "passed": false,
+  "cases": [
+    {
+      "case": "128-repeated",
+      "exact_head": "73530e98dfd85ebb0d668ef04bc05f5060efd7b9",
+      "paths": 128,
+      "unique_blobs": 19,
+      "all_unique_blob_body_bytes": 12856596,
+      "max_blob_bytes": 4194304
+    },
+    {
+      "case": "128-mixed",
+      "exact_head": "421bda9bacbc95ea9aade703a371289191c5976d",
+      "paths": 128,
+      "unique_blobs": 127,
+      "all_unique_blob_body_bytes": 13078996,
+      "max_blob_bytes": 4194304
+    },
+    {
+      "case": "10001-repeated",
+      "exact_head": "1858bb965a2208818c3c5d4666535718292b21c7",
+      "paths": 10001,
+      "unique_blobs": 19,
+      "all_unique_blob_body_bytes": 12856596,
+      "max_blob_bytes": 4194304
+    },
+    {
+      "case": "10001-mixed",
+      "exact_head": "4f96a24e6477291cc8fec30ef3be3b85cf8ae6f9",
+      "paths": 10001,
+      "unique_blobs": 10000,
+      "all_unique_blob_body_bytes": 33614836,
+      "max_blob_bytes": 4194304
+    }
+  ],
+  "load_average_1_min_range": [
+    3.79541015625,
+    6.8759765625
+  ]
+}

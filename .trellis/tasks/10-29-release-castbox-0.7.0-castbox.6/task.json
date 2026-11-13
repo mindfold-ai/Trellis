@@ -1,0 +1,27 @@
+{
+  "id": "release-castbox-0.7.0-castbox.6",
+  "name": "release-castbox-0.7.0-castbox.6",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Prepare paired Castbox 0.7.0-castbox.6 release artifacts",
+  "description": "Prepare matching Core/CLI 0.7.0-castbox.6 metadata and local tarballs containing the merged Delivery stop repair, with package and isolated installation evidence before any publication.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-29",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/release-castbox-0.7.0-castbox.6"
+}

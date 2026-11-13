@@ -1,0 +1,22 @@
+{
+  "rows": [
+    {
+      "scenario": "task-h2-p24",
+      "n": 2,
+      "complete_elapsed_seconds": 0.6910090000019409,
+      "task_object_read_seconds": 0.4906714764656499,
+      "task_metadata_parse_seconds": 0.0010954377357847989,
+      "historical_metadata_json_calls": 48.0,
+      "other_objective_and_complete_wrapper_seconds": 0.19924208580050617
+    },
+    {
+      "scenario": "task-h6-p96",
+      "n": 2,
+      "complete_elapsed_seconds": 6.351760187477339,
+      "task_object_read_seconds": 6.083219424996059,
+      "task_metadata_parse_seconds": 0.014385479036718607,
+      "historical_metadata_json_calls": 576.0,
+      "other_objective_and_complete_wrapper_seconds": 0.25415528344456106
+    }
+  ]
+}

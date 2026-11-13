@@ -1,0 +1,320 @@
+{
+  "kind": "isolated packed CLI/Core; no business or Guru overlay writes",
+  "prefix": "/tmp/trellis-issue46-CZ3wUgfx/final/install",
+  "root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target",
+  "commands": [
+    {
+      "command": "git",
+      "args": [
+        "init",
+        "-b",
+        "main"
+      ],
+      "status": 0,
+      "stdout": "Initialized empty Git repository in /private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git/\n",
+      "stderr": ""
+    },
+    {
+      "command": "git",
+      "args": [
+        "config",
+        "user.name",
+        "Issue46 isolated fixture"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "git",
+      "args": [
+        "config",
+        "user.email",
+        "fixture@example.invalid"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "git",
+      "args": [
+        "add",
+        "README.md"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "git",
+      "args": [
+        "commit",
+        "-m",
+        "Original delivered fixture"
+      ],
+      "status": 0,
+      "stdout": "[main (root-commit) 4176634] Original delivered fixture\n 1 file changed, 1 insertion(+)\n create mode 100644 README.md\n",
+      "stderr": ""
+    },
+    {
+      "command": "git",
+      "args": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "status": 0,
+      "stdout": "417663405e4136aff4c82cdd0e15f67564a035bc\n",
+      "stderr": ""
+    },
+    {
+      "command": "git",
+      "args": [
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-common-dir"
+      ],
+      "status": 0,
+      "stdout": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "inspect-task",
+        "--target",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target",
+        "--task-id",
+        "selected",
+        "--generation",
+        "0",
+        "--task-ref",
+        ".trellis/tasks/archive/2026-10/manual-history",
+        "--original-task-ref",
+        ".trellis/tasks/original-location",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"common_dir\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\",\"key\":{\"task_id\":\"selected\",\"lifecycle_generation\":0},\"task_ref\":\".trellis/tasks/archive/2026-10/manual-history\",\"source\":{\"content_base64\":\"ewogICJpZCI6ICJzZWxlY3RlZCIsCiAgIm5hbWUiOiAiU2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgInNvdXJjZSI6IHsKICAgICJraW5kIjogIm5vX2lzc3VlIgogIH0sCiAgInRpdGxlIjogIlNlbGVjdGVkIiwKICAiZGVzY3JpcHRpb24iOiAiIiwKICAic3RhdHVzIjogImNvbXBsZXRlZCIsCiAgImRldl90eXBlIjogbnVsbCwKICAic2NvcGUiOiBudWxsLAogICJwYWNrYWdlIjogbnVsbCwKICAicHJpb3JpdHkiOiAiUDIiLAogICJjcmVhdGVkQXQiOiAiMjAyNi0xMC0xNyIsCiAgImNvbXBsZXRlZEF0IjogbnVsbCwKICAiYmFzZV9icmFuY2giOiBudWxsLAogICJ3b3JrdHJlZV9wYXRoIjogbnVsbCwKICAiY29tbWl0IjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiLAogICJwcl91cmwiOiBudWxsLAogICJjaGlsZHJlbiI6IFtdLAogICJwYXJlbnQiOiBudWxsLAogICJyZWxhdGVkRmlsZXMiOiBbXSwKICAibm90ZXMiOiAiIiwKICAibWV0YSI6IHt9LAogICJicmFuY2giOiAibWFpbiIKfQo=\",\"sha256\":\"8b44dc1609d640cdde0bda50af7f5de40c6034d19d73c5cf04a1d1fff5c67aa7\",\"mode\":416},\"classification\":{\"kind\":\"schema1\",\"task_id\":\"selected\",\"generation\":0},\"carriers\":[{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\",\"path\":\"trellis/sessions/codex_issue46_packed.json\",\"source\":{\"content_base64\":\"eyJzY2hlbWFfdmVyc2lvbiI6MSwicmVwb3NpdG9yeV9jb21tb25fZGlyIjoiL3ByaXZhdGUvdmFyL2ZvbGRlcnMvcmQva2J6cHhwOTU2bmIzcF9oMDR2bmZnM2w4MDAwMGduL1QvaXNzdWU0Ni1wYWNrZWQtM1RnaWtmL3RhcmdldC8uZ2l0IiwidGFza193b3Jrc3BhY2Vfcm9vdCI6Ii9wcml2YXRlL3Zhci9mb2xkZXJzL3JkL2tienB4cDk1Nm5iM3BfaDA0dm5mZzNsODAwMDBnbi9UL2lzc3VlNDYtcGFja2VkLTNUZ2lrZi90YXJnZXQiLCJjdXJyZW50X3Rhc2siOiIudHJlbGxpcy90YXNrcy9vcmlnaW5hbC1sb2NhdGlvbiIsInBsYXRmb3JtIjoiY29kZXgiLCJsYXN0X3NlZW5fYXQiOiIyMDI2LTEwLTE3VDAwOjAwOjAwWiIsImN1cnJlbnRfcnVuIjpudWxsfQo=\",\"sha256\":\"b04dab86d48966e7be75fa51a2463aaa20c7cb318aa1fa92029eabe541712bed\",\"mode\":420},\"kind\":\"session\"}],\"branch_binding\":null,\"inherited_copies\":[],\"authority\":\"requires_binding\",\"artifacts\":[{\"path\":\".trellis/tasks/archive/2026-10/manual-history\",\"kind\":\"directory\",\"source\":{\"mode\":493}},{\"path\":\".trellis/tasks/archive/2026-10/manual-history/empty\",\"kind\":\"directory\",\"source\":{\"mode\":448}},{\"path\":\".trellis/tasks/archive/2026-10/manual-history/manual-history.md\",\"kind\":\"file\",\"source\":{\"content_base64\":\"T3JpZ2luYWwgb3duZXIgcmV2aWV3ZWQgaGlzdG9yeSBhbmQgbWFudWFsIGFyY2hpdmU6IG5vIHBlbmRpbmcgQ2xvc3VyZS9GaW5pc2ggdHJhbnNhY3Rpb247IGNvbnRpbnVlIHNhbWUgVGFzayBmb3Igc2NvcGUgcmV2aWV3Lgo=\",\"sha256\":\"e4b165bd6580a3397fdfb8800dab34fc21087c895894259052bd4244bc729ceb\",\"mode\":416}},{\"path\":\".trellis/tasks/archive/2026-10/manual-history/prd.md\",\"kind\":\"file\",\"source\":{\"content_base64\":\"T3JpZ2luYWwgYWNjZXB0ZWQgVGFzayBzY29wZS4gQSBzdXBwbGVtZW50IHJlbWFpbnMgcGVuZGluZy4K\",\"sha256\":\"63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\",\"mode\":384}},{\"path\":\".trellis/tasks/archive/2026-10/manual-history/task.json\",\"kind\":\"file\",\"source\":{\"content_base64\":\"ewogICJpZCI6ICJzZWxlY3RlZCIsCiAgIm5hbWUiOiAiU2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgInNvdXJjZSI6IHsKICAgICJraW5kIjogIm5vX2lzc3VlIgogIH0sCiAgInRpdGxlIjogIlNlbGVjdGVkIiwKICAiZGVzY3JpcHRpb24iOiAiIiwKICAic3RhdHVzIjogImNvbXBsZXRlZCIsCiAgImRldl90eXBlIjogbnVsbCwKICAic2NvcGUiOiBudWxsLAogICJwYWNrYWdlIjogbnVsbCwKICAicHJpb3JpdHkiOiAiUDIiLAogICJjcmVhdGVkQXQiOiAiMjAyNi0xMC0xNyIsCiAgImNvbXBsZXRlZEF0IjogbnVsbCwKICAiYmFzZV9icmFuY2giOiBudWxsLAogICJ3b3JrdHJlZV9wYXRoIjogbnVsbCwKICAiY29tbWl0IjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiLAogICJwcl91cmwiOiBudWxsLAogICJjaGlsZHJlbiI6IFtdLAogICJwYXJlbnQiOiBudWxsLAogICJyZWxhdGVkRmlsZXMiOiBbXSwKICAibm90ZXMiOiAiIiwKICAibWV0YSI6IHt9LAogICJicmFuY2giOiAibWFpbiIKfQo=\",\"sha256\":\"8b44dc1609d640cdde0bda50af7f5de40c6034d19d73c5cf04a1d1fff5c67aa7\",\"mode\":416}}]}\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "prepare",
+        "--input",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/input.json",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"kind\":\"task_resume\",\"target_root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"common_dir\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\",\"actions\":[{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location\",\"source\":null,\"target\":{\"mode\":493}},{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/empty\",\"source\":null,\"target\":{\"mode\":448}},{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries\",\"source\":null,\"target\":{\"mode\":493}},{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/migration\",\"source\":null,\"target\":{\"mode\":493}},{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111\",\"source\":null,\"target\":{\"mode\":493}},{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/archive/2026-10/manual-history\",\"source\":{\"mode\":493},\"target\":{\"mode\":493}},{\"kind\":\"directory\",\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/archive/2026-10/manual-history/empty\",\"source\":{\"mode\":448},\"target\":{\"mode\":448}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/archive/2026-10/manual-history/manual-history.md\",\"source\":{\"content_base64\":\"T3JpZ2luYWwgb3duZXIgcmV2aWV3ZWQgaGlzdG9yeSBhbmQgbWFudWFsIGFyY2hpdmU6IG5vIHBlbmRpbmcgQ2xvc3VyZS9GaW5pc2ggdHJhbnNhY3Rpb247IGNvbnRpbnVlIHNhbWUgVGFzayBmb3Igc2NvcGUgcmV2aWV3Lgo=\",\"sha256\":\"e4b165bd6580a3397fdfb8800dab34fc21087c895894259052bd4244bc729ceb\",\"mode\":416},\"target\":{\"content_base64\":\"T3JpZ2luYWwgb3duZXIgcmV2aWV3ZWQgaGlzdG9yeSBhbmQgbWFudWFsIGFyY2hpdmU6IG5vIHBlbmRpbmcgQ2xvc3VyZS9GaW5pc2ggdHJhbnNhY3Rpb247IGNvbnRpbnVlIHNhbWUgVGFzayBmb3Igc2NvcGUgcmV2aWV3Lgo=\",\"sha256\":\"e4b165bd6580a3397fdfb8800dab34fc21087c895894259052bd4244bc729ceb\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/archive/2026-10/manual-history/prd.md\",\"source\":{\"content_base64\":\"T3JpZ2luYWwgYWNjZXB0ZWQgVGFzayBzY29wZS4gQSBzdXBwbGVtZW50IHJlbWFpbnMgcGVuZGluZy4K\",\"sha256\":\"63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\",\"mode\":384},\"target\":{\"content_base64\":\"T3JpZ2luYWwgYWNjZXB0ZWQgVGFzayBzY29wZS4gQSBzdXBwbGVtZW50IHJlbWFpbnMgcGVuZGluZy4K\",\"sha256\":\"63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\",\"mode\":384}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/archive/2026-10/manual-history/task.json\",\"source\":{\"content_base64\":\"ewogICJpZCI6ICJzZWxlY3RlZCIsCiAgIm5hbWUiOiAiU2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgInNvdXJjZSI6IHsKICAgICJraW5kIjogIm5vX2lzc3VlIgogIH0sCiAgInRpdGxlIjogIlNlbGVjdGVkIiwKICAiZGVzY3JpcHRpb24iOiAiIiwKICAic3RhdHVzIjogImNvbXBsZXRlZCIsCiAgImRldl90eXBlIjogbnVsbCwKICAic2NvcGUiOiBudWxsLAogICJwYWNrYWdlIjogbnVsbCwKICAicHJpb3JpdHkiOiAiUDIiLAogICJjcmVhdGVkQXQiOiAiMjAyNi0xMC0xNyIsCiAgImNvbXBsZXRlZEF0IjogbnVsbCwKICAiYmFzZV9icmFuY2giOiBudWxsLAogICJ3b3JrdHJlZV9wYXRoIjogbnVsbCwKICAiY29tbWl0IjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiLAogICJwcl91cmwiOiBudWxsLAogICJjaGlsZHJlbiI6IFtdLAogICJwYXJlbnQiOiBudWxsLAogICJyZWxhdGVkRmlsZXMiOiBbXSwKICAibm90ZXMiOiAiIiwKICAibWV0YSI6IHt9LAogICJicmFuY2giOiAibWFpbiIKfQo=\",\"sha256\":\"8b44dc1609d640cdde0bda50af7f5de40c6034d19d73c5cf04a1d1fff5c67aa7\",\"mode\":416},\"target\":{\"content_base64\":\"ewogICJpZCI6ICJzZWxlY3RlZCIsCiAgIm5hbWUiOiAiU2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgInNvdXJjZSI6IHsKICAgICJraW5kIjogIm5vX2lzc3VlIgogIH0sCiAgInRpdGxlIjogIlNlbGVjdGVkIiwKICAiZGVzY3JpcHRpb24iOiAiIiwKICAic3RhdHVzIjogImNvbXBsZXRlZCIsCiAgImRldl90eXBlIjogbnVsbCwKICAic2NvcGUiOiBudWxsLAogICJwYWNrYWdlIjogbnVsbCwKICAicHJpb3JpdHkiOiAiUDIiLAogICJjcmVhdGVkQXQiOiAiMjAyNi0xMC0xNyIsCiAgImNvbXBsZXRlZEF0IjogbnVsbCwKICAiYmFzZV9icmFuY2giOiBudWxsLAogICJ3b3JrdHJlZV9wYXRoIjogbnVsbCwKICAiY29tbWl0IjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiLAogICJwcl91cmwiOiBudWxsLAogICJjaGlsZHJlbiI6IFtdLAogICJwYXJlbnQiOiBudWxsLAogICJyZWxhdGVkRmlsZXMiOiBbXSwKICAibm90ZXMiOiAiIiwKICAibWV0YSI6IHt9LAogICJicmFuY2giOiAibWFpbiIKfQo=\",\"sha256\":\"8b44dc1609d640cdde0bda50af7f5de40c6034d19d73c5cf04a1d1fff5c67aa7\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/manual-history.md\",\"source\":null,\"target\":{\"content_base64\":\"T3JpZ2luYWwgb3duZXIgcmV2aWV3ZWQgaGlzdG9yeSBhbmQgbWFudWFsIGFyY2hpdmU6IG5vIHBlbmRpbmcgQ2xvc3VyZS9GaW5pc2ggdHJhbnNhY3Rpb247IGNvbnRpbnVlIHNhbWUgVGFzayBmb3Igc2NvcGUgcmV2aWV3Lgo=\",\"sha256\":\"e4b165bd6580a3397fdfb8800dab34fc21087c895894259052bd4244bc729ceb\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/prd.md\",\"source\":null,\"target\":{\"content_base64\":\"T3JpZ2luYWwgYWNjZXB0ZWQgVGFzayBzY29wZS4gQSBzdXBwbGVtZW50IHJlbWFpbnMgcGVuZGluZy4K\",\"sha256\":\"63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\",\"mode\":384}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/prd.md\",\"source\":null,\"target\":{\"content_base64\":\"T3JpZ2luYWwgdmVyaWZpZWQgZGVsaXZlcnkgcGxhbgo=\",\"sha256\":\"52a0b9dcf1518b6b89948b5fd226026b2899076f8f86a7361e8bedde6916a7ab\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/design.md\",\"source\":null,\"target\":{\"content_base64\":\"T3JpZ2luYWwgdmVyaWZpZWQgZGVsaXZlcnkgcGxhbgo=\",\"sha256\":\"52a0b9dcf1518b6b89948b5fd226026b2899076f8f86a7361e8bedde6916a7ab\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/implement.md\",\"source\":null,\"target\":{\"content_base64\":\"T3JpZ2luYWwgdmVyaWZpZWQgZGVsaXZlcnkgcGxhbgo=\",\"sha256\":\"52a0b9dcf1518b6b89948b5fd226026b2899076f8f86a7361e8bedde6916a7ab\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/implement.jsonl\",\"source\":null,\"target\":{\"content_base64\":\"\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/check.jsonl\",\"source\":null,\"target\":{\"content_base64\":\"\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/migration/source-task.json\",\"source\":null,\"target\":{\"content_base64\":\"ewogICJpZCI6ICJzZWxlY3RlZCIsCiAgIm5hbWUiOiAiU2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgInNvdXJjZSI6IHsKICAgICJraW5kIjogIm5vX2lzc3VlIgogIH0sCiAgInRpdGxlIjogIlNlbGVjdGVkIiwKICAiZGVzY3JpcHRpb24iOiAiIiwKICAic3RhdHVzIjogImNvbXBsZXRlZCIsCiAgImRldl90eXBlIjogbnVsbCwKICAic2NvcGUiOiBudWxsLAogICJwYWNrYWdlIjogbnVsbCwKICAicHJpb3JpdHkiOiAiUDIiLAogICJjcmVhdGVkQXQiOiAiMjAyNi0xMC0xNyIsCiAgImNvbXBsZXRlZEF0IjogbnVsbCwKICAiYmFzZV9icmFuY2giOiBudWxsLAogICJ3b3JrdHJlZV9wYXRoIjogbnVsbCwKICAiY29tbWl0IjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiLAogICJwcl91cmwiOiBudWxsLAogICJjaGlsZHJlbiI6IFtdLAogICJwYXJlbnQiOiBudWxsLAogICJyZWxhdGVkRmlsZXMiOiBbXSwKICAibm90ZXMiOiAiIiwKICAibWV0YSI6IHt9LAogICJicmFuY2giOiAibWFpbiIKfQo=\",\"sha256\":\"8b44dc1609d640cdde0bda50af7f5de40c6034d19d73c5cf04a1d1fff5c67aa7\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/task.json\",\"source\":null,\"target\":{\"content_base64\":\"ewogICJzY2hlbWFfdmVyc2lvbiI6ICIyLjAiLAogICJpZCI6ICJzZWxlY3RlZCIsCiAgIm5hbWUiOiAiU2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgInNvdXJjZSI6IHsKICAgICJraW5kIjogIm5vX2lzc3VlIgogIH0sCiAgInRpdGxlIjogIlNlbGVjdGVkIiwKICAiZGVzY3JpcHRpb24iOiAiIiwKICAiZGV2X3R5cGUiOiBudWxsLAogICJzY29wZSI6IG51bGwsCiAgInBhY2thZ2UiOiBudWxsLAogICJwcmlvcml0eSI6ICJQMiIsCiAgImNyZWF0ZWRBdCI6ICIyMDI2LTEwLTE3IiwKICAiYmFzZV9icmFuY2giOiBudWxsLAogICJicmFuY2giOiAibWFpbiIsCiAgIndvcmt0cmVlX3BhdGgiOiBudWxsLAogICJjaGlsZHJlbiI6IFtdLAogICJwYXJlbnQiOiBudWxsLAogICJyZWxhdGVkRmlsZXMiOiBbXSwKICAibm90ZXMiOiAiIiwKICAibWV0YSI6IHt9LAogICJhY2NlcHRlZF9zY29wZSI6IHsKICAgICJsb2NhdG9yIjogIi50cmVsbGlzL3Rhc2tzL3Jlc3VtZWQtbG9jYXRpb24vcHJkLm1kIiwKICAgICJyZXZpc2lvbiI6ICJzaGEyNTY6NjNkY2ZlNzJhOWQ4NDYyZTIzZWM3ZTRmNTU4YmUyYWI1Mzk5MjdhMTViZGFiNjQ2MTQ4YmYyNThmNjA1YThlYSIKICB9LAogICJkZWxpdmVyaWVzIjogWwogICAgewogICAgICAiaWQiOiAiMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExIiwKICAgICAgImxpZmVjeWNsZV9nZW5lcmF0aW9uIjogMCwKICAgICAgInNjb3BlX3JlZiI6IHsKICAgICAgICAiYXV0aG9yaXR5IjogewogICAgICAgICAgImxvY2F0b3IiOiAiLnRyZWxsaXMvdGFza3MvcmVzdW1lZC1sb2NhdGlvbi9wcmQubWQiLAogICAgICAgICAgInJldmlzaW9uIjogInNoYTI1Njo2M2RjZmU3MmE5ZDg0NjJlMjNlYzdlNGY1NThiZTJhYjUzOTkyN2ExNWJkYWI2NDYxNDhiZjI1OGY2MDVhOGVhIgogICAgICAgIH0sCiAgICAgICAgImFuY2hvcnMiOiBbCiAgICAgICAgICAib3JpZ2luYWwtZGVsaXZlcmVkLXNsaWNlIgogICAgICAgIF0KICAgICAgfSwKICAgICAgInBsYW5uaW5nX3Jvb3QiOiAiZGVsaXZlcmllcy8xMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEiLAogICAgICAicHJvZmlsZSI6ICJsb2NhbF9jb21taXQiLAogICAgICAicGhhc2UiOiAiZGVsaXZlcmVkIiwKICAgICAgInBsYW5fcmVmIjogbnVsbCwKICAgICAgImNhbmRpZGF0ZSI6IG51bGwsCiAgICAgICJyZXN1bHRzIjogewogICAgICAgICJwbGFubmluZyI6IG51bGwsCiAgICAgICAgImNoZWNrIjogbnVsbCwKICAgICAgICAiZnVsbF9yZXZpZXciOiBudWxsLAogICAgICAgICJyZWFkaW5lc3MiOiBudWxsCiAgICAgIH0sCiAgICAgICJwdWJsaWNhdGlvbl9yZXN1bHQiOiBudWxsLAogICAgICAiZGVsaXZlcnlfcmVzdWx0IjogewogICAgICAgICJyZXN1bHRfaWQiOiAicGFja2VkLWhpc3RvcmljYWwtZGVsaXZlcnkiLAogICAgICAgICJvd25lcl9pZCI6ICJ0cmVsbGlzLWRlbGl2ZXIiLAogICAgICAgICJldmlkZW5jZSI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgImxvY2F0b3IiOiAiLnRyZWxsaXMvdGFza3MvYXJjaGl2ZS8yMDI2LTEwL21hbnVhbC1oaXN0b3J5L21hbnVhbC1oaXN0b3J5Lm1kIiwKICAgICAgICAgICAgInJldmlzaW9uIjogInNoYTI1NjplNGIxNjViZDY1ODBhMzM5N2ZkZmI4ODAwZGFiMzRmYzIxMDg3Yzg5NTg5NDI1OTA1MmJkNDI0NGJjNzI5Y2ViIgogICAgICAgICAgfQogICAgICAgIF0sCiAgICAgICAgInByb2ZpbGUiOiAibG9jYWxfY29tbWl0IiwKICAgICAgICAiY2FuZGlkYXRlIjogewogICAgICAgICAgImtpbmQiOiAiZ2l0IiwKICAgICAgICAgICJjb250ZW50X3JlZiI6ICJzaGEyNTY6MThjNjFjZTgwYTRlYWY4MjVlNWI3YmU0OWY3MjFjNWViODc3ZDRhZDIxZTI4NTgwY2M2NDNhYWZkZDk4YmZkYyIsCiAgICAgICAgICAicGF0aHMiOiBbCiAgICAgICAgICAgICJSRUFETUUubWQiCiAgICAgICAgICBdLAogICAgICAgICAgImhlYWRfcmVmIjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiLAogICAgICAgICAgImJhc2VfcmVmIjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiCiAgICAgICAgfSwKICAgICAgICAiY29tbWl0IjogIjQxNzY2MzQwNWU0MTM2YWZmNGM4MmNkZDBlMTVmNjc1NjRhMDM1YmMiCiAgICAgIH0sCiAgICAgICJzdG9wX3Jlc3VsdCI6IG51bGwKICAgIH0KICBdLAogICJjb21wbGV0aW9uX3Jlc3VsdHMiOiBbXSwKICAiY2xvc3VyZV9yZXN1bHRzIjogW10KfQo=\",\"sha256\":\"247d9bc4b281cc645ce22819e39516308795d808603e72e54bfab35f20c06ff3\",\"mode\":416}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\",\"path\":\"trellis/sessions/codex_issue46_packed.json\",\"source\":{\"content_base64\":\"eyJzY2hlbWFfdmVyc2lvbiI6MSwicmVwb3NpdG9yeV9jb21tb25fZGlyIjoiL3ByaXZhdGUvdmFyL2ZvbGRlcnMvcmQva2J6cHhwOTU2bmIzcF9oMDR2bmZnM2w4MDAwMGduL1QvaXNzdWU0Ni1wYWNrZWQtM1RnaWtmL3RhcmdldC8uZ2l0IiwidGFza193b3Jrc3BhY2Vfcm9vdCI6Ii9wcml2YXRlL3Zhci9mb2xkZXJzL3JkL2tienB4cDk1Nm5iM3BfaDA0dm5mZzNsODAwMDBnbi9UL2lzc3VlNDYtcGFja2VkLTNUZ2lrZi90YXJnZXQiLCJjdXJyZW50X3Rhc2siOiIudHJlbGxpcy90YXNrcy9vcmlnaW5hbC1sb2NhdGlvbiIsInBsYXRmb3JtIjoiY29kZXgiLCJsYXN0X3NlZW5fYXQiOiIyMDI2LTEwLTE3VDAwOjAwOjAwWiIsImN1cnJlbnRfcnVuIjpudWxsfQo=\",\"sha256\":\"b04dab86d48966e7be75fa51a2463aaa20c7cb318aa1fa92029eabe541712bed\",\"mode\":420},\"target\":{\"content_base64\":\"ewogICJzY2hlbWFfdmVyc2lvbiI6IDMsCiAgInRhc2tfaWQiOiAic2VsZWN0ZWQiLAogICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAsCiAgImRlbGl2ZXJ5X2lkIjogbnVsbAp9Cg==\",\"sha256\":\"cccabb885b246088a1acfb94c55fecdcd1446ddb235cd902379c23cb7834439c\",\"mode\":420}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\",\"path\":\".trellis/tasks/resumed-location/migration/archive-resume.json\",\"source\":null,\"target\":{\"content_base64\":\"ewogICJhcmNoaXZlX3JlZiI6ICIudHJlbGxpcy90YXNrcy9hcmNoaXZlLzIwMjYtMTAvbWFudWFsLWhpc3RvcnkiLAogICJvcmlnaW5hbF90YXNrX3JlZiI6ICIudHJlbGxpcy90YXNrcy9vcmlnaW5hbC1sb2NhdGlvbiIsCiAgImtleSI6IHsKICAgICJ0YXNrX2lkIjogInNlbGVjdGVkIiwKICAgICJsaWZlY3ljbGVfZ2VuZXJhdGlvbiI6IDAKICB9LAogICJyZXN1bWVfaW50ZW50IjogewogICAgInJlYXNvbiI6IHsKICAgICAgImxvY2F0b3IiOiAiLnRyZWxsaXMvdGFza3MvYXJjaGl2ZS8yMDI2LTEwL21hbnVhbC1oaXN0b3J5L21hbnVhbC1oaXN0b3J5Lm1kIiwKICAgICAgInJldmlzaW9uIjogInNoYTI1NjplNGIxNjViZDY1ODBhMzM5N2ZkZmI4ODAwZGFiMzRmYzIxMDg3Yzg5NTg5NDI1OTA1MmJkNDI0NGJjNzI5Y2ViIgogICAgfSwKICAgICJhcmNoaXZlX3JldmlldyI6IHsKICAgICAgImxvY2F0b3IiOiAiLnRyZWxsaXMvdGFza3MvYXJjaGl2ZS8yMDI2LTEwL21hbnVhbC1oaXN0b3J5L21hbnVhbC1oaXN0b3J5Lm1kIiwKICAgICAgInJldmlzaW9uIjogInNoYTI1NjplNGIxNjViZDY1ODBhMzM5N2ZkZmI4ODAwZGFiMzRmYzIxMDg3Yzg5NTg5NDI1OTA1MmJkNDI0NGJjNzI5Y2ViIgogICAgfSwKICAgICJuZXh0X293bmVyX2lkIjogInRyZWxsaXMtc3RhcnQiLAogICAgIm5leHRfYWN0aW9uIjogImFjY2VwdF9zY29wZSIKICB9Cn0K\",\"sha256\":\"4bac4bac0a7e917893418810439c66ca185bc2c2d066d66bd31937ff453c8365\",\"mode\":420}},{\"root\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\",\"path\":\"trellis/task-branches/selected/0.json\",\"source\":null,\"target\":{\"content_base64\":\"ewogICJzY2hlbWFfdmVyc2lvbiI6ICIxLjAiLAogICJ0YXNrX2lkIjogInNlbGVjdGVkIiwKICAibGlmZWN5Y2xlX2dlbmVyYXRpb24iOiAwLAogICJiaW5kaW5nX3JldmlzaW9uIjogMSwKICAiYnJhbmNoX25hbWUiOiAibWFpbiIKfQo=\",\"sha256\":\"15c6fcddc444e9cf146412df67be55ce8b44274a5263bf1533cd100cfd5e8575\",\"mode\":420}}],\"guard\":{\"task_id\":\"selected\",\"generation\":0,\"task_ref\":\".trellis/tasks/resumed-location\",\"archive_ref\":\".trellis/tasks/archive/2026-10/manual-history\",\"original_task_ref\":\".trellis/tasks/original-location\",\"target_branch\":\"main\"},\"schema_version\":\"1.0\",\"operation_id\":\"8185cfab-031c-470b-a8be-d386b3fbe235\",\"candidate\":{\"cli_version\":\"0.7.0-castbox.4\",\"core_version\":\"0.7.0-castbox.4\",\"cli_digest\":\"06ff45bb3bc55aa0cddb6452fc55493a02817322b828e50ec01a3edafc660552\",\"core_digest\":\"07e353a71b384894eda33702835cfbbe7647cafd75d330501c71903894ee27ad\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "preview",
+        "--plan",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/plan.json",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"operation_id\":\"8185cfab-031c-470b-a8be-d386b3fbe235\",\"kind\":\"task_resume\",\"status\":\"prepared\",\"pending_paths\":[\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/empty\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/migration\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/manual-history.md\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/prd.md\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/prd.md\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/design.md\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/implement.md\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/implement.jsonl\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/deliveries/11111111-1111-4111-8111-111111111111/check.jsonl\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/migration/source-task.json\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/task.json\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git:trellis/sessions/codex_issue46_packed.json\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target:.trellis/tasks/resumed-location/migration/archive-resume.json\",\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git:trellis/task-branches/selected/0.json\"],\"recovery_ref\":null,\"resumed_task\":{\"key\":{\"task_id\":\"selected\",\"lifecycle_generation\":0},\"task_ref\":\".trellis/tasks/resumed-location\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "apply",
+        "--plan",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/plan.json",
+        "--state-dir",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"operation_id\":\"8185cfab-031c-470b-a8be-d386b3fbe235\",\"kind\":\"task_resume\",\"status\":\"applied\",\"pending_paths\":[],\"recovery_ref\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state/8185cfab-031c-470b-a8be-d386b3fbe235.json\",\"resumed_task\":{\"key\":{\"task_id\":\"selected\",\"lifecycle_generation\":0},\"task_ref\":\".trellis/tasks/resumed-location\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "recover",
+        "--recovery",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state/8185cfab-031c-470b-a8be-d386b3fbe235.json",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"operation_id\":\"8185cfab-031c-470b-a8be-d386b3fbe235\",\"kind\":\"task_resume\",\"status\":\"applied\",\"pending_paths\":[],\"recovery_ref\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state/8185cfab-031c-470b-a8be-d386b3fbe235.json\",\"resumed_task\":{\"key\":{\"task_id\":\"selected\",\"lifecycle_generation\":0},\"task_ref\":\".trellis/tasks/resumed-location\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "resume",
+        "--recovery",
+        "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state/8185cfab-031c-470b-a8be-d386b3fbe235.json",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"operation_id\":\"8185cfab-031c-470b-a8be-d386b3fbe235\",\"kind\":\"task_resume\",\"status\":\"applied\",\"pending_paths\":[],\"recovery_ref\":\"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state/8185cfab-031c-470b-a8be-d386b3fbe235.json\",\"resumed_task\":{\"key\":{\"task_id\":\"selected\",\"lifecycle_generation\":0},\"task_ref\":\".trellis/tasks/resumed-location\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3",
+      "args": [
+        ".trellis/scripts/task.py",
+        "current",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"current_task\": {\"dir\": \".trellis/tasks/resumed-location\", \"id\": \"selected\", \"title\": \"Selected\", \"parent\": null, \"children\": [], \"branch\": \"main\", \"base_branch\": null, \"schema_version\": \"2.0\", \"lifecycle_generation\": 0, \"accepted_scope\": {\"locator\": \".trellis/tasks/resumed-location/prd.md\", \"revision\": \"sha256:63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\"}, \"completion_result_id\": null, \"delivery_count\": 1, \"deliveries\": [{\"id\": \"11111111-1111-4111-8111-111111111111\", \"lifecycle_generation\": 0, \"profile\": \"local_commit\", \"phase\": \"delivered\", \"delivery_result_id\": \"packed-historical-delivery\", \"stop_result_id\": null}], \"current_delivery\": {\"kind\": \"no_current_delivery\", \"key\": {\"task_id\": \"selected\", \"lifecycle_generation\": 0}}}, \"source\": \"session:codex_issue46_packed\", \"stale\": false, \"invocation_root\": \"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\", \"repository_common_dir\": \"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.git\", \"task_workspace_root\": \"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target\", \"resolved_task_path\": \"/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/target/.trellis/tasks/resumed-location\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3",
+      "args": [
+        ".trellis/scripts/get_context.py",
+        "--mode",
+        "continuation"
+      ],
+      "status": 0,
+      "stdout": "1. Read the exact session Task and `python3 .trellis/scripts/delivery.py current --json`.\n   Stop on resolver, API, schema, workflow-owner or stale-selection errors. Inventory\n   is display-only. Never select its sole item or create a replacement during resume.\n2. `no_current_task` returns to task-free work or the explicit Task scope owner.\n   `no_current_delivery` is legal: trellis-start decides scope work or an explicitly\n   accepted first/next slice; trellis-complete-task decides whole-scope acceptance,\n   missing evidence refresh or validation-only reopen. Creating a Delivery needs a\n   real slice; missing output or evidence alone is not a new slice.\n3. `terminal_delivery` returns to its original owner to release the exact selection.\n   Preserve Task binding for Completion. Do not replace selection automatically.\n4. `current` routes by public phase: planning -> trellis-brainstorm;\n   implementing -> trellis-start; checking -> trellis-check delivery_check;\n   reviewing -> trellis-review-delivery; publishing -> trellis-deliver.\n   Owner roles and IDs must match this active declaration. A custom workflow's\n   declaration and continuation replace these native semantics.\n5. Validate applicability separately from phase. Missing Check/Review output returns\n   to the original producer. Changed scope, plan, candidate, base or obligations\n   require that owner's judgment; return the same undelivered Delivery to the\n   earliest affected same/earlier owner through qualified rework. Equivalent or\n   unrelated changes may preserve results after the original owner's actual review.\n   A clean commit after base integration needs fresh applicable gates, no empty\n   or evidence-only commit. Commit facts do not prove Check/Review/readiness.\n6. Findings return to the affected owner. Whole withdrawal/supersession records\n   stopped with scope decision and current-stage owner; partial revision is same\n   Delivery rework. Preserve existing commits, PR facts and identity.\n7. Lost remote-success output returns to trellis-deliver to read live success and\n   normalize the same producer result; historical_success records only actual\n   historical facts and never manufactures current gate approval. Do not repeat\n   push, PR, merge or other successful external mutation to recover stdout.\n8. Whole Task acceptance belongs only to trellis-complete-task. All known slices\n   delivered still may leave unallocated scope/evidence. Formal reopen preserves\n   history and increments generation; historical gates/closure cannot authorize\n   new execution. Fresh Completion can judge still-applicable historical outcomes\n   without requiring a new Delivery. Source closure, archive and cleanup remain\n   separate actions and cannot manufacture or revoke Completion.\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3",
+      "args": [
+        ".trellis/scripts/delivery.py",
+        "list",
+        "--task",
+        ".trellis/tasks/resumed-location",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "[\n  {\n    \"id\": \"11111111-1111-4111-8111-111111111111\",\n    \"lifecycle_generation\": 0,\n    \"scope_ref\": {\n      \"authority\": {\n        \"locator\": \".trellis/tasks/resumed-location/prd.md\",\n        \"revision\": \"sha256:63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\"\n      },\n      \"anchors\": [\n        \"original-delivered-slice\"\n      ]\n    },\n    \"planning_root\": \"deliveries/11111111-1111-4111-8111-111111111111\",\n    \"profile\": \"local_commit\",\n    \"phase\": \"delivered\",\n    \"plan_ref\": null,\n    \"candidate\": null,\n    \"results\": {\n      \"planning\": null,\n      \"check\": null,\n      \"full_review\": null,\n      \"readiness\": null\n    },\n    \"publication_result\": null,\n    \"delivery_result\": {\n      \"result_id\": \"packed-historical-delivery\",\n      \"owner_id\": \"trellis-deliver\",\n      \"evidence\": [\n        {\n          \"locator\": \".trellis/tasks/archive/2026-10/manual-history/manual-history.md\",\n          \"revision\": \"sha256:e4b165bd6580a3397fdfb8800dab34fc21087c895894259052bd4244bc729ceb\"\n        }\n      ],\n      \"profile\": \"local_commit\",\n      \"candidate\": {\n        \"kind\": \"git\",\n        \"content_ref\": \"sha256:18c61ce80a4eaf825e5b7be49f721c5eb877d4ad21e28580cc643aafdd98bfdc\",\n        \"paths\": [\n          \"README.md\"\n        ],\n        \"head_ref\": \"417663405e4136aff4c82cdd0e15f67564a035bc\",\n        \"base_ref\": \"417663405e4136aff4c82cdd0e15f67564a035bc\"\n      },\n      \"commit\": \"417663405e4136aff4c82cdd0e15f67564a035bc\"\n    },\n    \"stop_result\": null\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3",
+      "args": [
+        ".trellis/scripts/delivery.py",
+        "current",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\n  \"kind\": \"no_current_delivery\",\n  \"key\": {\n    \"task_id\": \"selected\",\n    \"lifecycle_generation\": 0\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3",
+      "args": [
+        ".trellis/scripts/delivery.py",
+        "apply",
+        "--input",
+        "{\"api_version\":\"1.0\",\"operation\":\"accept_scope\",\"key\":{\"task_id\":\"selected\",\"lifecycle_generation\":0},\"owner_role\":\"task_scope\",\"owner_id\":\"trellis-start\",\"authority\":{\"locator\":\".trellis/tasks/resumed-location/supplement.md\",\"revision\":\"sha256:0f8370de7a3a3a76cca26e4497b69b4716b8b8d6cb4aae50b0f493993381c65d\"}}"
+      ],
+      "status": 0,
+      "stdout": "{\n  \"record\": {\n    \"schema_version\": \"2.0\",\n    \"id\": \"selected\",\n    \"name\": \"Selected\",\n    \"lifecycle_generation\": 0,\n    \"source\": {\n      \"kind\": \"no_issue\"\n    },\n    \"title\": \"Selected\",\n    \"description\": \"\",\n    \"dev_type\": null,\n    \"scope\": null,\n    \"package\": null,\n    \"priority\": \"P2\",\n    \"createdAt\": \"2026-10-17\",\n    \"base_branch\": null,\n    \"branch\": \"main\",\n    \"worktree_path\": null,\n    \"children\": [],\n    \"parent\": null,\n    \"relatedFiles\": [],\n    \"notes\": \"\",\n    \"meta\": {},\n    \"accepted_scope\": {\n      \"locator\": \".trellis/tasks/resumed-location/supplement.md\",\n      \"revision\": \"sha256:0f8370de7a3a3a76cca26e4497b69b4716b8b8d6cb4aae50b0f493993381c65d\"\n    },\n    \"deliveries\": [\n      {\n        \"id\": \"11111111-1111-4111-8111-111111111111\",\n        \"lifecycle_generation\": 0,\n        \"scope_ref\": {\n          \"authority\": {\n            \"locator\": \".trellis/tasks/resumed-location/prd.md\",\n            \"revision\": \"sha256:63dcfe72a9d8462e23ec7e4f558be2ab539927a15bdab646148bf258f605a8ea\"\n          },\n          \"anchors\": [\n            \"original-delivered-slice\"\n          ]\n        },\n        \"planning_root\": \"deliveries/11111111-1111-4111-8111-111111111111\",\n        \"profile\": \"local_commit\",\n        \"phase\": \"delivered\",\n        \"plan_ref\": null,\n        \"candidate\": null,\n        \"results\": {\n          \"planning\": null,\n          \"check\": null,\n          \"full_review\": null,\n          \"readiness\": null\n        },\n        \"publication_result\": null,\n        \"delivery_result\": {\n          \"result_id\": \"packed-historical-delivery\",\n          \"owner_id\": \"trellis-deliver\",\n          \"evidence\": [\n            {\n              \"locator\": \".trellis/tasks/archive/2026-10/manual-history/manual-history.md\",\n              \"revision\": \"sha256:e4b165bd6580a3397fdfb8800dab34fc21087c895894259052bd4244bc729ceb\"\n            }\n          ],\n          \"profile\": \"local_commit\",\n          \"candidate\": {\n            \"kind\": \"git\",\n            \"content_ref\": \"sha256:18c61ce80a4eaf825e5b7be49f721c5eb877d4ad21e28580cc643aafdd98bfdc\",\n            \"paths\": [\n              \"README.md\"\n            ],\n            \"head_ref\": \"417663405e4136aff4c82cdd0e15f67564a035bc\",\n            \"base_ref\": \"417663405e4136aff4c82cdd0e15f67564a035bc\"\n          },\n          \"commit\": \"417663405e4136aff4c82cdd0e15f67564a035bc\"\n        },\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"selected\",\n    \"lifecycle_generation\": 0\n  },\n  \"phase\": null,\n  \"result_id\": null,\n  \"changed\": true\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "/opt/homebrew/Cellar/node/26.11.1/bin/node",
+      "args": [
+        "/private/tmp/trellis-issue46-CZ3wUgfx/final/install/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "maintain",
+        "contract",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"maintenance_api\":\"1.0\",\"cli_version\":\"0.7.0-castbox.4\",\"core_version\":\"0.7.0-castbox.4\",\"operation_kinds\":[\"tools_install\",\"task_conversion\",\"legacy_closeout\",\"task_resume\"],\"source_versions\":[\"stable 0.6.x\",\"0.7.0-castbox.N, N >= 1, no newer than candidate\"],\"task_families\":[\"known_legacy\",\"schema1\",\"schema2_preserve_only\"],\"archive_resume\":{\"task_families\":[\"known_legacy\",\"schema1\"],\"generation\":\"preserve\",\"original_archive\":\"read_only\"},\"session_families\":[\"unversioned_local\",\"schema1_path\",\"schema2_identity\",\"schema3_delivery\"]}\n",
+      "stderr": ""
+    }
+  ],
+  "checks": {
+    "independent_inspection_before_old_dispatcher": true,
+    "tools_install_preserves_archive_and_project_files": true,
+    "same_identity_history_no_empty_delivery_or_completion": true,
+    "target_native_session_continuation_and_actual_next_consumer": true,
+    "rollback_preserves_later_scope_work": true
+  },
+  "package_pair": {
+    "cli_version": "0.7.0-castbox.4",
+    "core_version": "0.7.0-castbox.4",
+    "exact_core_dependency": "0.7.0-castbox.4"
+  },
+  "tools": {
+    "operation_id": "6c19cc5c-0ae6-4669-b7ff-1d8ff75d84fa",
+    "recovery_ref": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/tool-state/6c19cc5c-0ae6-4669-b7ff-1d8ff75d84fa.json",
+    "candidate": {
+      "cli_version": "0.7.0-castbox.4",
+      "core_version": "0.7.0-castbox.4",
+      "cli_digest": "06ff45bb3bc55aa0cddb6452fc55493a02817322b828e50ec01a3edafc660552",
+      "core_digest": "07e353a71b384894eda33702835cfbbe7647cafd75d330501c71903894ee27ad"
+    }
+  },
+  "resume": {
+    "operation_id": "8185cfab-031c-470b-a8be-d386b3fbe235",
+    "recovery_ref": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue46-packed-3Tgikf/resume-state/8185cfab-031c-470b-a8be-d386b3fbe235.json",
+    "resumed_task": {
+      "key": {
+        "task_id": "selected",
+        "lifecycle_generation": 0
+      },
+      "task_ref": ".trellis/tasks/resumed-location"
+    },
+    "candidate": {
+      "cli_version": "0.7.0-castbox.4",
+      "core_version": "0.7.0-castbox.4",
+      "cli_digest": "06ff45bb3bc55aa0cddb6452fc55493a02817322b828e50ec01a3edafc660552",
+      "core_digest": "07e353a71b384894eda33702835cfbbe7647cafd75d330501c71903894ee27ad"
+    }
+  },
+  "contract": {
+    "maintenance_api": "1.0",
+    "cli_version": "0.7.0-castbox.4",
+    "core_version": "0.7.0-castbox.4",
+    "operation_kinds": [
+      "tools_install",
+      "task_conversion",
+      "legacy_closeout",
+      "task_resume"
+    ],
+    "source_versions": [
+      "stable 0.6.x",
+      "0.7.0-castbox.N, N >= 1, no newer than candidate"
+    ],
+    "task_families": [
+      "known_legacy",
+      "schema1",
+      "schema2_preserve_only"
+    ],
+    "archive_resume": {
+      "task_families": [
+        "known_legacy",
+        "schema1"
+      ],
+      "generation": "preserve",
+      "original_archive": "read_only"
+    },
+    "session_families": [
+      "unversioned_local",
+      "schema1_path",
+      "schema2_identity",
+      "schema3_delivery"
+    ]
+  },
+  "status": "passed"
+}

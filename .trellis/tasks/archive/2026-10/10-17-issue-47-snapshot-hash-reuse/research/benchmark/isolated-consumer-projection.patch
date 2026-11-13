@@ -1,0 +1,67 @@
+--- a/runtime/manual_recovery.py
++++ b/runtime/manual_recovery.py
+@@ -5,10 +5,8 @@
+ from __future__ import annotations
+ 
+ import subprocess
+-import tempfile
+ from pathlib import Path
+ 
+-from candidate_objects import CandidateObjects
+ from owner import archived_fact_gap, gh_json, git, require_gh
+ from runtime.delivery_projection.adapter import DeliveryProjection
+ from runtime.io import CommandError
+@@ -61,13 +59,10 @@
+     paths = candidate["paths"]
+     source = projection.root if git_root is None else git_root
+     if objects is None:
+-        with CandidateObjects(source) as local:
++        with projection._call(projection.api.delivery_store.GitCandidateContent, source) as local:
+             return commit_candidate(projection, publication, actual_head,
+                                     git_root=source, objects=local)
+-    with tempfile.TemporaryDirectory(prefix="guru-manual-delivery-snapshot-") as temporary:
+-        snapshot = Path(temporary)
+-        objects.snapshot(actual_head, paths, snapshot)
+-        content = projection._call(projection.api.delivery_store.candidate_content_ref, snapshot, paths, "git")
++    content = projection._call(objects.content_ref, actual_head, paths)
+     return {**candidate, "kind": "git", "head_ref": actual_head, "content_ref": content}
+ 
+ 
+--- a/runtime/history.py
++++ b/runtime/history.py
+@@ -152,13 +152,18 @@
+     def history(self, commit: str) -> list[list[str]]:
+         return self.prepare(commit, lambda root: first_parent_history(root, commit))
+ 
+-    def candidate(self, head: str, paths: list[str]) -> None:
++    def candidate(self, projection, fact):
++        from manual_recovery import commit_candidate
++        head = fact["reviewed_head"]
+         def readable(root):
+-            from candidate_objects import CandidateObjects
+-            if self.objects is None:
+-                self.objects = CandidateObjects(root, no_lazy_fetch=True)
+-            self.objects.read(head, paths)
+-        self.prepare(head, readable)
++            try:
++                if self.objects is None:
++                    self.objects = projection._call(projection.api.delivery_store.GitCandidateContent,
++                                                    root, no_lazy_fetch=True)
++                return commit_candidate(projection, fact, head, git_root=root, objects=self.objects)
++            except LifecycleContractError as exc:
++                raise CommandError("stale_identity", exc.field_path, exc.remediation, 3) from exc
++        return self.prepare(head, readable)
+ 
+ 
+ def _github_error(proc: subprocess.CompletedProcess[str], operation: str) -> CommandError:
+@@ -452,9 +457,8 @@
+         outside_history = {sha: {row[0] for row in context.history(sha)} for sha in outside}
+         for public_fact in recorded.values():
+             fact = public_fact["fact"]
+-            context.candidate(fact["reviewed_head"], fact["candidate"]["paths"])
+             try:
+-                actual_candidate = commit_candidate(projection, fact, fact["reviewed_head"], git_root=context.root, objects=context.objects)
++                actual_candidate = context.candidate(projection, fact)
+             except LifecycleContractError as exc:
+                 raise CommandError("stale_identity", exc.field_path, exc.remediation, 3) from exc
+             if actual_candidate != fact["candidate"]:

@@ -1,0 +1,30 @@
+{
+  "id": "635-formal-archive-reactivation",
+  "name": "635-formal-archive-reactivation",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/guru-trellis",
+    "number": 635,
+    "disposition": "reference_only"
+  },
+  "title": "Reactivate formal predecessor archives through public maintenance",
+  "description": "Add public Core and CLI maintenance support for converting one formally completed predecessor archive into the next Task v2 generation while preserving history and leaving old local resources with their owners.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-20",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/635-formal-archive-reactivation"
+}

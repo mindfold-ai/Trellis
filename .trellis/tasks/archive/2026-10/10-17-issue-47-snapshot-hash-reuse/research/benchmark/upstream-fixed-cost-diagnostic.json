@@ -1,0 +1,515 @@
+{
+  "status": "diagnostic_only_acceptance_still_failed",
+  "acceptance": {
+    "absolute_passed": 183,
+    "absolute_total": 188,
+    "paired_passed": 21,
+    "paired_total": 24,
+    "changes_to_gates": false,
+    "acceptance_remeasurement": false
+  },
+  "method": {
+    "interpreter": "/opt/homebrew/bin/python3.14",
+    "timer": "cProfile.Profile(timer=time.process_time)",
+    "candidate_paths": 128,
+    "variant": "mixed",
+    "provider": "Existing synthetic provider fixture; no live network or AI claim",
+    "source": "Private temporary copy of pinned Guru f70b64b026725b27d59fed17ed710cc2f831439f with the existing isolated public consumer projection; current upstream common overlaid after original Publication setup",
+    "invocations": "First record creates real terminal fact; subsequent manual invocation profiles idempotent recovery; query2 profiles actual discover-task-deliveries wrapper. No acceptance runner invoked.",
+    "instrumentation": "Temporary copied Guru sitecustomize.py enables cProfile only for actual package command argv containing --root and guru-merge-task-delivery. atexit records per-function statistics. Managed-runtime and provider children are outside this profile.",
+    "fixture_cleanup": "Original fixture cleanups run; benchmark fixture test source restored by its existing finally. Canonical Guru, upstream source, frozen fixture/protocol and acceptance result files were not modified."
+  },
+  "provenance": {
+    "latest_diagnostic_directory": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/trellis47-schema-owner-diag-y7nz4gj1",
+    "fresh_record_diagnostic_directory": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/trellis47-schema-owner-diag-kravznfv",
+    "diagnostic_runner_sha256": "22323490018245ff86cb5fcc30df5a6ad1065cedec1f5450164ab98ea61c2d2c",
+    "initial_runner_sha256": "c6dd83b2295e4b53cc031607738cf8fff0773e51873239b8bd000da0a6b9c4dc",
+    "consumer_source_sha256_captured_after_run": {
+      "runtime/manual_recovery.py": "a825d90a4c04d8f132605ac721bfcfdd7c9f422ddf81fc870635704cfe270500",
+      "runtime/history.py": "3bdfa3be274d519f4f6426a44b5b302a7ac64bba6c85e7d43bc9f672a9ea5deb"
+    },
+    "upstream_source_sha256_captured_after_run": {
+      "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+      "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+      "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+      "delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171",
+      "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+      "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+      "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+      "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+      "git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+      "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+      "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+      "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17"
+    },
+    "hash_capture_limitation": "Upstream checksums were captured retrospectively, not in the profiler before import. All listed current files match the retained frozen after-runtime-source-checksums.json; this is a consistency check, not a contemporaneous measurement-time checksum. Temporary fixture common was cleaned afterward.",
+    "frozen_manifest": "after-runtime-source-checksums.json",
+    "all_listed_current_hashes_match_frozen_manifest": true
+  },
+  "recovery_and_query_samples": [
+    {
+      "command": "invoke-guru-merge-task-delivery",
+      "raw_statistics_file": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/trellis47-schema-owner-diag-y7nz4gj1/profile-61061.json",
+      "raw_statistics_sha256": "3de607e8ee199819853f300c9da361c4aba5d7843bb1f2fd67f4e6e0a5211cf1",
+      "total_profile_process_cpu_seconds": 0.30487099900000153,
+      "functions": [
+        {
+          "line": 51,
+          "name": "nonempty",
+          "calls": 5049,
+          "primitive_calls": 5049,
+          "self_cpu_seconds": 0.0029329760000000003,
+          "cumulative_cpu_seconds": 0.010279991,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 153,
+          "name": "content_ref",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 0.00036100000000000005,
+          "cumulative_cpu_seconds": 0.021403000000000002,
+          "module": "delivery_store.py"
+        },
+        {
+          "line": 81,
+          "name": "relative_path",
+          "calls": 2486,
+          "primitive_calls": 2486,
+          "self_cpu_seconds": 0.008446034,
+          "cumulative_cpu_seconds": 0.024742,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 116,
+          "name": "candidate",
+          "calls": 18,
+          "primitive_calls": 18,
+          "self_cpu_seconds": 0.000904003,
+          "cumulative_cpu_seconds": 0.029321002000000002,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 318,
+          "name": "get_gate_applicability",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 1.0001000000000001e-05,
+          "cumulative_cpu_seconds": 0.011998,
+          "module": "delivery_operations.py"
+        },
+        {
+          "line": 258,
+          "name": "parse_task_v2",
+          "calls": 3,
+          "primitive_calls": 3,
+          "self_cpu_seconds": 0.000162002,
+          "cumulative_cpu_seconds": 0.037643,
+          "module": "delivery_schema.py"
+        }
+      ],
+      "task_parser_callers": [
+        {
+          "module": "adapter.py",
+          "function": "_call",
+          "line": 62,
+          "primitive_calls": 2,
+          "calls": 2,
+          "self_cpu_seconds": 0.000114,
+          "cumulative_cpu_seconds": 0.025695000000000003
+        },
+        {
+          "module": "delivery_operations.py",
+          "function": "get_gate_applicability",
+          "line": 318,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 4.8002000000000006e-05,
+          "cumulative_cpu_seconds": 0.011948
+        }
+      ],
+      "session_module_initialization": [
+        {
+          "module": "delivery_session.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 1.5e-05,
+          "cumulative_cpu_seconds": 2.4e-05
+        },
+        {
+          "module": "session_storage.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 2.3e-05,
+          "cumulative_cpu_seconds": 0.0030310000000000003
+        },
+        {
+          "module": "task_utils.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 1.6000000000000003e-05,
+          "cumulative_cpu_seconds": 0.000836
+        },
+        {
+          "module": "active_task.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 3.5000000000000004e-05,
+          "cumulative_cpu_seconds": 0.005361
+        }
+      ],
+      "session_runtime_function_calls": []
+    },
+    {
+      "command": "discover-task-deliveries",
+      "raw_statistics_file": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/trellis47-schema-owner-diag-y7nz4gj1/profile-61096.json",
+      "raw_statistics_sha256": "d239a1410742a49d4a35e89c4deeeb41615e2271b22221ff16072bf1e1e7f0df",
+      "total_profile_process_cpu_seconds": 0.2694460000000027,
+      "functions": [
+        {
+          "line": 51,
+          "name": "nonempty",
+          "calls": 1768,
+          "primitive_calls": 1768,
+          "self_cpu_seconds": 0.000917006,
+          "cumulative_cpu_seconds": 0.0032479770000000004,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 153,
+          "name": "content_ref",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 0.000318998,
+          "cumulative_cpu_seconds": 0.019610000000000002,
+          "module": "delivery_store.py"
+        },
+        {
+          "line": 116,
+          "name": "candidate",
+          "calls": 6,
+          "primitive_calls": 6,
+          "self_cpu_seconds": 0.00029699500000000004,
+          "cumulative_cpu_seconds": 0.009016,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 81,
+          "name": "relative_path",
+          "calls": 914,
+          "primitive_calls": 914,
+          "self_cpu_seconds": 0.0029310290000000004,
+          "cumulative_cpu_seconds": 0.008429003000000001,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 258,
+          "name": "parse_task_v2",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 5.2999000000000005e-05,
+          "cumulative_cpu_seconds": 0.012315999000000001,
+          "module": "delivery_schema.py"
+        }
+      ],
+      "task_parser_callers": [
+        {
+          "module": "adapter.py",
+          "function": "_call",
+          "line": 62,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 5.2999000000000005e-05,
+          "cumulative_cpu_seconds": 0.012315999000000001
+        }
+      ],
+      "session_module_initialization": [
+        {
+          "module": "delivery_session.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 1e-05,
+          "cumulative_cpu_seconds": 1.9e-05
+        },
+        {
+          "module": "session_storage.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 3.2000000000000005e-05,
+          "cumulative_cpu_seconds": 0.0030800000000000003
+        },
+        {
+          "module": "task_utils.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 2.4e-05,
+          "cumulative_cpu_seconds": 0.0009680000000000001
+        },
+        {
+          "module": "active_task.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 4.4000000000000006e-05,
+          "cumulative_cpu_seconds": 0.005246000000000001
+        }
+      ],
+      "session_runtime_function_calls": []
+    }
+  ],
+  "fresh_record_context_only": [
+    {
+      "command": "invoke-guru-merge-task-delivery",
+      "raw_statistics_file": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/trellis47-schema-owner-diag-kravznfv/profile-59070.json",
+      "raw_statistics_sha256": "03afcabe0fcd192a213731365e13c882cb55a8a342474a2419b76ff51eedb9df",
+      "total_profile_process_cpu_seconds": 0.35806600100000135,
+      "functions": [
+        {
+          "line": 51,
+          "name": "nonempty",
+          "calls": 10548,
+          "primitive_calls": 10548,
+          "self_cpu_seconds": 0.006004992000000001,
+          "cumulative_cpu_seconds": 0.021699019,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 31,
+          "name": "parse_operation",
+          "calls": 2,
+          "primitive_calls": 2,
+          "self_cpu_seconds": 2.9e-05,
+          "cumulative_cpu_seconds": 0.004015,
+          "module": "delivery_operations.py"
+        },
+        {
+          "line": 153,
+          "name": "content_ref",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 0.00036700000000000003,
+          "cumulative_cpu_seconds": 0.020769000000000003,
+          "module": "delivery_store.py"
+        },
+        {
+          "line": 116,
+          "name": "candidate",
+          "calls": 38,
+          "primitive_calls": 38,
+          "self_cpu_seconds": 0.001985981,
+          "cumulative_cpu_seconds": 0.06296699900000001,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 318,
+          "name": "get_gate_applicability",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 9.001e-06,
+          "cumulative_cpu_seconds": 0.009753000000000001,
+          "module": "delivery_operations.py"
+        },
+        {
+          "line": 81,
+          "name": "relative_path",
+          "calls": 5119,
+          "primitive_calls": 5119,
+          "self_cpu_seconds": 0.017803,
+          "cumulative_cpu_seconds": 0.051668025000000006,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 127,
+          "name": "apply_operation",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 1.8e-05,
+          "cumulative_cpu_seconds": 0.023878,
+          "module": "delivery_operations.py"
+        },
+        {
+          "line": 258,
+          "name": "parse_task_v2",
+          "calls": 7,
+          "primitive_calls": 7,
+          "self_cpu_seconds": 0.000323999,
+          "cumulative_cpu_seconds": 0.075453,
+          "module": "delivery_schema.py"
+        },
+        {
+          "line": 373,
+          "name": "apply_to_store",
+          "calls": 1,
+          "primitive_calls": 1,
+          "self_cpu_seconds": 9.900000000000001e-05,
+          "cumulative_cpu_seconds": 0.071145,
+          "module": "delivery_store.py"
+        }
+      ],
+      "task_parser_callers": [
+        {
+          "module": "adapter.py",
+          "function": "_call",
+          "line": 62,
+          "primitive_calls": 2,
+          "calls": 2,
+          "self_cpu_seconds": 8.299900000000001e-05,
+          "cumulative_cpu_seconds": 0.021238
+        },
+        {
+          "module": "delivery_operations.py",
+          "function": "output",
+          "line": 143,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 3.9e-05,
+          "cumulative_cpu_seconds": 0.011661000000000001
+        },
+        {
+          "module": "io.py",
+          "function": "_has_invalid_task_schema",
+          "line": 73,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 6.3e-05,
+          "cumulative_cpu_seconds": 0.011406000000000001
+        },
+        {
+          "module": "delivery_operations.py",
+          "function": "get_gate_applicability",
+          "line": 318,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 4.6e-05,
+          "cumulative_cpu_seconds": 0.009706000000000001
+        },
+        {
+          "module": "delivery_operations.py",
+          "function": "apply_operation",
+          "line": 127,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 4.1e-05,
+          "cumulative_cpu_seconds": 0.010187
+        },
+        {
+          "module": "delivery_store.py",
+          "function": "apply_to_store",
+          "line": 373,
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_cpu_seconds": 5.2000000000000004e-05,
+          "cumulative_cpu_seconds": 0.011255000000000001
+        }
+      ],
+      "session_module_initialization": [
+        {
+          "module": "delivery_session.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 9e-06,
+          "cumulative_cpu_seconds": 1.8e-05
+        },
+        {
+          "module": "session_storage.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 2.8000000000000003e-05,
+          "cumulative_cpu_seconds": 0.0030710000000000004
+        },
+        {
+          "module": "task_utils.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 2e-05,
+          "cumulative_cpu_seconds": 0.0008860000000000001
+        },
+        {
+          "module": "active_task.py",
+          "function": "<module>",
+          "calls": 1,
+          "self_cpu_seconds": 4e-05,
+          "cumulative_cpu_seconds": 0.005071
+        }
+      ],
+      "session_runtime_function_calls": [
+        {
+          "module": "session_storage.py",
+          "function": "sessions_directory",
+          "calls": 1,
+          "self_cpu_seconds": 8.000000000000001e-06,
+          "cumulative_cpu_seconds": 0.0007040000000000001
+        },
+        {
+          "module": "session_storage.py",
+          "function": "_common_dir",
+          "calls": 2,
+          "self_cpu_seconds": 3.6e-05,
+          "cumulative_cpu_seconds": 0.006313
+        },
+        {
+          "module": "delivery_session.py",
+          "function": "release_delivery",
+          "calls": 1,
+          "self_cpu_seconds": 6e-06,
+          "cumulative_cpu_seconds": 0.016572
+        },
+        {
+          "module": "session_storage.py",
+          "function": "_git",
+          "calls": 5,
+          "self_cpu_seconds": 0.00032700000000000003,
+          "cumulative_cpu_seconds": 0.014206000000000002
+        },
+        {
+          "module": "session_storage.py",
+          "function": "records",
+          "calls": 1,
+          "self_cpu_seconds": 1.2e-05,
+          "cumulative_cpu_seconds": 0.000741
+        },
+        {
+          "module": "session_storage.py",
+          "function": "validate_workspace",
+          "calls": 1,
+          "self_cpu_seconds": 8e-05,
+          "cumulative_cpu_seconds": 0.006446
+        },
+        {
+          "module": "delivery_session.py",
+          "function": "apply_release_plan",
+          "calls": 1,
+          "self_cpu_seconds": 0.0,
+          "cumulative_cpu_seconds": 0.0
+        },
+        {
+          "module": "delivery_session.py",
+          "function": "plan_release_delivery",
+          "calls": 1,
+          "self_cpu_seconds": 1.3000000000000001e-05,
+          "cumulative_cpu_seconds": 0.016566
+        },
+        {
+          "module": "session_storage.py",
+          "function": "repository_facts",
+          "calls": 1,
+          "self_cpu_seconds": 0.00014000000000000001,
+          "cumulative_cpu_seconds": 0.015812
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "One independent observation per operation; no statistical wall-time or saved-time claim.",
+    "Function cumulative CPU includes descendants and overlaps other listed functions; do not add rows.",
+    "time.process_time excludes child-process CPU, but profiler callbacks substantially increase actual command CPU; values cannot be substituted for unprofiled acceptance measurements.",
+    "Standalone importtime and repeated pure-schema probes motivated this diagnostic but do not prove complete-wrapper improvements.",
+    "Fresh record invokes store/apply kernels; idempotent recovery and query2 do not.",
+    "No failed acceptance sample is replaced, reclassified, discarded or rounded."
+  ],
+  "decision": {
+    "parsed_kernel": "Not justified as a manual_median/query2 repair because both actual profiled paths call apply_to_store/apply_operation zero times.",
+    "small_schema_cleanup": "candidate strings(paths) and relative_path both call nonempty for each candidate path. A same-module syntax-only helper could remove duplicate string checks while preserving complete independent input validation and original error order; no change implemented and no acceptance improvement established.",
+    "unused_imports": "active_task/session_storage/task_utils initialize but no runtime functions execute in these recovery/query commands. Lazy loading requires changes to both common exports and delivery_session dependencies, preserving public reexports. Initialization scope is only a few profiled milliseconds; no sufficient gate benefit established.",
+    "continuation": "Do not use these small cleanup opportunities as a reason to obtain another unchanged acceptance run. No production optimization is proposed as proven sufficient; original acceptance remains failed."
+  }
+}

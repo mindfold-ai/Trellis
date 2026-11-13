@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/core/backend/index.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Issue 46 selected legacy archive resume contracts and quality boundaries"}

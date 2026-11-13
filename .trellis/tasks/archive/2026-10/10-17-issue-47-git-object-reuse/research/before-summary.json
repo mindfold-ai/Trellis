@@ -1,0 +1,3330 @@
+{
+  "rows": [
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "begin_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.1491302080103196,
+        "min": 2.1393117080442607,
+        "max": 2.1589487079763785
+      },
+      "elapsed_seconds": {
+        "median": 2.097722770937253,
+        "min": 2.0881193339591846,
+        "max": 2.107326207915321
+      },
+      "python_peak_rss_bytes": {
+        "median": 41000960.0,
+        "min": 40910848,
+        "max": 41091072
+      },
+      "git_peak_rss_bytes": {
+        "median": 4456448.0,
+        "min": 4440064,
+        "max": 4472832
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 57327287.0,
+        "min": 57327287,
+        "max": 57327287
+      },
+      "git_seconds": {
+        "median": 0.011865708511322737,
+        "min": 0.011459500063210726,
+        "max": 0.012271916959434748
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0013913744478486478,
+        "filesystem_digest": 1.8844640420284122,
+        "other_objective_and_wrapper": 0.21186735446099192
+      }
+    },
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "candidate",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.98913027101662,
+        "min": 2.9709095420548692,
+        "max": 3.007350999978371
+      },
+      "elapsed_seconds": {
+        "median": 2.9288823540555313,
+        "min": 2.9095159160206094,
+        "max": 2.948248792090453
+      },
+      "python_peak_rss_bytes": {
+        "median": 51183616.0,
+        "min": 51101696,
+        "max": 51265536
+      },
+      "git_peak_rss_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10002.0,
+        "min": 10002,
+        "max": 10002
+      },
+      "sha256_input_bytes": {
+        "median": 57327201.0,
+        "min": 57327201,
+        "max": 57327201
+      },
+      "git_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {},
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "filesystem_digest": 2.8719091454404406,
+        "other_objective_and_wrapper": 0.0569732086150907
+      }
+    },
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "record_delivery",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 230.01115641649812,
+        "min": 229.3936408329755,
+        "max": 230.62867200002074
+      },
+      "elapsed_seconds": {
+        "median": 229.9548455204349,
+        "min": 229.33843841589987,
+        "max": 230.57125262496993
+      },
+      "python_peak_rss_bytes": {
+        "median": 56221696.0,
+        "min": 54853632,
+        "max": 57589760
+      },
+      "git_peak_rss_bytes": {
+        "median": 10067968.0,
+        "min": 10059776,
+        "max": 10076160
+      },
+      "requested_object_reads": {
+        "median": 10001.0,
+        "min": 10001,
+        "max": 10001
+      },
+      "unique_git_blob_contents_read": {
+        "median": 10001.0,
+        "min": 10001,
+        "max": 10001
+      },
+      "git_blob_read_bytes": {
+        "median": 56367104.0,
+        "min": 56367104,
+        "max": 56367104
+      },
+      "git_max_object_bytes": {
+        "median": 4194304.0,
+        "min": 4194304,
+        "max": 4194304
+      },
+      "sha256_calls": {
+        "median": 20006.0,
+        "min": 20006,
+        "max": 20006
+      },
+      "sha256_input_bytes": {
+        "median": 114654488.0,
+        "min": 114654488,
+        "max": 114654488
+      },
+      "git_seconds": {
+        "median": 221.2046037839027,
+        "min": 220.60284335678443,
+        "max": 221.806364211021
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "cat-file": 1,
+        "ls-tree": 10001,
+        "show": 10001,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "commit_read_digest": 226.6421663960209,
+        "authority": 0.33174887450877577,
+        "filesystem_digest": 1.8883162915008143,
+        "other_objective_and_wrapper": 1.0926139584043995
+      }
+    },
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "record_delivery_retry",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 1.2534523124340922,
+        "min": 1.2481378338998184,
+        "max": 1.258766790968366
+      },
+      "elapsed_seconds": {
+        "median": 1.1990592920337804,
+        "min": 1.1938009590376168,
+        "max": 1.2043176250299439
+      },
+      "python_peak_rss_bytes": {
+        "median": 48504832.0,
+        "min": 47529984,
+        "max": 49479680
+      },
+      "git_peak_rss_bytes": {
+        "median": 4268032.0,
+        "min": 4259840,
+        "max": 4276224
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.049161811475642025,
+        "min": 0.049058331991545856,
+        "max": 0.049265290959738195
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 4,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "other_objective_and_wrapper": 1.1990592920337804
+      }
+    },
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "record_gate_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.4173927294905297,
+        "min": 2.4105966249480844,
+        "max": 2.424188834032975
+      },
+      "elapsed_seconds": {
+        "median": 2.36444879201008,
+        "min": 2.3587855000514537,
+        "max": 2.3701120839687064
+      },
+      "python_peak_rss_bytes": {
+        "median": 43687936.0,
+        "min": 43139072,
+        "max": 44236800
+      },
+      "git_peak_rss_bytes": {
+        "median": 4423680.0,
+        "min": 4423680,
+        "max": 4423680
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 57327287.0,
+        "min": 57327287,
+        "max": 57327287
+      },
+      "git_seconds": {
+        "median": 0.011290438007563353,
+        "min": 0.011125291930511594,
+        "max": 0.011455584084615111
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.08352637448115274,
+        "filesystem_digest": 1.8626276040449739,
+        "other_objective_and_wrapper": 0.4182948134839535
+      }
+    },
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "record_gate_full_review",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.7371344795101322,
+        "min": 2.733938542078249,
+        "max": 2.7403304169420153
+      },
+      "elapsed_seconds": {
+        "median": 2.6846855625044554,
+        "min": 2.6823508329689503,
+        "max": 2.6870202920399606
+      },
+      "python_peak_rss_bytes": {
+        "median": 45752320.0,
+        "min": 45711360,
+        "max": 45793280
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 57327287.0,
+        "min": 57327287,
+        "max": 57327287
+      },
+      "git_seconds": {
+        "median": 0.011188583506736904,
+        "min": 0.010582457995042205,
+        "max": 0.011794709018431604
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.1679284375277348,
+        "filesystem_digest": 1.890161395946052,
+        "other_objective_and_wrapper": 0.6265957290306687
+      }
+    },
+    {
+      "scenario": "delivery-larger-p10001",
+      "operation": "record_gate_readiness",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 3.01665468752617,
+        "min": 3.012570375110954,
+        "max": 3.0207389999413863
+      },
+      "elapsed_seconds": {
+        "median": 2.96274662547512,
+        "min": 2.9598717089975253,
+        "max": 2.9656215419527143
+      },
+      "python_peak_rss_bytes": {
+        "median": 49963008.0,
+        "min": 49397760,
+        "max": 50528256
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 57327287.0,
+        "min": 57327287,
+        "max": 57327287
+      },
+      "git_seconds": {
+        "median": 0.01013006252469495,
+        "min": 0.00877595809288323,
+        "max": 0.01148416695650667
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.2436644170084037,
+        "filesystem_digest": 1.8967800000100397,
+        "other_objective_and_wrapper": 0.8223022084566765
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "begin_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.11632947908947244,
+        "min": 0.11585645808372647,
+        "max": 0.11680250009521842
+      },
+      "elapsed_seconds": {
+        "median": 0.07296327105723321,
+        "min": 0.07266137504484504,
+        "max": 0.07326516706962138
+      },
+      "python_peak_rss_bytes": {
+        "median": 35119104.0,
+        "min": 34947072,
+        "max": 35291136
+      },
+      "git_peak_rss_bytes": {
+        "median": 4423680.0,
+        "min": 4423680,
+        "max": 4423680
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 4336727.0,
+        "min": 4336727,
+        "max": 4336727
+      },
+      "git_seconds": {
+        "median": 0.010778853495139629,
+        "min": 0.0104401659918949,
+        "max": 0.011117540998384356
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0012423750013113022,
+        "filesystem_digest": 0.024535188043955714,
+        "other_objective_and_wrapper": 0.0471857080119662
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "candidate",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.0989670209819451,
+        "min": 0.09894312499091029,
+        "max": 0.0989909169729799
+      },
+      "elapsed_seconds": {
+        "median": 0.05596229154616594,
+        "min": 0.055951875052414834,
+        "max": 0.05597270803991705
+      },
+      "python_peak_rss_bytes": {
+        "median": 35127296.0,
+        "min": 34996224,
+        "max": 35258368
+      },
+      "git_peak_rss_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 129.0,
+        "min": 129,
+        "max": 129
+      },
+      "sha256_input_bytes": {
+        "median": 4336641.0,
+        "min": 4336641,
+        "max": 4336641
+      },
+      "git_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {},
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "filesystem_digest": 0.025564875511918217,
+        "other_objective_and_wrapper": 0.030397416034247726
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "record_delivery",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.6585536875063553,
+        "min": 2.619093207991682,
+        "max": 2.6980141670210287
+      },
+      "elapsed_seconds": {
+        "median": 2.614395479031373,
+        "min": 2.575411375029944,
+        "max": 2.6533795830328017
+      },
+      "python_peak_rss_bytes": {
+        "median": 41598976.0,
+        "min": 41582592,
+        "max": 41615360
+      },
+      "git_peak_rss_bytes": {
+        "median": 5013504.0,
+        "min": 5013504,
+        "max": 5013504
+      },
+      "requested_object_reads": {
+        "median": 128.0,
+        "min": 128,
+        "max": 128
+      },
+      "unique_git_blob_contents_read": {
+        "median": 128.0,
+        "min": 128,
+        "max": 128
+      },
+      "git_blob_read_bytes": {
+        "median": 4324352.0,
+        "min": 4324352,
+        "max": 4324352
+      },
+      "git_max_object_bytes": {
+        "median": 4194304.0,
+        "min": 4194304,
+        "max": 4194304
+      },
+      "sha256_calls": {
+        "median": 260.0,
+        "min": 260,
+        "max": 260
+      },
+      "sha256_input_bytes": {
+        "median": 8673368.0,
+        "min": 8673368,
+        "max": 8673368
+      },
+      "git_seconds": {
+        "median": 2.4695431443979032,
+        "min": 2.432160414289683,
+        "max": 2.5069258745061234
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "cat-file": 1,
+        "ls-tree": 128,
+        "show": 128,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "commit_read_digest": 2.478190333524253,
+        "authority": 0.005777083977591246,
+        "filesystem_digest": 0.024745042028371245,
+        "other_objective_and_wrapper": 0.1056830195011571
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "record_delivery_retry",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.13845320796826854,
+        "min": 0.13839208299759775,
+        "max": 0.13851433293893933
+      },
+      "elapsed_seconds": {
+        "median": 0.09498045849613845,
+        "min": 0.09484091703779995,
+        "max": 0.09511999995447695
+      },
+      "python_peak_rss_bytes": {
+        "median": 30851072.0,
+        "min": 30769152,
+        "max": 30932992
+      },
+      "git_peak_rss_bytes": {
+        "median": 4276224.0,
+        "min": 4259840,
+        "max": 4292608
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.04453485499834642,
+        "min": 0.04427183396182954,
+        "max": 0.04479787603486329
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 4,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "other_objective_and_wrapper": 0.09498045849613845
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "record_gate_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.12127412494737655,
+        "min": 0.11896875000093132,
+        "max": 0.12357949989382178
+      },
+      "elapsed_seconds": {
+        "median": 0.07807960448553786,
+        "min": 0.07621287496294826,
+        "max": 0.07994633400812745
+      },
+      "python_peak_rss_bytes": {
+        "median": 35168256.0,
+        "min": 35160064,
+        "max": 35176448
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 4336727.0,
+        "min": 4336727,
+        "max": 4336727
+      },
+      "git_seconds": {
+        "median": 0.012119833496399224,
+        "min": 0.010433041956275702,
+        "max": 0.013806625036522746
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.002332207979634404,
+        "filesystem_digest": 0.02482914546271786,
+        "other_objective_and_wrapper": 0.05091825104318559
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "record_gate_full_review",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.12781883351271972,
+        "min": 0.12461054197046906,
+        "max": 0.13102712505497038
+      },
+      "elapsed_seconds": {
+        "median": 0.08345187548547983,
+        "min": 0.08045416697859764,
+        "max": 0.08644958399236202
+      },
+      "python_peak_rss_bytes": {
+        "median": 35168256.0,
+        "min": 35143680,
+        "max": 35192832
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 4336727.0,
+        "min": 4336727,
+        "max": 4336727
+      },
+      "git_seconds": {
+        "median": 0.011688333004713058,
+        "min": 0.010282124974764884,
+        "max": 0.013094541034661233
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.003491416515316814,
+        "filesystem_digest": 0.02556447946699336,
+        "other_objective_and_wrapper": 0.054395979503169656
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "operation": "record_gate_readiness",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.1314790835021995,
+        "min": 0.12765712500549853,
+        "max": 0.13530104199890047
+      },
+      "elapsed_seconds": {
+        "median": 0.08525256247958168,
+        "min": 0.08499362494330853,
+        "max": 0.08551150001585484
+      },
+      "python_peak_rss_bytes": {
+        "median": 35168256.0,
+        "min": 35143680,
+        "max": 35192832
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 4336727.0,
+        "min": 4336727,
+        "max": 4336727
+      },
+      "git_seconds": {
+        "median": 0.010746458021458238,
+        "min": 0.010269333026371896,
+        "max": 0.01122358301654458
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0046189179993234575,
+        "filesystem_digest": 0.024948103993665427,
+        "other_objective_and_wrapper": 0.0556855404865928
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "begin_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.1739107705070637,
+        "min": 2.14633695804514,
+        "max": 2.2014845829689875
+      },
+      "elapsed_seconds": {
+        "median": 2.1235312079661526,
+        "min": 2.0952698329929262,
+        "max": 2.151792582939379
+      },
+      "python_peak_rss_bytes": {
+        "median": 37363712.0,
+        "min": 37240832,
+        "max": 37486592
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11841271.0,
+        "min": 11841271,
+        "max": 11841271
+      },
+      "git_seconds": {
+        "median": 0.012017374450806528,
+        "min": 0.011811457923613489,
+        "max": 0.012223290977999568
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.001349646016024053,
+        "filesystem_digest": 1.9065368125448003,
+        "other_objective_and_wrapper": 0.21564474940532818
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "candidate",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.867609021021053,
+        "min": 2.8464997089467943,
+        "max": 2.888718333095312
+      },
+      "elapsed_seconds": {
+        "median": 2.8076679795631208,
+        "min": 2.7861484170425683,
+        "max": 2.829187542083673
+      },
+      "python_peak_rss_bytes": {
+        "median": 46637056.0,
+        "min": 46546944,
+        "max": 46727168
+      },
+      "git_peak_rss_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10002.0,
+        "min": 10002,
+        "max": 10002
+      },
+      "sha256_input_bytes": {
+        "median": 11841185.0,
+        "min": 11841185,
+        "max": 11841185
+      },
+      "git_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {},
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "filesystem_digest": 2.750259541964624,
+        "other_objective_and_wrapper": 0.057408437598496675
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "record_delivery",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 229.56177572894376,
+        "min": 228.9532377079595,
+        "max": 230.17031374992803
+      },
+      "elapsed_seconds": {
+        "median": 229.50543302099686,
+        "min": 228.8965912499698,
+        "max": 230.11427479202393
+      },
+      "python_peak_rss_bytes": {
+        "median": 47095808.0,
+        "min": 46792704,
+        "max": 47398912
+      },
+      "git_peak_rss_bytes": {
+        "median": 5505024.0,
+        "min": 5488640,
+        "max": 5521408
+      },
+      "requested_object_reads": {
+        "median": 10001.0,
+        "min": 10001,
+        "max": 10001
+      },
+      "unique_git_blob_contents_read": {
+        "median": 1.0,
+        "min": 1,
+        "max": 1
+      },
+      "git_blob_read_bytes": {
+        "median": 10881088.0,
+        "min": 10881088,
+        "max": 10881088
+      },
+      "git_max_object_bytes": {
+        "median": 1088.0,
+        "min": 1088,
+        "max": 1088
+      },
+      "sha256_calls": {
+        "median": 20006.0,
+        "min": 20006,
+        "max": 20006
+      },
+      "sha256_input_bytes": {
+        "median": 23682456.0,
+        "min": 23682456,
+        "max": 23682456
+      },
+      "git_seconds": {
+        "median": 220.61252640612656,
+        "min": 220.00167598435655,
+        "max": 221.22337682789657
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "cat-file": 1,
+        "ls-tree": 10001,
+        "show": 10001,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "commit_read_digest": 226.212335458491,
+        "authority": 0.3287956453859806,
+        "filesystem_digest": 1.8800782915204763,
+        "other_objective_and_wrapper": 1.0842236255994067
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "record_delivery_retry",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 1.2650516040157527,
+        "min": 1.262054790975526,
+        "max": 1.2680484170559794
+      },
+      "elapsed_seconds": {
+        "median": 1.197190270468127,
+        "min": 1.1960485830204561,
+        "max": 1.1983319579157978
+      },
+      "python_peak_rss_bytes": {
+        "median": 48373760.0,
+        "min": 48332800,
+        "max": 48414720
+      },
+      "git_peak_rss_bytes": {
+        "median": 4284416.0,
+        "min": 4276224,
+        "max": 4292608
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.04791162547189742,
+        "min": 0.04495108395349234,
+        "max": 0.0508721669903025
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 4,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "other_objective_and_wrapper": 1.197190270468127
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "record_gate_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.4583785834838636,
+        "min": 2.4434104999527335,
+        "max": 2.4733466670149937
+      },
+      "elapsed_seconds": {
+        "median": 2.4017034374992363,
+        "min": 2.388886792003177,
+        "max": 2.4145200829952955
+      },
+      "python_peak_rss_bytes": {
+        "median": 40255488.0,
+        "min": 40140800,
+        "max": 40370176
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11841271.0,
+        "min": 11841271,
+        "max": 11841271
+      },
+      "git_seconds": {
+        "median": 0.011717645975295454,
+        "min": 0.011326916981488466,
+        "max": 0.012108374969102442
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.08370206301333383,
+        "filesystem_digest": 1.8962328750058077,
+        "other_objective_and_wrapper": 0.42176849948009476
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "record_gate_full_review",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.7212338960380293,
+        "min": 2.7206128750694916,
+        "max": 2.721854917006567
+      },
+      "elapsed_seconds": {
+        "median": 2.667786353966221,
+        "min": 2.6674454578896984,
+        "max": 2.668127250042744
+      },
+      "python_peak_rss_bytes": {
+        "median": 41508864.0,
+        "min": 41369600,
+        "max": 41648128
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11841271.0,
+        "min": 11841271,
+        "max": 11841271
+      },
+      "git_seconds": {
+        "median": 0.011174687999300659,
+        "min": 0.010588041972368956,
+        "max": 0.011761334026232362
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.16433531255461276,
+        "filesystem_digest": 1.8854592085117474,
+        "other_objective_and_wrapper": 0.617991832899861
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "operation": "record_gate_readiness",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.995456041477155,
+        "min": 2.9857294159010053,
+        "max": 3.0051826670533046
+      },
+      "elapsed_seconds": {
+        "median": 2.9436989375390112,
+        "min": 2.9336268750485033,
+        "max": 2.953771000029519
+      },
+      "python_peak_rss_bytes": {
+        "median": 44687360.0,
+        "min": 44335104,
+        "max": 45039616
+      },
+      "git_peak_rss_bytes": {
+        "median": 4448256.0,
+        "min": 4440064,
+        "max": 4456448
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11841271.0,
+        "min": 11841271,
+        "max": 11841271
+      },
+      "git_seconds": {
+        "median": 0.011535500001627952,
+        "min": 0.010887457989156246,
+        "max": 0.012183542014099658
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.2461968120187521,
+        "filesystem_digest": 1.868004979507532,
+        "other_objective_and_wrapper": 0.8294971460127272
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "begin_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.12332060397602618,
+        "min": 0.11993937497027218,
+        "max": 0.12670183298178017
+      },
+      "elapsed_seconds": {
+        "median": 0.07540479203453287,
+        "min": 0.07401045900769532,
+        "max": 0.07679912506137043
+      },
+      "python_peak_rss_bytes": {
+        "median": 31326208.0,
+        "min": 31211520,
+        "max": 31440896
+      },
+      "git_peak_rss_bytes": {
+        "median": 4464640.0,
+        "min": 4456448,
+        "max": 4472832
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 151639.0,
+        "min": 151639,
+        "max": 151639
+      },
+      "git_seconds": {
+        "median": 0.011519833467900753,
+        "min": 0.011306083993986249,
+        "max": 0.011733582941815257
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.001349249912891537,
+        "filesystem_digest": 0.024032604065723717,
+        "other_objective_and_wrapper": 0.05002293805591762
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "candidate",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.1085835620178841,
+        "min": 0.1037931659957394,
+        "max": 0.11337395804002881
+      },
+      "elapsed_seconds": {
+        "median": 0.06030904198996723,
+        "min": 0.0602829169947654,
+        "max": 0.06033516698516905
+      },
+      "python_peak_rss_bytes": {
+        "median": 31334400.0,
+        "min": 31178752,
+        "max": 31490048
+      },
+      "git_peak_rss_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 129.0,
+        "min": 129,
+        "max": 129
+      },
+      "sha256_input_bytes": {
+        "median": 151553.0,
+        "min": 151553,
+        "max": 151553
+      },
+      "git_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {},
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "filesystem_digest": 0.02554102096473798,
+        "other_objective_and_wrapper": 0.034768021025229245
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "record_delivery",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.9362126254709437,
+        "min": 2.8327617089962587,
+        "max": 3.039663541945629
+      },
+      "elapsed_seconds": {
+        "median": 2.8904862080235034,
+        "min": 2.78584170807153,
+        "max": 2.995130707975477
+      },
+      "python_peak_rss_bytes": {
+        "median": 31203328.0,
+        "min": 31195136,
+        "max": 31211520
+      },
+      "git_peak_rss_bytes": {
+        "median": 5054464.0,
+        "min": 5046272,
+        "max": 5062656
+      },
+      "requested_object_reads": {
+        "median": 128.0,
+        "min": 128,
+        "max": 128
+      },
+      "unique_git_blob_contents_read": {
+        "median": 1.0,
+        "min": 1,
+        "max": 1
+      },
+      "git_blob_read_bytes": {
+        "median": 139264.0,
+        "min": 139264,
+        "max": 139264
+      },
+      "git_max_object_bytes": {
+        "median": 1088.0,
+        "min": 1088,
+        "max": 1088
+      },
+      "sha256_calls": {
+        "median": 260.0,
+        "min": 260,
+        "max": 260
+      },
+      "sha256_input_bytes": {
+        "median": 303192.0,
+        "min": 303192,
+        "max": 303192
+      },
+      "git_seconds": {
+        "median": 2.74802239658311,
+        "min": 2.6440934968413785,
+        "max": 2.8519512963248417
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "cat-file": 1,
+        "ls-tree": 128,
+        "show": 128,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "commit_read_digest": 2.7494984375080094,
+        "authority": 0.005938333517406136,
+        "filesystem_digest": 0.02280422957846895,
+        "other_objective_and_wrapper": 0.11224520741961896
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "record_delivery_retry",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.151904875470791,
+        "min": 0.14655929198488593,
+        "max": 0.1572504589566961
+      },
+      "elapsed_seconds": {
+        "median": 0.10436272906372324,
+        "min": 0.10156504204496741,
+        "max": 0.10716041608247906
+      },
+      "python_peak_rss_bytes": {
+        "median": 31236096.0,
+        "min": 31162368,
+        "max": 31309824
+      },
+      "git_peak_rss_bytes": {
+        "median": 4284416.0,
+        "min": 4276224,
+        "max": 4292608
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.051095583534333855,
+        "min": 0.049617500975728035,
+        "max": 0.052573666092939675
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 4,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "other_objective_and_wrapper": 0.10436272906372324
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "record_gate_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.1268910420476459,
+        "min": 0.12604129209648818,
+        "max": 0.12774079199880362
+      },
+      "elapsed_seconds": {
+        "median": 0.07933979196241125,
+        "min": 0.078533791936934,
+        "max": 0.08014579198788851
+      },
+      "python_peak_rss_bytes": {
+        "median": 31178752.0,
+        "min": 31113216,
+        "max": 31244288
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 151639.0,
+        "min": 151639,
+        "max": 151639
+      },
+      "git_seconds": {
+        "median": 0.011281708546448499,
+        "min": 0.011255542049184442,
+        "max": 0.011307875043712556
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0023723755148239434,
+        "filesystem_digest": 0.023662374587729573,
+        "other_objective_and_wrapper": 0.05330504185985774
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "record_gate_full_review",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.12936754198744893,
+        "min": 0.1292861249530688,
+        "max": 0.12944895902182907
+      },
+      "elapsed_seconds": {
+        "median": 0.0823613335378468,
+        "min": 0.08149470807984471,
+        "max": 0.0832279589958489
+      },
+      "python_peak_rss_bytes": {
+        "median": 31096832.0,
+        "min": 30883840,
+        "max": 31309824
+      },
+      "git_peak_rss_bytes": {
+        "median": 4423680.0,
+        "min": 4423680,
+        "max": 4423680
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 151639.0,
+        "min": 151639,
+        "max": 151639
+      },
+      "git_seconds": {
+        "median": 0.011229333525989205,
+        "min": 0.010986707988195121,
+        "max": 0.011471959063783288
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0035884585231542587,
+        "filesystem_digest": 0.023775333014782518,
+        "other_objective_and_wrapper": 0.05499754199991003
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "operation": "record_gate_readiness",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.13029127096524462,
+        "min": 0.12785049993544817,
+        "max": 0.13273204199504107
+      },
+      "elapsed_seconds": {
+        "median": 0.08431570848915726,
+        "min": 0.08346391702070832,
+        "max": 0.0851674999576062
+      },
+      "python_peak_rss_bytes": {
+        "median": 31162368.0,
+        "min": 31014912,
+        "max": 31309824
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 151639.0,
+        "min": 151639,
+        "max": 151639
+      },
+      "git_seconds": {
+        "median": 0.011226542002987117,
+        "min": 0.01061241701245308,
+        "max": 0.011840666993521154
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0046901460736989975,
+        "filesystem_digest": 0.023028708004858345,
+        "other_objective_and_wrapper": 0.05659685441059992
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "begin_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.157583500025794,
+        "min": 2.1460684580961242,
+        "max": 2.1690985419554636
+      },
+      "elapsed_seconds": {
+        "median": 2.105789542023558,
+        "min": 2.094106459058821,
+        "max": 2.117472624988295
+      },
+      "python_peak_rss_bytes": {
+        "median": 36855808.0,
+        "min": 36569088,
+        "max": 37142528
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11201207.0,
+        "min": 11201207,
+        "max": 11201207
+      },
+      "git_seconds": {
+        "median": 0.011760833556763828,
+        "min": 0.011271042050793767,
+        "max": 0.012250625062733889
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0013614170020446181,
+        "filesystem_digest": 1.8894281250541098,
+        "other_objective_and_wrapper": 0.2149999999674037
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "candidate",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.993847707984969,
+        "min": 2.9625397080089897,
+        "max": 3.0251557079609483
+      },
+      "elapsed_seconds": {
+        "median": 2.9339595414930955,
+        "min": 2.9038895000703633,
+        "max": 2.9640295829158276
+      },
+      "python_peak_rss_bytes": {
+        "median": 47022080.0,
+        "min": 46989312,
+        "max": 47054848
+      },
+      "git_peak_rss_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10002.0,
+        "min": 10002,
+        "max": 10002
+      },
+      "sha256_input_bytes": {
+        "median": 11201121.0,
+        "min": 11201121,
+        "max": 11201121
+      },
+      "git_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {},
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "filesystem_digest": 2.874929625017103,
+        "other_objective_and_wrapper": 0.05902991647599265
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "record_delivery",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 229.86582912498852,
+        "min": 229.25087783299387,
+        "max": 230.48078041698318
+      },
+      "elapsed_seconds": {
+        "median": 229.81147012498695,
+        "min": 229.19698037498165,
+        "max": 230.42595987499226
+      },
+      "python_peak_rss_bytes": {
+        "median": 48267264.0,
+        "min": 47742976,
+        "max": 48791552
+      },
+      "git_peak_rss_bytes": {
+        "median": 5906432.0,
+        "min": 5898240,
+        "max": 5914624
+      },
+      "requested_object_reads": {
+        "median": 10001.0,
+        "min": 10001,
+        "max": 10001
+      },
+      "unique_git_blob_contents_read": {
+        "median": 10001.0,
+        "min": 10001,
+        "max": 10001
+      },
+      "git_blob_read_bytes": {
+        "median": 10241024.0,
+        "min": 10241024,
+        "max": 10241024
+      },
+      "git_max_object_bytes": {
+        "median": 1024.0,
+        "min": 1024,
+        "max": 1024
+      },
+      "sha256_calls": {
+        "median": 20006.0,
+        "min": 20006,
+        "max": 20006
+      },
+      "sha256_input_bytes": {
+        "median": 22402328.0,
+        "min": 22402328,
+        "max": 22402328
+      },
+      "git_seconds": {
+        "median": 221.10167450056178,
+        "min": 220.54659629263915,
+        "max": 221.65675270848442
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "cat-file": 1,
+        "ls-tree": 10001,
+        "show": 10001,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "commit_read_digest": 226.49707302101888,
+        "authority": 0.33517839602427557,
+        "filesystem_digest": 1.8729559170315042,
+        "other_objective_and_wrapper": 1.1062627909122966
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "record_delivery_retry",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 1.2662744169938378,
+        "min": 1.2635745420120656,
+        "max": 1.26897429197561
+      },
+      "elapsed_seconds": {
+        "median": 1.209377228980884,
+        "min": 1.2050719580147415,
+        "max": 1.2136824999470264
+      },
+      "python_peak_rss_bytes": {
+        "median": 47833088.0,
+        "min": 46350336,
+        "max": 49315840
+      },
+      "git_peak_rss_bytes": {
+        "median": 4276224.0,
+        "min": 4259840,
+        "max": 4292608
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.0504688544315286,
+        "min": 0.050127750844694674,
+        "max": 0.05080995801836252
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 4,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "other_objective_and_wrapper": 1.209377228980884
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "record_gate_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.434980583493598,
+        "min": 2.4336544589605182,
+        "max": 2.4363067080266774
+      },
+      "elapsed_seconds": {
+        "median": 2.382177770952694,
+        "min": 2.3818435829598457,
+        "max": 2.3825119589455426
+      },
+      "python_peak_rss_bytes": {
+        "median": 39534592.0,
+        "min": 38977536,
+        "max": 40091648
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11201207.0,
+        "min": 11201207,
+        "max": 11201207
+      },
+      "git_seconds": {
+        "median": 0.011360937438439578,
+        "min": 0.011211541946977377,
+        "max": 0.011510332929901779
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.08325445849914104,
+        "filesystem_digest": 1.882338687486481,
+        "other_objective_and_wrapper": 0.41658462496707216
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "record_gate_full_review",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.730106520524714,
+        "min": 2.7251402910333127,
+        "max": 2.7350727500161156
+      },
+      "elapsed_seconds": {
+        "median": 2.6774873544927686,
+        "min": 2.6717006670078263,
+        "max": 2.683274041977711
+      },
+      "python_peak_rss_bytes": {
+        "median": 42295296.0,
+        "min": 41402368,
+        "max": 43188224
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11201207.0,
+        "min": 11201207,
+        "max": 11201207
+      },
+      "git_seconds": {
+        "median": 0.012649062497075647,
+        "min": 0.011381207965314388,
+        "max": 0.013916917028836906
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.16671141650294885,
+        "filesystem_digest": 1.8879390209913254,
+        "other_objective_and_wrapper": 0.6228369169984944
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "operation": "record_gate_readiness",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 3.0107679995708168,
+        "min": 3.006542416056618,
+        "max": 3.0149935830850154
+      },
+      "elapsed_seconds": {
+        "median": 2.956657374976203,
+        "min": 2.954479999956675,
+        "max": 2.958834749995731
+      },
+      "python_peak_rss_bytes": {
+        "median": 46866432.0,
+        "min": 45924352,
+        "max": 47808512
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 10004.0,
+        "min": 10004,
+        "max": 10004
+      },
+      "sha256_input_bytes": {
+        "median": 11201207.0,
+        "min": 11201207,
+        "max": 11201207
+      },
+      "git_seconds": {
+        "median": 0.011411249986849725,
+        "min": 0.01030362502206117,
+        "max": 0.012518874951638281
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.24973074888112023,
+        "filesystem_digest": 1.8678369370172732,
+        "other_objective_and_wrapper": 0.8390896890778095
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "begin_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.11540654202690348,
+        "min": 0.1148334169993177,
+        "max": 0.11597966705448925
+      },
+      "elapsed_seconds": {
+        "median": 0.07131497899536043,
+        "min": 0.071059082983993,
+        "max": 0.07157087500672787
+      },
+      "python_peak_rss_bytes": {
+        "median": 30892032.0,
+        "min": 30834688,
+        "max": 30949376
+      },
+      "git_peak_rss_bytes": {
+        "median": 4431872.0,
+        "min": 4423680,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 143447.0,
+        "min": 143447,
+        "max": 143447
+      },
+      "git_seconds": {
+        "median": 0.010823521006386727,
+        "min": 0.010387749993242323,
+        "max": 0.01125929201953113
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0011511665652506053,
+        "filesystem_digest": 0.0229523130110465,
+        "other_objective_and_wrapper": 0.04721149941906333
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "candidate",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.09891862497897819,
+        "min": 0.09815850004088134,
+        "max": 0.09967874991707504
+      },
+      "elapsed_seconds": {
+        "median": 0.05443752044811845,
+        "min": 0.05429341597482562,
+        "max": 0.054581624921411276
+      },
+      "python_peak_rss_bytes": {
+        "median": 31129600.0,
+        "min": 31064064,
+        "max": 31195136
+      },
+      "git_peak_rss_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 129.0,
+        "min": 129,
+        "max": 129
+      },
+      "sha256_input_bytes": {
+        "median": 143361.0,
+        "min": 143361,
+        "max": 143361
+      },
+      "git_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {},
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "filesystem_digest": 0.024111145990900695,
+        "other_objective_and_wrapper": 0.030326374457217753
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "record_delivery",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 2.643608687503729,
+        "min": 2.5876634169835597,
+        "max": 2.6995539580238983
+      },
+      "elapsed_seconds": {
+        "median": 2.600200437474996,
+        "min": 2.544276583008468,
+        "max": 2.6561242919415236
+      },
+      "python_peak_rss_bytes": {
+        "median": 31318016.0,
+        "min": 31113216,
+        "max": 31522816
+      },
+      "git_peak_rss_bytes": {
+        "median": 5021696.0,
+        "min": 4997120,
+        "max": 5046272
+      },
+      "requested_object_reads": {
+        "median": 128.0,
+        "min": 128,
+        "max": 128
+      },
+      "unique_git_blob_contents_read": {
+        "median": 128.0,
+        "min": 128,
+        "max": 128
+      },
+      "git_blob_read_bytes": {
+        "median": 131072.0,
+        "min": 131072,
+        "max": 131072
+      },
+      "git_max_object_bytes": {
+        "median": 1024.0,
+        "min": 1024,
+        "max": 1024
+      },
+      "sha256_calls": {
+        "median": 260.0,
+        "min": 260,
+        "max": 260
+      },
+      "sha256_input_bytes": {
+        "median": 286808.0,
+        "min": 286808,
+        "max": 286808
+      },
+      "git_seconds": {
+        "median": 2.4584957472397946,
+        "min": 2.4048464993247762,
+        "max": 2.512144995154813
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "cat-file": 1,
+        "ls-tree": 128,
+        "show": 128,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "commit_read_digest": 2.4647156664868817,
+        "authority": 0.00577429193072021,
+        "filesystem_digest": 0.023264020448550582,
+        "other_objective_and_wrapper": 0.10644645860884339
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "record_delivery_retry",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.1402409995207563,
+        "min": 0.13982458307873458,
+        "max": 0.14065741596277803
+      },
+      "elapsed_seconds": {
+        "median": 0.0953727294690907,
+        "min": 0.09522704198025167,
+        "max": 0.09551841695792973
+      },
+      "python_peak_rss_bytes": {
+        "median": 31162368.0,
+        "min": 31080448,
+        "max": 31244288
+      },
+      "git_peak_rss_bytes": {
+        "median": 4292608.0,
+        "min": 4292608,
+        "max": 4292608
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.04393010406056419,
+        "min": 0.04363266611471772,
+        "max": 0.04422754200641066
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 4,
+        "worktree": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "other_objective_and_wrapper": 0.0953727294690907
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "record_gate_check",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.11863910447573289,
+        "min": 0.11793374991975725,
+        "max": 0.11934445903170854
+      },
+      "elapsed_seconds": {
+        "median": 0.07539664552314207,
+        "min": 0.07477758300956339,
+        "max": 0.07601570803672075
+      },
+      "python_peak_rss_bytes": {
+        "median": 31006720.0,
+        "min": 30900224,
+        "max": 31113216
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 143447.0,
+        "min": 143447,
+        "max": 143447
+      },
+      "git_seconds": {
+        "median": 0.01026085449848324,
+        "min": 0.010075708967633545,
+        "max": 0.010446000029332936
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.0023695420240983367,
+        "filesystem_digest": 0.023234229476656765,
+        "other_objective_and_wrapper": 0.04979287402238697
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "record_gate_full_review",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.12311997899087146,
+        "min": 0.12166091706603765,
+        "max": 0.12457904091570526
+      },
+      "elapsed_seconds": {
+        "median": 0.07909079152159393,
+        "min": 0.0784180830232799,
+        "max": 0.07976350001990795
+      },
+      "python_peak_rss_bytes": {
+        "median": 31023104.0,
+        "min": 30867456,
+        "max": 31178752
+      },
+      "git_peak_rss_bytes": {
+        "median": 4440064.0,
+        "min": 4440064,
+        "max": 4440064
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 143447.0,
+        "min": 143447,
+        "max": 143447
+      },
+      "git_seconds": {
+        "median": 0.010097895981743932,
+        "min": 0.010027916985563934,
+        "max": 0.01016787497792393
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.00340608402621001,
+        "filesystem_digest": 0.023406187479849905,
+        "other_objective_and_wrapper": 0.052278520015534014
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "operation": "record_gate_readiness",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.12649831199087203,
+        "min": 0.12621729099191725,
+        "max": 0.1267793329898268
+      },
+      "elapsed_seconds": {
+        "median": 0.08349191659362987,
+        "min": 0.08301704109180719,
+        "max": 0.08396679209545255
+      },
+      "python_peak_rss_bytes": {
+        "median": 31031296.0,
+        "min": 30965760,
+        "max": 31096832
+      },
+      "git_peak_rss_bytes": {
+        "median": 4423680.0,
+        "min": 4423680,
+        "max": 4423680
+      },
+      "requested_object_reads": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "unique_git_blob_contents_read": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_blob_read_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_max_object_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_calls": {
+        "median": 131.0,
+        "min": 131,
+        "max": 131
+      },
+      "sha256_input_bytes": {
+        "median": 143447.0,
+        "min": 143447,
+        "max": 143447
+      },
+      "git_seconds": {
+        "median": 0.010472624970134348,
+        "min": 0.01022824994288385,
+        "max": 0.010716999997384846
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "authority": 0.004529979487415403,
+        "filesystem_digest": 0.023264978954102844,
+        "other_objective_and_wrapper": 0.05569695815211162
+      }
+    },
+    {
+      "scenario": "task-h2-p24",
+      "operation": "task_create",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 0.7060346874641255,
+        "min": 0.6723613749491051,
+        "max": 0.7397079999791458
+      },
+      "elapsed_seconds": {
+        "median": 0.6595781040377915,
+        "min": 0.6270359581103548,
+        "max": 0.6921202499652281
+      },
+      "python_peak_rss_bytes": {
+        "median": 34422784.0,
+        "min": 34291712,
+        "max": 34553856
+      },
+      "git_peak_rss_bytes": {
+        "median": 5029888.0,
+        "min": 5013504,
+        "max": 5046272
+      },
+      "requested_object_reads": {
+        "median": 48.0,
+        "min": 48,
+        "max": 48
+      },
+      "unique_git_blob_contents_read": {
+        "median": 24.0,
+        "min": 24,
+        "max": 24
+      },
+      "git_blob_read_bytes": {
+        "median": 24056.0,
+        "min": 24056,
+        "max": 24056
+      },
+      "git_max_object_bytes": {
+        "median": 502.0,
+        "min": 502,
+        "max": 502
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 0.5994016455370001,
+        "min": 0.5685287079541013,
+        "max": 0.630274583119899
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "worktree": 1,
+        "for-each-ref": 1,
+        "ls-tree": 2,
+        "show": 48,
+        "branch": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "task_create_owner": 0.6179733959725127,
+        "other_objective_and_wrapper": 0.04160470806527883
+      }
+    },
+    {
+      "scenario": "task-h6-p96",
+      "operation": "task_create",
+      "n": 2,
+      "complete_elapsed_seconds": {
+        "median": 6.145890687475912,
+        "min": 6.0521737079834566,
+        "max": 6.239607666968368
+      },
+      "elapsed_seconds": {
+        "median": 6.098555125005078,
+        "min": 6.006106000044383,
+        "max": 6.191004249965772
+      },
+      "python_peak_rss_bytes": {
+        "median": 34414592.0,
+        "min": 34291712,
+        "max": 34537472
+      },
+      "git_peak_rss_bytes": {
+        "median": 5062656.0,
+        "min": 5062656,
+        "max": 5062656
+      },
+      "requested_object_reads": {
+        "median": 576.0,
+        "min": 576,
+        "max": 576
+      },
+      "unique_git_blob_contents_read": {
+        "median": 96.0,
+        "min": 96,
+        "max": 96
+      },
+      "git_blob_read_bytes": {
+        "median": 289032.0,
+        "min": 289032,
+        "max": 289032
+      },
+      "git_max_object_bytes": {
+        "median": 502.0,
+        "min": 502,
+        "max": 502
+      },
+      "sha256_calls": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "sha256_input_bytes": {
+        "median": 0.0,
+        "min": 0,
+        "max": 0
+      },
+      "git_seconds": {
+        "median": 5.974745828949381,
+        "min": 5.882288643391803,
+        "max": 6.067203014506958
+      },
+      "observation_seconds": {
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "git_commands": {
+        "rev-parse": 6,
+        "worktree": 1,
+        "for-each-ref": 1,
+        "ls-tree": 6,
+        "show": 576,
+        "branch": 1
+      },
+      "git_commands_stable": true,
+      "components_seconds_median": {
+        "task_create_owner": 6.057424646045547,
+        "other_objective_and_wrapper": 0.04113047895953059
+      }
+    }
+  ],
+  "lifecycle_subtotals": [
+    {
+      "scenario": "delivery-larger-p10001",
+      "seven_measured_cli_operations_seconds": {
+        "median": 244.574051104486,
+        "min": 243.9290895430604,
+        "max": 245.21901266591158
+      },
+      "definition": "candidate + begin_check + check + full_review + readiness + record_delivery + exact retry; scope/planning preparation excluded"
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "seven_measured_cli_operations_seconds": {
+        "median": 3.392875437508337,
+        "min": 3.344515125034377,
+        "max": 3.4412357499822974
+      },
+      "definition": "candidate + begin_check + check + full_review + readiness + record_delivery + exact retry; scope/planning preparation excluded"
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "seven_measured_cli_operations_seconds": {
+        "median": 244.04341564548668,
+        "min": 243.40733624901623,
+        "max": 244.67949504195713
+      },
+      "definition": "candidate + begin_check + check + full_review + readiness + record_delivery + exact retry; scope/planning preparation excluded"
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "seven_measured_cli_operations_seconds": {
+        "median": 3.7065715219359845,
+        "min": 3.5995749589055777,
+        "max": 3.8135680849663913
+      },
+      "definition": "candidate + begin_check + check + full_review + readiness + record_delivery + exact retry; scope/planning preparation excluded"
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "seven_measured_cli_operations_seconds": {
+        "median": 244.45938985358225,
+        "min": 243.8049008732196,
+        "max": 245.1138788339449
+      },
+      "definition": "candidate + begin_check + check + full_review + readiness + record_delivery + exact retry; scope/planning preparation excluded"
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "seven_measured_cli_operations_seconds": {
+        "median": 3.3664322494878434,
+        "min": 3.3089583750115708,
+        "max": 3.423906123964116
+      },
+      "definition": "candidate + begin_check + check + full_review + readiness + record_delivery + exact retry; scope/planning preparation excluded"
+    }
+  ]
+}

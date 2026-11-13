@@ -4,11 +4,11 @@
 Task Management Script.
 
 Usage:
-    python3 task.py create "<title>" --description "<desc>" [--slug <name>] [--assignee <dev>] [--priority P0|P1|P2|P3] [--parent <dir>] [--package <pkg>] [--no-start] [--force]
+    python3 task.py create "<title>" --description "<desc>" [--slug <name>] [--source-json <json>] [--priority P0|P1|P2|P3] [--parent <dir>] [--package <pkg>] [--no-start] [--force]
     python3 task.py add-context <dir> <file> <path> [reason] # Add jsonl entry
     python3 task.py validate <dir>              # Validate jsonl files
     python3 task.py list-context <dir>          # List jsonl entries
-    python3 task.py start <dir>                 # Set active task, record current branch
+    python3 task.py start <dir>                 # Set active task
     python3 task.py current [--source] [--json] # Show active task
     python3 task.py finish                      # Clear active task
     python3 task.py set-branch <dir> <branch>   # Set git branch
@@ -16,7 +16,7 @@ Usage:
     python3 task.py set-scope <dir> <scope>     # Set scope for PR title
     python3 task.py set-meta <dir> <key> <value>  # Set a task metadata key
     python3 task.py rename <dir> <new-slug> [--dry-run]  # Rename task + references
-    python3 task.py archive <task-dir> [--skip-branch-validation]  # Archive completed task
+    python3 task.py archive <task-dir>         # Archive completed task
     python3 task.py list                        # List active tasks
     python3 task.py list-archive [month]        # List archived tasks
     python3 task.py add-subtask <parent-dir> <child-dir>     # Link child to parent
@@ -32,12 +32,10 @@ from pathlib import Path
 
 from common.log import Colors, colored
 from common.paths import (
-    DEVELOPER_HINT,
     DIR_WORKFLOW,
     DIR_TASKS,
     FILE_TASK_JSON,
     get_repo_root,
-    get_developer,
     get_tasks_dir,
     get_current_task,
 )
@@ -47,14 +45,14 @@ from common.active_task import (
     resolve_context_key,
     set_active_task,
 )
-from common.git import current_branch_name
+from common.path_boundary import require_project_path
 from common.io import (
     describe_json_read_failure,
     read_json_checked,
     write_json,
 )
-from common.task_utils import resolve_task_dir, run_task_hooks
-from common.tasks import iter_active_tasks, children_progress
+from common.task_utils import TaskIdentityError, read_task_identity, resolve_lifecycle_target, run_task_hooks
+from common.tasks import iter_active_tasks, children_progress, get_all_statuses, task_lifecycle_summary, matches_task_inventory, task_inventory_label, task_inventory_summary
 
 # Import command handlers from split modules (also re-exports for plan.py compatibility)
 from common.task_store import (
@@ -85,18 +83,14 @@ def _record_start_state(
     repo_root: Path,
     label: str = "",
 ) -> None:
-    """Move a freshly started task to in_progress and record its branch.
-
-    Both updates share one read/write: the status flip from planning, and the
-    checked-out branch when `branch` is still empty. Recording at start is what
-    keeps `branch` trustworthy at archive time — a task whose branch is only
-    ever set by hand tends to reach archive with `branch: null`.
+    """Move a freshly started task to in_progress.
 
     Tolerant on purpose — a broken task.json does not fail `start`, because the
     session pointer is the point of the command. But the read overwrites the
     file it just read, so no failure may be silent: without a message the
     absent status line looks like the task simply was not in planning.
     """
+    require_project_path(task_json_path, repo_root)
     data, reason = read_json_checked(task_json_path)
     if data is None:
         problem, hint = describe_json_read_failure(task_json_path, reason)
@@ -107,31 +101,14 @@ def _record_start_state(
         print(hint, file=sys.stderr)
         return
 
+    if data.get("schema_version") == "2.0":
+        return  # Task binding never starts Delivery implementation.
+
     applied: list[str] = []
 
     if data.get("status") == "planning":
         data["status"] = "in_progress"
         applied.append(f"✓ Status: planning → in_progress{label}")
-
-    # Only fill an empty field: an explicit `set-branch` must survive a later
-    # `start` (re-starting a task after a checkout is a normal thing to do).
-    base_branch_conflict: str | None = None
-    if not data.get("branch"):
-        branch = current_branch_name(repo_root)
-        if branch:
-            data["branch"] = branch
-            applied.append(f"✓ Branch recorded: {branch}{label}")
-            if branch == data.get("base_branch"):
-                base_branch_conflict = branch
-        else:
-            print(
-                colored(
-                    "Note: no checked-out branch (detached HEAD, or not a git "
-                    "repository); task branch not recorded.",
-                    Colors.YELLOW,
-                ),
-                file=sys.stderr,
-            )
 
     if not applied:
         return
@@ -140,7 +117,7 @@ def _record_start_state(
         print(
             colored(
                 f"Warning: Failed to write {task_json_path}; "
-                "status and branch are unchanged.",
+                "status is unchanged.",
                 Colors.YELLOW,
             ),
             file=sys.stderr,
@@ -149,23 +126,6 @@ def _record_start_state(
 
     for line in applied:
         print(colored(line, Colors.GREEN))
-
-    if base_branch_conflict:
-        # Recorded anyway — the value is true, it just cannot describe a PR.
-        # Archive refuses this shape, so say so now rather than at the gate.
-        print(
-            colored(
-                f"Warning: '{base_branch_conflict}' is also this task's base_branch; "
-                "a PR cannot target its own branch, and archive will refuse it.",
-                Colors.YELLOW,
-            ),
-            file=sys.stderr,
-        )
-        print(
-            f"Once you branch off, run: python3 {DIR_WORKFLOW}/scripts/task.py "
-            "set-branch <task> <feature-branch>",
-            file=sys.stderr,
-        )
 
 
 def cmd_start(args: argparse.Namespace) -> int:
@@ -178,7 +138,11 @@ def cmd_start(args: argparse.Namespace) -> int:
         return 1
 
     # Resolve task directory (supports task name, relative path, or absolute path)
-    full_path = resolve_task_dir(task_input, repo_root)
+    invocation_root = repo_root
+    target = resolve_lifecycle_target(task_input, repo_root)
+    full_path = target[1] if target else None
+    if target:
+        repo_root = target[0]
 
     if full_path is None:
         # resolve_task_dir already named the exact reason on stderr. A second,
@@ -191,16 +155,29 @@ def cmd_start(args: argparse.Namespace) -> int:
         print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.trellis/tasks/01-31-my-task')")
         return 1
 
+    selected_data, selected_reason = read_json_checked(full_path / FILE_TASK_JSON)
+    if selected_data is None:
+        problem, hint = describe_json_read_failure(full_path / FILE_TASK_JSON, selected_reason)
+        print(f"Error: {problem}. {hint}", file=sys.stderr)
+        return 1
+    is_v2 = selected_data.get("schema_version") == "2.0"
+    from common.runtime_contract import RuntimeContractError, require_task_runtime
+    try:
+        require_task_runtime(repo_root, selected_data)
+    except RuntimeContractError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
     # Context-manifest gate (#573): a seeded-but-uncurated implement/check
     # manifest means every sub-agent dispatched for this task runs with zero
     # spec context, and nothing downstream surfaces that to the main session.
     # An absent manifest is not gated — create seeds the files only on
     # sub-agent-capable platforms, so absence means no sub-agent reads them.
-    if not getattr(args, "allow_empty_context", False):
+    if not is_v2 and not getattr(args, "allow_empty_context", False):
         empty_manifests = [
             name
             for name in ("implement.jsonl", "check.jsonl")
-            if curated_entry_count(full_path / name) == 0
+            if curated_entry_count(full_path / name, repo_root) == 0
         ]
         if empty_manifests:
             print(colored(
@@ -231,8 +208,16 @@ def cmd_start(args: argparse.Namespace) -> int:
         return 1
 
     task_json_path = full_path / FILE_TASK_JSON
+    try:
+        read_task_identity(task_json_path, repo_root)
+    except TaskIdentityError as exc:
+        print(colored(f"Error: {exc}", Colors.RED), file=sys.stderr)
+        return 1
 
     if not resolve_context_key():
+        if is_v2:
+            print("Error: context_required: Task v2 binding requires an exact session identity", file=sys.stderr)
+            return 1
         # Degraded mode: no session identity available.
         # Hook didn't inject TRELLIS_CONTEXT_ID (common on Windows + Claude Code,
         # --continue resume path, fork distribution, hooks disabled, etc.). Skip
@@ -254,7 +239,7 @@ def cmd_start(args: argparse.Namespace) -> int:
             run_task_hooks("after_start", task_json_path, repo_root)
         return 0
 
-    active = set_active_task(task_dir, repo_root)
+    active = set_active_task(str(full_path), invocation_root)
     if active:
         print(colored(f"✓ Current task set to: {task_dir}", Colors.GREEN))
         print(f"Source: {active.source}")
@@ -263,7 +248,11 @@ def cmd_start(args: argparse.Namespace) -> int:
             _record_start_state(task_json_path, repo_root)
 
         print()
-        print(colored("The hook will now inject context from this task's jsonl files.", Colors.BLUE))
+        message = (
+            "Task selection is bound; Delivery context requires a separate exact Delivery selection."
+            if is_v2 else "The hook will now inject context from this task's jsonl files."
+        )
+        print(colored(message, Colors.BLUE))
 
         run_task_hooks("after_start", task_json_path, repo_root)
         return 0
@@ -283,7 +272,11 @@ def cmd_finish(args: argparse.Namespace) -> int:
         return 0
 
     # Resolve task.json path before clearing
-    task_json_path = repo_root / current / FILE_TASK_JSON
+    if active.resolved_task_path is None or active.task_workspace_root is None:
+        print(colored(f"Error: {active.error or 'Invalid active task'}", Colors.RED))
+        return 1
+    repo_root = active.task_workspace_root
+    task_json_path = active.resolved_task_path / FILE_TASK_JSON
 
     print(colored(f"✓ Cleared current task (was: {current})", Colors.GREEN))
     print(f"Source: {active.source}")
@@ -301,8 +294,9 @@ def cmd_current(args: argparse.Namespace) -> int:
     if getattr(args, "json", False):
         task_obj = None
         read_error = None
-        if active.task_path:
-            task_json_path = repo_root / active.task_path / FILE_TASK_JSON
+        if active.resolved_task_path and active.task_workspace_root:
+            task_json_path = active.resolved_task_path / FILE_TASK_JSON
+            require_project_path(task_json_path, active.task_workspace_root)
             data, reason = read_json_checked(task_json_path)
             if data is None:
                 # Without this, a corrupt task.json emits null for every field
@@ -324,26 +318,49 @@ def cmd_current(args: argparse.Namespace) -> int:
                 "branch": data.get("branch"),
                 "base_branch": data.get("base_branch"),
             }
+            if data.get("schema_version") == "2.0":
+                from common.delivery_session import get_current_delivery
+                task_obj.pop("status")
+                task_obj["schema_version"] = "2.0"
+                task_obj.update(task_lifecycle_summary(data))
+                task_obj["current_delivery"] = get_current_delivery(repo_root)
         payload = {
             "current_task": task_obj,
             "source": active.source,
             "stale": active.stale,
+            "invocation_root": str(active.invocation_root),
+            "repository_common_dir": str(active.repository_common_dir) if active.repository_common_dir else None,
+            "task_workspace_root": str(active.task_workspace_root) if active.task_workspace_root else None,
+            "resolved_task_path": str(active.resolved_task_path) if active.resolved_task_path else None,
         }
         # Only present when the read failed, so the healthy shape is unchanged.
         if read_error:
             payload["error"] = read_error
+        elif active.error:
+            payload["error"] = active.error
         print(json.dumps(payload, ensure_ascii=False))
-        return 0 if active.task_path else 1
+        return 0 if task_obj and not read_error and not active.error else 1
 
+    if active.error:
+        print(f"Error: {active.error}", file=sys.stderr)
+        return 1
+
+    display_path = (
+        str(active.resolved_task_path)
+        if active.resolved_task_path and active.task_workspace_root != active.invocation_root
+        else active.task_path
+    )
     if args.source:
-        print(f"Current task: {active.task_path or '(none)'}")
+        print(f"Current task: {display_path or '(none)'}")
         print(f"Source: {active.source}")
+        if active.task_workspace_root:
+            print(f"Task workspace: {active.task_workspace_root}")
         if active.stale:
             print("State: stale")
         return 0 if active.task_path else 1
 
-    if active.task_path:
-        print(active.task_path)
+    if display_path:
+        print(display_path)
         return 0
 
     return 1
@@ -362,13 +379,15 @@ def _display_status(t, all_statuses: dict) -> str:
     list (#399 item 3). Show "active" instead when at least one child is
     past planning; the stored status.json value is left untouched.
     """
+    if t.inventory is not None or t.history_only:
+        return task_inventory_label(t)
     if t.status == "planning" and t.children:
         child_in_flight = any(
             all_statuses.get(c) not in (None, "planning") for c in t.children
         )
         if child_in_flight:
             return "active"
-    return t.status
+    return t.status or "unknown"
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -376,29 +395,20 @@ def cmd_list(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     tasks_dir = get_tasks_dir(repo_root)
     current_task = get_current_task(repo_root)
-    developer = get_developer(repo_root)
-    filter_mine = args.mine
     filter_status = args.status
+    completion = getattr(args, "completion", None)
+    phase = getattr(args, "delivery_phase", None)
     as_json = getattr(args, "json", False)
 
     # Single pass: collect all tasks via shared iterator
-    all_tasks = {t.dir_name: t for t in iter_active_tasks(tasks_dir)}
-    all_statuses = {name: t.status for name, t in all_tasks.items()}
+    all_tasks = {t.dir_name: t for t in iter_active_tasks(tasks_dir, repo_root)}
+    all_statuses = get_all_statuses(tasks_dir, repo_root)
 
     if as_json:
-        if filter_mine and not developer:
-            print(
-                json.dumps({"error": "No developer set", "hint": DEVELOPER_HINT}),
-                file=sys.stderr,
-            )
-            return 1
-
         items = []
         for dir_name in sorted(all_tasks.keys()):
             t = all_tasks[dir_name]
-            if filter_mine and (t.assignee or "-") != developer:
-                continue
-            if filter_status and t.status != filter_status:
+            if not matches_task_inventory(t, status=filter_status, completion=completion, phase=phase):
                 continue
             items.append({
                 "dir": f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}",
@@ -407,22 +417,24 @@ def cmd_list(args: argparse.Namespace) -> int:
                 "status": t.status,
                 "display_status": _display_status(t, all_statuses),
                 "priority": t.priority,
-                "assignee": t.assignee or None,
                 "parent": t.parent,
                 "children": list(t.children),
                 "package": t.package,
             })
+            if t.inventory is not None or t.history_only:
+                items[-1].pop("status")
+                items[-1].pop("display_status")
+                items[-1].update(task_inventory_summary(t))
         print(json.dumps({"tasks": items}, ensure_ascii=False))
         return 0
 
-    if filter_mine:
-        if not developer:
-            print(colored("Error: No developer set. Run init_developer.py first", Colors.RED), file=sys.stderr)
-            print(DEVELOPER_HINT, file=sys.stderr)
-            return 1
-        print(colored(f"My tasks (assignee: {developer}):", Colors.BLUE))
-    else:
-        print(colored("All active tasks:", Colors.BLUE))
+    # Filter before tree rendering so a matching child of an excluded parent
+    # remains visible as a root, just as it does in JSON output.
+    all_tasks = {
+        name: task for name, task in all_tasks.items()
+        if matches_task_inventory(task, status=filter_status, completion=completion, phase=phase)
+    }
+    print(colored("Project tasks:", Colors.BLUE))
     print()
 
     # Display tasks hierarchically
@@ -432,12 +444,8 @@ def cmd_list(args: argparse.Namespace) -> int:
         nonlocal count
         t = all_tasks[dir_name]
 
-        # Apply --mine filter
-        if filter_mine and (t.assignee or "-") != developer:
-            return
-
         # Apply --status filter
-        if filter_status and t.status != filter_status:
+        if not matches_task_inventory(t, status=filter_status, completion=completion, phase=phase):
             return
 
         relative_path = f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}"
@@ -446,7 +454,7 @@ def cmd_list(args: argparse.Namespace) -> int:
             marker = f" {colored('<- current', Colors.GREEN)}"
 
         # Children progress
-        progress = children_progress(t.children, all_statuses)
+        progress = children_progress(t.children, all_statuses, allow_missing_legacy=t.raw.get("schema_version") != "2.0")
         status_label = _display_status(t, all_statuses)
 
         # Package tag
@@ -454,10 +462,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
         prefix = "  " * indent + "  - "
 
-        if filter_mine:
-            print(f"{prefix}{dir_name}/ ({status_label}){pkg_tag}{progress}{marker}")
-        else:
-            print(f"{prefix}{dir_name}/ ({status_label}){pkg_tag}{progress} [{colored(t.assignee or '-', Colors.CYAN)}]{marker}")
+        print(f"{prefix}{dir_name}/ ({status_label}){pkg_tag}{progress}{marker}")
         count += 1
 
         # Print children indented
@@ -474,10 +479,7 @@ def cmd_list(args: argparse.Namespace) -> int:
             _print_task(dir_name)
 
     if count == 0:
-        if filter_mine:
-            print("  (no tasks assigned to you)")
-        else:
-            print("  (no active tasks)")
+        print("  (no active tasks)")
 
     print()
     print(f"Total: {count} task(s)")
@@ -527,14 +529,15 @@ def show_usage() -> None:
     print("""Task Management Script
 
 Usage:
-  python3 task.py create <title> --description <desc>  Create new task directory (both required, non-empty)
+  python3 task.py create <title> --description <desc>  Create new task directory
+  python3 task.py create <title> --description <desc> --source-json <json>  Create with reviewed source
   python3 task.py create <title> --description <desc> --package <pkg>   Create task for a specific package
   python3 task.py create <title> --description <desc> --parent <dir>    Create task as child of parent
   python3 task.py create <title> --description <desc> --no-start        Create without making it active in this session
   python3 task.py add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   python3 task.py validate <dir>                     Validate jsonl files
   python3 task.py list-context <dir>                 List jsonl entries
-  python3 task.py start <dir>                        Set active task; records the checked-out branch when unset
+  python3 task.py start <dir>                        Set active task
   python3 task.py current [--source]                 Show active task
   python3 task.py finish                             Clear active task
   python3 task.py set-branch <dir> <branch>          Set git branch
@@ -545,7 +548,7 @@ Usage:
   python3 task.py archive <task-dir>                 Archive completed task
   python3 task.py add-subtask <parent> <child>       Link child task to parent
   python3 task.py remove-subtask <parent> <child>    Unlink child from parent
-  python3 task.py list [--mine] [--status <status>] [--json]  List tasks
+  python3 task.py list [--json]                      List Task acceptance and Delivery inventory
   python3 task.py list-archive [YYYY-MM]             List archived tasks
 
 Monorepo options:
@@ -556,21 +559,16 @@ Rename options:
 
 Archive options:
   --no-commit                Skip the auto git commit after archiving
-  --skip-branch-validation   Archive despite missing or self-referential branch metadata.
-                             Archive normally refuses a task with no `branch` when it has a
-                             `base_branch` and the repo has a remote, or with
-                             `branch == base_branch`; repair those with `set-branch` /
-                             `set-base-branch` instead. Use this flag only for tasks that
-                             were never PR-backed. A recorded branch that was merged and
-                             deleted is only a warning and needs no flag.
 
 List options:
-  --mine, -m           Show only tasks assigned to current developer
-  --status, -s <s>     Filter by status (planning, in_progress, review, completed)
+  --completion <c>     Filter schema-2 Tasks by complete or incomplete
+  --delivery-phase <p> Filter schema-2 Tasks by current-generation Delivery phase
+  --status, -s <s>     Filter legacy Tasks by status (D1 compatibility only)
   --json               Output machine-readable JSON (also available on `current`)
 
 Examples:
   python3 task.py create "Add login feature" --description "Email + password sign-in" --slug add-login
+  python3 task.py create "Issue work" --description "Deliver Issue 8" --source-json '{"kind":"issue","repo_ref":"castbox/Trellis","number":8,"disposition":"exact_source"}'
   python3 task.py create "Add login feature" --description "Email + password sign-in" --slug add-login --package cli
   python3 task.py create "Add login feature" --description "Email + password sign-in" --meta linear=ENG-123 --meta epic=auth
   python3 task.py create "Child task" --description "Session cookie handling" --slug child --parent .trellis/tasks/01-21-parent
@@ -582,12 +580,10 @@ Examples:
   python3 task.py rename add-login add-sso --dry-run  # Preview the change set
   python3 task.py rename add-login add-sso
   python3 task.py archive add-login
-  python3 task.py archive add-login --skip-branch-validation  # Task never had a branch of its own
   python3 task.py add-subtask parent-task child-task  # Link existing tasks
   python3 task.py remove-subtask parent-task child-task
   python3 task.py list                               # List all active tasks
-  python3 task.py list --mine                        # List my tasks only
-  python3 task.py list --mine --status in_progress   # List my in-progress tasks
+  python3 task.py list --status in_progress   # List in-progress tasks
 """)
 
 
@@ -637,7 +633,13 @@ def main() -> int:
     p_create = subparsers.add_parser("create", help="Create new task")
     p_create.add_argument("title", help="Task title (required, non-empty)")
     p_create.add_argument("--slug", "-s", help="Task slug without the MM-DD date prefix")
-    p_create.add_argument("--assignee", "-a", help="Assignee developer")
+    p_create.add_argument("--task-id", help="Stable TaskId independent of the directory slug")
+    p_create.add_argument("--schema-version", choices=["legacy", "2.0"], default=None,
+                         help="Task schema (default: validated installed workflow declaration; explicit values must match)")
+    p_create.add_argument(
+        "--source-json",
+        help="Structured task source JSON (default: no_issue; issue create accepts exact_source or reference_only)",
+    )
     p_create.add_argument("--priority", "-p", default="P2", help="Priority (P0-P3)")
     p_create.add_argument(
         "--description",
@@ -658,12 +660,12 @@ def main() -> int:
     p_create.add_argument(
         "--no-start",
         action="store_true",
-        help="Create the task without making it active in this session",
+        help="Create the task without binding its selection to this session",
     )
     p_create.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite task.json when the task directory already exists",
+        help="Legacy flag; existing tasks cannot be replaced because TaskId is immutable",
     )
 
     # add-context
@@ -672,14 +674,17 @@ def main() -> int:
     p_add.add_argument("file", help="JSONL file (implement|check)")
     p_add.add_argument("path", help="File path to add")
     p_add.add_argument("reason", nargs="?", help="Reason for adding")
+    p_add.add_argument("--delivery", help="Exact Delivery UUID for v2 artifacts")
 
     # validate
     p_validate = subparsers.add_parser("validate", help="Validate context files")
     p_validate.add_argument("dir", help="Task directory")
+    p_validate.add_argument("--delivery", help="Exact Delivery UUID for v2 artifacts")
 
     # list-context
     p_listctx = subparsers.add_parser("list-context", help="List context entries")
     p_listctx.add_argument("dir", help="Task directory")
+    p_listctx.add_argument("--delivery", help="Exact Delivery UUID for v2 artifacts")
 
     # start
     p_start = subparsers.add_parser("start", help="Set active task")
@@ -735,19 +740,14 @@ def main() -> int:
     p_archive = subparsers.add_parser("archive", help="Archive task")
     p_archive.add_argument("name", help="Task directory or name")
     p_archive.add_argument("--no-commit", action="store_true", help="Skip auto git commit after archive")
-    p_archive.add_argument(
-        "--skip-branch-validation",
-        action="store_true",
-        help=(
-            "Archive even when branch metadata is missing or self-referential "
-            "(for tasks that were never PR-backed)"
-        ),
-    )
+    p_archive.add_argument("--skip-branch-validation", action="store_true", help=argparse.SUPPRESS)
 
     # list
     p_list = subparsers.add_parser("list", help="List tasks")
-    p_list.add_argument("--mine", "-m", action="store_true", help="My tasks only")
-    p_list.add_argument("--status", "-s", help="Filter by status")
+    p_list.add_argument("--status", "-s", help="Filter legacy Tasks by status (D1 compatibility window only)")
+    p_list.add_argument("--completion", choices=("complete", "incomplete"), help="Filter schema-2 Tasks by current accepted Completion")
+    from common.delivery_schema import PHASES
+    p_list.add_argument("--delivery-phase", choices=PHASES, help="Filter schema-2 Tasks with a recorded current-generation Delivery phase; does not select a Delivery")
     p_list.add_argument("--json", action="store_true", help="Output machine-readable JSON")
 
     # add-subtask
@@ -791,7 +791,14 @@ def main() -> int:
     }
 
     if args.command in commands:
-        return commands[args.command](args)
+        from common.path_boundary import ProjectPathError
+        from common.session_storage import SessionBindingError
+
+        try:
+            return commands[args.command](args)
+        except (ProjectPathError, SessionBindingError, OSError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
     else:
         show_usage()
         return 1

@@ -1,0 +1,894 @@
+{
+  "diagnostic_only": true,
+  "acceptance_started": false,
+  "cases": [
+    {
+      "case": "3-repeated",
+      "root": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp0ngh_md7",
+      "resolved_root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp0ngh_md7",
+      "expected_head": "501e268cf9f2e3289f2e91c18f9532ff6fd96af0",
+      "pyc": [
+        {
+          "path": ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+          "expected_blob": "7e46d6de8677a8c7d61b40041a96a479d608eca2",
+          "actual_blob": "7e46d6de8677a8c7d61b40041a96a479d608eca2",
+          "source_sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 2907,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+          "expected_blob": "6e07687ec237f0aa3b1fa9875a9e1d6b1641d0d5",
+          "actual_blob": "6e07687ec237f0aa3b1fa9875a9e1d6b1641d0d5",
+          "source_sha256": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 36625,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+          "expected_blob": "6cf5a461866eb733270ba0b57d310fecca2086ae",
+          "actual_blob": "6cf5a461866eb733270ba0b57d310fecca2086ae",
+          "source_sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31689,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+          "expected_blob": "abfccf673cee7e73433828c706b45fcd2a0fa1c4",
+          "actual_blob": "abfccf673cee7e73433828c706b45fcd2a0fa1c4",
+          "source_sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 26748,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+          "expected_blob": "e00e15e3f8d073c469821deb95c2d53ab2aaf272",
+          "actual_blob": "e00e15e3f8d073c469821deb95c2d53ab2aaf272",
+          "source_sha256": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12066,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+          "expected_blob": "bc5f144f479f39f09445e5bb9bcd9bcc2131b475",
+          "actual_blob": "bc5f144f479f39f09445e5bb9bcd9bcc2131b475",
+          "source_sha256": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31023,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+          "expected_blob": "7a8736d07340c26a51cf87f6778ebcbc9476014f",
+          "actual_blob": "7a8736d07340c26a51cf87f6778ebcbc9476014f",
+          "source_sha256": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8596,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+          "expected_blob": "93adea661d5dc308e499ed57ad900476f2e7e0e4",
+          "actual_blob": "93adea661d5dc308e499ed57ad900476f2e7e0e4",
+          "source_sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 20080,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+          "expected_blob": "c9f00e606fb13fd590e4c3641142d840166c7029",
+          "actual_blob": "c9f00e606fb13fd590e4c3641142d840166c7029",
+          "source_sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 3862,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+          "expected_blob": "f685c59bf0145861852d843558aaa1e0bba46140",
+          "actual_blob": "f685c59bf0145861852d843558aaa1e0bba46140",
+          "source_sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12842,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+          "expected_blob": "bfa6b4c78ccd6fbf5e31a12256ab38697b62a764",
+          "actual_blob": "bfa6b4c78ccd6fbf5e31a12256ab38697b62a764",
+          "source_sha256": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8341,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+          "expected_blob": "690d7cdb0502533f5265bb1da267d62138546b59",
+          "actual_blob": "690d7cdb0502533f5265bb1da267d62138546b59",
+          "source_sha256": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 29150,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+          "expected_blob": "92e6e4f36b9f40273122e314b7a3da031a75d255",
+          "actual_blob": "92e6e4f36b9f40273122e314b7a3da031a75d255",
+          "source_sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12398,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+          "expected_blob": "475d8d6ced8ef371904c49d2687fc98e0882dd65",
+          "actual_blob": "475d8d6ced8ef371904c49d2687fc98e0882dd65",
+          "source_sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 33029,
+          "mode": "100644",
+          "kind": "blob"
+        }
+      ]
+    },
+    {
+      "case": "30-repeated",
+      "root": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpfvnb0_0y",
+      "resolved_root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpfvnb0_0y",
+      "expected_head": "4180cebbd1a5e21be691e24016f1dabefe8ecf97",
+      "pyc": [
+        {
+          "path": ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+          "expected_blob": "5867d0eb312b86a3fef9cba8c332d0c11d6dba91",
+          "actual_blob": "5867d0eb312b86a3fef9cba8c332d0c11d6dba91",
+          "source_sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 2907,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+          "expected_blob": "d5bc922545ecc01faf915536d0b7bc1be80ff5b2",
+          "actual_blob": "d5bc922545ecc01faf915536d0b7bc1be80ff5b2",
+          "source_sha256": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 36625,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+          "expected_blob": "ef7f6e93097c4194054bbddc5fac48770ebdabc3",
+          "actual_blob": "ef7f6e93097c4194054bbddc5fac48770ebdabc3",
+          "source_sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31689,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+          "expected_blob": "973e9fdfa6c56fcf8af8c8c96e7381660d02f9b0",
+          "actual_blob": "973e9fdfa6c56fcf8af8c8c96e7381660d02f9b0",
+          "source_sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 26748,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+          "expected_blob": "13edce17cca27ee8d0dfc8871a56e829050bb370",
+          "actual_blob": "13edce17cca27ee8d0dfc8871a56e829050bb370",
+          "source_sha256": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12066,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+          "expected_blob": "65d1bf4cf5a07badb6b2e68b877e2aff25f69ff4",
+          "actual_blob": "65d1bf4cf5a07badb6b2e68b877e2aff25f69ff4",
+          "source_sha256": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31023,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+          "expected_blob": "01bfb0f09bb608a0d83eeb57ca355ef32412e054",
+          "actual_blob": "01bfb0f09bb608a0d83eeb57ca355ef32412e054",
+          "source_sha256": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8596,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+          "expected_blob": "c6b066bd43951517a2c1f2191da868c27223a1ba",
+          "actual_blob": "c6b066bd43951517a2c1f2191da868c27223a1ba",
+          "source_sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 20080,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+          "expected_blob": "14f87fa4254ff51b06c007e00b8663842472969e",
+          "actual_blob": "14f87fa4254ff51b06c007e00b8663842472969e",
+          "source_sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 3862,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+          "expected_blob": "e41f8d81669706a12de7594d8145044241bd206b",
+          "actual_blob": "e41f8d81669706a12de7594d8145044241bd206b",
+          "source_sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12842,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+          "expected_blob": "4b2e537a567a37d975590d5187a762830c8a839f",
+          "actual_blob": "4b2e537a567a37d975590d5187a762830c8a839f",
+          "source_sha256": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8341,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+          "expected_blob": "f6689eaa51fcb79406c6bce74f72a9ffa164fd95",
+          "actual_blob": "f6689eaa51fcb79406c6bce74f72a9ffa164fd95",
+          "source_sha256": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 29150,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+          "expected_blob": "9b36ffa549779b1b209de033f5f13f14827d0f5d",
+          "actual_blob": "9b36ffa549779b1b209de033f5f13f14827d0f5d",
+          "source_sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12398,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+          "expected_blob": "ec9e62673d99f18d7e51d75080d326fe8332184f",
+          "actual_blob": "ec9e62673d99f18d7e51d75080d326fe8332184f",
+          "source_sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 33029,
+          "mode": "100644",
+          "kind": "blob"
+        }
+      ]
+    },
+    {
+      "case": "128-repeated",
+      "root": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m",
+      "resolved_root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m",
+      "expected_head": "73530e98dfd85ebb0d668ef04bc05f5060efd7b9",
+      "pyc": [
+        {
+          "path": ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+          "expected_blob": "c1299ce6dfac116cffb7d0ce3f0183f66e142f8d",
+          "actual_blob": "c1299ce6dfac116cffb7d0ce3f0183f66e142f8d",
+          "source_sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 2907,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+          "expected_blob": "293f9ee67dd252a063ae8420196e7efbba5b06e2",
+          "actual_blob": "293f9ee67dd252a063ae8420196e7efbba5b06e2",
+          "source_sha256": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 36625,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+          "expected_blob": "c4730af84b570422e169b5e3c724c05cbc955633",
+          "actual_blob": "c4730af84b570422e169b5e3c724c05cbc955633",
+          "source_sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31689,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+          "expected_blob": "786564b3b13f0a78fb95c1049a544a73e64b49a0",
+          "actual_blob": "786564b3b13f0a78fb95c1049a544a73e64b49a0",
+          "source_sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 26748,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+          "expected_blob": "c95ecaed2f0f6e9a6b4b097cf6b8a3b0b911eada",
+          "actual_blob": "c95ecaed2f0f6e9a6b4b097cf6b8a3b0b911eada",
+          "source_sha256": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12066,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+          "expected_blob": "63c576a926a42b5a577a2f846406014876fa2061",
+          "actual_blob": "63c576a926a42b5a577a2f846406014876fa2061",
+          "source_sha256": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31023,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+          "expected_blob": "f31f199060b333b71eab80fedfd6af484778bf41",
+          "actual_blob": "f31f199060b333b71eab80fedfd6af484778bf41",
+          "source_sha256": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8596,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+          "expected_blob": "e33535c5769c851461a6d73da81a80109bb91b22",
+          "actual_blob": "e33535c5769c851461a6d73da81a80109bb91b22",
+          "source_sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 20080,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+          "expected_blob": "b1d87f0abee3497a7ba5ab3ff9b9e31386b4b947",
+          "actual_blob": "b1d87f0abee3497a7ba5ab3ff9b9e31386b4b947",
+          "source_sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 3862,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+          "expected_blob": "c41b805030bc0f2253b4208dac376eb419fbc07d",
+          "actual_blob": "c41b805030bc0f2253b4208dac376eb419fbc07d",
+          "source_sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12842,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+          "expected_blob": "40bcc3b830147cd025f8ff03439328b1f81a52e6",
+          "actual_blob": "40bcc3b830147cd025f8ff03439328b1f81a52e6",
+          "source_sha256": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8341,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+          "expected_blob": "8adf57da67dc1b075c68178d20732c93dd11bc5b",
+          "actual_blob": "8adf57da67dc1b075c68178d20732c93dd11bc5b",
+          "source_sha256": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 29150,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+          "expected_blob": "8d7e8e36fb2cd457d4ea3d72377d22a763f8316f",
+          "actual_blob": "8d7e8e36fb2cd457d4ea3d72377d22a763f8316f",
+          "source_sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12398,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+          "expected_blob": "d521d5ca57f37d0e8869c689f0bdf06f96a84947",
+          "actual_blob": "d521d5ca57f37d0e8869c689f0bdf06f96a84947",
+          "source_sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 33029,
+          "mode": "100644",
+          "kind": "blob"
+        }
+      ]
+    },
+    {
+      "case": "128-mixed",
+      "root": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr",
+      "resolved_root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpra797vgr",
+      "expected_head": "421bda9bacbc95ea9aade703a371289191c5976d",
+      "pyc": [
+        {
+          "path": ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+          "expected_blob": "12c1dadfc4055bb3824e8e6cee638157bd6ec41d",
+          "actual_blob": "12c1dadfc4055bb3824e8e6cee638157bd6ec41d",
+          "source_sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 2907,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+          "expected_blob": "1c234b3eaf7b3c5ae76b61762c4770240f7da482",
+          "actual_blob": "1c234b3eaf7b3c5ae76b61762c4770240f7da482",
+          "source_sha256": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 36625,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+          "expected_blob": "c629d28f3682565cc1b925d4dcc29ff5c3f50406",
+          "actual_blob": "c629d28f3682565cc1b925d4dcc29ff5c3f50406",
+          "source_sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31689,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+          "expected_blob": "d2d0b8cbfa96335d24f780e88528b1cfa67a637c",
+          "actual_blob": "d2d0b8cbfa96335d24f780e88528b1cfa67a637c",
+          "source_sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 26748,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+          "expected_blob": "ff68259b96e0e3af46afd4e266102b6da49e36af",
+          "actual_blob": "ff68259b96e0e3af46afd4e266102b6da49e36af",
+          "source_sha256": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12066,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+          "expected_blob": "6fffb98e08b395076a3008896a84eabf000c457c",
+          "actual_blob": "6fffb98e08b395076a3008896a84eabf000c457c",
+          "source_sha256": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31023,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+          "expected_blob": "b83d76f10a1fc0905c17054c32317ebc18431f9b",
+          "actual_blob": "b83d76f10a1fc0905c17054c32317ebc18431f9b",
+          "source_sha256": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8596,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+          "expected_blob": "1eebec267070dc8f06d0aa63e2f96667ecc20bb5",
+          "actual_blob": "1eebec267070dc8f06d0aa63e2f96667ecc20bb5",
+          "source_sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 20080,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+          "expected_blob": "0b10311f99efaf3878034a1a2987a12f262bf118",
+          "actual_blob": "0b10311f99efaf3878034a1a2987a12f262bf118",
+          "source_sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 3862,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+          "expected_blob": "0195a35a39ee237071a35d2f1a04e4a11f1b6c04",
+          "actual_blob": "0195a35a39ee237071a35d2f1a04e4a11f1b6c04",
+          "source_sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12842,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+          "expected_blob": "44864616c90008ea6dbe86d159275def163384ed",
+          "actual_blob": "44864616c90008ea6dbe86d159275def163384ed",
+          "source_sha256": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8341,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+          "expected_blob": "8061ffe0a8bef68875735cc352ffe1af4d611df0",
+          "actual_blob": "8061ffe0a8bef68875735cc352ffe1af4d611df0",
+          "source_sha256": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 29150,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+          "expected_blob": "cf03879c1c428241119e196dc87515cdf0d1c8bc",
+          "actual_blob": "cf03879c1c428241119e196dc87515cdf0d1c8bc",
+          "source_sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12398,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+          "expected_blob": "b7e79cdb683c29f05e833d048edf9dc8656ca587",
+          "actual_blob": "b7e79cdb683c29f05e833d048edf9dc8656ca587",
+          "source_sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 33029,
+          "mode": "100644",
+          "kind": "blob"
+        }
+      ]
+    },
+    {
+      "case": "10001-repeated",
+      "root": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpfw7jhn03",
+      "resolved_root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpfw7jhn03",
+      "expected_head": "1858bb965a2208818c3c5d4666535718292b21c7",
+      "pyc": [
+        {
+          "path": ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+          "expected_blob": "7aa37271932bf07636fc3afd04162b15efaa1da2",
+          "actual_blob": "7aa37271932bf07636fc3afd04162b15efaa1da2",
+          "source_sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 2907,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+          "expected_blob": "6367707ab9ac071e98083ab24632fff80880d211",
+          "actual_blob": "6367707ab9ac071e98083ab24632fff80880d211",
+          "source_sha256": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 36625,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+          "expected_blob": "70b3e67f329913744b7dc352c6e40f67ab19dbaf",
+          "actual_blob": "70b3e67f329913744b7dc352c6e40f67ab19dbaf",
+          "source_sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31689,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+          "expected_blob": "de9ed8c230bd52ffbe3dd80961cc101415d6b23a",
+          "actual_blob": "de9ed8c230bd52ffbe3dd80961cc101415d6b23a",
+          "source_sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 26748,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+          "expected_blob": "d5c6d5c288408699899279d12412a829b84067ba",
+          "actual_blob": "d5c6d5c288408699899279d12412a829b84067ba",
+          "source_sha256": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12066,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+          "expected_blob": "8c9c4b974ecb9987dd3e91ea68cf9a11a18632db",
+          "actual_blob": "8c9c4b974ecb9987dd3e91ea68cf9a11a18632db",
+          "source_sha256": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31023,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+          "expected_blob": "6049ee7709f7dc322f267797c558b7b5bde7ba87",
+          "actual_blob": "6049ee7709f7dc322f267797c558b7b5bde7ba87",
+          "source_sha256": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8596,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+          "expected_blob": "96889e13655762387354e77bcebd642487313dc2",
+          "actual_blob": "96889e13655762387354e77bcebd642487313dc2",
+          "source_sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 20080,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+          "expected_blob": "5c9607c932f7e2fd157443495bec17a6fd13d45b",
+          "actual_blob": "5c9607c932f7e2fd157443495bec17a6fd13d45b",
+          "source_sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 3862,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+          "expected_blob": "8fcbeb9c5479e383d57234d6412e8c7269599d11",
+          "actual_blob": "8fcbeb9c5479e383d57234d6412e8c7269599d11",
+          "source_sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12842,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+          "expected_blob": "d79992dbe501a2fd81e032e80fe0d0d45d135c9d",
+          "actual_blob": "d79992dbe501a2fd81e032e80fe0d0d45d135c9d",
+          "source_sha256": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8341,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+          "expected_blob": "5a42c78041f88a382ced3f2a1a7291b9a4654e70",
+          "actual_blob": "5a42c78041f88a382ced3f2a1a7291b9a4654e70",
+          "source_sha256": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 29150,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+          "expected_blob": "c063a844fc0ecf906eb3407859ae1a290eadd78b",
+          "actual_blob": "c063a844fc0ecf906eb3407859ae1a290eadd78b",
+          "source_sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12398,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+          "expected_blob": "da426a2b1b4b59aa771961efef56bbc1f5d4822b",
+          "actual_blob": "da426a2b1b4b59aa771961efef56bbc1f5d4822b",
+          "source_sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 33029,
+          "mode": "100644",
+          "kind": "blob"
+        }
+      ]
+    },
+    {
+      "case": "10001-mixed",
+      "root": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpst0mw0d6",
+      "resolved_root": "/private/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmpst0mw0d6",
+      "expected_head": "4f96a24e6477291cc8fec30ef3be3b85cf8ae6f9",
+      "pyc": [
+        {
+          "path": ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+          "expected_blob": "1553630cbffbc10aaa308c500064c59fca1616f3",
+          "actual_blob": "1553630cbffbc10aaa308c500064c59fca1616f3",
+          "source_sha256": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 2907,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+          "expected_blob": "5cd78403ef8254f072f7a9ea066cb60c695c7e4d",
+          "actual_blob": "5cd78403ef8254f072f7a9ea066cb60c695c7e4d",
+          "source_sha256": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 36625,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+          "expected_blob": "3bb97fa86e8ae3580ef8af44aa0d84f99c9cb884",
+          "actual_blob": "3bb97fa86e8ae3580ef8af44aa0d84f99c9cb884",
+          "source_sha256": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31689,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+          "expected_blob": "fff7d70833fd81a276a3235503701215a3ab4400",
+          "actual_blob": "fff7d70833fd81a276a3235503701215a3ab4400",
+          "source_sha256": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 26748,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+          "expected_blob": "263e864ee4a2c2ce75fface0c0a97449fc89f67c",
+          "actual_blob": "263e864ee4a2c2ce75fface0c0a97449fc89f67c",
+          "source_sha256": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12066,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+          "expected_blob": "61f7a86048d1ca2c926b152cf8c1667abb355bce",
+          "actual_blob": "61f7a86048d1ca2c926b152cf8c1667abb355bce",
+          "source_sha256": "53a9e9d7e272f9b7b4abe354929c6d6ba42777393ed2a3d0e1a62f5e44d914bb",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 31023,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+          "expected_blob": "ed3986514dfa0a43289f839f9508947ac034e20d",
+          "actual_blob": "ed3986514dfa0a43289f839f9508947ac034e20d",
+          "source_sha256": "4c0060614bce692e6cf6ac5a3eef5c9f6361d0c95db114331d5862ba5df94597",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8596,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+          "expected_blob": "041faa20ccdae43bb43c7a4ede5be64c4f01dfa6",
+          "actual_blob": "041faa20ccdae43bb43c7a4ede5be64c4f01dfa6",
+          "source_sha256": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 20080,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+          "expected_blob": "eda3a01beb35902849ba592348eba1dc0ff271e5",
+          "actual_blob": "eda3a01beb35902849ba592348eba1dc0ff271e5",
+          "source_sha256": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 3862,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+          "expected_blob": "5367b6306348a63fe0e2be5cefecef7996a431c0",
+          "actual_blob": "5367b6306348a63fe0e2be5cefecef7996a431c0",
+          "source_sha256": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12842,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+          "expected_blob": "1e531fe49710bd09312ceec830d593825bfec608",
+          "actual_blob": "1e531fe49710bd09312ceec830d593825bfec608",
+          "source_sha256": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 8341,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+          "expected_blob": "bb8e1e264ef18eb9ce73bd3a6c181f8241a8fcae",
+          "actual_blob": "bb8e1e264ef18eb9ce73bd3a6c181f8241a8fcae",
+          "source_sha256": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 29150,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+          "expected_blob": "404a1338db421b8e22b7a5f0e8fa5a04fdf51f2a",
+          "actual_blob": "404a1338db421b8e22b7a5f0e8fa5a04fdf51f2a",
+          "source_sha256": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 12398,
+          "mode": "100644",
+          "kind": "blob"
+        },
+        {
+          "path": ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+          "expected_blob": "0bb6daec04f620ad3cd417dab42463ff98b86a4e",
+          "actual_blob": "0bb6daec04f620ad3cd417dab42463ff98b86a4e",
+          "source_sha256": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+          "source_mtime": 1792204308,
+          "pyc_bytes": 33029,
+          "mode": "100644",
+          "kind": "blob"
+        }
+      ]
+    }
+  ]
+}

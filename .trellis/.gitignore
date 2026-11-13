@@ -1,7 +1,4 @@
-# Developer identity (local only)
-.developer
-
-# Current task pointer (each dev works on different task)
+# Current task pointer
 .current-task
 
 # Session/window scoped runtime state

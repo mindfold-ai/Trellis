@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertProjectPath } from "../../utils/path-boundary.js";
 
 export interface ChannelTextBodyOptions {
   text?: string;
@@ -31,7 +32,10 @@ async function readChannelTextBody(
   opts: ChannelTextBodyOptions,
 ): Promise<string | undefined> {
   if (opts.text !== undefined && opts.text !== "") return opts.text;
-  if (opts.textFile) return fs.readFileSync(opts.textFile, "utf-8");
+  if (opts.textFile) {
+    assertProjectPath(opts.textFile, process.cwd());
+    return fs.readFileSync(opts.textFile, "utf-8");
+  }
   if (opts.stdin) return await readStdin();
   return undefined;
 }

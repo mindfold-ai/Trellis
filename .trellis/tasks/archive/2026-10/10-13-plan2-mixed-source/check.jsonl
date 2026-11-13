@@ -1,0 +1,11 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI spec navigation and read-before-write requirements"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Strict TypeScript and required checks; read full disk file when injected context truncates"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Preserve existing typed/schema exception routing"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Real temporary filesystem/Git fixtures, cleanup and environment isolation"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Task identity, unique session/binding and complete topology authority"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Atomic writes, raw preservation and path ownership"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Meaningful integration assertions and environment isolation"}
+{"file": ".trellis/spec/cli/backend/installed-version.md", "reason": "Exact-version candidate and same-version boundary"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Public predecessor validator/projection exports; no Core expansion"}
+{"file": ".trellis/tasks/archive/2026-10/10-13-plan2-mixed-source/research/source-analysis.md", "reason": "Frozen source facts and real-data read-only limits"}
+{"file": ".trellis/tasks/archive/2026-10/10-13-plan2-mixed-source/research/planning-contract-review.md", "reason": "Independent feasibility, identity and recovery constraints"}

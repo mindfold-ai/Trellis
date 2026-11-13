@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
   publish:
+    # Applies to both tag pushes and release publication, before any steps run.
+    if: ${{ github.repository == 'mindfold-ai/trellis' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

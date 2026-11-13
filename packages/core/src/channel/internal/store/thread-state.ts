@@ -17,7 +17,6 @@ export interface ThreadState {
   title?: string;
   status: string;
   labels: string[];
-  assignees: string[];
   description?: string;
   context?: ContextEntry[];
   summary?: string;
@@ -113,7 +112,6 @@ export function reduceThreads(events: ChannelEvent[]): ThreadState[] {
       thread: key,
       status: "open",
       labels: [],
-      assignees: [],
       lastSeq: seq,
       comments: 0,
       aliases: [],
@@ -167,7 +165,6 @@ export function reduceThreads(events: ChannelEvent[]): ThreadState[] {
         ...(state.title !== undefined ? { title: state.title } : {}),
         status: state.status,
         labels: state.labels,
-        assignees: state.assignees,
         ...(state.description !== undefined
           ? { description: state.description }
           : {}),
@@ -206,7 +203,6 @@ function applyThreadAction(
         }
       }
       current.labels = asStringArray(ev.labels) ?? current.labels;
-      current.assignees = asStringArray(ev.assignees) ?? current.assignees;
       return;
     case "comment":
       current.comments += 1;
@@ -216,9 +212,6 @@ function applyThreadAction(
       return;
     case "labels":
       current.labels = asStringArray(ev.labels) ?? current.labels;
-      return;
-    case "assignees":
-      current.assignees = asStringArray(ev.assignees) ?? current.assignees;
       return;
     case "summary":
       if (typeof ev.summary === "string") current.summary = ev.summary;

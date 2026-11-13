@@ -31,6 +31,7 @@ export async function sendMessage(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   )) as MessageChannelEvent;
 
   // Strict delivery modes: classify targets against the durable worker
@@ -40,7 +41,7 @@ export async function sendMessage(
   const mode = opts.deliveryMode ?? "appendOnly";
   if (mode !== "appendOnly" && event.to !== undefined) {
     const targets = Array.isArray(event.to) ? event.to : [event.to];
-    const events = await readChannelEvents(opts.channel, ref.project);
+    const events = await readChannelEvents(opts.channel, ref.project, undefined, opts.cwd);
     const registry = reduceWorkerRegistry(events);
     const failures = classifyDelivery(registry, targets, mode);
     for (const failure of failures) {
@@ -61,6 +62,7 @@ export async function sendMessage(
           ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
         },
         ref.project,
+        opts.cwd,
       );
     }
   }

@@ -1,6 +1,16 @@
 name: CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: Affected baseline commit (each target initializes its own project)
+        default: 7bcbeaad31380e7a29c97898cb947c6120a61775
+        required: true
+      candidate_ref:
+        description: Candidate commit or branch (empty uses dispatched commit)
+        default: ''
+        required: false
   push:
     branches: [main]
     paths:
@@ -26,7 +36,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,3 +93,124 @@ jobs:
           test -d packages/cli/dist
           test -f packages/cli/dist/index.js
           echo "Build verification passed"
+
+  native-python:
+    name: Native Python (${{ matrix.os }}, ${{ matrix.scenario }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            scenario: python3
+          - os: windows-2022
+            scenario: py
+          - os: ubuntu-24.04
+            scenario: python3
+          - os: macos-15
+            scenario: python3
+    steps:
+      - name: Checkout candidate and independent driver
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_ref || github.sha }}
+          submodules: recursive
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Setup real Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Ensure genuine Windows launcher
+        if: runner.os == 'Windows' && matrix.scenario == 'py'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
+            $installer = Join-Path $env:RUNNER_TEMP 'python-native-installer.exe'
+            Invoke-WebRequest 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe' -OutFile $installer
+            $installRoot = Join-Path $env:RUNNER_TEMP 'native-python312'
+            $install = Start-Process $installer -ArgumentList @('/quiet', 'InstallAllUsers=0', 'Include_launcher=1', 'InstallLauncherAllUsers=0', 'PrependPath=0', 'Include_test=0', "TargetDir=$installRoot") -Wait -PassThru
+            if ($install.ExitCode -ne 0) { throw "Python installer exit $($install.ExitCode)" }
+            $launcherRoot = Join-Path $env:LOCALAPPDATA 'Programs\Python\Launcher'
+            $launcherRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - name: Build candidate
+        id: candidate_build
+        continue-on-error: true
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Checkout affected baseline separately
+        if: always() && runner.os == 'Windows'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.baseline_ref || '7bcbeaad31380e7a29c97898cb947c6120a61775' }}
+          path: native-baseline
+          submodules: recursive
+      - name: Build baseline with its own dependencies
+        id: baseline_build
+        if: always() && runner.os == 'Windows'
+        continue-on-error: true
+        shell: bash
+        working-directory: native-baseline
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Run independent driver against baseline
+        id: baseline_run
+        if: always() && runner.os == 'Windows' && steps.baseline_build.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          node packages/cli/scripts/native-python-regression.mjs --target=native-baseline --scenario=${{ matrix.scenario }} --expect=baseline-defect --output=native-evidence/baseline
+      - name: Run candidate even after baseline failure
+        id: candidate_run
+        if: always() && steps.candidate_build.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: node packages/cli/scripts/native-python-regression.mjs --target=. --scenario=${{ matrix.scenario }} --expect=pass --output=native-evidence/candidate
+      - name: Require complete comparison evidence
+        if: always()
+        shell: bash
+        env:
+          CANDIDATE_BUILD: ${{ steps.candidate_build.outcome }}
+          BASELINE_BUILD: ${{ steps.baseline_build.outcome }}
+          BASELINE_REQUIRED: ${{ runner.os == 'Windows' }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          let failed = false;
+          const targets = process.env.BASELINE_REQUIRED === 'true' ? ['baseline', 'candidate'] : ['candidate'];
+          if (targets.length === 1) {
+            fs.mkdirSync('native-evidence', {recursive:true});
+            fs.writeFileSync('native-evidence/baseline-not-applicable.json', JSON.stringify({status:'not_applicable',reason:'Affected static alias selection regression comparison targets native Windows; Unix runs full candidate regression.'},null,2));
+            console.log('baseline: not_applicable (Windows selection-loss comparison only)');
+          }
+          for (const name of targets) {
+            const file = `native-evidence/${name}/summary.json`;
+            if (!fs.existsSync(file)) {
+              console.error(`${name}: UNVERIFIED infrastructure/build failure (candidate=${process.env.CANDIDATE_BUILD}, baseline=${process.env.BASELINE_BUILD})`);
+              failed = true;
+              continue;
+            }
+            const result = JSON.parse(fs.readFileSync(file));
+            console.log(`${name}: ${result.status}; source=${result.identity.source}; build=${result.identity.buildSha256}; driver=${result.identity.driverSha256}`);
+            if (name === 'candidate' ? result.status !== 'passed' : result.status !== 'expected_baseline_defect') failed = true;
+          }
+          process.exitCode = failed ? 1 : 0;
+          JS
+      - name: Upload raw native evidence even after failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-python-${{ matrix.os }}-${{ matrix.scenario }}
+          path: native-evidence/
+          if-no-files-found: warn
+          retention-days: 30

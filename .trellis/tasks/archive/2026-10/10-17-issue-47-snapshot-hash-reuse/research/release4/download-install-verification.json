@@ -1,0 +1,390 @@
+{
+  "prefix": "/private/tmp/trellis-47-release4-01a14785/download-installed",
+  "source_head": "9f40ec70914f98fce2619560274cc1d0619f2f7e",
+  "kind": "isolated packed installation; synthetic fixture, no business adoption",
+  "commands": [
+    {
+      "argv": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import {createRequire} from 'node:module';const r=createRequire(process.argv[1]);console.log(r.resolve('@mindfoldhq/trellis-core'));",
+        "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis/package.json"
+      ],
+      "cwd": "/private/tmp/trellis-47-release4-01a14785/download-installed",
+      "exit_code": 0,
+      "stdout_tail": "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis-core/dist/index.js\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "git",
+        "init",
+        "-q",
+        "--initial-branch=main"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "git",
+        "config",
+        "user.name",
+        "Issue47 installation fixture"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "git",
+        "config",
+        "user.email",
+        "fixture@example.invalid"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "git",
+        "add",
+        "."
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "-qm",
+        "immutable candidate fixture"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "370354d395f0b0a29fad48fd580eebd371f174d3\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "node",
+        "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "init",
+        "--yes",
+        "--codex",
+        "--workflow",
+        "native-delivery-v1",
+        "--no-monorepo"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "🧭 Using workflow template: native-delivery-v1\n\n ███████████                    ████  ████   ███         \n▒█▒▒▒███▒▒▒█                   ▒▒███ ▒▒███  ▒▒▒          \n▒   ▒███  ▒  ████████   ██████  ▒███  ▒███  ████   █████ \n    ▒███    ▒▒███▒▒███ ███▒▒███ ▒███  ▒███ ▒▒███  ███▒▒  \n    ▒███     ▒███ ▒▒▒ ▒███████  ▒███  ▒███  ▒███ ▒▒█████ \n    ▒███     ▒███     ▒███▒▒▒   ▒███  ▒███  ▒███  ▒▒▒▒███\n    █████    █████    ▒▒██████  █████ █████ █████ ██████ \n   ▒▒▒▒▒    ▒▒▒▒▒      ▒▒▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒▒ ▒▒▒▒▒ ▒▒▒▒▒▒\n\n   All-in-one AI framework & toolkit for Claude Code & Cursor\n\nMode: Non-interactive (skip existing files)\n\n📁 Creating workflow structure...\n📝 Configuring Codex (also writes .agents/skills/ — read by Cursor, Gemini CLI, GitHub Copilot, Amp, Kimi Code)...\n📌 macOS detected: Trellis rendered Python commands as \"python3\" in generated hooks, settings, and help text\n📄 Created AGENTS.md\n📋 Tracking 99 template files for updates\n",
+      "stderr_tail": "⚠️  Codex hooks require `features.hooks = true` in your ~/.codex/config.toml (Codex 0.129+; older versions: `codex_hooks = true`). On Codex 0.129+ also run `/hooks` once to approve the Trellis hooks. Without these the Trellis workflow breadcrumb and native sub-agent context won't auto-inject (agents retain a pull fallback). See Trellis docs for details.\n"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "contract",
+        "--json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "{\"delivery_api\": \"1.0\", \"task_schema\": \"2.0\"}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/task.py",
+        "create",
+        "Installed issue47 fixture",
+        "--description",
+        "Synthetic public writer verification",
+        "--slug",
+        "install-verification",
+        "--no-start",
+        "--base-branch",
+        "main"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": ".trellis/tasks/10-17-install-verification\n",
+      "stderr_tail": "\u001b[1;33mSkipped session selection (--no-start); run task.py start when ready.\u001b[0m\n\u001b[0;32mCreated task: 10-17-install-verification\u001b[0m\n\n\u001b[0;34mNext steps:\u001b[0m\n  - Fill root prd.md with whole-Task requirements and acceptance criteria\n  - Follow the active workflow's declared Task-scope and Delivery creation/Planning owners\n  - Create/select the exact Delivery before Planning; place its artifacts and context manifests under its planning_root\n  - task.py start binds Task selection only; it does not start implementation or create a Delivery\n  - Use /trellis:continue or phase context to decide the next step\n\n"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "-c",
+        "import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);from common.delivery_store import GitCandidateContent,candidate_content_ref;root=Path.cwd();paths=[\"artifact.txt\",\"duplicate.txt\",\"deleted.txt\"];expected=candidate_content_ref(root,paths,\"git\");ctx=GitCandidateContent(root,no_lazy_fetch=True);assert ctx.content_ref(sys.argv[2],paths)==expected;assert ctx.content_ref(sys.argv[2],list(reversed(paths)))==expected;ctx.close();print(\"ok\")",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts",
+        "370354d395f0b0a29fad48fd580eebd371f174d3"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "ok\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "-c",
+        "import json,sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);from common.runtime_contract import read_runtime_contract;print(json.dumps(read_runtime_contract(Path(sys.argv[2]))))",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/workflow.md"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "{\"delivery_api\": \"1.0\", \"task_schema\": \"2.0\", \"profiles\": [\"local_commit\", \"manual\", \"pull_request\"], \"owners\": {\"task_scope\": \"trellis-start\", \"creation\": \"trellis-start\", \"planning\": \"trellis-brainstorm\", \"implementation\": \"trellis-start\", \"check\": \"trellis-check\", \"full_review\": \"trellis-review-delivery\", \"readiness\": \"trellis-review-delivery\", \"publication\": \"trellis-deliver\", \"delivery\": \"trellis-deliver\", \"completion\": \"trellis-complete-task\", \"closure\": \"trellis-finish-work\"}}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "{\n  \"record\": {\n    \"schema_version\": \"2.0\",\n    \"id\": \"install-verification\",\n    \"name\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"source\": {\n      \"kind\": \"no_issue\"\n    },\n    \"title\": \"Installed issue47 fixture\",\n    \"description\": \"Synthetic public writer verification\",\n    \"dev_type\": null,\n    \"scope\": null,\n    \"package\": null,\n    \"priority\": \"P2\",\n    \"createdAt\": \"2026-10-17\",\n    \"base_branch\": \"main\",\n    \"worktree_path\": null,\n    \"children\": [],\n    \"parent\": null,\n    \"relatedFiles\": [],\n    \"notes\": \"\",\n    \"meta\": {},\n    \"accepted_scope\": {\n      \"locator\": \"requirements.md\",\n      \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n    },\n    \"deliveries\": [],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0\n  },\n  \"phase\": null,\n  \"result_id\": null,\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "{\n  \"record\": {\n    \"schema_version\": \"2.0\",\n    \"id\": \"install-verification\",\n    \"name\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"source\": {\n      \"kind\": \"no_issue\"\n    },\n    \"title\": \"Installed issue47 fixture\",\n    \"description\": \"Synthetic public writer verification\",\n    \"dev_type\": null,\n    \"scope\": null,\n    \"package\": null,\n    \"priority\": \"P2\",\n    \"createdAt\": \"2026-10-17\",\n    \"base_branch\": \"main\",\n    \"worktree_path\": null,\n    \"children\": [],\n    \"parent\": null,\n    \"relatedFiles\": [],\n    \"notes\": \"\",\n    \"meta\": {},\n    \"accepted_scope\": {\n      \"locator\": \"requirements.md\",\n      \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n    },\n    \"deliveries\": [\n      {\n        \"id\": \"11111111-1111-4111-8111-111111111111\",\n        \"lifecycle_generation\": 0,\n        \"scope_ref\": {\n          \"authority\": {\n            \"locator\": \"requirements.md\",\n            \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n          },\n          \"anchors\": [\n            \"R1\"\n          ]\n        },\n        \"planning_root\": \"deliveries/11111111-1111-4111-8111-111111111111\",\n        \"profile\": \"local_commit\",\n        \"phase\": \"planning\",\n        \"plan_ref\": null,\n        \"candidate\": null,\n        \"results\": {\n          \"planning\": null,\n          \"check\": null,\n          \"full_review\": null,\n          \"readiness\": null\n        },\n        \"publication_result\": null,\n        \"delivery_result\": null,\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"planning\",\n  \"result_id\": null,\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "candidate",
+        "--kind",
+        "git",
+        "--paths",
+        "artifact.txt",
+        "duplicate.txt",
+        "deleted.txt"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "{\"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "th\": null,\n    \"children\": [],\n    \"parent\": null,\n    \"relatedFiles\": [],\n    \"notes\": \"\",\n    \"meta\": {},\n    \"accepted_scope\": {\n      \"locator\": \"requirements.md\",\n      \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n    },\n    \"deliveries\": [\n      {\n        \"id\": \"11111111-1111-4111-8111-111111111111\",\n        \"lifecycle_generation\": 0,\n        \"scope_ref\": {\n          \"authority\": {\n            \"locator\": \"requirements.md\",\n            \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n          },\n          \"anchors\": [\n            \"R1\"\n          ]\n        },\n        \"planning_root\": \"deliveries/11111111-1111-4111-8111-111111111111\",\n        \"profile\": \"local_commit\",\n        \"phase\": \"implementing\",\n        \"plan_ref\": {\n          \"locator\": \"plan.md\",\n          \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n        },\n        \"candidate\": null,\n        \"results\": {\n          \"planning\": {\n            \"result_id\": \"installation-planning\",\n            \"owner_role\": \"planning\",\n            \"owner_id\": \"trellis-brainstorm\",\n            \"outcome\": \"accepted\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": null,\n            \"predecessor_result_id\": null,\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"check\": null,\n          \"full_review\": null,\n          \"readiness\": null\n        },\n        \"publication_result\": null,\n        \"delivery_result\": null,\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"implementing\",\n  \"result_id\": \"installation-planning\",\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "111-1111-4111-8111-111111111111\",\n        \"lifecycle_generation\": 0,\n        \"scope_ref\": {\n          \"authority\": {\n            \"locator\": \"requirements.md\",\n            \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n          },\n          \"anchors\": [\n            \"R1\"\n          ]\n        },\n        \"planning_root\": \"deliveries/11111111-1111-4111-8111-111111111111\",\n        \"profile\": \"local_commit\",\n        \"phase\": \"checking\",\n        \"plan_ref\": {\n          \"locator\": \"plan.md\",\n          \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n        },\n        \"candidate\": {\n          \"kind\": \"git\",\n          \"paths\": [\n            \"artifact.txt\",\n            \"duplicate.txt\",\n            \"deleted.txt\"\n          ],\n          \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n          \"base_ref\": null,\n          \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n        },\n        \"results\": {\n          \"planning\": {\n            \"result_id\": \"installation-planning\",\n            \"owner_role\": \"planning\",\n            \"owner_id\": \"trellis-brainstorm\",\n            \"outcome\": \"accepted\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": null,\n            \"predecessor_result_id\": null,\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"check\": null,\n          \"full_review\": null,\n          \"readiness\": null\n        },\n        \"publication_result\": null,\n        \"delivery_result\": null,\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"checking\",\n  \"result_id\": null,\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "dbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": null,\n            \"predecessor_result_id\": null,\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"check\": {\n            \"result_id\": \"installation-check\",\n            \"owner_role\": \"check\",\n            \"owner_id\": \"trellis-check\",\n            \"outcome\": \"passed\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": {\n              \"kind\": \"git\",\n              \"paths\": [\n                \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-planning\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"full_review\": null,\n          \"readiness\": null\n        },\n        \"publication_result\": null,\n        \"delivery_result\": null,\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"reviewing\",\n  \"result_id\": \"installation-check\",\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "             \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-planning\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"full_review\": {\n            \"result_id\": \"installation-full_review\",\n            \"owner_role\": \"full_review\",\n            \"owner_id\": \"trellis-review-delivery\",\n            \"outcome\": \"passed\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": {\n              \"kind\": \"git\",\n              \"paths\": [\n                \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-check\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"readiness\": null\n        },\n        \"publication_result\": null,\n        \"delivery_result\": null,\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"reviewing\",\n  \"result_id\": \"installation-full_review\",\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "git\",\n              \"paths\": [\n                \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-check\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          },\n          \"readiness\": {\n            \"result_id\": \"installation-readiness\",\n            \"owner_role\": \"readiness\",\n            \"owner_id\": \"trellis-review-delivery\",\n            \"outcome\": \"ready\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": {\n              \"kind\": \"git\",\n              \"paths\": [\n                \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-full_review\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          }\n        },\n        \"publication_result\": null,\n        \"delivery_result\": null,\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"publishing\",\n  \"result_id\": \"installation-readiness\",\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "\"readiness\",\n            \"owner_id\": \"trellis-review-delivery\",\n            \"outcome\": \"ready\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": {\n              \"kind\": \"git\",\n              \"paths\": [\n                \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-full_review\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          }\n        },\n        \"publication_result\": null,\n        \"delivery_result\": {\n          \"result_id\": \"installed-delivery\",\n          \"owner_id\": \"trellis-deliver\",\n          \"evidence\": [\n            {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            }\n          ],\n          \"candidate\": {\n            \"kind\": \"git\",\n            \"paths\": [\n              \"artifact.txt\",\n              \"duplicate.txt\",\n              \"deleted.txt\"\n            ],\n            \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n            \"base_ref\": null,\n            \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n          },\n          \"profile\": \"local_commit\",\n          \"commit\": \"370354d395f0b0a29fad48fd580eebd371f174d3\"\n        },\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"delivered\",\n  \"result_id\": \"installed-delivery\",\n  \"changed\": true\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/scripts/delivery.py",
+        "apply",
+        "--task",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/.trellis/tasks/10-17-install-verification",
+        "--input",
+        "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz/operation.json"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "readiness\",\n            \"owner_id\": \"trellis-review-delivery\",\n            \"outcome\": \"ready\",\n            \"scope_ref\": {\n              \"authority\": {\n                \"locator\": \"requirements.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              },\n              \"anchors\": [\n                \"R1\"\n              ]\n            },\n            \"plan_ref\": {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            },\n            \"candidate\": {\n              \"kind\": \"git\",\n              \"paths\": [\n                \"artifact.txt\",\n                \"duplicate.txt\",\n                \"deleted.txt\"\n              ],\n              \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n              \"base_ref\": null,\n              \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n            },\n            \"predecessor_result_id\": \"installation-full_review\",\n            \"obligations\": [],\n            \"evidence\": [\n              {\n                \"locator\": \"plan.md\",\n                \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n              }\n            ]\n          }\n        },\n        \"publication_result\": null,\n        \"delivery_result\": {\n          \"result_id\": \"installed-delivery\",\n          \"owner_id\": \"trellis-deliver\",\n          \"evidence\": [\n            {\n              \"locator\": \"plan.md\",\n              \"revision\": \"sha256:1a40b56503c22a0197521adbaac00d041e678b3a9f67e5df03f7395e30effa43\"\n            }\n          ],\n          \"candidate\": {\n            \"kind\": \"git\",\n            \"paths\": [\n              \"artifact.txt\",\n              \"duplicate.txt\",\n              \"deleted.txt\"\n            ],\n            \"head_ref\": \"370354d395f0b0a29fad48fd580eebd371f174d3\",\n            \"base_ref\": null,\n            \"content_ref\": \"sha256:1bbc5c2da9c1ee7f8a467885b920d7b4d3d2616f47c9fab8481121b6019534d9\"\n          },\n          \"profile\": \"local_commit\",\n          \"commit\": \"370354d395f0b0a29fad48fd580eebd371f174d3\"\n        },\n        \"stop_result\": null\n      }\n    ],\n    \"completion_results\": [],\n    \"closure_results\": []\n  },\n  \"key\": {\n    \"task_id\": \"install-verification\",\n    \"lifecycle_generation\": 0,\n    \"delivery_id\": \"11111111-1111-4111-8111-111111111111\"\n  },\n  \"phase\": \"delivered\",\n  \"result_id\": \"installed-delivery\",\n  \"changed\": false\n}\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "node",
+        "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "update",
+        "--force"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "\nScanning for changes...\n\n  Unchanged files (will skip):\n    ○ .trellis/scripts/__init__.py\n    ○ .trellis/scripts/common/__init__.py\n    ○ .trellis/scripts/common/paths.py\n    ○ .trellis/scripts/common/git_context.py\n    ○ .trellis/scripts/common/task_queue.py\n    ... and 95 more\n\n  User data (preserved):\n    ○ .trellis/tasks/\n    ○ .trellis/spec/\n\nAlready up to date.\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "node",
+        "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "update",
+        "--dry-run"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "\nScanning for changes...\n\n  Unchanged files (will skip):\n    ○ .trellis/scripts/__init__.py\n    ○ .trellis/scripts/common/__init__.py\n    ○ .trellis/scripts/common/paths.py\n    ○ .trellis/scripts/common/git_context.py\n    ○ .trellis/scripts/common/task_queue.py\n    ... and 94 more\n\n  Modified by you (need your decision):\n    ? .trellis/scripts/common/git_objects.py\n\n  User data (preserved):\n    ○ .trellis/tasks/\n    ○ .trellis/spec/\n\n[Dry run] No changes made.\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "node",
+        "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "update",
+        "--create-new"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "\nScanning for changes...\n\n  Unchanged files (will skip):\n    ○ .trellis/scripts/__init__.py\n    ○ .trellis/scripts/common/__init__.py\n    ○ .trellis/scripts/common/paths.py\n    ○ .trellis/scripts/common/git_context.py\n    ○ .trellis/scripts/common/task_queue.py\n    ... and 94 more\n\n  Modified by you (need your decision):\n    ? .trellis/scripts/common/git_objects.py\n\n  User data (preserved):\n    ○ .trellis/tasks/\n    ○ .trellis/spec/\n\n",
+      "stderr_tail": ""
+    },
+    {
+      "argv": [
+        "node",
+        "/private/tmp/trellis-47-release4-01a14785/download-installed/node_modules/@mindfoldhq/trellis/bin/trellis.js",
+        "update",
+        "--force"
+      ],
+      "cwd": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/issue47-installed-project-85r47fkz",
+      "exit_code": 0,
+      "stdout_tail": "\nScanning for changes...\n\n  Unchanged files (will skip):\n    ○ .trellis/scripts/__init__.py\n    ○ .trellis/scripts/common/__init__.py\n    ○ .trellis/scripts/common/paths.py\n    ○ .trellis/scripts/common/git_context.py\n    ○ .trellis/scripts/common/task_queue.py\n    ... and 94 more\n\n  Modified by you (need your decision):\n    ? .trellis/scripts/common/git_objects.py\n\n  User data (preserved):\n    ○ .trellis/tasks/\n    ○ .trellis/spec/\n\n",
+      "stderr_tail": ""
+    }
+  ],
+  "checks": {
+    "exact_paired_core_resolution": true,
+    "installed_public_immutable_digest_and_repeat": true,
+    "installed_public_normal_delivery_and_retry": true,
+    "same_version_reapply_preserves_task": true,
+    "drift_preview_sidecar_preserves_custom_bytes_mode": true,
+    "force_reapply_restores_managed_bytes_mode": true,
+    "new_helper_tracked_in_managed_inventory": true
+  },
+  "cli_version": "0.7.0-castbox.4",
+  "installed_owner_files": {
+    "common/git_objects.py": {
+      "sha256": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+      "mode": "0755"
+    },
+    "common/task_store.py": {
+      "sha256": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+      "mode": "0755"
+    },
+    "common/delivery_store.py": {
+      "sha256": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171",
+      "mode": "0755"
+    }
+  },
+  "passed": true
+}

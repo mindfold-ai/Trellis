@@ -1,0 +1,15 @@
+{"file": ".trellis/spec/core/backend/index.md", "reason": "Core domain API boundary"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI and shipped-runtime guidelines"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Stable Task identity, selected-record and cross-worktree boundaries"}
+{"file": ".trellis/spec/cli/backend/workflow-state-contract.md", "reason": "Continuation, marker, hook and context semantics"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Core/CLI/Python parity and lockstep packaging"}
+{"file": ".trellis/spec/cli/backend/commands-migrate.md", "reason": "Explicit migration, raw preimages and recovery ownership"}
+{"file": ".trellis/spec/cli/backend/commands-workflow.md", "reason": "Active workflow ownership and fail-closed extraction"}
+{"file": ".trellis/spec/cli/backend/platform-integration.md", "reason": "Actual declared platform collectors and carriers"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Atomic writes, containment, ownership and dogfood sync"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Shipped Python conventions and compatibility"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Meaningful tests and isolation"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Portable path, shell, schema and persistence assumptions"}
+{"file": ".trellis/tasks/10-12-31-native-delivery-lifecycle/research/current-contracts.md", "reason": "Fresh baseline, required Guru sources and actual consumer inventory"}
+{"file": ".trellis/tasks/10-12-31-native-delivery-lifecycle/research/source-anchors.md", "reason": "Baseline code anchors for current Task coupling"}
+{"file": ".trellis/tasks/10-12-31-native-delivery-lifecycle/research/source-issue-current.md", "reason": "Current independently accepted source requirements; historical snapshot is superseded"}

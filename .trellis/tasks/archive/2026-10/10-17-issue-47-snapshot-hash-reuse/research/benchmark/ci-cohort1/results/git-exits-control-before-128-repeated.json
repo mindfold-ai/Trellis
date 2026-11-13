@@ -1,0 +1,367 @@
+[
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6483.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6483.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6487.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6487.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6491.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6491.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6495.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6495.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6499.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6499.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6503.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6503.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6508.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6508.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6512.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6512.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6516.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6516.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6520.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6520.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6524.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6524.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6529.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6529.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6533.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6533.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6537.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6537.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6541.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6541.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6545.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-manual/git-6545.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6569.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6569.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6573.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6573.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6577.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6577.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6581.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6581.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6585.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6585.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6589.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6589.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6593.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6593.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6597.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6597.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6601.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6601.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6605.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/0-query2/git-6605.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6632.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6632.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6636.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6636.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6640.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6640.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6644.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6644.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6648.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6648.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6652.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6652.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6657.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6657.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6661.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6661.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6665.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6665.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6669.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6669.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6673.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-manual/git-6673.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6697.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6697.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6701.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6701.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6705.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6705.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6709.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6709.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6713.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6713.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6717.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6717.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6721.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6721.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6725.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6725.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6729.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6729.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6733.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/1-query2/git-6733.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6760.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6760.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6764.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6764.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6768.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6768.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6772.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6772.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6776.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6776.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6780.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6780.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6785.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6785.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6789.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6789.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6793.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6793.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6797.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6797.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6801.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-manual/git-6801.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6825.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6825.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6829.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6829.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6833.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6833.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6837.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6837.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6841.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6841.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6845.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6845.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6849.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6849.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6853.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6853.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6857.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6857.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6861.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/2-query2/git-6861.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6866.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6866.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6870.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6870.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6874.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6874.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6878.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6878.rss"
+  },
+  {
+    "args": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6882.args",
+    "returncode": 0,
+    "rss_record": "/tmp/trellis-issue47-ci-exports/before/metrics-128-repeated/component/git-6882.rss"
+  }
+]

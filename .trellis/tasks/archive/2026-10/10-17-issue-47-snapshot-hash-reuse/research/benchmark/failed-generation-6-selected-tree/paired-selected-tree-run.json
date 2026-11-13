@@ -1,0 +1,2416 @@
+{
+  "protocol_sha256": "d234eb052821b17053eaa7e544ca0fa983f022e1c4d74de1d150c87b8361ce8b",
+  "source_checksums": {
+    "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+    "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+    "cli_adapter.py": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+    "config.py": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+    "continuation_contract.py": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+    "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+    "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+    "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+    "delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171",
+    "git.py": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+    "git_context.py": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+    "git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+    "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+    "log.py": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+    "maintenance.py": "07345928fd631825ac79a5fb949b4cad2b22ea0d198a5b674a02dd1f643d62e2",
+    "packages_context.py": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+    "path_boundary.py": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+    "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+    "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+    "safe_commit.py": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+    "session_context.py": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+    "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+    "task_artifacts.py": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+    "task_context.py": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+    "task_queue.py": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+    "task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+    "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+    "tasks.py": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+    "trellis_config.py": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+    "types.py": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+    "workflow_phase.py": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d"
+  },
+  "started_utc": "2026-10-17T05:44:58.672419+00:00",
+  "phases": [
+    {
+      "case": "3-repeated",
+      "phase": "control-before",
+      "host_before": {
+        "utc": "2026-10-17T05:44:58.706402+00:00",
+        "load_average_1_5_15": [
+          4.91064453125,
+          4.28466796875,
+          4.72412109375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 799,
+        "top_cpu_processes": [
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 26.5,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 24.5,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 11.5,
+            "memory_percent": 6.2,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 36471,
+            "ppid": 36241,
+            "cpu_percent": 4.0,
+            "memory_percent": 1.5,
+            "executable": "codex"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 3.9,
+            "memory_percent": 1.5,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 3.7,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.6,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 2.3,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.2,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.8,
+            "memory_percent": 1.2,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          },
+          {
+            "pid": 16566,
+            "ppid": 69907,
+            "cpu_percent": 1.5,
+            "memory_percent": 0.2,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:45:07.617804+00:00",
+        "load_average_1_5_15": [
+          4.67724609375,
+          4.24658203125,
+          4.7080078125
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 799,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 32.4,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 11.3,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 4.9,
+            "memory_percent": 6.2,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.3,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 0.9,
+            "memory_percent": 1.2,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          },
+          {
+            "pid": 1,
+            "ppid": 0,
+            "cpu_percent": 0.8,
+            "memory_percent": 0.1,
+            "executable": "launchd"
+          }
+        ]
+      }
+    },
+    {
+      "case": "3-repeated",
+      "phase": "after",
+      "host_before": {
+        "utc": "2026-10-17T05:45:07.649387+00:00",
+        "load_average_1_5_15": [
+          4.67724609375,
+          4.24658203125,
+          4.7080078125
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 800,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 32.9,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.6,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 5.4,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 4.9,
+            "memory_percent": 6.2,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.7,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 1.5,
+            "memory_percent": 0.7,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.2,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:45:16.205437+00:00",
+        "load_average_1_5_15": [
+          4.3515625,
+          4.18896484375,
+          4.681640625
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 800,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 31.5,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.2,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 7.0,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 11094,
+            "ppid": 11093,
+            "cpu_percent": 3.6,
+            "memory_percent": 0.1,
+            "executable": "Notion Helper"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 2.3,
+            "memory_percent": 1.5,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.7,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.3,
+            "memory_percent": 1.1,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          },
+          {
+            "pid": 295,
+            "ppid": 1,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.0,
+            "executable": "coreaudiod"
+          },
+          {
+            "pid": 16566,
+            "ppid": 69907,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.1,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      }
+    },
+    {
+      "case": "30-repeated",
+      "phase": "control-before",
+      "host_before": {
+        "utc": "2026-10-17T05:45:16.237642+00:00",
+        "load_average_1_5_15": [
+          4.3515625,
+          4.18896484375,
+          4.681640625
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 800,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 31.5,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.2,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 7.0,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 11094,
+            "ppid": 11093,
+            "cpu_percent": 3.6,
+            "memory_percent": 0.1,
+            "executable": "Notion Helper"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 2.3,
+            "memory_percent": 1.5,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.7,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.3,
+            "memory_percent": 1.1,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          },
+          {
+            "pid": 295,
+            "ppid": 1,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.0,
+            "executable": "coreaudiod"
+          },
+          {
+            "pid": 16566,
+            "ppid": 69907,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.1,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:45:25.165004+00:00",
+        "load_average_1_5_15": [
+          4.056640625,
+          4.13232421875,
+          4.6552734375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 800,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 29.4,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 2.4,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 9.8,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 7.3,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 5.5,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 88384,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.0,
+            "executable": "IsExtensionEnabled"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.7,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.3,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          }
+        ]
+      }
+    },
+    {
+      "case": "30-repeated",
+      "phase": "after",
+      "host_before": {
+        "utc": "2026-10-17T05:45:25.198440+00:00",
+        "load_average_1_5_15": [
+          4.056640625,
+          4.13232421875,
+          4.6552734375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 801,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 29.4,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 2.4,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 9.8,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 7.3,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 5.5,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 88384,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.0,
+            "executable": "IsExtensionEnabled"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.7,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.7,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.3,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:45:34.061634+00:00",
+        "load_average_1_5_15": [
+          4.1884765625,
+          4.15966796875,
+          4.65869140625
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 801,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 41.6,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 721,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 0.3,
+            "executable": "NotificationCenter"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 11.6,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 6.3,
+            "memory_percent": 6.0,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 1.2,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 31384,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 0.5,
+            "executable": "mongod"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 4.1,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 2.3,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 27574,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.0,
+            "executable": "SetStoreUpdateService"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 546,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.2,
+            "executable": "usernoted"
+          }
+        ]
+      }
+    },
+    {
+      "case": "128-repeated",
+      "phase": "control-before",
+      "host_before": {
+        "utc": "2026-10-17T05:45:34.093297+00:00",
+        "load_average_1_5_15": [
+          4.1884765625,
+          4.15966796875,
+          4.65869140625
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 802,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 41.6,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 721,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 0.3,
+            "executable": "NotificationCenter"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 11.6,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 6.3,
+            "memory_percent": 6.0,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 1.2,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 31384,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 0.5,
+            "executable": "mongod"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 4.1,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 2.3,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 27574,
+            "ppid": 1,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.0,
+            "executable": "SetStoreUpdateService"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 546,
+            "ppid": 1,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.2,
+            "executable": "usernoted"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:45:43.626084+00:00",
+        "load_average_1_5_15": [
+          4.39306640625,
+          4.20361328125,
+          4.66845703125
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 803,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 37.1,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.7,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 28355,
+            "ppid": 1,
+            "cpu_percent": 8.9,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 28354,
+            "ppid": 1,
+            "cpu_percent": 8.8,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 8.6,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 5.3,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 5.0,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 11094,
+            "ppid": 11093,
+            "cpu_percent": 4.1,
+            "memory_percent": 0.1,
+            "executable": "Notion Helper"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 3.5,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 88402,
+            "ppid": 88400,
+            "cpu_percent": 2.5,
+            "memory_percent": 0.3,
+            "executable": "sing-box"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 2.2,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          }
+        ]
+      }
+    },
+    {
+      "case": "128-repeated",
+      "phase": "after",
+      "host_before": {
+        "utc": "2026-10-17T05:45:43.663617+00:00",
+        "load_average_1_5_15": [
+          4.39306640625,
+          4.20361328125,
+          4.66845703125
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 803,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 31.7,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.7,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 28355,
+            "ppid": 1,
+            "cpu_percent": 8.9,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 28354,
+            "ppid": 1,
+            "cpu_percent": 8.8,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 5.3,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 5.0,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 11094,
+            "ppid": 11093,
+            "cpu_percent": 4.1,
+            "memory_percent": 0.1,
+            "executable": "Notion Helper"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 3.1,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 2.8,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 88402,
+            "ppid": 88400,
+            "cpu_percent": 2.5,
+            "memory_percent": 0.3,
+            "executable": "sing-box"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:45:52.719510+00:00",
+        "load_average_1_5_15": [
+          4.12109375,
+          4.150390625,
+          4.646484375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 805,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 29.7,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.5,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 11959,
+            "ppid": 1,
+            "cpu_percent": 5.8,
+            "memory_percent": 0.0,
+            "executable": "PowerUIAgent"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 4.3,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 36471,
+            "ppid": 36241,
+            "cpu_percent": 2.6,
+            "memory_percent": 1.5,
+            "executable": "codex"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 1.4,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 1.5,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.1,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.0,
+            "memory_percent": 0.8,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      }
+    },
+    {
+      "case": "128-mixed",
+      "phase": "control-before",
+      "host_before": {
+        "utc": "2026-10-17T05:45:52.751489+00:00",
+        "load_average_1_5_15": [
+          4.12109375,
+          4.150390625,
+          4.646484375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 806,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 29.7,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.5,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 11959,
+            "ppid": 1,
+            "cpu_percent": 5.8,
+            "memory_percent": 0.0,
+            "executable": "PowerUIAgent"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 4.3,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 36471,
+            "ppid": 36241,
+            "cpu_percent": 2.6,
+            "memory_percent": 1.5,
+            "executable": "codex"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 1.4,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 1.5,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.1,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.0,
+            "memory_percent": 0.8,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:46:02.274430+00:00",
+        "load_average_1_5_15": [
+          3.9482421875,
+          4.11181640625,
+          4.626953125
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 805,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 27.5,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 9.8,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 8.3,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 6.2,
+            "memory_percent": 5.7,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 2.2,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 1.8,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.7,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      }
+    },
+    {
+      "case": "128-mixed",
+      "phase": "after",
+      "host_before": {
+        "utc": "2026-10-17T05:46:02.308532+00:00",
+        "load_average_1_5_15": [
+          3.9482421875,
+          4.11181640625,
+          4.626953125
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 805,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 25.8,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 14.3,
+            "memory_percent": 0.0,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 9.8,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 6.2,
+            "memory_percent": 5.7,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 4.4,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 4.3,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 2.8,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 0.7,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 2.0,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 1.4,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 80833,
+            "ppid": 69907,
+            "cpu_percent": 1.2,
+            "memory_percent": 0.7,
+            "executable": "Microsoft Edge Helper (Renderer)"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:46:11.507942+00:00",
+        "load_average_1_5_15": [
+          3.79541015625,
+          4.07470703125,
+          4.607421875
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 805,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 29.9,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.3,
+            "memory_percent": 0.4,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 7.4,
+            "memory_percent": 5.8,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 3.5,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 2.2,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 2.1,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 88402,
+            "ppid": 88400,
+            "cpu_percent": 2.1,
+            "memory_percent": 0.3,
+            "executable": "sing-box"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 36471,
+            "ppid": 36241,
+            "cpu_percent": 1.7,
+            "memory_percent": 1.5,
+            "executable": "codex"
+          },
+          {
+            "pid": 360,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.2,
+            "executable": "com.apple.DriverKit-AppleBCMWLAN"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.5,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          }
+        ]
+      }
+    },
+    {
+      "case": "10001-repeated",
+      "phase": "control-before",
+      "host_before": {
+        "utc": "2026-10-17T05:46:11.544070+00:00",
+        "load_average_1_5_15": [
+          3.79541015625,
+          4.07470703125,
+          4.607421875
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 805,
+        "top_cpu_processes": [
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 29.9,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 10.3,
+            "memory_percent": 0.4,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 7.4,
+            "memory_percent": 5.8,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 3.5,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 2.2,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 2.1,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 88402,
+            "ppid": 88400,
+            "cpu_percent": 2.1,
+            "memory_percent": 0.3,
+            "executable": "sing-box"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.9,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 36471,
+            "ppid": 36241,
+            "cpu_percent": 1.7,
+            "memory_percent": 1.5,
+            "executable": "codex"
+          },
+          {
+            "pid": 360,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.2,
+            "executable": "com.apple.DriverKit-AppleBCMWLAN"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 1.5,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:46:48.809123+00:00",
+        "load_average_1_5_15": [
+          4.78564453125,
+          4.27294921875,
+          4.65234375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 801,
+        "top_cpu_processes": [
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 173.5,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 36.8,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 18.8,
+            "memory_percent": 2.5,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 12.6,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 11.0,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 1605,
+            "ppid": 1,
+            "cpu_percent": 10.1,
+            "memory_percent": 0.1,
+            "executable": "UURemote"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 9.8,
+            "memory_percent": 5.8,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 721,
+            "ppid": 1,
+            "cpu_percent": 9.1,
+            "memory_percent": 0.3,
+            "executable": "NotificationCenter"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 8.1,
+            "memory_percent": 1.4,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 7.0,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 184,
+            "ppid": 1,
+            "cpu_percent": 6.2,
+            "memory_percent": 0.1,
+            "executable": "loginwindow"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 5.0,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          }
+        ]
+      }
+    },
+    {
+      "case": "10001-repeated",
+      "phase": "after",
+      "host_before": {
+        "utc": "2026-10-17T05:46:48.844288+00:00",
+        "load_average_1_5_15": [
+          4.78564453125,
+          4.27294921875,
+          4.65234375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 802,
+        "top_cpu_processes": [
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 153.5,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 30.2,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 14.3,
+            "memory_percent": 2.5,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 13.7,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 12.8,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 9.8,
+            "memory_percent": 5.8,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 1605,
+            "ppid": 1,
+            "cpu_percent": 8.2,
+            "memory_percent": 0.1,
+            "executable": "UURemote"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 8.1,
+            "memory_percent": 1.4,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 721,
+            "ppid": 1,
+            "cpu_percent": 7.2,
+            "memory_percent": 0.3,
+            "executable": "NotificationCenter"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 7.0,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 184,
+            "ppid": 1,
+            "cpu_percent": 4.7,
+            "memory_percent": 0.1,
+            "executable": "loginwindow"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:47:12.221893+00:00",
+        "load_average_1_5_15": [
+          4.19287109375,
+          4.17236328125,
+          4.607421875
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 802,
+        "top_cpu_processes": [
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 128.1,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 28.0,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 26.9,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 14.7,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 9.0,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 4.6,
+            "memory_percent": 5.8,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 3.8,
+            "memory_percent": 2.7,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 2.6,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          },
+          {
+            "pid": 19014,
+            "ppid": 18999,
+            "cpu_percent": 2.2,
+            "memory_percent": 0.1,
+            "executable": "node"
+          },
+          {
+            "pid": 360,
+            "ppid": 1,
+            "cpu_percent": 1.7,
+            "memory_percent": 0.2,
+            "executable": "com.apple.DriverKit-AppleBCMWLAN"
+          },
+          {
+            "pid": 19017,
+            "ppid": 19014,
+            "cpu_percent": 1.7,
+            "memory_percent": 0.2,
+            "executable": "esbuild"
+          },
+          {
+            "pid": 8828,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 1.0,
+            "executable": "\u4f01\u4e1a\u5fae\u4fe1"
+          }
+        ]
+      }
+    },
+    {
+      "case": "10001-mixed",
+      "phase": "control-before",
+      "host_before": {
+        "utc": "2026-10-17T05:47:12.255507+00:00",
+        "load_average_1_5_15": [
+          4.19287109375,
+          4.17236328125,
+          4.607421875
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 802,
+        "top_cpu_processes": [
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 126.9,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 24.4,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 20.8,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 15.8,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 6.4,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 3219,
+            "ppid": 3207,
+            "cpu_percent": 5.6,
+            "memory_percent": 0.2,
+            "executable": "Stats"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 5.4,
+            "memory_percent": 2.7,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 3.7,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 3.5,
+            "memory_percent": 5.8,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 854,
+            "ppid": 1,
+            "cpu_percent": 2.5,
+            "memory_percent": 0.4,
+            "executable": "Finder"
+          },
+          {
+            "pid": 36241,
+            "ppid": 1,
+            "cpu_percent": 1.8,
+            "memory_percent": 1.3,
+            "executable": "ChatGPT"
+          },
+          {
+            "pid": 661,
+            "ppid": 1,
+            "cpu_percent": 1.6,
+            "memory_percent": 0.1,
+            "executable": "ControlCenter"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:47:52.800092+00:00",
+        "load_average_1_5_15": [
+          5.28076171875,
+          4.423828125,
+          4.67529296875
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 807,
+        "top_cpu_processes": [
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 347.3,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 157.9,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 33.3,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 16.6,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 15.5,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 33870,
+            "ppid": 36471,
+            "cpu_percent": 14.0,
+            "memory_percent": 0.1,
+            "executable": "Python"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 13.1,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 2.2,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 4.3,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 1605,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 0.1,
+            "executable": "UURemote"
+          },
+          {
+            "pid": 69907,
+            "ppid": 1,
+            "cpu_percent": 4.0,
+            "memory_percent": 1.9,
+            "executable": "Microsoft Edge"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 3.6,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          }
+        ]
+      }
+    },
+    {
+      "case": "10001-mixed",
+      "phase": "after",
+      "host_before": {
+        "utc": "2026-10-17T05:47:52.839489+00:00",
+        "load_average_1_5_15": [
+          5.28076171875,
+          4.423828125,
+          4.67529296875
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 808,
+        "top_cpu_processes": [
+          {
+            "pid": 36470,
+            "ppid": 36241,
+            "cpu_percent": 347.3,
+            "memory_percent": 6.1,
+            "executable": "Codex (Renderer)"
+          },
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 157.9,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 33.3,
+            "memory_percent": 0.4,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 16.6,
+            "memory_percent": 0.6,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 15.5,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 33870,
+            "ppid": 36471,
+            "cpu_percent": 14.0,
+            "memory_percent": 0.1,
+            "executable": "Python"
+          },
+          {
+            "pid": 36322,
+            "ppid": 36241,
+            "cpu_percent": 13.1,
+            "memory_percent": 0.3,
+            "executable": "Codex (Service)"
+          },
+          {
+            "pid": 35676,
+            "ppid": 1,
+            "cpu_percent": 11.6,
+            "memory_percent": 2.2,
+            "executable": "OrbStack Helper"
+          },
+          {
+            "pid": 149,
+            "ppid": 1,
+            "cpu_percent": 4.3,
+            "memory_percent": 0.0,
+            "executable": "opendirectoryd"
+          },
+          {
+            "pid": 1605,
+            "ppid": 1,
+            "cpu_percent": 4.2,
+            "memory_percent": 0.1,
+            "executable": "UURemote"
+          },
+          {
+            "pid": 69907,
+            "ppid": 1,
+            "cpu_percent": 4.0,
+            "memory_percent": 1.9,
+            "executable": "Microsoft Edge"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 3.6,
+            "memory_percent": 0.2,
+            "executable": "iTerm2"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "host_after": {
+        "utc": "2026-10-17T05:48:19.706019+00:00",
+        "load_average_1_5_15": [
+          6.8759765625,
+          4.8779296875,
+          4.82958984375
+        ],
+        "logical_cpu_count": 14,
+        "process_count": 821,
+        "top_cpu_processes": [
+          {
+            "pid": 112,
+            "ppid": 1,
+            "cpu_percent": 124.4,
+            "memory_percent": 0.1,
+            "executable": "fseventsd"
+          },
+          {
+            "pid": 416,
+            "ppid": 1,
+            "cpu_percent": 31.6,
+            "memory_percent": 1.1,
+            "executable": "mds_stores"
+          },
+          {
+            "pid": 180,
+            "ppid": 1,
+            "cpu_percent": 23.2,
+            "memory_percent": 0.5,
+            "executable": "WindowServer"
+          },
+          {
+            "pid": 137,
+            "ppid": 1,
+            "cpu_percent": 18.9,
+            "memory_percent": 0.1,
+            "executable": "mds"
+          },
+          {
+            "pid": 34738,
+            "ppid": 36471,
+            "cpu_percent": 17.0,
+            "memory_percent": 0.2,
+            "executable": "Python"
+          },
+          {
+            "pid": 35813,
+            "ppid": 1,
+            "cpu_percent": 14.2,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 35805,
+            "ppid": 1,
+            "cpu_percent": 13.8,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 35803,
+            "ppid": 1,
+            "cpu_percent": 13.6,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 849,
+            "ppid": 1,
+            "cpu_percent": 12.7,
+            "memory_percent": 0.6,
+            "executable": "iTerm2"
+          },
+          {
+            "pid": 35806,
+            "ppid": 1,
+            "cpu_percent": 12.0,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 35804,
+            "ppid": 1,
+            "cpu_percent": 10.4,
+            "memory_percent": 0.1,
+            "executable": "mdworker_shared"
+          },
+          {
+            "pid": 854,
+            "ppid": 1,
+            "cpu_percent": 6.9,
+            "memory_percent": 0.4,
+            "executable": "Finder"
+          }
+        ]
+      }
+    }
+  ],
+  "completed_utc": "2026-10-17T05:48:19.707668+00:00"
+}

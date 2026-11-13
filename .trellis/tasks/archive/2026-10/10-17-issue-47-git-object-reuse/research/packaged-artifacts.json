@@ -1,0 +1,23 @@
+{
+  "version": "0.7.0-castbox.3",
+  "route": "pnpm pack -> paired local-tarball npm install, isolated prefix; no npm publish",
+  "checks": [
+    {
+      "package": "@mindfoldhq/trellis-core",
+      "filename": "mindfoldhq-trellis-core-0.7.0-castbox.3.tgz",
+      "sha256": "901dbefc318766a78bab6224832a9abaef85e5b3f239edf54d168776c7b03933",
+      "bytes": 228603,
+      "installed_file_count": 274,
+      "byte_and_mode_mismatches": []
+    },
+    {
+      "package": "@mindfoldhq/trellis",
+      "filename": "mindfoldhq-trellis-0.7.0-castbox.3.tgz",
+      "sha256": "5e3a89f9a951ebf2a1d5a1700bae686286a66ff0954f23e004ea21f1cc494cce",
+      "bytes": 853099,
+      "installed_file_count": 739,
+      "byte_and_mode_mismatches": []
+    }
+  ],
+  "passed": true
+}

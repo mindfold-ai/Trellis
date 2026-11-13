@@ -1,0 +1,31 @@
+{
+  "head": "501e268cf9f2e3289f2e91c18f9532ff6fd96af0",
+  "candidate": {
+    "kind": "git",
+    "content_ref": "sha256:a633bc4f4fc7550e6a4c2a2ef6b780b765affa31c32e63e2d5682dc8d858c259",
+    "paths": [
+      ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/io.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc",
+      ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc",
+      "app.txt",
+      "payload/deleted.bin",
+      "payload/f00000.bin",
+      "payload/f00001.bin",
+      "payload/f00002.bin"
+    ],
+    "head_ref": "501e268cf9f2e3289f2e91c18f9532ff6fd96af0",
+    "base_ref": "dacc3ddeeed8a46254e521e7fcf2809614d0a944"
+  },
+  "git_tree": "100644 blob 7e46d6de8677a8c7d61b40041a96a479d608eca2\t.trellis/scripts/common/__pycache__/__init__.cpython-314.pyc\n100644 blob 6e07687ec237f0aa3b1fa9875a9e1d6b1641d0d5\t.trellis/scripts/common/__pycache__/active_task.cpython-314.pyc\n100644 blob 6cf5a461866eb733270ba0b57d310fecca2086ae\t.trellis/scripts/common/__pycache__/delivery_operations.cpython-314.pyc\n100644 blob abfccf673cee7e73433828c706b45fcd2a0fa1c4\t.trellis/scripts/common/__pycache__/delivery_schema.cpython-314.pyc\n100644 blob e00e15e3f8d073c469821deb95c2d53ab2aaf272\t.trellis/scripts/common/__pycache__/delivery_session.cpython-314.pyc\n100644 blob bc5f144f479f39f09445e5bb9bcd9bcc2131b475\t.trellis/scripts/common/__pycache__/delivery_store.cpython-314.pyc\n100644 blob 7a8736d07340c26a51cf87f6778ebcbc9476014f\t.trellis/scripts/common/__pycache__/git_objects.cpython-314.pyc\n100644 blob 93adea661d5dc308e499ed57ad900476f2e7e0e4\t.trellis/scripts/common/__pycache__/io.cpython-314.pyc\n100644 blob c9f00e606fb13fd590e4c3641142d840166c7029\t.trellis/scripts/common/__pycache__/path_boundary.cpython-314.pyc\n100644 blob f685c59bf0145861852d843558aaa1e0bba46140\t.trellis/scripts/common/__pycache__/paths.cpython-314.pyc\n100644 blob bfa6b4c78ccd6fbf5e31a12256ab38697b62a764\t.trellis/scripts/common/__pycache__/runtime_contract.cpython-314.pyc\n100644 blob 690d7cdb0502533f5265bb1da267d62138546b59\t.trellis/scripts/common/__pycache__/session_storage.cpython-314.pyc\n100644 blob 92e6e4f36b9f40273122e314b7a3da031a75d255\t.trellis/scripts/common/__pycache__/task_artifacts.cpython-314.pyc\n100644 blob 475d8d6ced8ef371904c49d2687fc98e0882dd65\t.trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc\n100644 blob a7453f07505c42ea8d6fdda75fa91710c81c53d6\tapp.txt\n100755 blob 447ccbf3f6d58020bbc6172c6033071c221bfb64\tpayload/f00000.bin\n100644 blob 447ccbf3f6d58020bbc6172c6033071c221bfb64\tpayload/f00001.bin\n100644 blob 447ccbf3f6d58020bbc6172c6033071c221bfb64\tpayload/f00002.bin\n"
+}

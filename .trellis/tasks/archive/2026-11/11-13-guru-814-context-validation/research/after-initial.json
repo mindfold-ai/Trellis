@@ -1,0 +1,120 @@
+{
+  "label": "after",
+  "python": "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+  "python_version": "3.9.6 (default, Oct 19 2026, 19:18:13) \n[Clang 21.0.0 (clang-2100.4.1.1)]",
+  "git": "git version 2.54.0 (Apple Git-157)",
+  "source_head": "aa898d090fc27c9ce6145cfa3c787a6f400da4e2",
+  "session_storage_sha256": "d8102a7624ab990930830021fae2343b72103577178f2d83d4b307a8d99ae741",
+  "samples": [
+    {
+      "count": 2,
+      "shape": "known-key-miss",
+      "elapsed_seconds": 0.2323,
+      "returncode": 0,
+      "stdout": "{\n  \"delivery_api\": \"1.0\",\n  \"task_schema\": \"2.0\",\n  \"profiles\": [\n    \"local_commit\",\n    \"manual\",\n    \"pull_request\"\n  ],\n  \"owners\": {\n    \"task_scope\": \"fixture-owner-0\",\n    \"creation\": \"trellis-start\",\n    \"planning\": \"trellis-brainstorm\",\n    \"implementation\": \"trellis-start\",\n    \"check\": \"trellis-check\",\n    \"full_review\": \"trellis-review-delivery\",\n    \"readiness\": \"trellis-review-delivery\",\n    \"publication\": \"trellis-deliver\",\n    \"delivery\": \"trellis-deliver\",\n    \"completion\": \"trellis-complete-task\",\n    \"closure\": \"trellis-finish-work\"\n  }\n}\n",
+      "stderr": "",
+      "git_calls": 3,
+      "families": {
+        "rev-parse --show-toplevel --git-common-dir": 2,
+        "worktree list --porcelain -z": 1
+      },
+      "sources": {
+        "_workspace_identity": 2,
+        "repository_facts": 1
+      }
+    },
+    {
+      "count": 2,
+      "shape": "bound-remote",
+      "elapsed_seconds": 0.253,
+      "returncode": 0,
+      "stdout": "{\n  \"delivery_api\": \"1.0\",\n  \"task_schema\": \"2.0\",\n  \"profiles\": [\n    \"local_commit\",\n    \"manual\",\n    \"pull_request\"\n  ],\n  \"owners\": {\n    \"task_scope\": \"fixture-owner-1\",\n    \"creation\": \"trellis-start\",\n    \"planning\": \"trellis-brainstorm\",\n    \"implementation\": \"trellis-start\",\n    \"check\": \"trellis-check\",\n    \"full_review\": \"trellis-review-delivery\",\n    \"readiness\": \"trellis-review-delivery\",\n    \"publication\": \"trellis-deliver\",\n    \"delivery\": \"trellis-deliver\",\n    \"completion\": \"trellis-complete-task\",\n    \"closure\": \"trellis-finish-work\"\n  }\n}\n",
+      "stderr": "",
+      "git_calls": 4,
+      "families": {
+        "rev-parse --show-toplevel --git-common-dir": 2,
+        "worktree list --porcelain -z": 1,
+        "branch --show-current": 1
+      },
+      "sources": {
+        "_workspace_identity": 2,
+        "repository_facts": 1,
+        "_bound_task_workspace": 1
+      }
+    },
+    {
+      "count": 2,
+      "shape": "explicit-task",
+      "elapsed_seconds": 0.2896,
+      "returncode": 0,
+      "stdout": "\u001b[0;32m\u2713 Current task set to: .trellis/tasks/11-13-measured-task\u001b[0m\nSource: session:measure-bound\n\n\u001b[0;34mTask selection is bound; Delivery context requires a separate exact Delivery selection.\u001b[0m\n",
+      "stderr": "",
+      "git_calls": 10,
+      "families": {
+        "rev-parse --show-toplevel --git-common-dir": 6,
+        "worktree list --porcelain -z": 3,
+        "branch --show-current": 1
+      },
+      "sources": {
+        "_workspace_identity": 6,
+        "repository_facts": 3,
+        "_bound_task_workspace": 1
+      }
+    },
+    {
+      "count": 169,
+      "shape": "known-key-miss",
+      "elapsed_seconds": 2.1229,
+      "returncode": 0,
+      "stdout": "{\n  \"delivery_api\": \"1.0\",\n  \"task_schema\": \"2.0\",\n  \"profiles\": [\n    \"local_commit\",\n    \"manual\",\n    \"pull_request\"\n  ],\n  \"owners\": {\n    \"task_scope\": \"fixture-owner-0\",\n    \"creation\": \"trellis-start\",\n    \"planning\": \"trellis-brainstorm\",\n    \"implementation\": \"trellis-start\",\n    \"check\": \"trellis-check\",\n    \"full_review\": \"trellis-review-delivery\",\n    \"readiness\": \"trellis-review-delivery\",\n    \"publication\": \"trellis-deliver\",\n    \"delivery\": \"trellis-deliver\",\n    \"completion\": \"trellis-complete-task\",\n    \"closure\": \"trellis-finish-work\"\n  }\n}\n",
+      "stderr": "",
+      "git_calls": 170,
+      "families": {
+        "rev-parse --show-toplevel --git-common-dir": 169,
+        "worktree list --porcelain -z": 1
+      },
+      "sources": {
+        "_workspace_identity": 169,
+        "repository_facts": 1
+      }
+    },
+    {
+      "count": 169,
+      "shape": "bound-remote",
+      "elapsed_seconds": 2.0189,
+      "returncode": 0,
+      "stdout": "{\n  \"delivery_api\": \"1.0\",\n  \"task_schema\": \"2.0\",\n  \"profiles\": [\n    \"local_commit\",\n    \"manual\",\n    \"pull_request\"\n  ],\n  \"owners\": {\n    \"task_scope\": \"fixture-owner-1\",\n    \"creation\": \"trellis-start\",\n    \"planning\": \"trellis-brainstorm\",\n    \"implementation\": \"trellis-start\",\n    \"check\": \"trellis-check\",\n    \"full_review\": \"trellis-review-delivery\",\n    \"readiness\": \"trellis-review-delivery\",\n    \"publication\": \"trellis-deliver\",\n    \"delivery\": \"trellis-deliver\",\n    \"completion\": \"trellis-complete-task\",\n    \"closure\": \"trellis-finish-work\"\n  }\n}\n",
+      "stderr": "",
+      "git_calls": 171,
+      "families": {
+        "rev-parse --show-toplevel --git-common-dir": 169,
+        "worktree list --porcelain -z": 1,
+        "branch --show-current": 1
+      },
+      "sources": {
+        "_workspace_identity": 169,
+        "repository_facts": 1,
+        "_bound_task_workspace": 1
+      }
+    },
+    {
+      "count": 169,
+      "shape": "explicit-task",
+      "elapsed_seconds": 2.1141,
+      "returncode": 0,
+      "stdout": "\u001b[0;32m\u2713 Current task set to: .trellis/tasks/11-13-measured-task\u001b[0m\nSource: session:measure-bound\n\n\u001b[0;34mTask selection is bound; Delivery context requires a separate exact Delivery selection.\u001b[0m\n",
+      "stderr": "",
+      "git_calls": 177,
+      "families": {
+        "rev-parse --show-toplevel --git-common-dir": 173,
+        "worktree list --porcelain -z": 3,
+        "branch --show-current": 1
+      },
+      "sources": {
+        "_workspace_identity": 173,
+        "repository_facts": 3,
+        "_bound_task_workspace": 1
+      }
+    }
+  ]
+}

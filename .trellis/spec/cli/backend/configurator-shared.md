@@ -24,11 +24,11 @@ A helper does **not** belong in `shared.ts` when it encodes platform-specific fo
 
 ### Python command resolution
 
-`configurators/shared.ts:setResolvedPythonCommand` — called once by `commands/init.ts` after probing the host (`python` / `python3` / `py -3`). All subsequent renders pick up the resolved value.
+`configurators/shared.ts:setResolvedPythonCommand` — populated by the shared Python selector at operation boundaries after probing the host (`python` / `python3` / `py -3`). Rendering within that operation uses the selected value. Selection is process-local, never durable machine state.
 
 `configurators/shared.ts:resetResolvedPythonCommand` — test helper. Unit tests that exercise rendering without going through init must call this in `beforeEach`/`afterEach` to avoid leaking module state between cases.
 
-`configurators/shared.ts:getPythonCommandForPlatform` — returns the resolved command if init has run; otherwise the static default (`python` on Windows, `python3` elsewhere). The optional `platform` arg exists solely for unit tests; production callers must not pass it (passing it bypasses the resolved cache).
+`configurators/shared.ts:getPythonCommandForPlatform` — returns the resolved command if the current operation has selected it; otherwise the static default (`python` on Windows, `python3` elsewhere). The optional `platform` arg exists solely for unit tests; production callers must not pass it (passing it bypasses the resolved cache).
 
 `configurators/shared.ts:replacePythonCommandLiterals` — line-wise replace of literal `python3` with the resolved command, **excluding shebang lines** (`#!`). Idempotent; no-op when the resolved command is `python3`. Applied to whole template maps so even raw `.py`, `.toml`, `.md` content (templates that don't go through `resolvePlaceholders`) gets the right command on Windows. Configurators do not call it per file: `renderTemplateMap` applies it to every entry of a map, and both paths funnel through that one call — `writeTemplateMap` on init, `collectPlatformTemplates` on update. A configurator only calls it directly when it has to rewrite *before* another encoding step, e.g. `snow.ts:85` rewrites a command body before wrapping it in JSON (rewriting the JSON afterwards would still work, but the escaped body is harder to reason about).
 
@@ -291,12 +291,12 @@ Configurators must respect these. They are not enforced by types; tests in `test
 `configurators/shared.ts` does not:
 
 - **Encode platform-specific layout.** Where each platform writes (`.claude/`, `.codex/`, `.gemini/`, etc.) is decided by the per-platform configurator. Shared helpers take a `dir` argument and don't compute it.
-- **Read user input.** Init prompts, `--user`, `--force` flags, project-type detection — all in `commands/init.ts` and the platform configurator's body.
+- **Read interactive input.** Init prompts, `--force` flags, project-type detection — all in `commands/init.ts` and the platform configurator's body.
 - **Touch the network.** No template fetching; no version probing. Everything operates on bundled templates loaded from `templates/common/index.ts` and `templates/shared-hooks/index.ts`.
 - **Mutate the registry.** `types/ai-tools.ts:AI_TOOLS` is read-only from this file. Adding a platform updates the registry first, then the configurator file consumes it.
 - **Decide capability flags.** `agentCapable` / `hasHooks` come from the `TemplateContext` constructed in `configurators/index.ts`; shared helpers only read them.
-- **Touch user-owned spec content.** `.trellis/spec/`, `.trellis/.developer`, `.trellis/tasks/`, `.trellis/workspace/`, `.trellis/.current-task` are protected paths owned by `commands/update.ts` migration logic, not by configurators.
-- **Cache anything other than the resolved Python command.** The single piece of module state (`resolvedPythonCommand`) exists because init runs once and configurators are called repeatedly afterward. Anything else with cross-call lifetime belongs at the `commands/init.ts` call site, not here.
+- **Touch project spec/task content outside the operation contract.** See [Task Lifecycle](./task-lifecycle.md).
+- **Cache anything other than the resolved Python command.** The single piece of module state (`resolvedPythonCommand`) coordinates repeated configurator rendering within one selected CLI operation. Public operation boundaries resolve the current environment again. Anything else with cross-call lifetime belongs at the `commands/init.ts` call site, not here.
 
 ---
 
@@ -444,7 +444,7 @@ const pythonCmd = getPythonCommandForPlatform();
 
 Wrong: adding a second module-level `let` in `shared.ts` to memoize anything other than the resolved Python command.
 
-Correct: configurators are called from `configurators/index.ts:configurePlatform` and `configurators/index.ts:collectPlatformTemplates`. Pass derived values through arguments. The only module state in this file is `resolvedPythonCommand`, and that exists because init runs in a separate process boundary from the configurator-driven test runs that exercise rendering without init.
+Correct: configurators are called from `configurators/index.ts:configurePlatform` and `configurators/index.ts:collectPlatformTemplates`. Pass derived values through arguments. The only module state in this file is `resolvedPythonCommand`, and that coordinates rendering within one operation; a new process or SDK operation must resolve the current environment before its consumers run.
 
 ---
 
@@ -468,3 +468,70 @@ When removing a helper:
 
 - Delete uses in every configurator first (`grep -r "helperName" packages/cli/src/configurators/`), then remove from `shared.ts`. Removing from `shared.ts` first leaves stale call sites that compile if the import survives — TypeScript only catches the bare reference, not a removed export with the same name accidentally re-introduced later.
 - Run `pnpm typecheck` after removal, then `pnpm test` — type errors usually appear before test failures here because every configurator imports `shared.ts` directly.
+
+
+## Scenario: Python selection across process boundaries (Issue 53)
+
+### 1. Scope / Trigger
+
+Init, same-version update, tools installation and workflow switching can each run
+in a fresh process. Init module memory does not cross that boundary. Selection
+must precede native preflight, prospective rendering and managed mutation.
+Tools recover/resume also run native postvalidation, including an already-applied
+operation with no pending writes. Other maintenance kinds gain no Python prerequisite.
+
+### 2. Signatures
+
+Public CLI entry points remain unchanged: `init`, `update`, `maintain inspect-tools`,
+`maintain prepare|preview|apply`, `maintain recover|resume` and
+`workflow --marketplace <provider> --template <id> --create-new|--force`.
+Use shared selection and executable/argv helpers rather than importing init into
+update or reimplementing candidate lists. Keep existing init helper exports compatible.
+
+### 3. Contracts
+
+Windows candidates: `python`, `python3`, `py -3`; other hosts: `python3`, `python`.
+Version floor is Python 3.9. `TRELLIS_PYTHON_CMD` is an explicit unprobed choice;
+`TRELLIS_SKIP_PYTHON_CHECK=1` skips detection and trusts the platform default.
+Restricted probe EPERM/EACCES keeps the existing warning/fallback behavior.
+Shell-facing template text and shell-free native invocation represent the same
+selection differently: `py -3` must spawn executable `py` with prefix argv `-3`.
+No permanent init selection record, shell evaluation in native validation,
+new old-task parser prerequisite, lock or recovery protocol is introduced.
+
+### 4. Validation & Error Matrix
+
+| Condition | Outcome |
+| --- | --- |
+| No supported automatic candidate | Explicit selection error before managed writes |
+| Explicit choice or skip probe | Preserve existing no-probe semantics |
+| Actual native contract/context execution fails | Existing preflight/maintenance error; never pass |
+| Environment changes after tools prepare | Existing stale/candidate contract, prepare again as needed |
+| Workflow preview | Resolve/render choice; continue skipping installed native preflight |
+| Same environment across inspect/prepare/apply/recover/resume | Consistent bytes, hashes and successful native validation |
+
+### 5. Good/Base/Bad Cases
+
+Good: Windows only has real `py -3`, new CLI processes preserve its rendered hook
+and execute contract/context with the launcher. Base: Unix uses `python3` throughout.
+Bad: init chooses `py -3`, update silently renders `python`, or native spawn tries
+to execute a file literally named `py -3`.
+
+### 6. Tests Required
+
+Cover existing explicit/skip/restricted semantics and operation ordering in focused
+unit tests, plus full configured-platform rendering projections. Native CI must
+use the built public CLI in fresh processes and real Windows interpreter/launcher
+with audited PATH visibility, isolated same-version baseline/candidate projects,
+precise expected baseline defects and candidate success. Preserve raw exit codes,
+environment/build/driver identities, Windows and targeted Unix artifacts. Infrastructure
+failure is not reproduction. Executing a generated hook proves execution only;
+it does not prove actual Agent autoload.
+
+### 7. Wrong vs Correct
+
+Wrong: `spawnSync(getPythonCommandForPlatform(), [script, ...args])` when the
+selection is `py -3`, or relying on previous init's module state.
+Correct: select at this operation boundary, then pass the shared executable and
+prefix arguments to shell-free spawn and use the corresponding command text
+for every renderer/hash within the operation.

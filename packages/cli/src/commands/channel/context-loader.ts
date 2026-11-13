@@ -97,7 +97,7 @@ export function assembleContext(
   const manifestPaths: string[] = [];
 
   for (const spec of files) {
-    for (const resolved of expandGlob(cwd, spec)) {
+    for (const resolved of expandGlob(cwd, spec, trustedRoots)) {
       const jailed = jailedRealpath(resolved, cwd, trustedRoots);
       if (!jailed) continue;
       const block = readFileBlock(jailed, cwd, "file", undefined, trustedRoots);
@@ -216,7 +216,11 @@ function* iterFileLines(filePath: string): Generator<string, void, unknown> {
  * Doesn't aim for full POSIX semantics — `?`, `{a,b}`, character classes etc.
  * are out of scope for MVP. Quoting passes the literal pattern from shell.
  */
-function expandGlob(cwd: string, spec: string): string[] {
+function expandGlob(
+  cwd: string,
+  spec: string,
+  trustedRoots: string[],
+): string[] {
   if (!/[*?[]/.test(spec)) {
     return [path.resolve(cwd, spec)];
   }
@@ -231,6 +235,9 @@ function expandGlob(cwd: string, spec: string): string[] {
   const globSegs = segments.slice(i);
   if (globSegs.length === 0) return [path.resolve(cwd, spec)];
 
+  const jailedBase = jailedRealpath(baseDir, cwd, trustedRoots);
+  if (!jailedBase) return [];
+  baseDir = jailedBase;
   if (!fs.existsSync(baseDir)) {
     process.stderr.write(
       `[channel spawn] --file: glob base not found: ${path.relative(cwd, baseDir)}\n`,

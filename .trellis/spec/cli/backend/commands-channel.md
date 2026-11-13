@@ -57,7 +57,7 @@ trellis channel create <name> [opts]
   --context-file <abs-path> : absolute context file (repeatable)
   --context-raw <text>      : raw context text (repeatable)
   --cwd <path>           : cwd recorded in create event (default process.cwd())
-  --by <agent>           : creator identity (default "main")
+  --by <agent>           : event author (default "main")
   --force                : if channel exists, kill workers + rmrf + recreate
   --ephemeral            : mark for hide-from-list + prune --ephemeral
   → stdout: "Created channel '<name>' at <abs-path>"
@@ -211,7 +211,6 @@ trellis channel post <name> <action> [opts]
   --description <text>   : stable thread description
   --status <status>      : thread status
   --labels <csv>         : replace thread labels
-  --assignees <csv>      : replace thread assignees
   --summary <text>       : thread summary
   --context-file <abs-path> : absolute context file (repeatable)
   --context-raw <text>      : raw context text (repeatable)
@@ -363,7 +362,7 @@ type ChannelEventKind = "create" | "join" | "leave" | "message" | "thread" | "co
 | `create` | `cwd: string`, `scope: "project"\|"global"`, `type: "chat"\|"forum"` | `task: string`, `project: string`, `labels: string[]`, `description: string`, `context: ContextEntry[]`, `ephemeral: true`, `origin: "cli"`, `meta: object` | CLI |
 | `spawned` | `as: string`, `provider: "claude"\|"codex"`, `pid: number` | `agent: string`, `files: string[]`, `manifests: string[]`, `inboxPolicy: "explicitOnly"\|"broadcastAndExplicit"` | supervisor / core `spawnWorker` |
 | `message` | `text: string` | `to: string \| string[]` | any |
-| `thread` | `action: ThreadAction`, `thread: string` | `title`, `text`, `description`, `status`, `labels`, `assignees`, `summary`, `context`, `newThread` | CLI / agents |
+| `thread` | `action: ThreadAction`, `thread: string` | `title`, `text`, `description`, `status`, `labels`, `summary`, `context`, `newThread` | CLI / agents |
 | `context` | `target: "channel"\|"thread"`, `action: "add"\|"delete"`, `context: ContextEntry[]` | `thread` when `target="thread"` | CLI / agents |
 | `channel` | `action: "title"` | `title: string \| null` | CLI / agents |
 | `progress` | `detail: object` (free-form) | — | adapter |
@@ -808,7 +807,7 @@ return { events: [{ kind: "progress", payload: { detail } }] };
 - `send` always appends `kind:"message"` and never targets a thread.
 - `post` appends `kind:"thread"` and is only valid on `type:"forum"` channels.
 
-**Thread action taxonomy**: `opened`, `comment`, `status`, `labels`, `assignees`, `summary`, `processed`, `rename`.
+**Thread action taxonomy**: `opened`, `comment`, `status`, `labels`, `summary`, `processed`, `rename`.
 
 **Channel action taxonomy**: `title`. This is display-title metadata only, not address rename. Channel address remains the storage directory key; a future address rename must be a separate storage operation such as `channel move`.
 
@@ -1108,7 +1107,7 @@ trellis channel send trellis-issue --scope global --as main --thread forum-mode 
 | `paths.projectKey(cwd)` | unit | (a) `"/Users/x"` → `"-Users-x"`, (b) backslash → `-`, (c) CJK/spaces/`#` → `-`, (d) idempotent on re-sanitized input |
 | `TRELLIS_CHANNEL_ROOT` override | integration | create a channel with env override; assert events land under that root, not `~/.trellis/channels` |
 | Global/project scope collision | integration | create same name in `_global` and current project; unscoped write throws before appending, explicit `--scope global` succeeds |
-| Thread reducer | unit/integration | create `type=forum`; post `opened` + `comment` + `status`; assert reduced state has title/status/labels/assignees/comment count |
+| Thread reducer | unit/integration | create `type=forum`; post `opened` + `comment` + `status`; assert reduced state has title/status/labels/comment count |
 | Thread reducer cursor | unit/integration | reduced state records `lastSeq` from the last thread event applied |
 | Thread pretty output | integration | default thread list prints the thread-view hint; create/thread event views print description and context summaries |
 | `matchesEventFilter` | unit | kind/from/thread/action/progress/to semantics match both `messages` and `watchEvents` consumers |
@@ -1288,3 +1287,9 @@ commands/channel/
 - **events.jsonl rotation** — triggers when single file > 100MB OR > 100k events. Schema split + reader-merge is the open design question.
 - **Event attribution + pass-through metadata** — keep `by` as a lightweight alias, add `origin: "cli"|"api"|"worker"` for the write entrypoint, and store business identity/context in `meta` without teaching Trellis user/org semantics.
 - **GUI frontend** consuming `events.jsonl` via fs.watch (Electron) or polling. CLI render rules in `messages.ts` translate directly.
+
+## Context Sources
+
+Configured trusted roots and the task-root symlink may provide external context.
+Other context paths must remain inside the project, as enforced by the channel
+context loader. Platform session keys and external channel stores are separate.

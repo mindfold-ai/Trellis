@@ -6,7 +6,7 @@ The goal is to discover the project's real architecture before writing rules. Do
 
 1. Read the existing `.trellis/spec/` tree and note which files are templates, outdated, or already project-specific.
 2. Inspect package manifests, build scripts, workspace config, and top-level documentation to identify packages and runtime layers.
-3. Use GitNexus for execution flows, module clusters, dependency hubs, and impact-sensitive areas.
+3. Trace entry points, imports, callers, and tests to identify execution flows, module boundaries, dependency hubs, and impact-sensitive areas.
 4. Use ABCoder or language-native tooling for exact signatures, types, class boundaries, and implementation examples.
 5. Read representative source and test files directly before turning any finding into a spec rule.
 
@@ -21,19 +21,6 @@ The goal is to discover the project's real architecture before writing rules. Do
 | Error handling | How are failures represented, logged, surfaced, and tested? |
 | Configuration | Where do defaults, environment config, generated files, and templates live? |
 | Tests | Which test styles are trusted examples for new work? |
-
-## GitNexus Usage
-
-Start broad, then inspect specific symbols:
-
-```text
-gitnexus_query({query: "CLI command execution flow"})
-gitnexus_query({query: "template generation and migration"})
-gitnexus_context({name: "SymbolName"})
-gitnexus_cypher({query: "MATCH (n)-[r]->(m) RETURN n.name, type(r), m.name LIMIT 30"})
-```
-
-Use GitNexus results to find important files and flows. Do not quote graph output as the final authority until you have checked the relevant source files.
 
 ## ABCoder Usage
 

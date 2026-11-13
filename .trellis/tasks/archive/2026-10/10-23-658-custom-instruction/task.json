@@ -1,0 +1,26 @@
+{
+  "id": "658-custom-instruction",
+  "name": "658-custom-instruction",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Prepare custom instruction content before tools maintenance",
+  "description": "Add AGENTS.md custom file decision for Guru issue 658 without changing existing actions or Core template receipts",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-23",
+  "completedAt": "2026-10-23",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "c5f360e6df1b540d12ed4b4ef0a92cadb0ba2de7",
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

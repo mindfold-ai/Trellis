@@ -1,0 +1,96 @@
+{
+  "preregistered_at_utc": "2026-10-17T05:44:13.723766+00:00",
+  "purpose": "One complete paired cohort after genuine exact-selected-tree metadata regression fix; original absolute and extra paired limits unchanged.",
+  "cases": [
+    [
+      3,
+      "repeated"
+    ],
+    [
+      30,
+      "repeated"
+    ],
+    [
+      128,
+      "repeated"
+    ],
+    [
+      128,
+      "mixed"
+    ],
+    [
+      10001,
+      "repeated"
+    ],
+    [
+      10001,
+      "mixed"
+    ]
+  ],
+  "phase_order": [
+    "control-before",
+    "after"
+  ],
+  "repetitions_per_phase": {
+    "first_fresh_manual_warmup": 1,
+    "timed_idempotent_manual_and_query2": 2
+  },
+  "exact_inputs": "Replay each original frozen before fixture root only when absent; require original full commit OID; same candidate paths/modes/blobs/deletions and oracle.",
+  "before_runtime": "0e3b23a3045357b76e69ca91e84b97b294dfb147 original public candidate_content_ref and original f70 manual/query2 caller",
+  "after_runtime": "Current frozen actual upstream source plus isolated public consumer projection; overlay after normal Publication setup.",
+  "after_runtime_source_checksums": {
+    "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+    "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+    "cli_adapter.py": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+    "config.py": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+    "continuation_contract.py": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+    "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+    "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+    "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+    "delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171",
+    "git.py": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+    "git_context.py": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+    "git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+    "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+    "log.py": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+    "maintenance.py": "07345928fd631825ac79a5fb949b4cad2b22ea0d198a5b674a02dd1f643d62e2",
+    "packages_context.py": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+    "path_boundary.py": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+    "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+    "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+    "safe_commit.py": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+    "session_context.py": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+    "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+    "task_artifacts.py": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+    "task_context.py": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+    "task_queue.py": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+    "task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+    "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+    "tasks.py": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+    "trellis_config.py": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+    "types.py": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+    "workflow_phase.py": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d"
+  },
+  "measurement_tools_checksums": {
+    "residual_benchmark.py": "750174d7db36f4450efc9d1d028bb3d80a475cb1524dc9b3f5bd939e931a3047",
+    "sitecustomize_metrics.py": "6ecc57e946ea8209814560c9444618b298c69efe56c93799295e634195ae8060",
+    "sitecustomize_batch_command_metrics.py": "cc20228c2c8937e151c1fc8eafdd413688a363ef4918645bbc1a712c23fd6363",
+    "run_after.py": "92ed2ffdf0154162ad672d2a591c3a4de5f844d2eec3e2f4a34612fabce6c635",
+    "run_paired_selected_tree.py": "4945bd41986c434179aceb94fe794b1e1aa5a681ab6bf71406934864d81bd9fc",
+    "evaluate_results.py": "90f1623ad308d02f518e6c460746bd3c36ef1b4116549d0bc011608d02d3b5b5"
+  },
+  "required_absolute_gate": "All original188checks with originalfrozenstandards, unchanged evaluator and thresholds.",
+  "additional_fresh_paired_gates": {
+    "128_paths_manual_and_query2_min_gain_percent": 5,
+    "10001_paths_manual_and_query2_min_gain_percent": 30,
+    "first_fresh_manual_after_max_times_control_before": 1.05
+  },
+  "instrumentation": "Both phases same frozen observer plus same metadata-only protocol extension and own-process CPU counters. Metadata headers separated from ALL actual body bytes. No change to original all-body limit.",
+  "host_observations": "UTC/load averages/logicalCPU/process count/top12 CPU executable names and own-process CPU counters; capture before and after every phase; never used to choose, discard or retry a case.",
+  "run_policy": "Run exactly one complete cohort in registered order. No source mutations, individual case reruns, sample selection or threshold changes. If a technical failure occurs, keep all completed evidence and fail the cohort. If absolute or paired gates fail, preserve/report failures.",
+  "parent_heavy_work": "HOLD during all timing phases; no forced control over unrelated user processes.",
+  "provider": "Same fixed synthetic gh and semantic fixtures; zero network; not live AI or downstream adoption.",
+  "previous_protocol_commit": "7d48f2a4",
+  "previous_cohort": "failed-generation-5-paired",
+  "implementation_change": "Public GitCandidateContent passes ordered paths to read_tree optional literal -t nonrecursive selection and exact requested-set filter; <=64KiBargv chunks; selected parentdir retained for reject; original defaults/allchecks preserved."
+}

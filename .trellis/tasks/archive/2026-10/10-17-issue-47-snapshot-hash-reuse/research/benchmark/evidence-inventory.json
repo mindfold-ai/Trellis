@@ -1,0 +1,125 @@
+{
+  "git_comparison_base": "0e3b23a3045357b76e69ca91e84b97b294dfb147",
+  "added_path_definition": "Union of tracked A paths against base and git untracked nonignored regular files; filesystem bytes, not Git pack size.",
+  "repository_added_files": 234,
+  "repository_added_bytes": 21358487,
+  "benchmark_evidence_added_files": 219,
+  "benchmark_evidence_added_bytes": 21145210,
+  "old_capability": {
+    "passed": true,
+    "actual_rows": 44,
+    "failed_rows": [],
+    "actual_passed_rows": 44
+  },
+  "current_absolute": {
+    "passed_count": 183,
+    "count": 188,
+    "failures": [
+      {
+        "check": "128-mixed/manual_median_seconds",
+        "passed": false,
+        "actual": 0.7313601250061765,
+        "limit": 0.6393437262566294
+      },
+      {
+        "check": "128-mixed/query2_median_seconds",
+        "passed": false,
+        "actual": 0.6347855830099434,
+        "limit": 0.5728397875354858
+      },
+      {
+        "check": "128-mixed/first_record_seconds",
+        "passed": false,
+        "actual": 0.8584360000677407,
+        "limit": 0.8168767245893833
+      },
+      {
+        "check": "128-repeated/manual_median_seconds",
+        "passed": false,
+        "actual": 0.7166536459699273,
+        "limit": 0.6449902493041009
+      },
+      {
+        "check": "128-repeated/query2_median_seconds",
+        "passed": false,
+        "actual": 0.6308290209854022,
+        "limit": 0.5813409617723664
+      }
+    ]
+  },
+  "current_paired": {
+    "passed_count": 21,
+    "count": 24,
+    "failures": [
+      {
+        "check": "128-repeated/manual_paired_gain",
+        "passed": false,
+        "before_seconds": 0.7031244999961928,
+        "after_seconds": 0.7166536459699273,
+        "after_max_seconds": 0.6679682749963831
+      },
+      {
+        "check": "128-repeated/query2_paired_gain",
+        "passed": false,
+        "before_seconds": 0.6508882709895261,
+        "after_seconds": 0.6308290209854022,
+        "after_max_seconds": 0.6183438574400497
+      },
+      {
+        "check": "128-mixed/manual_paired_gain",
+        "passed": false,
+        "before_seconds": 0.7371779165114276,
+        "after_seconds": 0.7313601250061765,
+        "after_max_seconds": 0.7003190206858562
+      }
+    ]
+  },
+  "compressed_archive_files_verified": 32,
+  "original_archive_bytes": 28163638,
+  "compressed_archive_bytes": 4527854,
+  "remaining_eligible_archive_large_json": [],
+  "largest_added_files": [
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/after-10001-mixed.json",
+      "bytes": 1570778
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/after-10001-repeated.json",
+      "bytes": 1566387
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/control-before-10001-mixed.json",
+      "bytes": 1563435
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/control-before-10001-repeated.json",
+      "bytes": 1563350
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/before-10001-mixed.json",
+      "bytes": 1556847
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/before-10001-repeated.json",
+      "bytes": 1556767
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/after-input-10001-mixed.json",
+      "bytes": 1021691
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/after-input-10001-repeated.json",
+      "bytes": 1021691
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/control-before-input-10001-mixed.json",
+      "bytes": 1021691
+    },
+    {
+      "path": ".trellis/tasks/10-17-issue-47-snapshot-hash-reuse/research/benchmark/control-before-input-10001-repeated.json",
+      "bytes": 1021691
+    }
+  ],
+  "snapshot_utc": "2026-10-17T06:03:49.667820+00:00",
+  "qualification": "Inventory snapshot only; later parent quality/delivery artifacts may change counts."
+}

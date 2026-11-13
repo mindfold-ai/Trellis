@@ -1,0 +1,29 @@
+{
+  "id": "issue-25-reference-only-create",
+  "name": "issue-25-reference-only-create",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 25,
+    "disposition": "exact_source"
+  },
+  "title": "Issue 25: reference-only task source",
+  "description": "Support reference_only Issue source in official task creation without changing closure ownership",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-04",
+  "completedAt": "2026-10-04",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

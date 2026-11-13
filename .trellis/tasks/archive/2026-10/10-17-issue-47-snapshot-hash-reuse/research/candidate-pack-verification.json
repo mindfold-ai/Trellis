@@ -1,0 +1,29 @@
+{
+  "kind": "local unpublished candidate; not immutable release or downstream adoption",
+  "packages": [
+    {
+      "name": "@mindfoldhq/trellis",
+      "version": "0.7.0-castbox.4",
+      "archive": "/tmp/trellis-47-residual-candidate-01a14785/packs/mindfoldhq-trellis-0.7.0-castbox.4.tgz",
+      "sha256": "9746bed8c3c225bf5f28a263bb74eeeaef053270ba3c7f137e8b164de18ee417",
+      "files_verified_bytes_and_modes": 739,
+      "dependency": "0.7.0-castbox.4"
+    },
+    {
+      "name": "@mindfoldhq/trellis-core",
+      "version": "0.7.0-castbox.4",
+      "archive": "/tmp/trellis-47-residual-candidate-01a14785/packs/mindfoldhq-trellis-core-0.7.0-castbox.4.tgz",
+      "sha256": "46de26c162141751c9ea59d750afe3fedcebfdc86b8a32603b385415bc37b7ec",
+      "files_verified_bytes_and_modes": 274,
+      "dependency": null
+    }
+  ],
+  "passed": true,
+  "source_commit": "69033a662d68701610f09caa97f1d292bccd1076",
+  "source_binding": "The production commit was created after packing. The following canonical source bytes were compared with that commit and the installed owner-file report.",
+  "source_sha256": {
+    "packages/cli/src/templates/trellis/scripts/common/git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+    "packages/cli/src/templates/trellis/scripts/common/task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+    "packages/cli/src/templates/trellis/scripts/common/delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171"
+  }
+}

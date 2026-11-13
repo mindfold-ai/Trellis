@@ -10,26 +10,22 @@ This page only describes files that are visible and editable inside the user pro
 .trellis/
 ├── workflow.md
 ├── config.yaml
-├── .developer
 ├── .version
 ├── .template-hashes.json
 ├── .runtime/
 ├── scripts/
 ├── spec/
-├── tasks/
-└── workspace/
+└── tasks/
 ```
 
 | Path | Usually editable? | Notes |
 | --- | --- | --- |
 | `.trellis/workflow.md` | Yes | Local workflow documentation and AI routing rules. |
-| `.trellis/config.yaml` | Yes | Project configuration, hooks, packages, journal line limits, and related settings. |
+| `.trellis/config.yaml` | Yes | Project configuration, hooks, packages, task archive settings, and related settings. |
 | `.trellis/spec/` | Yes | Project specs, intended to be updated regularly by users and AI. |
 | `.trellis/tasks/` | Yes | Task material and research artifacts, maintained by the task workflow. |
-| `.trellis/workspace/` | Yes | Session records, usually written by `add_session.py`. |
 | `.trellis/scripts/` | Carefully | Local runtime. It can be customized, but only after understanding the call chain. |
 | `.trellis/.runtime/` | No | Runtime state, usually written automatically by hooks/scripts. |
-| `.trellis/.developer` | Carefully | Current developer identity. |
 | `.trellis/.version` | No | Trellis version record used by update/migration logic. |
 | `.trellis/.template-hashes.json` | No | Template hash record. Do not hand-write business rules here. |
 

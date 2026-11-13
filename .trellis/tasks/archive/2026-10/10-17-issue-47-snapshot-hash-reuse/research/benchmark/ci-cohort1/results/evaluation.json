@@ -1,0 +1,1135 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "check": "10001-mixed/same_exact_commit",
+      "passed": true,
+      "actual": "4f96a24e6477291cc8fec30ef3be3b85cf8ae6f9",
+      "limit": "4f96a24e6477291cc8fec30ef3be3b85cf8ae6f9"
+    },
+    {
+      "check": "10001-mixed/manual_median_seconds",
+      "passed": false,
+      "actual": 2.273483432500001,
+      "limit": 2.168253252195427
+    },
+    {
+      "check": "10001-mixed/query2_median_seconds",
+      "passed": true,
+      "actual": 1.9767419849999897,
+      "limit": 2.015699277183739
+    },
+    {
+      "check": "10001-mixed/first_record_seconds",
+      "passed": true,
+      "actual": 2.731838495999966,
+      "limit": 3.49489765597391
+    },
+    {
+      "check": "10001-mixed/oracle",
+      "passed": true,
+      "actual": true,
+      "limit": true
+    },
+    {
+      "check": "10001-mixed/0-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 56233984,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-mixed/0-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 8331264,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-mixed/0-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-mixed/0-manual/content_sha256",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/0-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-mixed/0-manual/body_requests",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/0-manual/body_bytes",
+      "passed": true,
+      "actual": 33614836,
+      "limit": 33614836
+    },
+    {
+      "check": "10001-mixed/0-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 49307648,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-mixed/0-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 10067968,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-mixed/0-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-mixed/0-query2/content_sha256",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/0-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-mixed/0-query2/body_requests",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/0-query2/body_bytes",
+      "passed": true,
+      "actual": 33614836,
+      "limit": 33614836
+    },
+    {
+      "check": "10001-mixed/1-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 49561600,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-mixed/1-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 8527872,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-mixed/1-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-mixed/1-manual/content_sha256",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/1-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-mixed/1-manual/body_requests",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/1-manual/body_bytes",
+      "passed": true,
+      "actual": 33614836,
+      "limit": 33614836
+    },
+    {
+      "check": "10001-mixed/1-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 49217536,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-mixed/1-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 10006528,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-mixed/1-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-mixed/1-query2/content_sha256",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/1-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-mixed/1-query2/body_requests",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/1-query2/body_bytes",
+      "passed": true,
+      "actual": 33614836,
+      "limit": 33614836
+    },
+    {
+      "check": "10001-mixed/2-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 49643520,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-mixed/2-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 8331264,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-mixed/2-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-mixed/2-manual/content_sha256",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/2-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-mixed/2-manual/body_requests",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/2-manual/body_bytes",
+      "passed": true,
+      "actual": 33614836,
+      "limit": 33614836
+    },
+    {
+      "check": "10001-mixed/2-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 49217536,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-mixed/2-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 10133504,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-mixed/2-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-mixed/2-query2/content_sha256",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/2-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-mixed/2-query2/body_requests",
+      "passed": true,
+      "actual": 10000,
+      "limit": 10000
+    },
+    {
+      "check": "10001-mixed/2-query2/body_bytes",
+      "passed": true,
+      "actual": 33614836,
+      "limit": 33614836
+    },
+    {
+      "check": "10001-repeated/same_exact_commit",
+      "passed": true,
+      "actual": "1858bb965a2208818c3c5d4666535718292b21c7",
+      "limit": "1858bb965a2208818c3c5d4666535718292b21c7"
+    },
+    {
+      "check": "10001-repeated/manual_median_seconds",
+      "passed": true,
+      "actual": 1.854791399999982,
+      "limit": 2.124481289385585
+    },
+    {
+      "check": "10001-repeated/query2_median_seconds",
+      "passed": true,
+      "actual": 1.5539909530000102,
+      "limit": 1.9938574834319296
+    },
+    {
+      "check": "10001-repeated/first_record_seconds",
+      "passed": true,
+      "actual": 2.306707081000013,
+      "limit": 3.4363278254459146
+    },
+    {
+      "check": "10001-repeated/oracle",
+      "passed": true,
+      "actual": true,
+      "limit": true
+    },
+    {
+      "check": "10001-repeated/0-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 50085888,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-repeated/0-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 8302592,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-repeated/0-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-repeated/0-manual/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/0-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-repeated/0-manual/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/0-manual/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "10001-repeated/0-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 48812032,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-repeated/0-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 10141696,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-repeated/0-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-repeated/0-query2/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/0-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-repeated/0-query2/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/0-query2/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "10001-repeated/1-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 48812032,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-repeated/1-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 8298496,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-repeated/1-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-repeated/1-manual/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/1-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-repeated/1-manual/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/1-manual/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "10001-repeated/1-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 48812032,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-repeated/1-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 10006528,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-repeated/1-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-repeated/1-query2/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/1-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-repeated/1-query2/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/1-query2/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "10001-repeated/2-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 48812032,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-repeated/2-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 8364032,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-repeated/2-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-repeated/2-manual/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/2-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-repeated/2-manual/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/2-manual/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "10001-repeated/2-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 48812032,
+      "limit": 134217728
+    },
+    {
+      "check": "10001-repeated/2-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 10141696,
+      "limit": 33554432
+    },
+    {
+      "check": "10001-repeated/2-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "10001-repeated/2-query2/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/2-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "10001-repeated/2-query2/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "10001-repeated/2-query2/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "128-mixed/same_exact_commit",
+      "passed": true,
+      "actual": "421bda9bacbc95ea9aade703a371289191c5976d",
+      "limit": "421bda9bacbc95ea9aade703a371289191c5976d"
+    },
+    {
+      "check": "128-mixed/manual_median_seconds",
+      "passed": false,
+      "actual": 0.8153372430000019,
+      "limit": 0.6393437262566294
+    },
+    {
+      "check": "128-mixed/query2_median_seconds",
+      "passed": false,
+      "actual": 0.7402350960000064,
+      "limit": 0.5728397875354858
+    },
+    {
+      "check": "128-mixed/first_record_seconds",
+      "passed": false,
+      "actual": 0.8763055350000002,
+      "limit": 0.8168767245893833
+    },
+    {
+      "check": "128-mixed/oracle",
+      "passed": true,
+      "actual": true,
+      "limit": true
+    },
+    {
+      "check": "128-mixed/0-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 41070592,
+      "limit": 134217728
+    },
+    {
+      "check": "128-mixed/0-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 4923392,
+      "limit": 33554432
+    },
+    {
+      "check": "128-mixed/0-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-mixed/0-manual/content_sha256",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/0-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-mixed/0-manual/body_requests",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/0-manual/body_bytes",
+      "passed": true,
+      "actual": 13078996,
+      "limit": 13078996
+    },
+    {
+      "check": "128-mixed/0-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 41070592,
+      "limit": 134217728
+    },
+    {
+      "check": "128-mixed/0-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 5054464,
+      "limit": 33554432
+    },
+    {
+      "check": "128-mixed/0-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-mixed/0-query2/content_sha256",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/0-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-mixed/0-query2/body_requests",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/0-query2/body_bytes",
+      "passed": true,
+      "actual": 13078996,
+      "limit": 13078996
+    },
+    {
+      "check": "128-mixed/1-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 41070592,
+      "limit": 134217728
+    },
+    {
+      "check": "128-mixed/1-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 4988928,
+      "limit": 33554432
+    },
+    {
+      "check": "128-mixed/1-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-mixed/1-manual/content_sha256",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/1-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-mixed/1-manual/body_requests",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/1-manual/body_bytes",
+      "passed": true,
+      "actual": 13078996,
+      "limit": 13078996
+    },
+    {
+      "check": "128-mixed/1-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 41070592,
+      "limit": 134217728
+    },
+    {
+      "check": "128-mixed/1-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 4857856,
+      "limit": 33554432
+    },
+    {
+      "check": "128-mixed/1-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-mixed/1-query2/content_sha256",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/1-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-mixed/1-query2/body_requests",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/1-query2/body_bytes",
+      "passed": true,
+      "actual": 13078996,
+      "limit": 13078996
+    },
+    {
+      "check": "128-mixed/2-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 41070592,
+      "limit": 134217728
+    },
+    {
+      "check": "128-mixed/2-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 4984832,
+      "limit": 33554432
+    },
+    {
+      "check": "128-mixed/2-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-mixed/2-manual/content_sha256",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/2-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-mixed/2-manual/body_requests",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/2-manual/body_bytes",
+      "passed": true,
+      "actual": 13078996,
+      "limit": 13078996
+    },
+    {
+      "check": "128-mixed/2-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 41070592,
+      "limit": 134217728
+    },
+    {
+      "check": "128-mixed/2-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 5042176,
+      "limit": 33554432
+    },
+    {
+      "check": "128-mixed/2-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-mixed/2-query2/content_sha256",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/2-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-mixed/2-query2/body_requests",
+      "passed": true,
+      "actual": 127,
+      "limit": 127
+    },
+    {
+      "check": "128-mixed/2-query2/body_bytes",
+      "passed": true,
+      "actual": 13078996,
+      "limit": 13078996
+    },
+    {
+      "check": "128-repeated/same_exact_commit",
+      "passed": true,
+      "actual": "73530e98dfd85ebb0d668ef04bc05f5060efd7b9",
+      "limit": "73530e98dfd85ebb0d668ef04bc05f5060efd7b9"
+    },
+    {
+      "check": "128-repeated/manual_median_seconds",
+      "passed": false,
+      "actual": 0.8002187140000103,
+      "limit": 0.6449902493041009
+    },
+    {
+      "check": "128-repeated/query2_median_seconds",
+      "passed": false,
+      "actual": 0.7086789385000003,
+      "limit": 0.5813409617723664
+    },
+    {
+      "check": "128-repeated/first_record_seconds",
+      "passed": false,
+      "actual": 0.8772779980000109,
+      "limit": 0.8252809686586261
+    },
+    {
+      "check": "128-repeated/oracle",
+      "passed": true,
+      "actual": true,
+      "limit": true
+    },
+    {
+      "check": "128-repeated/0-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 41238528,
+      "limit": 134217728
+    },
+    {
+      "check": "128-repeated/0-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 4988928,
+      "limit": 33554432
+    },
+    {
+      "check": "128-repeated/0-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-repeated/0-manual/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/0-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-repeated/0-manual/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/0-manual/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "128-repeated/0-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 41238528,
+      "limit": 134217728
+    },
+    {
+      "check": "128-repeated/0-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 5120000,
+      "limit": 33554432
+    },
+    {
+      "check": "128-repeated/0-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-repeated/0-query2/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/0-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-repeated/0-query2/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/0-query2/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "128-repeated/1-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 41238528,
+      "limit": 134217728
+    },
+    {
+      "check": "128-repeated/1-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 4988928,
+      "limit": 33554432
+    },
+    {
+      "check": "128-repeated/1-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-repeated/1-manual/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/1-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-repeated/1-manual/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/1-manual/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "128-repeated/1-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 41238528,
+      "limit": 134217728
+    },
+    {
+      "check": "128-repeated/1-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 4997120,
+      "limit": 33554432
+    },
+    {
+      "check": "128-repeated/1-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-repeated/1-query2/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/1-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-repeated/1-query2/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/1-query2/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "128-repeated/2-manual/python_peak_bytes",
+      "passed": true,
+      "actual": 41238528,
+      "limit": 134217728
+    },
+    {
+      "check": "128-repeated/2-manual/git_peak_bytes",
+      "passed": true,
+      "actual": 4988928,
+      "limit": 33554432
+    },
+    {
+      "check": "128-repeated/2-manual/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-repeated/2-manual/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/2-manual/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-repeated/2-manual/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/2-manual/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    },
+    {
+      "check": "128-repeated/2-query2/python_peak_bytes",
+      "passed": true,
+      "actual": 41238528,
+      "limit": 134217728
+    },
+    {
+      "check": "128-repeated/2-query2/git_peak_bytes",
+      "passed": true,
+      "actual": 5111808,
+      "limit": 33554432
+    },
+    {
+      "check": "128-repeated/2-query2/snapshot_read_bytes",
+      "passed": true,
+      "actual": 0,
+      "limit": 0
+    },
+    {
+      "check": "128-repeated/2-query2/content_sha256",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/2-query2/aggregate_sha256",
+      "passed": true,
+      "actual": 1,
+      "limit": 1
+    },
+    {
+      "check": "128-repeated/2-query2/body_requests",
+      "passed": true,
+      "actual": 19,
+      "limit": 19
+    },
+    {
+      "check": "128-repeated/2-query2/body_bytes",
+      "passed": true,
+      "actual": 12856596,
+      "limit": 12856596
+    }
+  ],
+  "passed_count": 181,
+  "failed_count": 7
+}

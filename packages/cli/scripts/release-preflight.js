@@ -13,6 +13,8 @@
  *
  * Used by both `packages/cli` release scripts (humans) and
  * `.github/workflows/publish.yml` (CI) so the rules cannot drift.
+ * npm-tag, publish-plan and verify-npm require the approved repository
+ * context. Generic version/pack checks remain usable locally in forks.
  *
  * Commands:
  *   check-versions [--require-tag]   Verify core/cli (and optional GITHUB_REF
@@ -71,19 +73,31 @@ function readVersions() {
   };
 }
 
-function tagVersionFromEnv() {
+export function tagVersionFromEnv(env = process.env) {
   // GITHUB_REF for `push: tags: v*` looks like `refs/tags/v0.6.0-beta.12`.
   // GITHUB_REF_NAME on `release.published` is the tag name.
-  const ref = process.env.GITHUB_REF_NAME || process.env.GITHUB_REF || "";
-  const m = ref.match(/(?:refs\/tags\/)?v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/);
-  return m ? m[1] : null;
+  const ref = env.GITHUB_REF_NAME || env.GITHUB_REF || "";
+  const m = ref.match(
+    /^(?:refs\/tags\/)?v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/,
+  );
+  return m && m[0] === ref ? m[1] : null;
 }
 
 export function computeNpmTag(version) {
-  if (/-beta\./.test(version)) return "beta";
-  if (/-rc\./.test(version)) return "rc";
-  if (/-alpha\./.test(version)) return "alpha";
-  return "latest";
+  const match = version.match(
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(alpha|beta|rc)\.(0|[1-9]\d*))?$/,
+  );
+  if (!match || match[0] !== version)
+    throw new Error(`Unsupported npm release version or track: ${version}`);
+  return match[4] || "latest";
+}
+
+export function assertPublicationRepository(env = process.env) {
+  if (env.GITHUB_REPOSITORY !== "mindfold-ai/trellis") {
+    throw new Error(
+      "npm publication requires GITHUB_REPOSITORY=mindfold-ai/trellis; missing or unapproved repository context.",
+    );
+  }
 }
 
 export function npmVersionExists(pkgName, version) {
@@ -181,7 +195,8 @@ function checkVersions({ requireTag, quiet = false }) {
 }
 
 function publishPlan({ output }) {
-  const v = checkVersions({ requireTag: false, quiet: output === "json" });
+  assertPublicationRepository();
+  const v = checkVersions({ requireTag: true, quiet: output === "json" });
   const tag = computeNpmTag(v.cliVersion);
   const coreExists = npmVersionExists(v.coreName, v.coreVersion);
   const cliExists = npmVersionExists(v.cliName, v.cliVersion);
@@ -266,6 +281,7 @@ function verifyPackedCli() {
 }
 
 async function verifyNpm({ packageFilter }) {
+  assertPublicationRepository();
   const v = checkVersions({ requireTag: false });
   const tag = computeNpmTag(v.cliVersion);
   const packages = [
@@ -294,8 +310,8 @@ async function verifyNpm({ packageFilter }) {
   }
 }
 
-async function main() {
-  const [cmd, ...rest] = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)) {
+  const [cmd, ...rest] = args;
   if (!cmd || cmd === "--help" || cmd === "-h") {
     console.log(
       `release-preflight <command>\n\n` +
@@ -313,6 +329,7 @@ async function main() {
     return;
   }
   if (cmd === "npm-tag") {
+    assertPublicationRepository();
     const v = readVersions();
     process.stdout.write(computeNpmTag(v.cliVersion) + "\n");
     return;
@@ -342,4 +359,9 @@ async function main() {
   fail(`unknown command: ${cmd}`);
 }
 
-main();
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((err) => fail(err.message));
+}

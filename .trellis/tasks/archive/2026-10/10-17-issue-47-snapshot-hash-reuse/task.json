@@ -1,0 +1,30 @@
+{
+  "id": "issue-47-snapshot-hash-reuse",
+  "name": "issue-47-snapshot-hash-reuse",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 47,
+    "disposition": "exact_source"
+  },
+  "title": "Issue 47 continuation: immutable snapshot digest reuse",
+  "description": "Complete the original Issue47 public immutable-snapshot digest reuse path used by Guru pull-request recovery and query2; preserve prior delivery.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": "cli",
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-17",
+  "completedAt": "2026-10-17",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "9f40ec70914f98fce2619560274cc1d0619f2f7e",
+  "pr_url": "https://github.com/castbox/Trellis/pull/50",
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Completed under user-revised acceptance. PR50/source9f40ec70, exact main CI, paired .4 release, downloaded checksum/reinstall and independent delivery review passed. npm workflow/jobs skipped. Issue47 CLOSED. Native archive completed and current session binding cleared. Closeout PR carries archive/temporary-workflow removal; tag/assets stay fixed. Historical time FAIL retained; downstream adoption/Completion remains downstream-owned.",
+  "meta": {},
+  "branch": "codex/47-snapshot-hash-reuse"
+}

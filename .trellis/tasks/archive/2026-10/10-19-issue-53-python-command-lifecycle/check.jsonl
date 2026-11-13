@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/backend/configurator-shared.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/backend/commands-update.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/backend/commands-workflow.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Issue 53 CLI and native regression contracts"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Issue 53 CLI and native regression contracts"}

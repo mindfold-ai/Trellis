@@ -92,7 +92,6 @@ describe("init() integration", () => {
     // Core workflow structure
     expect(fs.existsSync(path.join(tmpDir, DIR_NAMES.WORKFLOW))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, PATHS.SCRIPTS))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, PATHS.WORKSPACE))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, PATHS.TASKS))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, PATHS.SPEC))).toBe(true);
 
@@ -147,17 +146,10 @@ describe("init() integration", () => {
     ).toBe(true);
   });
 
-  it("#1a writes .gitattributes with the journal merge=union rule (#415)", async () => {
+  it("#1a leaves Git attributes untouched", async () => {
     await init({ yes: true });
 
-    const gitattributes = fs.readFileSync(
-      path.join(tmpDir, ".gitattributes"),
-      "utf-8",
-    );
-    expect(gitattributes).toContain(
-      ".trellis/workspace/*/journal-*.md merge=union",
-    );
-    expect(gitattributes).not.toContain("index.md merge=union");
+    expect(fs.existsSync(path.join(tmpDir, ".gitattributes"))).toBe(false);
   });
 
   it("#1b does not print the promotional pain-point block", async () => {
@@ -874,19 +866,19 @@ describe("init() integration", () => {
   });
 
   it("#4 force mode overwrites previously modified files", async () => {
-    await init({ yes: true, force: true });
+    await init({ yes: true, force: true, workflow: "native" });
 
     const workflowMd = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     const original = fs.readFileSync(workflowMd, "utf-8");
     fs.writeFileSync(workflowMd, "user modified content");
 
-    await init({ yes: true, force: true });
+    await init({ yes: true, force: true, workflow: "native" });
 
     expect(fs.readFileSync(workflowMd, "utf-8")).toBe(original);
   });
 
   it("#5 skip mode preserves previously modified files", async () => {
-    await init({ yes: true, force: true });
+    await init({ yes: true, force: true, workflow: "native" });
 
     const workflowMd = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     fs.writeFileSync(workflowMd, "user modified content");
@@ -919,19 +911,18 @@ describe("init() integration", () => {
     expect(second).toEqual(first);
   });
 
-  it("#7 passes developer name to init_developer script", async () => {
-    await init({ yes: true, user: "testdev" });
+  it("#7 creates a current bootstrap task", async () => {
+    await init({ yes: true });
 
-    const calls = vi.mocked(execSync).mock.calls;
-    const match = calls.find(
-      ([cmd]) => typeof cmd === "string" && cmd.includes("init_developer.py"),
+    const task = JSON.parse(
+      fs.readFileSync(
+        path.join(tmpDir, ".trellis/tasks/00-bootstrap-guidelines/task.json"),
+        "utf8",
+      ),
     );
-    expect(match).toBeDefined();
-    const command = String((match as [unknown])[0]);
-    const expectedPythonCmd =
-      process.platform === "win32" ? "python" : "python3";
-    expect(command).toContain(`${expectedPythonCmd} "`);
-    expect(command).toContain('"testdev"');
+    expect(task.lifecycle_generation).toBe(0);
+    expect(task.source).toEqual({ kind: "no_issue" });
+    expect(task).not.toHaveProperty("branch");
   });
 
   it("#7b throws when the selected Python command is below 3.9", async () => {
@@ -963,7 +954,6 @@ describe("init() integration", () => {
   it("#7d renders the platform Python command into generated config and logs the adaptation", async () => {
     const expectedPythonCmd =
       process.platform === "win32" ? "python" : "python3";
-
     await init({ yes: true, claude: true });
 
     const settings = fs.readFileSync(
@@ -1146,7 +1136,7 @@ describe("init() integration", () => {
       { rel: "packages/ui", name: "ui" },
     ]);
 
-    await init({ yes: true, user: "dev" });
+    await init({ yes: true });
 
     const taskDir = path.join(tmpDir, PATHS.TASKS, "00-bootstrap-guidelines");
     expect(fs.existsSync(taskDir)).toBe(true);
@@ -1155,10 +1145,8 @@ describe("init() integration", () => {
       fs.readFileSync(path.join(taskDir, "task.json"), "utf-8"),
     );
 
-    // task.json.subtasks is canonical string[] (child task dir names);
-    // per-package checklist items now live in prd.md as markdown checkboxes.
-    expect(Array.isArray(taskJson.subtasks)).toBe(true);
-    expect(taskJson.subtasks).toEqual([]);
+    // Per-package checklist items live in prd.md as markdown checkboxes.
+    expect(taskJson.children).toEqual([]);
 
     // Canonical shape: legacy current_phase / next_action must NOT appear
     expect(taskJson.current_phase).toBeUndefined();
@@ -1170,19 +1158,14 @@ describe("init() integration", () => {
 
     // prd.md mentions packages + renders per-package checklist items
     const prd = fs.readFileSync(path.join(taskDir, "prd.md"), "utf-8");
-    const expectedPythonCmd =
-      process.platform === "win32" ? "python" : "python3";
     expect(prd).toContain("core");
     expect(prd).toContain("ui");
     expect(prd).toContain("spec/");
     expect(prd).toContain("- [ ] Fill guidelines for core");
     expect(prd).toContain("- [ ] Fill guidelines for ui");
-    expect(prd).toContain(
-      `${expectedPythonCmd} ./.trellis/scripts/task.py finish`,
-    );
-    expect(prd).toContain(
-      `${expectedPythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines`,
-    );
+    expect(prd).toContain("planning_root");
+    expect(prd).toContain("Completion and Closure");
+    expect(prd).not.toContain("./.trellis/scripts/task.py finish");
   });
 
   it("#16 --no-monorepo skips detection even with workspace config", async () => {
@@ -1332,7 +1315,7 @@ describe("init() integration", () => {
   });
 
   it("#23 existing project --registry --template still refreshes spec and records source", async () => {
-    await init({ yes: true, user: "alice" });
+    await init({ yes: true });
 
     registryDownload.files.set("index.md", "# refreshed golang spec\n");
     const index = JSON.stringify({
@@ -1356,7 +1339,7 @@ describe("init() integration", () => {
 
     await init({
       yes: true,
-      user: "alice",
+
       registry: "gitlab:local/registry/marketplace",
       template: "golang-spec",
       overwrite: true,
@@ -1487,7 +1470,7 @@ describe("init() integration", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const { confirms } = await installStatuslinePromptMock(true);
 
-    await init({ user: "alice" });
+    await init({});
 
     // Asked exactly once, defaulting to No
     expect(confirms).toHaveLength(1);
@@ -1505,7 +1488,7 @@ describe("init() integration", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const { confirms } = await installStatuslinePromptMock(false);
 
-    await init({ user: "alice" });
+    await init({});
 
     expect(confirms).toHaveLength(1);
     expect(
@@ -1533,7 +1516,7 @@ describe("init() integration", () => {
     // Would answer No if (wrongly) asked — flag must win without prompting
     const { confirms } = await installStatuslinePromptMock(false);
 
-    await init({ user: "alice", claude: true, withStatusline: true });
+    await init({ claude: true, withStatusline: true });
 
     expect(confirms).toHaveLength(0);
     expect(
@@ -1544,7 +1527,7 @@ describe("init() integration", () => {
   it("#28 reinit add-platform: statusLine confirm fires for newly added claude", async () => {
     // user is required so the bootstrap task is created — otherwise the second
     // init routes through the aborted-init recovery instead of handleReinit
-    await init({ yes: true, cursor: true, user: "alice" });
+    await init({ yes: true, cursor: true });
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
 
     const { confirms } = await installStatuslinePromptMock(true);
@@ -1566,7 +1549,7 @@ describe("init() integration", () => {
     fs.mkdirSync(path.dirname(nativeSettingsPath), { recursive: true });
     fs.writeFileSync(nativeSettingsPath, '{"permissions":{"allow":[]}}\n');
 
-    await init({ yes: true, codex: true, user: "alice" });
+    await init({ yes: true, codex: true });
     expect(
       fs.existsSync(
         path.join(tmpDir, ".claude", "skills", "trellis-meta", "SKILL.md"),
@@ -1586,7 +1569,7 @@ describe("init() integration", () => {
   });
 
   it("#29 reinit add-platform: no confirm when claude is already configured", async () => {
-    await init({ yes: true, claude: true, user: "alice" });
+    await init({ yes: true, claude: true });
 
     const { confirms } = await installStatuslinePromptMock(true);
     // Re-running with --claude skips the already-configured platform — the

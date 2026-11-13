@@ -1,0 +1,29 @@
+{
+  "id": "40-independent-install-maintenance",
+  "name": "40-independent-install-maintenance",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 40,
+    "disposition": "exact_source"
+  },
+  "title": "#40 单 checkout 工具安装与独立任务维护",
+  "description": "按 Issue #40 解耦工具安装、所选旧任务转换与历史收尾；本地实现及完整验证已完成，等待独立交付边界。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-15",
+  "completedAt": "2026-10-16",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

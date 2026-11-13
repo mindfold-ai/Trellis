@@ -1,0 +1,29 @@
+{
+  "id": "issue-46-legacy-archive-resume",
+  "name": "issue-46-legacy-archive-resume",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 46,
+    "disposition": "exact_source"
+  },
+  "title": "Support selected legacy archive resume",
+  "description": "Implement castbox/Trellis#46 public bounded legacy manually archived task inspection, conversion and resume.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-17",
+  "completedAt": "2026-10-17",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "a06b1f764f003001b35fe125177203211fb2152c",
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

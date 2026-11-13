@@ -457,9 +457,7 @@ describe("initializeHashes", () => {
     expect(hashes).not.toHaveProperty("AGENTS.md");
   });
 
-  it("excludes workspace and tasks directories", () => {
-    fs.mkdirSync(path.join(tmpDir, ".trellis", "workspace"), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, ".trellis", "workspace", "data.md"), "user data");
+  it("excludes task directories", () => {
     fs.mkdirSync(path.join(tmpDir, ".trellis", "tasks"), { recursive: true });
     fs.writeFileSync(path.join(tmpDir, ".trellis", "tasks", "task.json"), "{}");
 
@@ -467,7 +465,6 @@ describe("initializeHashes", () => {
     const hashes = loadHashes(tmpDir);
 
     // These should be excluded
-    expect(hashes).not.toHaveProperty(".trellis/workspace/data.md");
     expect(hashes).not.toHaveProperty(".trellis/tasks/task.json");
     expect(count).toBe(0);
   });

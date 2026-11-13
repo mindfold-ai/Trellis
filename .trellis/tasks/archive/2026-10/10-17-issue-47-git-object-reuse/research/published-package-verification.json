@@ -1,0 +1,24 @@
+{
+  "source_commit": "c7bd746b42d75f73534c85e263cd6b51fe0e5287",
+  "tag": "castbox-v0.7.0-castbox.3",
+  "release": "https://github.com/castbox/Trellis/releases/tag/castbox-v0.7.0-castbox.3",
+  "sha256sums_all_passed": true,
+  "packages": [
+    {
+      "package": "@mindfoldhq/trellis-core",
+      "verified_installed_files": 274,
+      "all_bytes_and_modes_match_downloaded_tarball": true
+    },
+    {
+      "package": "@mindfoldhq/trellis",
+      "verified_installed_files": 739,
+      "all_bytes_and_modes_match_downloaded_tarball": true
+    }
+  ],
+  "npm_publish_workflow": {
+    "run_id": 38994703163,
+    "conclusion": "skipped",
+    "publish_job": "skipped"
+  },
+  "passed": true
+}

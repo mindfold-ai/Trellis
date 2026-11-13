@@ -19,8 +19,6 @@ const TEMPLATE_SCRIPTS = path.resolve(
   "../../src/templates/trellis/scripts",
 );
 
-const DEVELOPER = "tester";
-
 function hasPython(): boolean {
   try {
     execFileSync("python3", ["--version"], { stdio: "ignore" });
@@ -36,14 +34,6 @@ function setupRepo(tmp: string): void {
   fs.mkdirSync(scriptsDest, { recursive: true });
   fs.cpSync(TEMPLATE_SCRIPTS, scriptsDest, { recursive: true });
 
-  const r = spawnSync(
-    "python3",
-    [".trellis/scripts/init_developer.py", DEVELOPER],
-    { cwd: tmp, encoding: "utf-8" },
-  );
-  if (r.status !== 0) {
-    throw new Error(`init_developer failed: ${r.stderr}`);
-  }
 }
 
 function runTask(repo: string, ...args: string[]) {
@@ -141,6 +131,54 @@ describe.skipIf(!hasPython())("task.py meta (task.json.meta access)", () => {
     );
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("=value");
+  });
+
+  it("create --task-id keeps the explicit identity separate from the task directory", () => {
+    for (const [slug, taskId] of [
+      ["stable-task", "Issue_434.2"],
+      ["dot-task", "issue."],
+      ["lock-task", "issue.lock"],
+      ["double-dot-task", "issue..434"],
+    ]) {
+      const result = runTask(tmp, "create", slug, "--description", "identity fixture", "--slug", slug, "--task-id", taskId);
+      expect(result.status, `${taskId}: ${result.stderr}`).toBe(0);
+      expect(readTaskJson(tmp, findTaskDir(tmp, slug)).id).toBe(taskId);
+    }
+  });
+
+  it("create --task-id rejects values outside the pattern before writing", () => {
+    for (const [slug, taskId] of [
+      ["space-task", "issue 434"],
+      ["leading-dot-task", ".issue"],
+      ["punctuation-task", "issue:434"],
+    ]) {
+      const result = runTask(tmp, "create", slug, "--description", "identity fixture", "--slug", slug, "--task-id", taskId);
+      expect(result.status, taskId).toBe(1);
+      expect(result.stderr).toContain("--task-id must match");
+      expect(fs.existsSync(path.join(tmp, ".trellis", "tasks"))).toBe(false);
+    }
+  });
+
+  it("create rejects an invalid TaskId derived from --slug before writing", () => {
+    const invalid = runTask(tmp, "create", "two words", "--description", "identity fixture", "--slug", "two words");
+    expect(invalid.status).toBe(1);
+    expect(invalid.stderr).toContain("derived task id must match");
+    expect(fs.existsSync(path.join(tmp, ".trellis", "tasks"))).toBe(false);
+
+    const explicit = runTask(tmp, "create", "two words", "--description", "identity fixture", "--slug", "two words", "--task-id", "valid-task");
+    expect(explicit.status, explicit.stderr).toBe(0);
+    expect(readTaskJson(tmp, findTaskDir(tmp, "two words")).id).toBe("valid-task");
+  });
+
+  it("create --task-id still rejects exact and case-fold collisions", () => {
+    const original = runTask(tmp, "create", "original", "--description", "identity fixture", "--slug", "original", "--task-id", "Issue_434.2");
+    expect(original.status, original.stderr).toBe(0);
+
+    for (const [slug, taskId] of [["exact-task", "Issue_434.2"], ["case-fold-task", "issue_434.2"]]) {
+      const result = runTask(tmp, "create", slug, "--description", "identity fixture", "--slug", slug, "--task-id", taskId);
+      expect(result.status, `${taskId}: ${result.stderr}`).toBe(1);
+      expect(fs.readdirSync(path.join(tmp, ".trellis", "tasks")).some((directory) => directory.endsWith(`-${slug}`))).toBe(false);
+    }
   });
 
   it("set-meta adds a new key and overwrites an existing one", () => {

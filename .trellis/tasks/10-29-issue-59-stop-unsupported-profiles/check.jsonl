@@ -1,0 +1,5 @@
+{"file":".trellis/spec/cli/backend/trellis-core-sdk.md","reason":"Check that the repair remains within the existing public package contract."}
+{"file":".trellis/spec/cli/backend/delivery-lifecycle.md","reason":"Review retained history, supported execution and stop/Completion separation."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Review regression reachability, non-duplication and exact observable results."}
+{"file":".trellis/delivery-contract.md","reason":"Check the complete candidate against public stage-owner and recovery semantics."}
+{"file":".trellis/tasks/10-29-issue-59-stop-unsupported-profiles/research/ownership.md","reason":"Keep causal claims and validation limits tied to actual evidence."}

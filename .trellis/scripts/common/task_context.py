@@ -27,10 +27,43 @@ from pathlib import Path
 
 from .config import get_context_injection_limits
 from .git import branch_exists_locally
-from .io import read_json
+from .path_boundary import require_project_path
+from .io import JSON_READ_MISSING, read_json, read_json_checked
 from .log import Colors, colored
 from .paths import DIR_ARCHIVE, DIR_TASKS, DIR_WORKFLOW, FILE_TASK_JSON, get_repo_root
 from .task_utils import resolve_task_dir
+
+
+def _context_target(args: argparse.Namespace, invocation_root: Path) -> tuple[Path, Path, Path] | None:
+    """Resolve Task identity/workspace first, then explicit Delivery artifacts."""
+    workspace = invocation_root
+    if Path(args.dir).is_absolute():
+        from .active_task import task_workspace_for_path
+        try:
+            workspace = task_workspace_for_path(Path(args.dir), invocation_root)
+        except ValueError as exc:
+            print(f"Error: {exc}")
+            return None
+    task_dir = resolve_task_dir(args.dir, workspace)
+    if task_dir is None:
+        return None
+    task_json = task_dir / FILE_TASK_JSON
+    task_data, read_reason = read_json_checked(task_json)
+    if task_data is None:
+        if read_reason == JSON_READ_MISSING and not task_json.is_symlink():
+            return workspace, task_dir, task_dir  # genuinely evidence-only directory
+        print(f"Error: task_metadata_{read_reason}: {task_json}")
+        return None
+    from .runtime_contract import require_task_runtime
+    from .delivery_session import planning_directory
+    try:
+        require_task_runtime(workspace, task_data)
+        if task_data.get("schema_version") != "2.0":
+            return workspace, task_dir, task_dir
+        return workspace, task_dir, planning_directory(task_dir, workspace, getattr(args, "delivery", None))
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        return None
 
 # Extensions that look like code rather than spec/research docs. Entries with
 # one of these extensions outside .trellis/spec/, docs/docs-site, or the
@@ -63,9 +96,10 @@ _CODE_FILE_EXTENSIONS = {
 def cmd_add_context(args: argparse.Namespace) -> int:
     """Add entry to JSONL context file."""
     repo_root = get_repo_root()
-    target_dir = resolve_task_dir(args.dir, repo_root)
-    if target_dir is None:
+    resolved = _context_target(args, repo_root)
+    if resolved is None:
         return 1
+    repo_root, _, target_dir = resolved
 
     jsonl_name = args.file
     path = args.path
@@ -90,6 +124,13 @@ def cmd_add_context(args: argparse.Namespace) -> int:
 
     jsonl_file = target_dir / jsonl_name
     full_path = repo_root / path
+
+    try:
+        require_project_path(jsonl_file, repo_root)
+        require_project_path(full_path, repo_root)
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED))
+        return 1
 
     entry_type = "file"
     if full_path.is_dir():
@@ -125,7 +166,7 @@ def cmd_add_context(args: argparse.Namespace) -> int:
 # Command: validate
 # =============================================================================
 
-def curated_entry_count(jsonl_file: Path) -> int | None:
+def curated_entry_count(jsonl_file: Path, repo_root: Path | None = None) -> int | None:
     """Count curated entries in a jsonl context manifest.
 
     Returns None when the file does not exist — `task.py create` seeds the
@@ -134,6 +175,11 @@ def curated_entry_count(jsonl_file: Path) -> int | None:
     entry is a JSON object row carrying a truthy ``file`` (or legacy ``path``)
     value: the same rows the sub-agent injection hook materializes.
     """
+    try:
+        require_project_path(jsonl_file, repo_root if repo_root is not None else get_repo_root())
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED))
+        return 0
     if not jsonl_file.is_file():
         return None
     try:
@@ -157,7 +203,10 @@ def curated_entry_count(jsonl_file: Path) -> int | None:
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate JSONL context files."""
     repo_root = get_repo_root()
-    target_dir = resolve_task_dir(args.dir, repo_root)
+    resolved = _context_target(args, repo_root)
+    if resolved is None:
+        return 1
+    repo_root, task_dir, target_dir = resolved
 
     if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
@@ -169,7 +218,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     # Warn (don't fail validation) when the recorded branch is stale — it
     # was likely already merged and deleted (#399 item 2).
-    task_json_path = target_dir / FILE_TASK_JSON
+    task_json_path = task_dir / FILE_TASK_JSON
     if task_json_path.is_file():
         task_data = read_json(task_json_path)
         stored_branch = task_data.get("branch") if task_data else None
@@ -223,6 +272,7 @@ def _resolve_context_entry_path(
     ``None`` means the remapped path traversed or resolved outside that archive.
     """
     repo_path = repo_root / file_path
+    require_project_path(repo_path, repo_root)
     if task_dir is None:
         return repo_path
 
@@ -260,7 +310,9 @@ def _resolve_context_entry_path(
 
     try:
         archive_root = task_dir.resolve()
-        resolved_path = task_dir.joinpath(*relative_parts).resolve()
+        archive_path = task_dir.joinpath(*relative_parts)
+        require_project_path(archive_path, repo_root)
+        resolved_path = archive_path.resolve()
         resolved_path.relative_to(archive_root)
     except (OSError, RuntimeError, ValueError):
         return None
@@ -284,6 +336,11 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
     file_name = jsonl_file.name
     errors = 0
 
+    try:
+        require_project_path(jsonl_file, repo_root)
+    except ValueError as exc:
+        print(colored(f"Error: {exc}", Colors.RED))
+        return 1
     if not jsonl_file.is_file():
         print(f"  {colored(f'{file_name}: not found (skipped)', Colors.YELLOW)}")
         return 0
@@ -346,7 +403,14 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
             continue
 
         real_entries += 1
-        full_path = _resolve_context_entry_path(file_path, repo_root, task_dir)
+        try:
+            full_path = _resolve_context_entry_path(file_path, repo_root, task_dir)
+            if full_path is not None:
+                require_project_path(full_path, repo_root)
+        except ValueError as exc:
+            print(colored(f"{file_name}:{line_num}: {exc}", Colors.RED))
+            errors += 1
+            continue
         if entry_type == "directory":
             if full_path is None or not full_path.is_dir():
                 print(f"  {colored(f'{file_name}:{line_num}: Directory not found: {file_path}', Colors.RED)}")
@@ -416,7 +480,10 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path, task_dir: Path | None = N
 def cmd_list_context(args: argparse.Namespace) -> int:
     """List JSONL context entries."""
     repo_root = get_repo_root()
-    target_dir = resolve_task_dir(args.dir, repo_root)
+    resolved = _context_target(args, repo_root)
+    if resolved is None:
+        return 1
+    repo_root, _, target_dir = resolved
 
     if target_dir is None or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
@@ -427,6 +494,11 @@ def cmd_list_context(args: argparse.Namespace) -> int:
 
     for jsonl_name in ["implement.jsonl", "check.jsonl"]:
         jsonl_file = target_dir / jsonl_name
+        try:
+            require_project_path(jsonl_file, repo_root)
+        except ValueError as exc:
+            print(colored(f"Error: {exc}", Colors.RED))
+            return 1
         if not jsonl_file.is_file():
             continue
 

@@ -1,0 +1,295 @@
+{
+  "reason": "Fixture cardinality correction and instrumentation consolidation; no production edits or frozen thresholds existed. Not final evidence.",
+  "samples": [
+    {
+      "aggregate_constructions": 1,
+      "component_seconds": 0.10749087505973876,
+      "content_sha256_constructions": 127,
+      "count": 128,
+      "exact_probe": {},
+      "git_commit": "7ea9a1d0970f47885cc8bf160c2bb3d706efe39e",
+      "max_blob_bytes": 4194304,
+      "network_calls": 0,
+      "oracle_equal": true,
+      "paths_including_deleted": 128,
+      "provider": "synthetic gh protocol fixture; no live AI",
+      "python_self_peak_rss_bytes": 47120384,
+      "rows": [
+        {
+          "iteration": 0,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.8212142500560731,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6380439579952508,
+          "retries": 0,
+          "warmup": true
+        },
+        {
+          "iteration": 1,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.7106413750443608,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6170275409240276,
+          "retries": 0,
+          "warmup": false
+        },
+        {
+          "iteration": 2,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.6802964999806136,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6286552919773385,
+          "retries": 0,
+          "warmup": false
+        }
+      ],
+      "sha256_constructions": 128,
+      "unique_blobs": 19,
+      "unique_body_bytes": 12856596,
+      "variant": "repeated"
+    },
+    {
+      "aggregate_constructions": 1,
+      "component_seconds": 0.10756533301901072,
+      "content_sha256_constructions": 18,
+      "count": 3,
+      "exact_probe": {
+        "paths": 3,
+        "sha256_constructions": 4,
+        "unique_blobs": 1
+      },
+      "git_commit": "a1a7d5fff095fc1f54b135c7cc81eaa9d1917b75",
+      "max_blob_bytes": 36625,
+      "network_calls": 0,
+      "oracle_equal": true,
+      "paths_including_deleted": 19,
+      "provider": "synthetic gh protocol fixture; no live AI",
+      "python_self_peak_rss_bytes": 38813696,
+      "rows": [
+        {
+          "iteration": 0,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.7408210000721738,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.586927333031781,
+          "retries": 0,
+          "warmup": true
+        },
+        {
+          "iteration": 1,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.7276629999978468,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.5884040419477969,
+          "retries": 0,
+          "warmup": false
+        },
+        {
+          "iteration": 2,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.6517462079646066,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6170225840760395,
+          "retries": 0,
+          "warmup": false
+        }
+      ],
+      "sha256_constructions": 19,
+      "unique_blobs": 16,
+      "unique_body_bytes": 273684,
+      "variant": "repeated"
+    },
+    {
+      "aggregate_constructions": 1,
+      "component_seconds": 2.441265790956095,
+      "content_sha256_constructions": 10000,
+      "count": 10001,
+      "exact_probe": {},
+      "git_commit": "718b92310aa538f7d1b9f6aad6e2c508d992d391",
+      "max_blob_bytes": 4194304,
+      "network_calls": 0,
+      "oracle_equal": true,
+      "paths_including_deleted": 10001,
+      "provider": "synthetic gh protocol fixture; no live AI",
+      "python_self_peak_rss_bytes": 58736640,
+      "rows": [
+        {
+          "iteration": 0,
+          "manual_exit": "delivered",
+          "manual_seconds": 3.51795712497551,
+          "query2_deliveries": 1,
+          "query2_seconds": 3.02243420900777,
+          "retries": 0,
+          "warmup": true
+        },
+        {
+          "iteration": 1,
+          "manual_exit": "delivered",
+          "manual_seconds": 3.123442625044845,
+          "query2_deliveries": 1,
+          "query2_seconds": 3.361593500012532,
+          "retries": 0,
+          "warmup": false
+        },
+        {
+          "iteration": 2,
+          "manual_exit": "delivered",
+          "manual_seconds": 3.1922855420270935,
+          "query2_deliveries": 1,
+          "query2_seconds": 2.9956787090050057,
+          "retries": 0,
+          "warmup": false
+        }
+      ],
+      "sha256_constructions": 10001,
+      "unique_blobs": 19,
+      "unique_body_bytes": 12856596,
+      "variant": "repeated"
+    },
+    {
+      "aggregate_constructions": 1,
+      "component_seconds": 2.369927000021562,
+      "content_sha256_constructions": 10000,
+      "count": 10001,
+      "exact_probe": {},
+      "git_commit": "b4b96c980f2a885e7e07dbc0f9d826b63eec449c",
+      "max_blob_bytes": 4194304,
+      "network_calls": 0,
+      "oracle_equal": true,
+      "paths_including_deleted": 10001,
+      "provider": "synthetic gh protocol fixture; no live AI",
+      "python_self_peak_rss_bytes": 57655296,
+      "rows": [
+        {
+          "iteration": 0,
+          "manual_exit": "delivered",
+          "manual_seconds": 3.6451641669264063,
+          "query2_deliveries": 1,
+          "query2_seconds": 3.128566583036445,
+          "retries": 0,
+          "warmup": true
+        },
+        {
+          "iteration": 1,
+          "manual_exit": "delivered",
+          "manual_seconds": 3.1777999999467283,
+          "query2_deliveries": 1,
+          "query2_seconds": 3.0491062090732157,
+          "retries": 0,
+          "warmup": false
+        },
+        {
+          "iteration": 2,
+          "manual_exit": "delivered",
+          "manual_seconds": 3.1860124160302803,
+          "query2_deliveries": 1,
+          "query2_seconds": 3.080683834035881,
+          "retries": 0,
+          "warmup": false
+        }
+      ],
+      "sha256_constructions": 10001,
+      "unique_blobs": 10000,
+      "unique_body_bytes": 33614836,
+      "variant": "mixed"
+    },
+    {
+      "aggregate_constructions": 1,
+      "component_seconds": 0.1056714579463005,
+      "content_sha256_constructions": 127,
+      "count": 128,
+      "exact_probe": {},
+      "git_commit": "f06f099255a2ca89de51c8d4f8f91d2a76367a78",
+      "max_blob_bytes": 4194304,
+      "network_calls": 0,
+      "oracle_equal": true,
+      "paths_including_deleted": 128,
+      "provider": "synthetic gh protocol fixture; no live AI",
+      "python_self_peak_rss_bytes": 47022080,
+      "rows": [
+        {
+          "iteration": 0,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.8164222500054166,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6458620409248397,
+          "retries": 0,
+          "warmup": true
+        },
+        {
+          "iteration": 1,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.710606083041057,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6236507090507075,
+          "retries": 0,
+          "warmup": false
+        },
+        {
+          "iteration": 2,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.7206560419872403,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6414025420090184,
+          "retries": 0,
+          "warmup": false
+        }
+      ],
+      "sha256_constructions": 128,
+      "unique_blobs": 127,
+      "unique_body_bytes": 13078996,
+      "variant": "mixed"
+    },
+    {
+      "aggregate_constructions": 1,
+      "component_seconds": 0.06505129102151841,
+      "content_sha256_constructions": 45,
+      "count": 30,
+      "exact_probe": {
+        "paths": 30,
+        "sha256_constructions": 31,
+        "unique_blobs": 1
+      },
+      "git_commit": "38bbbe9086da4d2ef526497ff7b9bae5a7322853",
+      "max_blob_bytes": 36625,
+      "network_calls": 0,
+      "oracle_equal": true,
+      "paths_including_deleted": 46,
+      "provider": "synthetic gh protocol fixture; no live AI",
+      "python_self_peak_rss_bytes": 38240256,
+      "rows": [
+        {
+          "iteration": 0,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.8254511250415817,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6106972920242697,
+          "retries": 0,
+          "warmup": true
+        },
+        {
+          "iteration": 1,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.7034353750059381,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.6216160409385338,
+          "retries": 0,
+          "warmup": false
+        },
+        {
+          "iteration": 2,
+          "manual_exit": "delivered",
+          "manual_seconds": 0.6614075000397861,
+          "query2_deliveries": 1,
+          "query2_seconds": 0.594433166901581,
+          "retries": 0,
+          "warmup": false
+        }
+      ],
+      "sha256_constructions": 46,
+      "unique_blobs": 16,
+      "unique_body_bytes": 273684,
+      "variant": "repeated"
+    }
+  ]
+}

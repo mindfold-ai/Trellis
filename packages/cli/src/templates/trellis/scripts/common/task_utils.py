@@ -13,13 +13,18 @@ Provides:
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
+import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .paths import get_repo_root, get_tasks_dir
+from .io import JSON_READ_MISSING, read_json_checked, read_task_id_reservation
+from .paths import FILE_TASK_JSON, get_repo_root, get_tasks_dir
+from .path_boundary import ProjectPathError, require_project_path
 
 if TYPE_CHECKING:
     import subprocess
@@ -56,7 +61,184 @@ def is_within_tasks_dir(task_dir_abs: Path, repo_root: Path | None = None) -> bo
 # Task Lookup
 # =============================================================================
 
-def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
+
+class TaskIdentityError(ValueError):
+    """Task metadata cannot establish a valid lifecycle identity."""
+
+
+TASK_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+@dataclass(frozen=True)
+class TaskIdentity:
+    task_id: str
+    lifecycle_generation: int
+
+
+def lifecycle_generation(data: dict, source: Path | str) -> int:
+    """Read the required non-negative lifecycle generation."""
+    value = data.get("lifecycle_generation")
+    if type(value) is not int or value < 0:
+        raise TaskIdentityError(
+            f"invalid_lifecycle_generation: {source}: expected non-negative integer"
+        )
+    return value
+
+
+def task_identity_from_data(data: dict, source: Path | str) -> TaskIdentity:
+    task_id = data.get("id")
+    if not isinstance(task_id, str) or not TASK_ID_PATTERN.fullmatch(task_id):
+        raise TaskIdentityError(f"invalid_task_id: {source}: expected [A-Za-z0-9][A-Za-z0-9._-]*")
+    return TaskIdentity(task_id, lifecycle_generation(data, source))
+
+
+def read_task_identity(task_json: Path, repo_root: Path) -> TaskIdentity:
+    require_project_path(task_json, repo_root)
+    data, reason = read_json_checked(task_json)
+    if data is None:
+        raise TaskIdentityError(f"task_metadata_{reason}: {task_json}")
+    return task_identity_from_data(data, task_json)
+
+
+def _visible_identity_candidates(task_ref: str) -> set[str]:
+    candidates = {task_ref}
+    parts = task_ref.split("-", 2)
+    if len(parts) == 3 and all(part.isdigit() for part in parts[:2]):
+        candidates.add(parts[2])
+    return candidates
+
+
+def _task_directories(tasks_dir: Path, repo_root: Path):
+    require_project_path(tasks_dir, repo_root)
+    if not tasks_dir.is_dir():
+        return
+    for candidate in sorted(tasks_dir.iterdir()):
+        if candidate.name == "archive":
+            continue
+        require_project_path(candidate, repo_root)
+        if candidate.is_dir():
+            yield candidate
+    archive = tasks_dir / "archive"
+    require_project_path(archive, repo_root)
+    if not archive.is_dir():
+        return
+    for month in sorted(archive.iterdir()):
+        require_project_path(month, repo_root)
+        if not month.is_dir():
+            continue
+        for candidate in sorted(month.iterdir()):
+            require_project_path(candidate, repo_root)
+            if candidate.is_dir():
+                yield candidate
+
+
+def _formal_predecessor_for_relocation(selected: Path | None, requested: str, repo_root: Path) -> Path | None:
+    """Exclude only the public conversion's retained predecessor on a move.
+
+    Creation has no selected Task and retains ordinary identity reservation.
+    This reads a relation; it performs no conversion or lifecycle write.
+    """
+    if selected is None:
+        return None
+    provenance_path = selected / "migration" / "formal-archive-reactivation.json"
+    require_project_path(provenance_path, repo_root)
+    if not provenance_path.exists():
+        return None
+    provenance, reason = read_json_checked(provenance_path)
+    current, current_reason = read_json_checked(selected / FILE_TASK_JSON)
+    if provenance is None or current is None:
+        raise TaskIdentityError(f"formal_archive_provenance_mismatch: {reason or current_reason}")
+    key = provenance.get("key")
+    archive_ref = provenance.get("archive_ref")
+    original = provenance.get("original_task_ref")
+    commit = provenance.get("archive_commit")
+    if (set(provenance) != {"key", "archive_ref", "original_task_ref", "archive_commit"}
+            or not isinstance(key, dict) or set(key) != {"task_id", "lifecycle_generation"}
+            or key.get("task_id") != requested or type(key.get("lifecycle_generation")) is not int
+            or key["lifecycle_generation"] < 0
+            or current.get("schema_version") != "2.0" or current.get("id") != requested
+            or current["lifecycle_generation"] <= key["lifecycle_generation"]
+            or not isinstance(archive_ref, str)
+            or not re.fullmatch(r"\.trellis/tasks/archive/\d{4}-\d{2}/[^/]+", archive_ref)
+            or not isinstance(original, str) or not re.fullmatch(r"\.trellis/tasks/(?!archive$)[^/]+", original)
+            or not isinstance(commit, str) or not re.fullmatch(r"[a-f0-9]{40}(?:[a-f0-9]{24})?", commit)):
+        raise TaskIdentityError("formal_archive_provenance_mismatch: invalid public predecessor relation")
+    predecessor = repo_root / archive_ref
+    source_path = predecessor / FILE_TASK_JSON
+    retained = selected / "migration" / "source-task.json"
+    require_project_path(source_path, repo_root)
+    require_project_path(retained, repo_root)
+    # Only this retained formal relation reads a positively recognized legacy
+    # archive. Ordinary current Task readers deliberately remain strict.
+    from .maintenance import is_known_legacy_task
+    try:
+        raw_source = json.loads(source_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeError) as error:
+        raise TaskIdentityError(f"formal_archive_provenance_mismatch: retained source {archive_ref}") from error
+    legacy = is_known_legacy_task(raw_source)
+    source, source_reason = (raw_source, None) if legacy else read_json_checked(source_path)
+    source_generation = 0 if legacy else (source or {}).get("lifecycle_generation")
+    source_matches = source is not None and source.get("source") == current.get("source")
+    if legacy and source is not None:
+        scope = source.get("scope")
+        issue = re.fullmatch(r"GitHub issue: https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([1-9][0-9]*)", scope) if isinstance(scope, str) else None
+        projected = current.get("source")
+        source_matches = (issue is not None and int(issue[2]) <= 9007199254740991
+                          and isinstance(projected, dict) and projected.get("kind") == "issue"
+                          and projected.get("repo_ref") == issue[1] and projected.get("number") == int(issue[2]))
+    if (source is None or source.get("schema_version") is not None
+            or source.get("status") != "completed" or source.get("id") != requested
+            or source_generation != key["lifecycle_generation"] or not source_matches
+            or not retained.is_file() or retained.read_bytes() != source_path.read_bytes()):
+        raise TaskIdentityError(f"formal_archive_provenance_mismatch: retained source {source_reason or archive_ref}")
+    return predecessor.resolve()
+
+
+def task_id_collisions(
+    requested: str,
+    tasks_dir: Path,
+    repo_root: Path,
+    *,
+    exclude: Path | None = None,
+) -> list[str]:
+    """Return exact/case-fold collisions relevant to one requested TaskId."""
+    folded = requested.casefold()
+    excluded = exclude.resolve() if exclude is not None else None
+    predecessor = _formal_predecessor_for_relocation(exclude, requested, repo_root)
+    conflicts: list[str] = []
+    for directory in _task_directories(tasks_dir, repo_root):
+        if directory.resolve() in (excluded, predecessor):
+            continue
+        task_json = directory / FILE_TASK_JSON
+        require_project_path(task_json, repo_root)
+        task_id, reason = read_task_id_reservation(task_json)
+        if task_id is None:
+            if "archive" not in directory.relative_to(tasks_dir).parts and reason != JSON_READ_MISSING:
+                raise TaskIdentityError(f"task_metadata_{reason}: {task_json}")
+            if any(value.casefold() == folded for value in _visible_identity_candidates(directory.name)):
+                conflicts.append(f"{directory}: unreadable task.json ({reason})")
+            continue
+        if task_id.casefold() == folded:
+            kind = "exact" if task_id == requested else "case-fold"
+            conflicts.append(f"{directory}: {kind} TaskId {task_id!r}")
+    return conflicts
+
+
+def require_unique_task_id(
+    requested: str,
+    tasks_dir: Path,
+    repo_root: Path,
+    *,
+    exclude: Path | None = None,
+) -> None:
+    conflicts = task_id_collisions(
+        requested, tasks_dir, repo_root, exclude=exclude
+    )
+    if conflicts:
+        detail = "; ".join(conflicts)
+        raise TaskIdentityError(f"task_id_collision: {requested!r}: {detail}")
+
+def find_task_by_name(task_name: str, tasks_dir: Path, repo_root: Path | None = None) -> Path | None:
     """Find task directory by name (exact or suffix match).
 
     A task name is a single directory name under ``tasks_dir``, never a path:
@@ -75,6 +257,8 @@ def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
     Returns:
         Absolute path to task directory, or None if not found or ambiguous.
     """
+    root = repo_root if repo_root is not None else get_repo_root()
+    require_project_path(tasks_dir, root)
     if not task_name or not tasks_dir or not tasks_dir.is_dir():
         return None
 
@@ -84,14 +268,22 @@ def find_task_by_name(task_name: str, tasks_dir: Path) -> Path | None:
 
     # Try exact match first
     exact_match = tasks_dir / task_name
+    require_project_path(exact_match / FILE_TASK_JSON, root)
     if exact_match.is_dir():
         return exact_match
 
     # Try suffix match (e.g., "my-task" matches "01-21-my-task")
-    matches = sorted(
-        d for d in tasks_dir.iterdir()
-        if d.is_dir() and d.name.endswith(f"-{task_name}")
-    )
+    matches = []
+    for d in sorted(tasks_dir.iterdir()):
+        if not d.name.endswith(f"-{task_name}"):
+            continue
+        try:
+            require_project_path(d / FILE_TASK_JSON, root)
+        except ProjectPathError as exc:
+            print(f"[WARN] Skipping task '{d.name}': {exc}", file=sys.stderr)
+            continue
+        if d.is_dir():
+            matches.append(d)
     if len(matches) == 1:
         return matches[0]
     if matches:
@@ -156,8 +348,15 @@ def archive_task_dir(task_dir_abs: Path, repo_root: Path | None = None) -> Path 
         return None
 
     try:
-        shutil.move(str(task_dir_abs), str(dest))
-    except (OSError, IOError, shutil.Error) as e:
+        data, reason = read_json_checked(task_dir_abs / FILE_TASK_JSON)
+        if data is None:
+            raise TaskIdentityError(f"task_metadata_{reason}: {task_dir_abs}")
+        if data.get("schema_version") == "2.0":
+            from .task_artifacts import relocate_task_directory
+            relocate_task_directory(task_dir_abs, dest, repo_root if repo_root is not None else get_repo_root())
+        else:
+            shutil.move(str(task_dir_abs), str(dest))
+    except (OSError, IOError, shutil.Error, ValueError) as e:
         print(f"Error: Failed to move task to archive: {e}", file=sys.stderr)
         return None
 
@@ -191,6 +390,67 @@ def archive_task_complete(
 # =============================================================================
 # Task Directory Resolution
 # =============================================================================
+
+def resolve_lifecycle_target(
+    target: str, repo_root: Path, *, use_active: bool = False, allow_archived: bool = False,
+) -> tuple[Path, Path] | None:
+    """Resolve start/archive/rename without guessing task ownership by name."""
+    from .active_task import resolve_active_task, task_workspace_for_path
+    from .session_storage import SessionBindingError, task_location
+
+    try:
+        root = repo_root.resolve()
+        if Path(target).is_absolute():
+            workspace = task_workspace_for_path(Path(target), root, allow_archived=allow_archived)
+            _, path = task_location(target, workspace, allow_archived=allow_archived)
+            return workspace, path
+        if use_active:
+            active = resolve_active_task(root)
+            if active.error:
+                raise SessionBindingError(active.error)
+            if active.resolved_task_path and active.task_workspace_root:
+                normalized = target.replace("\\", "/")
+                while normalized.startswith("./"):
+                    normalized = normalized[2:]
+                if normalized.startswith("tasks/"):
+                    normalized = ".trellis/" + normalized
+                name = active.resolved_task_path.name
+                matches = normalized in {active.task_path, name} or (
+                    "/" not in normalized and name.endswith("-" + normalized)
+                )
+                if matches:
+                    tasks = get_tasks_dir(root)
+                    # Check every suffix candidate, not a lookup that conflates
+                    # an ambiguous local name with a missing local candidate.
+                    if "/" in normalized:
+                        locals_ = [root / normalized]
+                    elif tasks.is_dir():
+                        locals_ = [p for p in tasks.iterdir()
+                                   if p.name == normalized or p.name.endswith("-" + normalized)]
+                    else:
+                        locals_ = []
+                    for candidate in locals_:
+                        require_project_path(candidate / FILE_TASK_JSON, root)
+                        if candidate.is_dir() and (
+                            root != active.task_workspace_root or
+                            candidate.resolve() != active.resolved_task_path.resolve()
+                        ):
+                            raise SessionBindingError(
+                                f"ambiguous_task_target: {target}; pass an absolute task path"
+                            )
+                    return active.task_workspace_root, active.resolved_task_path
+        if allow_archived and "/" in target.replace("\\", "/"):
+            _, path = task_location(target, root, allow_archived=True)
+            return root, path
+        path = resolve_task_dir(target, root)
+        if path is None:
+            return None
+        _, path = task_location(str(path), root, allow_archived=allow_archived)
+        return root, path
+    except (ValueError, OSError, RuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return None
+
 
 def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
     """Resolve task directory to an absolute path inside the tasks directory.
@@ -237,7 +497,7 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
         # Task name - must resolve inside the tasks directory. The historical
         # fallback to repo_root/<name> only ever produced a path the check
         # below rejects, so a miss ends here instead.
-        candidate = find_task_by_name(target_dir, tasks_dir)
+        candidate = find_task_by_name(target_dir, tasks_dir, repo_root)
         if candidate is None:
             # find_task_by_name reports invalid names and ambiguity itself.
             print(
@@ -247,6 +507,7 @@ def resolve_task_dir(target_dir: str, repo_root: Path) -> Path | None:
             return None
 
     try:
+        require_project_path(candidate / FILE_TASK_JSON, repo_root)
         resolved = candidate.resolve()
         tasks_lexical = get_tasks_dir(repo_root.resolve())
         tasks_resolved = tasks_lexical.resolve()

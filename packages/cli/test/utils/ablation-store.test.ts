@@ -36,10 +36,12 @@ describe("ablation-store", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-ablation-store-"));
     projectDir = path.join(tmpDir, "project");
     stateRoot = path.join(tmpDir, "state");
-    fs.mkdirSync(path.join(projectDir, ".trellis"), { recursive: true });
+    fs.mkdirSync(path.join(projectDir, ".trellis", "active"), {
+      recursive: true,
+    });
     fs.writeFileSync(path.join(projectDir, "managed.txt"), "managed\n");
     fs.writeFileSync(
-      path.join(projectDir, ".trellis", "config.yaml"),
+      path.join(projectDir, ".trellis", "active", "config.yaml"),
       "version: 1\n",
     );
     originalStateRoot = process.env[ABLATION_STATE_ROOT_ENV];
@@ -65,10 +67,10 @@ describe("ablation-store", () => {
         backupPath: "backup/managed.txt",
       },
       {
-        relativePath: ".trellis",
-        pre: fingerprintPath(path.join(projectDir, ".trellis")),
+        relativePath: ".trellis/active",
+        pre: fingerprintPath(path.join(projectDir, ".trellis", "active")),
         expectedAblated: { kind: "absent" },
-        backupPath: "backup/.trellis",
+        backupPath: "backup/.trellis/active",
       },
     ];
   }
@@ -403,7 +405,11 @@ describe("ablation-store", () => {
     const transaction = stage();
     removeManagedState();
     transitionAblationState(transaction, "applied");
-    const trellisPath = path.join(fs.realpathSync(projectDir), ".trellis");
+    const trellisPath = path.join(
+      fs.realpathSync(projectDir),
+      ".trellis",
+      "active",
+    );
     const originalRenameSync = fs.renameSync.bind(fs);
     vi.spyOn(fs, "renameSync").mockImplementation((source, destination) => {
       if (

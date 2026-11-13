@@ -1,0 +1,557 @@
+{
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "manual",
+      "local_commit",
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "native-readiness",
+      "publication": "native-publication",
+      "delivery": "native-delivery",
+      "completion": "native-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 0,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "schema_version": "2.0",
+    "accepted_scope": null,
+    "deliveries": [],
+    "completion_results": [],
+    "closure_results": []
+  },
+  "schema_cases": [
+    {
+      "name": "old development status",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": 0,
+        "source": {
+          "kind": "no_issue"
+        },
+        "title": "Two slices",
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {},
+        "schema_version": "2.0",
+        "accepted_scope": null,
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": [],
+        "status": "completed"
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "name": "boolean generation",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": true,
+        "source": {
+          "kind": "no_issue"
+        },
+        "title": "Two slices",
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {},
+        "schema_version": "2.0",
+        "accepted_scope": null,
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": []
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "name": "unsupported schema",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": 0,
+        "source": {
+          "kind": "no_issue"
+        },
+        "title": "Two slices",
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {},
+        "schema_version": "1.0",
+        "accepted_scope": null,
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": []
+      },
+      "expect_error": "unsupported_task_schema"
+    },
+    {
+      "name": "extra source field",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": 0,
+        "source": {
+          "kind": "no_issue",
+          "number": 31
+        },
+        "title": "Two slices",
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {},
+        "schema_version": "2.0",
+        "accepted_scope": null,
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": []
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "name": "missing metadata title",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": 0,
+        "source": {
+          "kind": "no_issue"
+        },
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {},
+        "schema_version": "2.0",
+        "accepted_scope": null,
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": []
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "name": "path escape",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": 0,
+        "source": {
+          "kind": "no_issue"
+        },
+        "title": "Two slices",
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {},
+        "schema_version": "2.0",
+        "accepted_scope": {
+          "locator": "../outside",
+          "revision": "1"
+        },
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": []
+      },
+      "expect_error": "invalid_locator"
+    },
+    {
+      "name": "authoritative meta",
+      "input": {
+        "id": "fixture-task",
+        "name": "fixture",
+        "lifecycle_generation": 0,
+        "source": {
+          "kind": "no_issue"
+        },
+        "title": "Two slices",
+        "description": "",
+        "dev_type": null,
+        "scope": null,
+        "package": null,
+        "priority": "P2",
+        "createdAt": "2026-10-12",
+        "base_branch": null,
+        "worktree_path": null,
+        "children": [],
+        "parent": null,
+        "relatedFiles": [],
+        "notes": "",
+        "meta": {
+          "candidate": {}
+        },
+        "schema_version": "2.0",
+        "accepted_scope": null,
+        "deliveries": [],
+        "completion_results": [],
+        "closure_results": []
+      },
+      "expect_error": "invalid_record"
+    }
+  ],
+  "steps": [
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "accept_scope",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "manual"
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "pull_request"
+      },
+      "expect_error": "delivery_identity_conflict"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      },
+      "expect_error": "delivery_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "unregistered",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      },
+      "expect_error": "owner_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "9.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      },
+      "expect_error": "unsupported_delivery_api"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "set_phase",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        },
+        "phase": "delivered"
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "checking",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      },
+      "expect_error": "stale_phase"
+    }
+  ]
+}

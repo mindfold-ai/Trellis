@@ -1,0 +1,26 @@
+{
+  "id": "plan2-worktree-copies",
+  "name": "plan2-worktree-copies",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Plan2 registered worktree copies",
+  "description": "Support normal inherited Task copies across registered worktrees with one binding-validated current execution location, preserving complete inventory, raw source bytes/modes and branch planning without reopening completed Issue31.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-13",
+  "completedAt": "2026-10-13",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "a5eb8b2dfd32b41e30d9bbf1c3ba8f98bcaf1258",
+  "pr_url": "https://github.com/castbox/Trellis/pull/36",
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "AC1-AC6 verified; PR #36 merged and exact main CI passed. Archived on 2026-10-13. Issue #31 stays closed; no downstream acceptance or release claim.",
+  "meta": {}
+}

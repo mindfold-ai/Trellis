@@ -1,0 +1,101 @@
+{
+  "passed": true,
+  "source_commit": "9f40ec70914f98fce2619560274cc1d0619f2f7e",
+  "release": "https://github.com/castbox/Trellis/releases/tag/castbox-v0.7.0-castbox.4",
+  "tag_verified_full_oid": "9f40ec70914f98fce2619560274cc1d0619f2f7e",
+  "version": "0.7.0-castbox.4",
+  "pr": "https://github.com/castbox/Trellis/pull/50",
+  "pr_ci": "https://github.com/castbox/Trellis/actions/runs/39013359563",
+  "main_ci": "https://github.com/castbox/Trellis/actions/runs/39013710371",
+  "npm_workflow": "https://github.com/castbox/Trellis/actions/runs/39013995737",
+  "npm_workflow_and_jobs": "skipped",
+  "downloaded_assets": [
+    {
+      "name": "SHA256SUMS",
+      "sha256": "ef411df2e6a89fe3349231491a898b9e833d18668158d2358ff8d1a7b422ef1a",
+      "bytes": 301,
+      "matches_original_published_build": true
+    },
+    {
+      "name": "mindfoldhq-trellis-0.7.0-castbox.4.tgz",
+      "sha256": "9746bed8c3c225bf5f28a263bb74eeeaef053270ba3c7f137e8b164de18ee417",
+      "bytes": 855068,
+      "matches_original_published_build": true
+    },
+    {
+      "name": "mindfoldhq-trellis-core-0.7.0-castbox.4.tgz",
+      "sha256": "46de26c162141751c9ea59d750afe3fedcebfdc86b8a32603b385415bc37b7ec",
+      "bytes": 228603,
+      "matches_original_published_build": true
+    },
+    {
+      "name": "release-record.json",
+      "sha256": "dff157381de78617dc3f47c2f887b430acead04e4ff2c084aab77023d5d4f676",
+      "bytes": 2293,
+      "matches_original_published_build": true
+    }
+  ],
+  "paired_installations": {
+    "before_release": {
+      "all_file_bytes_and_modes": 1013,
+      "public_behavior_checks": 7,
+      "passed": true
+    },
+    "downloaded_release": {
+      "all_file_bytes_and_modes": 1013,
+      "public_behavior_checks": 7,
+      "passed": true
+    }
+  },
+  "canonical_dogfood_packed_matches_measured_source": true,
+  "acceptance_authority": "../acceptance-revision.md",
+  "independent_technical_review": "../revised-acceptance-review.md",
+  "preserved_historical_time_gate_result": "Mac183/188+21/24 FAIL; Ubuntu181/188+22/24 FAIL, unchanged",
+  "limits": "Synthetic provider and representative isolated installed platform; no downstream adoption, full release matrix, live-provider or npm publication claim.",
+  "evidence_files": [
+    {
+      "path": "pack-verification.json.gz",
+      "original_filename": "pack-verification.json",
+      "original_bytes": 283559,
+      "original_sha256": "7e67579812498f0eb7ba0d34f35b796a2e632c0c54fff3c8677012890fc6b601",
+      "stored_sha256": "097ff02e8541f985f1d2fa5596f0dd39935c8024f312ba75849675a84299092e"
+    },
+    {
+      "path": "install-verification.json",
+      "original_filename": "install-verification.json",
+      "original_bytes": 42265,
+      "original_sha256": "4447aa15f5c5efb18628eaf623952ccacae4af8a042cbe84f4cf5333572b4a4f",
+      "stored_sha256": "4447aa15f5c5efb18628eaf623952ccacae4af8a042cbe84f4cf5333572b4a4f"
+    },
+    {
+      "path": "download-pack-verification.json.gz",
+      "original_filename": "download-pack-verification.json",
+      "original_bytes": 283585,
+      "original_sha256": "284859ba8e81091bfece1af647c2dfd72ffba54d500cfa48d24878478b62d13e",
+      "stored_sha256": "a2c291e05c8d30576b289bc7c02e5c31f5faa9b2fc7ab33926fa285293f553ef"
+    },
+    {
+      "path": "download-install-verification.json",
+      "original_filename": "download-install-verification.json",
+      "original_bytes": 42346,
+      "original_sha256": "dcf15d8ab2be75056d0f352261663bfba9e69971aa6746af33041c5f7e016bd3",
+      "stored_sha256": "dcf15d8ab2be75056d0f352261663bfba9e69971aa6746af33041c5f7e016bd3"
+    },
+    {
+      "path": "release-metadata.json",
+      "original_filename": "release-metadata.json",
+      "original_bytes": 2242,
+      "original_sha256": "7ac9dec0747aadb112390b07dc9aec8ddf7f8207b63ea9fbd35ebfd5fabef274",
+      "stored_sha256": "7ac9dec0747aadb112390b07dc9aec8ddf7f8207b63ea9fbd35ebfd5fabef274"
+    },
+    {
+      "path": "npm-workflow.json",
+      "original_filename": "npm-workflow.json",
+      "original_bytes": 291,
+      "original_sha256": "48133c0d97e11815d56f1468bbd8ff2ea9291f4b9e526fa197aa1fcb1a205703",
+      "stored_sha256": "48133c0d97e11815d56f1468bbd8ff2ea9291f4b9e526fa197aa1fcb1a205703"
+    }
+  ],
+  "github_platform_immutable_release_lock": false,
+  "artifact_retention_policy": "Fixed tag/full source OID and SHA256 identities; do not move the tag or replace published asset bytes. This is not a claim of a GitHub-enforced release lock."
+}

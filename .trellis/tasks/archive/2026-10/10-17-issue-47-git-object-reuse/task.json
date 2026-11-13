@@ -1,0 +1,30 @@
+{
+  "id": "issue-47-git-object-reuse",
+  "name": "issue-47-git-object-reuse",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/Trellis",
+    "number": 47,
+    "disposition": "exact_source"
+  },
+  "title": "Issue 47: reuse immutable Git facts and content digests",
+  "description": "Optimize public Task creation and Delivery operations with measured immutable object reuse while preserving contracts and installed projections.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-17",
+  "completedAt": "2026-10-17",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/47-git-object-reuse"
+}

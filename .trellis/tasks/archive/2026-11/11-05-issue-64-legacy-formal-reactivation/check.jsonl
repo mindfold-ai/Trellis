@@ -1,0 +1,14 @@
+{"file": ".trellis/spec/core/backend/index.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/trellis-core-sdk.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/error-handling.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Issue 64 check contract and verification guidance"}
+{"file": ".trellis/tasks/11-05-issue-64-legacy-formal-reactivation/research/legacy-formal-boundaries.md", "reason": "Affected owners, minimal locator discovery, finite family/source contract and real execution patterns"}

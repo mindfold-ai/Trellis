@@ -1,0 +1,16 @@
+{
+  "delivery_store": {
+    "magic": "2b0e0d0a",
+    "flags": 0,
+    "mtime": 1792219853,
+    "size": 23784,
+    "bytecode_sha256": "5f9e506d96060a0028338a989bc12efbb3217cfe782dfcfabaf9463204e225df"
+  },
+  "git_objects": {
+    "magic": "2b0e0d0a",
+    "flags": 0,
+    "mtime": 1792219853,
+    "size": 8116,
+    "bytecode_sha256": "69bbf2d3a02fa1df2d599099f65fb0c4112287a5ea83979a416640538599eba7"
+  }
+}

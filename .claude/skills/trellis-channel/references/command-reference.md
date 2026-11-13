@@ -332,7 +332,6 @@ trellis channel post <name> <action>
   [--description <text>]                  # stable thread description
   [--status <status>]
   [--labels a,b]                          # REPLACES thread labels
-  [--assignees a,b]                       # REPLACES assignees
   [--summary <text>]
   [--context-file <abs-path>] ...
   [--context-raw  <text>]      ...
@@ -342,10 +341,10 @@ trellis channel post <name> <action>
 
 Behavior:
 - `<action>` is free-form on the CLI surface; conventional values include
-  `opened`, `comment`, `status`, `labels`, `assignees`, `summary`,
+  `opened`, `comment`, `status`, `labels`, `summary`,
   `processed`.
 - `action=rename` is rejected — use `thread rename` instead.
-- `--labels` / `--assignees` are replace-semantics, not append.
+- `--labels` replaces the current labels; it does not append.
 - Output: appended event JSON on stdout.
 
 ### `forum <name>`
@@ -376,7 +375,7 @@ trellis channel thread rename <name> <old-thread> <new-thread>
 Behavior:
 - `thread <name> <key>` shows one thread's timeline:
   header `<thread> [<status>] <title>`, then description / labels /
-  assignees / summary / timeline lines. `--raw` switches to raw events.
+  summary / timeline lines. `--raw` switches to raw events.
 - `thread rename` is the only mutation; `post --action rename` is rejected.
 
 ---
@@ -477,4 +476,3 @@ Forum channels are event-sourced; use the CLI reducers
   pipe); diagnostic notes go to stderr.
 - **Errors** go through `chalk.red("Error:")` to stderr and `exit 1`.
 - **`wait` timeout** specifically exits **124**.
-

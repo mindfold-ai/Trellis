@@ -17,12 +17,10 @@ worktree_dir: ../<project-name>-worktrees
 
 # Files to copy to each worktree (each worktree needs independent copy)
 # These files contain sensitive info or need worktree-independent config
-copy:
+copy: []
   # Environment variables (uncomment and customize as needed)
   # - .env
   # - .env.local
-  # Workflow config
-  - .trellis/.developer
 
 #-------------------------------------------------------------------------------
 # Post-Create Hooks

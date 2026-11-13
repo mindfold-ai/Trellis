@@ -14,11 +14,15 @@ import path from "node:path";
 export function writeFileAtomic(
   filePath: string,
   data: string | Uint8Array,
+  mode?: number,
 ): void {
   const dir = path.dirname(filePath);
   const tmp = path.join(dir, `.${path.basename(filePath)}.${process.pid}.tmp`);
   try {
-    fs.writeFileSync(tmp, data);
+    fs.writeFileSync(tmp, data, mode === undefined ? undefined : { mode });
+    // Optional reviewed mode is prepared on the temporary file so callers
+    // observe either the exact old state or the exact new bytes and mode.
+    if (mode !== undefined) fs.chmodSync(tmp, mode);
     fs.renameSync(tmp, filePath);
   } catch (err) {
     try {

@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 vi.mock("figlet", () => ({
   default: { textSync: vi.fn(() => "TRELLIS") },
@@ -24,16 +25,23 @@ vi.mock("inquirer", () => ({
   default: { prompt: vi.fn().mockResolvedValue({ proceed: true }) },
 }));
 
-vi.mock("node:child_process", () => ({
-  execSync: vi.fn().mockImplementation((cmd: string) => {
-    const py = process.platform === "win32" ? "python" : "python3";
-    return cmd === `${py} --version` ? "Python 3.11.12" : "";
-  }),
-}));
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    execSync: vi.fn().mockImplementation((cmd: string) => {
+      const py = process.platform === "win32" ? "python" : "python3";
+      return cmd === `${py} --version` ? "Python 3.11.12" : "";
+    }),
+  };
+});
 
 import { init } from "../../src/commands/init.js";
 import { update } from "../../src/commands/update.js";
-import { runWorkflowCommand, WorkflowCommandError } from "../../src/commands/workflow.js";
+import {
+  runWorkflowCommand,
+  WorkflowCommandError,
+} from "../../src/commands/workflow.js";
 import { PATHS } from "../../src/constants/paths.js";
 import { loadHashes } from "../../src/utils/template-hash.js";
 import { workflowMdTemplate } from "../../src/templates/trellis/index.js";
@@ -41,6 +49,7 @@ import { replacePythonCommandLiterals } from "../../src/configurators/shared.js"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = () => {};
+const TDD_CONTINUATION = "TDD-FIXTURE-CONTINUATION\n";
 
 /** TDD content stub returned by the marketplace fetch mock. */
 const TDD_CONTENT = [
@@ -53,7 +62,20 @@ const TDD_CONTENT = [
   "tdd in-progress breadcrumb",
   "[/workflow-state:in_progress]",
   "",
+  "[trellis-continuation]",
+  TDD_CONTINUATION.trimEnd(),
+  "[/trellis-continuation]",
+  "",
 ].join("\n");
+
+function extractContinuation(content: string): string {
+  const match =
+    /\[trellis-continuation\]\n([\s\S]*?)\[\/trellis-continuation\]/.exec(
+      content,
+    );
+  if (!match) throw new Error("continuation fixture is missing");
+  return match[1];
+}
 
 function stubMarketplaceFetch(): void {
   const index = {
@@ -86,6 +108,20 @@ function stubMarketplaceFetch(): void {
 describe("trellis workflow integration", () => {
   let tmpDir: string;
 
+  function runContinuation() {
+    const python = process.platform === "win32" ? "python" : "python3";
+    return spawnSync(
+      python,
+      [
+        "-B",
+        path.join(tmpDir, ".trellis/scripts/get_context.py"),
+        "--mode",
+        "continuation",
+      ],
+      { cwd: tmpDir, encoding: "utf-8" },
+    );
+  }
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-workflow-int-"));
     vi.spyOn(process, "cwd").mockReturnValue(tmpDir);
@@ -101,7 +137,7 @@ describe("trellis workflow integration", () => {
 
   it("init --workflow native keeps workflow.md hash-tracked", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ yes: true, workflow: "native" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     expect(fs.existsSync(wfPath)).toBe(true);
@@ -110,11 +146,14 @@ describe("trellis workflow integration", () => {
     );
     const hashes = loadHashes(tmpDir);
     expect(hashes[PATHS.WORKFLOW_GUIDE_FILE]).toBeTruthy();
+    expect(runContinuation().stdout).toBe(
+      extractContinuation(workflowMdTemplate),
+    );
   });
 
   it("init --workflow tdd writes marketplace content and removes the hash entry", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true, workflow: "tdd" } as Record<string, unknown>);
+    await init({ yes: true, workflow: "tdd" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     const written = fs.readFileSync(wfPath, "utf-8");
@@ -122,6 +161,9 @@ describe("trellis workflow integration", () => {
 
     const hashes = loadHashes(tmpDir);
     expect(hashes[PATHS.WORKFLOW_GUIDE_FILE]).toBeUndefined();
+    const continuation = runContinuation();
+    expect(continuation.status, continuation.stderr).toBe(0);
+    expect(continuation.stdout).toBe(TDD_CONTINUATION);
   });
 
   it("init --workflow-source resolves custom workflow marketplace content", async () => {
@@ -136,7 +178,8 @@ describe("trellis workflow integration", () => {
         },
       ],
     };
-    const customContent = "# Custom Workflow\n\n## Phase Index\nCustom phase.\n";
+    const customContent =
+      "# Custom Workflow\n\n## Phase Index\nCustom phase.\n";
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: string | URL) => {
@@ -155,29 +198,33 @@ describe("trellis workflow integration", () => {
       yes: true,
       workflow: "custom",
       workflowSource: "gh:example/workflows",
-    } as Record<string, unknown>);
+    });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     expect(fs.readFileSync(wfPath, "utf-8")).toBe(
       replacePythonCommandLiterals(customContent),
     );
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBeUndefined();
+    const continuation = runContinuation();
+    expect(continuation.status).toBe(2);
+    expect(continuation.stdout).toBe("");
+    expect(continuation.stderr).toContain(
+      "invalid_continuation_contract: missing_block",
+    );
   });
 
   it("init --workflow missing-id rejects instead of exiting successfully", async () => {
     stubMarketplaceFetch();
 
-    await expect(
-      init({ yes: true, workflow: "missing-id" } as Record<string, unknown>),
-    ).rejects.toThrow(/workflow template/i);
+    await expect(init({ yes: true, workflow: "missing-id" })).rejects.toThrow(
+      /workflow template/i,
+    );
   });
 
   it("trellis workflow --template native refreshes hash after switching from tdd", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true, workflow: "tdd" } as Record<string, unknown>);
-    expect(
-      loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE],
-    ).toBeUndefined();
+    await init({ yes: true, workflow: "tdd" });
+    expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBeUndefined();
 
     // Switching FROM a non-native workflow requires --force because the file
     // has no stored hash → the resolver conservatively flags it as "modified",
@@ -190,11 +237,14 @@ describe("trellis workflow integration", () => {
     );
     // Switching back to native re-tracks the hash so update() can manage it.
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBeTruthy();
+    expect(runContinuation().stdout).toBe(
+      extractContinuation(workflowMdTemplate),
+    );
   });
 
   it("trellis workflow --template tdd writes marketplace content and removes the hash", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ yes: true, workflow: "native" });
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBeTruthy();
 
     await runWorkflowCommand({ template: "tdd" });
@@ -204,11 +254,12 @@ describe("trellis workflow integration", () => {
       replacePythonCommandLiterals(TDD_CONTENT),
     );
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBeUndefined();
+    expect(runContinuation().stdout).toBe(TDD_CONTINUATION);
   });
 
   it("non-interactive run with a locally-modified workflow.md fails without --force", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ yes: true, workflow: "native" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     fs.writeFileSync(wfPath, "# My custom edits", "utf-8");
@@ -237,7 +288,7 @@ describe("trellis workflow integration", () => {
 
   it("explicit --template run with a locally-modified workflow.md fails even when stdin is a TTY", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ yes: true, workflow: "native" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     fs.writeFileSync(wfPath, "# My custom edits", "utf-8");
@@ -263,7 +314,7 @@ describe("trellis workflow integration", () => {
 
   it("--create-new writes .new file and never touches workflow.md or hash", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ yes: true, workflow: "native" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);
     const originalContent = fs.readFileSync(wfPath, "utf-8");
@@ -279,11 +330,13 @@ describe("trellis workflow integration", () => {
     // Active workflow file and hash must both be untouched.
     expect(fs.readFileSync(wfPath, "utf-8")).toBe(originalContent);
     expect(loadHashes(tmpDir)[PATHS.WORKFLOW_GUIDE_FILE]).toBe(originalHash);
+    expect(runContinuation().stdout).toBe(extractContinuation(originalContent));
+    expect(runContinuation().stdout).not.toBe(TDD_CONTINUATION);
   });
 
   it("trellis update after switching to tdd does not silently restore native workflow", async () => {
     stubMarketplaceFetch();
-    await init({ yes: true });
+    await init({ yes: true, workflow: "native" });
     await runWorkflowCommand({ template: "tdd" });
 
     const wfPath = path.join(tmpDir, PATHS.WORKFLOW_GUIDE_FILE);

@@ -5,6 +5,15 @@ sandbox_mode = "workspace-write"
 # model_reasoning_effort = "high"
 
 developer_instructions = """
+## Delivery context boundary
+
+For schema-2 Tasks, read the exact DeliveryKey/planning_root supplied by dispatch,
+or query delivery.py current --json from the verified workspace. Load manifests
+and PRD/design/implement from that selected Delivery, plus root Task accepted
+scope. Never infer selection from inventory or fall back to root Task planning.
+A missing/stale Delivery selection stops implementation with a concrete diagnostic.
+
+
 You are running as the `trellis-implement` sub-agent. The main session has dispatched you to do the work.
 
 CRITICAL — Recursion guard (read first):

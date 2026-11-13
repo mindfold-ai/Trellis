@@ -1,0 +1,44 @@
+{
+  "pointer": {
+    "cache_scope": "user",
+    "interpreter": "/home/runner/.cache/guru-team/python/02fff06320996e702bd6790f/venv/bin/python",
+    "runtime_id": "02fff06320996e702bd6790f",
+    "schema_version": "2.0"
+  },
+  "pointer_path": "/var/folders/rd/kbzpxp956nb3p_h04vnfg3l80000gn/T/tmp63u1ao0m/.git/guru-team/python/active.json",
+  "pointer_sha256": "6f3676016eeaaaabd5a81fa4604a0ab258a3c4d5c0fd9d16aa630bada7a8fbff",
+  "interpreter": {
+    "executable": "/home/runner/.cache/guru-team/python/02fff06320996e702bd6790f/venv/bin/python",
+    "base_executable": "/opt/hostedtoolcache/Python/3.14.8/x64/bin/python3.14",
+    "version": "3.14.8",
+    "cache_tag": "cpython-314"
+  },
+  "interpreter_sha256": "a5230d8adbd26c2185d77fb003597c4ee9c44c2369fc179122ff7c3a3a58ae59",
+  "manifest_sha256": "0d83c0233b04119b806277611eb2eb2732ef53b7f8295203b51d825bd23fed10",
+  "lock_sha256": "53fcf8fb29e2b4dd2add49a8fa42e541518b2f0410d47b9383ec413bc56731db",
+  "metadata_sha256": "c9a1da00037c40a4976e50ec3473ebfc3857e03b2d6483ddd874af5718e334bc",
+  "metadata": {
+    "dependencies": {
+      "attrs": "26.1.0",
+      "jsonschema": "4.25.1",
+      "jsonschema-specifications": "2025.9.1",
+      "referencing": "0.37.0",
+      "rpds-py": "2026.6.3",
+      "typing-extensions": "4.16.0"
+    },
+    "identity": {
+      "lock_sha256": "53fcf8fb29e2b4dd2add49a8fa42e541518b2f0410d47b9383ec413bc56731db",
+      "machine": "x86_64",
+      "os_name": "Linux",
+      "python_abi_tag": "cpython-314",
+      "python_implementation": "CPython",
+      "python_major": 3,
+      "python_minor": 14,
+      "python_platform_tag": "linux-x86_64",
+      "runtime_api_version": "1.0",
+      "venv_layout_version": "1"
+    },
+    "runtime_id": "02fff06320996e702bd6790f",
+    "schema_version": "1.0"
+  }
+}

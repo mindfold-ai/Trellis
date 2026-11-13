@@ -8,8 +8,9 @@ export async function readForumChannelEvents(
   channel: string,
   project: string,
   operation: string,
+  cwd?: string,
 ): Promise<ChannelEvent[]> {
-  const events = await readChannelEvents(channel, project);
+  const events = await readChannelEvents(channel, project, undefined, cwd);
   const metadata = reduceChannelMetadata(events);
   if (metadata.type !== "forum") {
     throw new Error(

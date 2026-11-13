@@ -1,0 +1,154 @@
+{
+  "schema_version": "1.0",
+  "checked_at": "2026-10-19T07:34:57.422725+00:00",
+  "issue": "https://github.com/castbox/Trellis/issues/53",
+  "pull_request": "https://github.com/castbox/Trellis/pull/54",
+  "release": "https://github.com/castbox/Trellis/releases/tag/castbox-v0.7.0-castbox.5",
+  "source_sha": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+  "annotated_tag_object": "b7dacb83d177c14f7e97205a80f1a3e66df0c5ef",
+  "main_ci": "https://github.com/castbox/Trellis/actions/runs/39215935088",
+  "main_ci_conclusion": "success",
+  "core_tests": {
+    "passed": 484,
+    "skipped": 1
+  },
+  "cli_tests": {
+    "passed": 2383
+  },
+  "native_evidence": {
+    "run_url": "https://github.com/castbox/Trellis/actions/runs/39215935088",
+    "source": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+    "driver_sha256": "ab43afb0b4e4db4537646ac5ede235224ca236faa0755842c4d11cdaa598bdf2",
+    "results": [
+      {
+        "platform": "darwin",
+        "scenario": "python3",
+        "role": "candidate",
+        "status": "passed",
+        "source": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+        "commands": 64,
+        "assertions": 126,
+        "python": {
+          "executable": "/Users/runner/work/_temp/trellis-native-python-cGWNRt/bin/python3",
+          "version": "3.12.10 (v3.12.10:0cc81280367, Apr  8 2025, 08:46:59) [Clang 13.0.0 (clang-1300.0.29.30)]"
+        },
+        "python_sha256": "d4f152f2a753c94e0e7935c8ebbe6b2609979e1df7898422b577d0076383d08b",
+        "cli_dist_sha256": "ec60153fb671a108bfa3e45e7e2970c24f103f43550837a8a1dc038b7fae2e11",
+        "core_dist_sha256": "dba9bc2f0aeb1958ba1f7ce34293af115bb6b69e8923cbfa91456135343af221"
+      },
+      {
+        "platform": "linux",
+        "scenario": "python3",
+        "role": "candidate",
+        "status": "passed",
+        "source": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+        "commands": 64,
+        "assertions": 126,
+        "python": {
+          "executable": "/home/runner/work/_temp/trellis-native-python-Vi7ryF/bin/python3",
+          "version": "3.12.15 (main, Oct  1 2026, 02:35:59) [GCC 13.3.0]"
+        },
+        "python_sha256": "53dab24bf9e0e9c490088a53d71770b6f027b057678b313648e75f7fc87a675e",
+        "cli_dist_sha256": "ec60153fb671a108bfa3e45e7e2970c24f103f43550837a8a1dc038b7fae2e11",
+        "core_dist_sha256": "dba9bc2f0aeb1958ba1f7ce34293af115bb6b69e8923cbfa91456135343af221"
+      },
+      {
+        "platform": "win32",
+        "scenario": "py",
+        "role": "baseline",
+        "status": "expected_baseline_defect",
+        "source": "7bcbeaad31380e7a29c97898cb947c6120a61775",
+        "commands": 16,
+        "assertions": 22,
+        "python": {
+          "executable": "C:\\hostedtoolcache\\windows\\Python\\3.14.8\\x64\\python.exe",
+          "version": "3.14.8 (tags/v3.14.8:8e6e75d, Sep 30 2026, 18:19:33) [MSC v.1944 64 bit (AMD64)]"
+        },
+        "python_sha256": "434b361fe0c5960d404974feed493db47f2603a1ace2574312104fbed0182c6f",
+        "cli_dist_sha256": "94543cdc6c1040798423304adc7a0c884443529735db9cc3bbaf645637e1c8c0",
+        "core_dist_sha256": "dba9bc2f0aeb1958ba1f7ce34293af115bb6b69e8923cbfa91456135343af221"
+      },
+      {
+        "platform": "win32",
+        "scenario": "py",
+        "role": "candidate",
+        "status": "passed",
+        "source": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+        "commands": 65,
+        "assertions": 126,
+        "python": {
+          "executable": "C:\\hostedtoolcache\\windows\\Python\\3.14.8\\x64\\python.exe",
+          "version": "3.14.8 (tags/v3.14.8:8e6e75d, Sep 30 2026, 18:19:33) [MSC v.1944 64 bit (AMD64)]"
+        },
+        "python_sha256": "434b361fe0c5960d404974feed493db47f2603a1ace2574312104fbed0182c6f",
+        "cli_dist_sha256": "ec60153fb671a108bfa3e45e7e2970c24f103f43550837a8a1dc038b7fae2e11",
+        "core_dist_sha256": "dba9bc2f0aeb1958ba1f7ce34293af115bb6b69e8923cbfa91456135343af221"
+      },
+      {
+        "platform": "win32",
+        "scenario": "python3",
+        "role": "baseline",
+        "status": "expected_baseline_defect",
+        "source": "7bcbeaad31380e7a29c97898cb947c6120a61775",
+        "commands": 15,
+        "assertions": 21,
+        "python": {
+          "executable": "D:\\a\\_temp\\trellis-native-python-02dAOV\\python-runtime\\python3.exe",
+          "version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+        },
+        "python_sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+        "cli_dist_sha256": "94543cdc6c1040798423304adc7a0c884443529735db9cc3bbaf645637e1c8c0",
+        "core_dist_sha256": "dba9bc2f0aeb1958ba1f7ce34293af115bb6b69e8923cbfa91456135343af221"
+      },
+      {
+        "platform": "win32",
+        "scenario": "python3",
+        "role": "candidate",
+        "status": "passed",
+        "source": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+        "commands": 64,
+        "assertions": 125,
+        "python": {
+          "executable": "D:\\a\\_temp\\trellis-native-python-a2z46B\\python-runtime\\python3.exe",
+          "version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+        },
+        "python_sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+        "cli_dist_sha256": "ec60153fb671a108bfa3e45e7e2970c24f103f43550837a8a1dc038b7fae2e11",
+        "core_dist_sha256": "dba9bc2f0aeb1958ba1f7ce34293af115bb6b69e8923cbfa91456135343af221"
+      }
+    ]
+  },
+  "published_download": {
+    "checksums": "passed for all five checksum entries; SHA256SUMS itself matches GitHub asset digest",
+    "pair": {
+      "status": "passed",
+      "packages": [
+        {
+          "package": "trellis-core",
+          "version": "0.7.0-castbox.5",
+          "files": 274,
+          "archive_sha256": "5c102f0950636f6c33f748f01ee34bbe642b9947ceaf8fa31c10c12fb447aea2",
+          "installed_tree_sha256": "cbd4380dc5e0e467e3f370e22c95a44aeb88d05e716c6b5cf16b48e145b245c4"
+        },
+        {
+          "package": "trellis",
+          "version": "0.7.0-castbox.5",
+          "files": 744,
+          "archive_sha256": "732aef8a55c578d9dc58c9e8f09948318198daef16ac1e762c8095521885022d",
+          "installed_tree_sha256": "59abbcc09fbd687e90fd1351cebf4b7eeb221b1ea36992dea3c3a1ff660f97d7"
+        }
+      ]
+    },
+    "public_cli_calls": 10,
+    "status": "passed"
+  },
+  "npm_publish": {
+    "run": "https://github.com/castbox/Trellis/actions/runs/39216562837",
+    "conclusion": "skipped by fork guard"
+  },
+  "limitations": [
+    "Generated command execution verified; Agent automatic loading not claimed.",
+    "Real local Git marketplace fixture verified; external GitHub provider transport not claimed.",
+    "Guru #630 downstream adoption remains separate."
+  ]
+}

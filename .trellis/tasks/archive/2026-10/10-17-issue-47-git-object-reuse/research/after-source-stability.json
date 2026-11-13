@@ -1,0 +1,9 @@
+{
+  "verified_at_utc": "2026-10-17T02:12:14.660744+00:00",
+  "all_canonical_python_paths_and_sha256_unchanged": true,
+  "all_frozen_baseline_artifacts_unchanged": true,
+  "manifest": "after-source-manifest.json",
+  "main_samples": 132,
+  "timing_gates_passed": 44,
+  "historical_and_normal_metadata_probes_passed": 2
+}

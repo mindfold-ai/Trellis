@@ -1,0 +1,16 @@
+{
+  "recorded_at_utc": "2026-10-17T02:02:27.978594+00:00",
+  "source_commit": "b0d87f952043058e21001a002b661bf2db56b1fa",
+  "sha256": {
+    "benchmark.py": "accf0fe622ae1eb88bdfdb24ef5847b6257bf8ce1a7c2b57aad2c62905c2e849",
+    "frozen-benchmark-contract.json": "d94bdd420ace338844f248d02c07ebabd0b60085013d70dda0cacff297075274",
+    "before.json": "85e40226a4bcbb0f88cd93cb39463243d352bfe5a6e30106512cfceb54864ba3",
+    "before-summary.json": "de63aa0dea34f4e2d63bc764c334eeacbaf8b5bb52b45ed834513a9a18499beb",
+    "before-baseline.md": "9102393b5c403cec22da3e5b383655fbc2f80c83ef3f812c20d6e37ebef2abfa",
+    "frozen-numeric-limits.json": "dbca7f9d67e9d49fc46d710882b29796e94891db609e09168e6446e91224d1f5",
+    "task_components.py": "39078bb3b6699022de0ac8473e902114e7d4221bcee182b65ff02b3dac75055f",
+    "frozen-task-component-probe.json": "396006d2ac682720efd18819684e7b1450608b78fdf51686287e5077bac593b3",
+    "task-components-before.json": "788d8c623913d386de5f17751e1e56c45f99d76c0d0f895e4e60b5e7c4a67d91",
+    "task-components-before-summary.json": "7e0018c4044943ccf4e155bffa5eb6df62c440bb2711ca8e42d5ed67cadb44fd"
+  }
+}

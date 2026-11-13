@@ -1,0 +1,163 @@
+{
+  "repository": "/Users/wumengye/Documents/GoProjects/Trellis",
+  "actual_commit": "7d48f2a4db3be180b61e0d06555d87c650bbd093",
+  "paths": [
+    ".trellis/scripts/common/delivery_store.py",
+    "packages/cli/src/templates/trellis/scripts/common/delivery_store.py",
+    "packages/cli/test/no-such-candidate-file"
+  ],
+  "network_calls": 0,
+  "no_writes": true,
+  "purpose": "Read-only metadata scope diagnostic; not performance acceptance, no threshold changes.",
+  "rows": [
+    {
+      "kind": "whole",
+      "argv": [
+        "git",
+        "ls-tree",
+        "-r",
+        "-t",
+        "-z",
+        "7d48f2a4db3be180b61e0d06555d87c650bbd093"
+      ],
+      "metadata_stdout_bytes": 417555,
+      "metadata_rows": 3498,
+      "diagnostic_seconds_not_acceptance_sample": 0.02699145895894617,
+      "returned_paths": null
+    },
+    {
+      "kind": "selected_literal",
+      "argv": [
+        "git",
+        "--literal-pathspecs",
+        "ls-tree",
+        "-r",
+        "-t",
+        "-z",
+        "7d48f2a4db3be180b61e0d06555d87c650bbd093",
+        "--",
+        ".trellis/scripts/common/delivery_store.py",
+        "packages/cli/src/templates/trellis/scripts/common/delivery_store.py",
+        "packages/cli/test/no-such-candidate-file"
+      ],
+      "metadata_stdout_bytes": 1061,
+      "metadata_rows": 13,
+      "diagnostic_seconds_not_acceptance_sample": 0.011232207994908094,
+      "returned_paths": [
+        ".trellis",
+        ".trellis/scripts",
+        ".trellis/scripts/common",
+        ".trellis/scripts/common/delivery_store.py",
+        "packages",
+        "packages/cli",
+        "packages/cli/src",
+        "packages/cli/src/templates",
+        "packages/cli/src/templates/trellis",
+        "packages/cli/src/templates/trellis/scripts",
+        "packages/cli/src/templates/trellis/scripts/common",
+        "packages/cli/src/templates/trellis/scripts/common/delivery_store.py",
+        "packages/cli/test"
+      ]
+    },
+    {
+      "kind": "original_exact_selected_behavior",
+      "argv": [
+        "git",
+        "--literal-pathspecs",
+        "ls-tree",
+        "-z",
+        "7d48f2a4db3be180b61e0d06555d87c650bbd093",
+        "--",
+        ".trellis/scripts/common/delivery_store.py",
+        "packages/cli/src/templates/trellis/scripts/common/delivery_store.py",
+        "packages/cli/test/no-such-candidate-file"
+      ],
+      "metadata_stdout_bytes": 216,
+      "metadata_rows": 2,
+      "diagnostic_seconds_not_acceptance_sample": 0.013521541957743466,
+      "returned_paths": [
+        ".trellis/scripts/common/delivery_store.py",
+        "packages/cli/src/templates/trellis/scripts/common/delivery_store.py"
+      ]
+    }
+  ],
+  "original_caller_inventory": {
+    "guru_commit": "f70b64b026725b27d59fed17ed710cc2f831439f",
+    "module": "trellis/skills/guru-team/packages/guru-merge-task-delivery/runtime/candidate_objects.py",
+    "read": {
+      "commit_resolution": "rev-parse --verify head^{commit} for each input",
+      "paths": "exact requested locators, request argv chunks <=64KiB; no complete repository tree scan",
+      "tree_command": "ls-tree -z commit -- paths",
+      "blob_body": "one finite call-local spooled GitObjectBatch per distinct required object",
+      "snapshot": "materialize every requested present blob path and original mode; missing locator omitted for deletion hash"
+    }
+  },
+  "actual_fixed_public_owner_helper": {
+    "source_sha256": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+    "returned_exact_paths": [
+      ".trellis/scripts/common/delivery_store.py",
+      "packages/cli/src/templates/trellis/scripts/common/delivery_store.py"
+    ],
+    "returned_entries": 2,
+    "git_processes": [
+      {
+        "argv": [
+          "git",
+          "--literal-pathspecs",
+          "-C",
+          "/Users/wumengye/Documents/GoProjects/Trellis",
+          "ls-tree",
+          "-t",
+          "-z",
+          "7d48f2a4db3be180b61e0d06555d87c650bbd093",
+          "--",
+          ".trellis/scripts/common/delivery_store.py",
+          "packages/cli/src/templates/trellis/scripts/common/delivery_store.py",
+          "packages/cli/test/no-such-candidate-file"
+        ],
+        "metadata_stdout_bytes": 1061,
+        "diagnostic_seconds_not_acceptance_sample": 0.016394459060393274
+      }
+    ],
+    "total_metadata_stdout_bytes": 1061,
+    "parent_directory_policy": "-t preserves selected parent and child; returned dictionary filters to exact requested set",
+    "no_writes": true,
+    "scope": "Read-only diagnostic, not timing acceptance sample."
+  },
+  "mixed_parent_child_preparation_diagnostic": [
+    {
+      "flags": [],
+      "metadata_rows": 31,
+      "metadata_bytes": 2858,
+      "requested_entries": [
+        {
+          "path": ".trellis/scripts/common/delivery_store.py",
+          "mode": "100644",
+          "kind": "blob",
+          "requested": true
+        }
+      ]
+    },
+    {
+      "flags": [
+        "-t"
+      ],
+      "metadata_rows": 34,
+      "metadata_bytes": 3067,
+      "requested_entries": [
+        {
+          "path": ".trellis/scripts/common",
+          "mode": "040000",
+          "kind": "tree",
+          "requested": true
+        },
+        {
+          "path": ".trellis/scripts/common/delivery_store.py",
+          "mode": "100644",
+          "kind": "blob",
+          "requested": true
+        }
+      ]
+    }
+  ]
+}

@@ -34,7 +34,7 @@ CLI owns:
 - help text and terminal output (including `tl mem` row formatting and `--json` shaping)
 - prompts, confirmations, exit codes, and `process.exit`
 - the OpenCode-unavailable stderr notice for `tl mem` (a presentation concern, not a core one)
-- template copying, dogfooding paths, migration manifest application, and update UX
+- template copying, dogfooding paths, and current-version update UX
 - release scripts and CI-specific package orchestration
 
 When logic starts in the CLI but is needed by another package or embedding app, move the reusable part into core and leave only CLI rendering and option translation in the CLI package.
@@ -59,6 +59,39 @@ import { parseEvent } from "../../core/src/channel/internal/parse-event";
 Core public exports must be declared explicitly in `packages/core/package.json`. Do not expose wildcard internal paths. Export entries should provide `types`, `import`, and `default` targets.
 
 ### Subpath exports
+
+Issue #31 D1 adds the explicitly versioned `/task/v2` API (Task schema 2.0,
+Delivery API 1.0). Legacy `/task` stays pinned during the migration window.
+Schema-2 aggregate writes and Python equivalents share one behavior fixture
+corpus; do not expose v2 implicitly from the root or dual-write a Task.
+See [Delivery Lifecycle](./delivery-lifecycle.md) for the public authority and
+finite cutover prerequisites.
+
+Migration consumers pin `/task/legacy-migration` for the original predecessor
+projection and `/task/migration-v2` for `validateTaskV2Projection`. Neither is a
+current lifecycle writer. Plan-1 callers must not depend on future `/task`
+exports changing shape. The v2 store owns immutable result/preimage enforcement,
+Task-local relocation and `resolveTaskArtifactLocator`; consumers must use its
+origin-aware resolver rather than copying path rebasing into each reader.
+
+For an already validated maintenance projection whose active tree does not yet
+exist, `/task/v2` also exports the existing pure
+`authorityLocator(ref: AuthorityRef, context?: TaskArtifactContext): string`.
+Context contains `task_id`, selected/planned `task_root` and preserved
+`artifact_origin`. This helper only maps SHA-bound origin locators; fixed Git
+locators stay unchanged. It does not load/select a Task, validate caller context,
+verify content or grant authority. Preparation derives context from its validated
+projection and explicit destination, then verifies actual/planned content.
+Ordinary `resolveTaskArtifactLocator` and context-aware `verifyAuthority` retain
+their live selected-Task validation. Reuse the same mapping implementation.
+
+`/task/v2` also exports the read-only `verifyHistoricalCommit(root, fact)` for
+normal local delivery and explicit migration. It validates a closed DeliveryFact
+at the public boundary and accepts only `local_commit`; manual/PR results need
+their own original producer verification. The full SHA-1/SHA-256 commit OID must
+identify an actual commit whose selected tree blobs and executable bits match
+the candidate content digest. Current HEAD and worktree content do not replace
+that immutable historical tree. This helper performs no lifecycle or file write.
 
 Core exposes domains as explicit subpaths, not from one root barrel:
 
@@ -190,8 +223,8 @@ If a CLI test duplicates a pure core test, move the pure assertion to core and k
 `packages/core/src/task/schema.ts` is the single TS-side source of truth for the
 `task.json` shape (including `meta: Record<string, unknown>` with its own
 validation). The `.trellis/scripts/` Python layer implements *behavior* on top of
-that shape (create/list/set-meta/validate/journal rendering) and has NO parallel
-implementation in core — jsonl validation, list tree rendering, and journal
+that shape (create/list/set-meta/validate) and has NO parallel
+implementation in core — jsonl validation, list tree rendering, and task
 rendering exist only in Python.
 
 Rule of thumb when changing task behavior:
@@ -203,3 +236,27 @@ Rule of thumb when changing task behavior:
 - The only template code with a genuine dual implementation is sub-agent context
   injection (Python shared hook ↔ Pi extension) — see the Context Injection
   Limits Contract in platform-integration.md.
+
+Unknown task properties are rejected by the canonical SDK record and Python
+task readers. See [Task Lifecycle](./task-lifecycle.md).
+
+## Independent maintenance boundary
+
+[Independent maintenance](./commands-maintain.md) adds an explicit tools-only and
+selected-task CLI/SDK boundary. It does not relax this document's ordinary
+operation, current writer, or complete migration contracts.
+
+`/task/maintenance` also owns the pure
+`validateFormalArchiveReactivationProjection(source, projection, facts)` boundary
+for one explicitly selected completed schema1 archive. It validates an exact
+generation increment and preserved identity/history; CLI owns archive/target Git
+facts, retained-file verification and the fixed-operation writer. Keep ordinary
+`validateTaskV2Projection` generation-preserving. Shared identity/tree/history
+logic may be private Core code with explicit generation rules; never alter source
+generation merely to pass the ordinary validator. Do not expose that private
+helper as another public migration API or duplicate conversion in Python.
+
+The [formal predecessor archive contract](./commands-maintain.md#formal-predecessor-archive-reactivation)
+owns the separate request/result, provenance and successor-inspection rules.
+These do not change current Task v2 reopen or make Core responsible for workflow
+completion judgment, GitHub disposition or environment resource ownership.

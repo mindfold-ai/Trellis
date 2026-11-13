@@ -1,0 +1,551 @@
+{
+  "provenance": {
+    "source_repo": "castbox/guru-trellis",
+    "source_head": "a653c90b064e2435bc147f1bda0e1b7ab632f797",
+    "layer": "public-interface fixture only",
+    "review_ready": {
+      "task_ref": ".trellis/tasks/fixture",
+      "delivery_cycle_ref": "private-cycle-original",
+      "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+      "pr_title": "\u793a\u4f8b\u4ea4\u4ed8",
+      "pr_body": "Refs #31",
+      "remaining_work_state": "remaining"
+    },
+    "ready_for_merge": {
+      "task_ref": ".trellis/tasks/fixture",
+      "delivery_cycle_ref": "private-cycle-original",
+      "repo_ref": "castbox/Trellis",
+      "pr_number": 123,
+      "expected_head_sha": "dddddddddddddddddddddddddddddddddddddddd",
+      "publication_body_sha256": "2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+    },
+    "merge_result": {
+      "task_id": "fixture-task",
+      "task_ref": ".trellis/tasks/fixture",
+      "lifecycle_generation": 0,
+      "delivery_cycle_ref": "private-cycle-original",
+      "repo_ref": "castbox/Trellis",
+      "pr_number": 123,
+      "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+      "result_id": "guru-actual-merge-result",
+      "merge_commit_sha": "9999999999999999999999999999999999999999"
+    },
+    "consumer": "guru-review-task-completion/completion_seed",
+    "task_artifact": {
+      "task_id": "fixture-task",
+      "task_ref": ".trellis/tasks/fixture",
+      "lifecycle_generation": 0
+    },
+    "completion_seed": {
+      "task_artifact": {
+        "task_id": "fixture-task",
+        "task_ref": ".trellis/tasks/fixture",
+        "lifecycle_generation": 0
+      },
+      "merge_result": {
+        "task_id": "fixture-task",
+        "task_ref": ".trellis/tasks/fixture",
+        "lifecycle_generation": 0,
+        "delivery_cycle_ref": "private-cycle-original",
+        "repo_ref": "castbox/Trellis",
+        "pr_number": 123,
+        "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+        "result_id": "guru-actual-merge-result",
+        "merge_commit_sha": "9999999999999999999999999999999999999999"
+      }
+    },
+    "mapping": {
+      "review_ready.reviewed_head": "record_gate.result.candidate.head_ref",
+      "review_ready.pr_body": "record_gate.result.obligations (content hash)",
+      "ready_for_merge.expected_head_sha": "record_publication.result.reviewed_head",
+      "ready_for_merge.publication_body_sha256": "record_publication.result.publication_ref.revision",
+      "merge_result.merge_commit_sha": "record_delivery.result.merge_commit",
+      "merge_result.result_id": "record_delivery.result.result_id"
+    }
+  },
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "manual",
+      "local_commit",
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "guru-review-task-delivery",
+      "publication": "guru-publish-task-delivery",
+      "delivery": "guru-merge-task-delivery",
+      "completion": "guru-review-task-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 0,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "schema_version": "2.0",
+    "accepted_scope": null,
+    "deliveries": [],
+    "completion_results": [],
+    "closure_results": []
+  },
+  "steps": [
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "accept_scope",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "pull_request"
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "delivery",
+        "owner_id": "guru-merge-task-delivery",
+        "expected_phase": "publishing",
+        "historical_success": true,
+        "result": {
+          "result_id": "guru-actual-merge-result",
+          "owner_id": "guru-merge-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "merge_commit": "9999999999999999999999999999999999999999",
+          "target_ref": "main"
+        }
+      },
+      "expected_phase": "delivered"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Other",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expect_error": "publication_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 456,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expect_error": "publication_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "release",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expect_error": "publication_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "ffffffffffffffffffffffffffffffffffffffff",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "ffffffffffffffffffffffffffffffffffffffff",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expect_error": "publication_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expected_phase": "delivered",
+      "expected_changed": true
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expected_phase": "delivered",
+      "expected_changed": false
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "different-terminal-publication",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:2afe4ee2a096405e41d5ceed3ee73f738f5f443e688d74ce4d2d4f7ac812d3a0"
+          }
+        },
+        "historical_success": true
+      },
+      "expect_error": "publication_already_recorded"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_publication",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "publication",
+        "owner_id": "guru-publish-task-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "guru-published",
+          "owner_id": "guru-publish-task-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "pull_request",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "dddddddddddddddddddddddddddddddddddddddd",
+            "base_ref": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "repo_ref": "castbox/Trellis",
+          "pr_number": 123,
+          "reviewed_head": "dddddddddddddddddddddddddddddddddddddddd",
+          "target_ref": "main",
+          "publication_ref": {
+            "locator": "https://github.com/castbox/Trellis/pull/123",
+            "revision": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        },
+        "historical_success": true
+      },
+      "expect_error": "result_identity_conflict"
+    }
+  ]
+}

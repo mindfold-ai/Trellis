@@ -1,0 +1,160 @@
+{
+  "no_new_measurement": true,
+  "source_generations_differ": "Only compare magnitude; no combining samples across generations as acceptance.",
+  "rows": [
+    {
+      "cohort": "generation1",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.08693566604051739,
+      "component_observation_change_percent": 3.8945965075338873,
+      "after_manual_median_seconds": 0.6674533335026354,
+      "after_query2_median_seconds": 0.5880394999985583,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation1",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.0771696250885725,
+      "component_observation_change_percent": 15.957215593749542,
+      "after_manual_median_seconds": 0.6722410625079647,
+      "after_query2_median_seconds": 0.5802686045062728,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation2",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.0608867920236662,
+      "component_observation_change_percent": 32.69103486169733,
+      "after_manual_median_seconds": 0.650934666453395,
+      "after_query2_median_seconds": 0.5657369584660046,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation2",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.06525612506084144,
+      "component_observation_change_percent": 28.931798704724475,
+      "after_manual_median_seconds": 0.6574517914559692,
+      "after_query2_median_seconds": 0.575432333513163,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation3partial",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.04969704197719693,
+      "component_observation_change_percent": 45.06104928931522,
+      "after_manual_median_seconds": 0.6041596249560826,
+      "after_query2_median_seconds": 0.5435154170263559,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation3partial",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.05402937496546656,
+      "component_observation_change_percent": 41.15846608538748,
+      "after_manual_median_seconds": 0.6111250420217402,
+      "after_query2_median_seconds": 0.528585520980414,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation4",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.046623416943475604,
+      "component_observation_change_percent": 48.45887192648996,
+      "after_manual_median_seconds": 0.6486968539538793,
+      "after_query2_median_seconds": 0.5649850830086507,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation4",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.05427825008518994,
+      "component_observation_change_percent": 40.88742475264827,
+      "after_manual_median_seconds": 0.6839596045319922,
+      "after_query2_median_seconds": 0.6114534580265172,
+      "fresh_control_manual_median_seconds": null,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation5paired",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.06741770799271762,
+      "component_observation_change_percent": 25.471255650613244,
+      "after_manual_median_seconds": 0.6326160414610058,
+      "after_query2_median_seconds": 0.5409252499812283,
+      "fresh_control_manual_median_seconds": 0.6757511665346101,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation5paired",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.04757433303166181,
+      "component_observation_change_percent": 48.18843023194641,
+      "after_manual_median_seconds": 0.639479958510492,
+      "after_query2_median_seconds": 0.5487661040388048,
+      "fresh_control_manual_median_seconds": 0.6848811670206487,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation6selected",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.04514875006861985,
+      "component_observation_change_percent": 50.08908264988783,
+      "after_manual_median_seconds": 0.6519334580516443,
+      "after_query2_median_seconds": 0.5650834580301307,
+      "fresh_control_manual_median_seconds": 0.7095715835457668,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation6selected",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.05137374997138977,
+      "component_observation_change_percent": 44.05061592523549,
+      "after_manual_median_seconds": 0.6785481459810399,
+      "after_query2_median_seconds": 0.5972187499282882,
+      "fresh_control_manual_median_seconds": 0.7136826664791442,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation7policy",
+      "case": "128-repeated",
+      "frozen_component_seconds": 0.09045866609085351,
+      "after_component_seconds": 0.049698667018674314,
+      "component_observation_change_percent": 45.05925284288549,
+      "after_manual_median_seconds": 0.7166536459699273,
+      "after_query2_median_seconds": 0.6308290209854022,
+      "fresh_control_manual_median_seconds": 0.7031244999961928,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    },
+    {
+      "cohort": "generation7policy",
+      "case": "128-mixed",
+      "frozen_component_seconds": 0.09182183293160051,
+      "after_component_seconds": 0.059252833016216755,
+      "component_observation_change_percent": 35.46977758508143,
+      "after_manual_median_seconds": 0.7313601250061765,
+      "after_query2_median_seconds": 0.6347855830099434,
+      "fresh_control_manual_median_seconds": 0.7371779165114276,
+      "caveat": "Separate single component observation, not nested wall attribution; complete/partial failures retained."
+    }
+  ]
+}

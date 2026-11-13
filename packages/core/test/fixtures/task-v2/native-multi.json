@@ -1,0 +1,671 @@
+{
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "manual",
+      "local_commit",
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "native-readiness",
+      "publication": "native-publication",
+      "delivery": "native-delivery",
+      "completion": "native-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 0,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "schema_version": "2.0",
+    "accepted_scope": null,
+    "deliveries": [],
+    "completion_results": [],
+    "closure_results": []
+  },
+  "steps": [
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "accept_scope",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "manual"
+      },
+      "expected_phase": "planning"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "begin_check",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "implementation",
+        "owner_id": "native-implementation",
+        "expected_phase": "planning",
+        "candidate": {
+          "kind": "git_free",
+          "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "paths": [
+            "artifact.txt"
+          ],
+          "head_ref": null,
+          "base_ref": null
+        }
+      },
+      "expect_error": "illegal_transition"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "complete_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "completion",
+        "owner_id": "native-completion",
+        "result": {
+          "result_id": "premature",
+          "owner_id": "native-completion",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "lifecycle_generation": 0,
+          "accepted_scope": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "delivery_result_ids": [],
+          "outcome": "completed"
+        }
+      },
+      "expect_error": "unfinished_delivery"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d1-plan",
+          "owner_role": "planning",
+          "owner_id": "native-planning",
+          "outcome": "accepted",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": null,
+          "predecessor_result_id": null,
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "begin_check",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "implementation",
+        "owner_id": "native-implementation",
+        "expected_phase": "implementing",
+        "candidate": {
+          "kind": "git_free",
+          "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "paths": [
+            "artifact.txt"
+          ],
+          "head_ref": null,
+          "base_ref": null
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "check",
+        "owner_id": "native-check",
+        "expected_phase": "checking",
+        "result": {
+          "result_id": "d1-check",
+          "owner_role": "check",
+          "owner_id": "native-check",
+          "outcome": "passed",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "predecessor_result_id": "d1-plan",
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "full_review",
+        "owner_id": "native-full_review",
+        "expected_phase": "reviewing",
+        "result": {
+          "result_id": "d1-review",
+          "owner_role": "full_review",
+          "owner_id": "native-full_review",
+          "outcome": "passed",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "predecessor_result_id": "d1-check",
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_gate",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "readiness",
+        "owner_id": "native-readiness",
+        "expected_phase": "reviewing",
+        "result": {
+          "result_id": "d1-ready",
+          "owner_role": "readiness",
+          "owner_id": "native-readiness",
+          "outcome": "ready",
+          "scope_ref": {
+            "authority": {
+              "locator": "requirements.md",
+              "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "anchors": [
+              "R1"
+            ]
+          },
+          "plan_ref": {
+            "locator": "plan.md",
+            "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "predecessor_result_id": "d1-review",
+          "obligations": [],
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "d1-delivered",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "manual",
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "artifact": {
+            "locator": "artifact.txt",
+            "revision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "d1-delivered",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "profile": "manual",
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "artifact": {
+            "locator": "artifact.txt",
+            "revision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      },
+      "expected_changed": false,
+      "expected_phase": "delivered"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "expected_phase": "publishing",
+        "result": {
+          "result_id": "d1-delivered",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/changed",
+              "revision": "2"
+            }
+          ],
+          "profile": "manual",
+          "candidate": {
+            "kind": "git_free",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": null,
+            "base_ref": null
+          },
+          "artifact": {
+            "locator": "artifact.txt",
+            "revision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      },
+      "expect_error": "result_identity_conflict"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "22222222-2222-4222-8222-222222222222"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "manual"
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "stop",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "22222222-2222-4222-8222-222222222222"
+        },
+        "owner_role": "planning",
+        "owner_id": "native-planning",
+        "expected_phase": "planning",
+        "result": {
+          "result_id": "d2-stopped",
+          "owner_id": "native-planning",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "reason": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "scope_decision": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      },
+      "expected_phase": "stopped"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "complete_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "completion",
+        "owner_id": "native-completion",
+        "result": {
+          "result_id": "completed-g0",
+          "owner_id": "native-completion",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "lifecycle_generation": 0,
+          "accepted_scope": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "delivery_result_ids": [
+            "d1-delivered"
+          ],
+          "outcome": "completed"
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "close_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "closure",
+        "owner_id": "native-closure",
+        "result": {
+          "result_id": "closed-g0",
+          "owner_id": "native-closure",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "lifecycle_generation": 0,
+          "completion_result_id": "completed-g0",
+          "disposition": "no_mutation",
+          "source_result": null
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "complete_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "completion",
+        "owner_id": "native-completion",
+        "result": {
+          "result_id": "completed-g0",
+          "owner_id": "native-completion",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "lifecycle_generation": 0,
+          "accepted_scope": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "delivery_result_ids": [
+            "d1-delivered"
+          ],
+          "outcome": "completed"
+        }
+      },
+      "expected_changed": false
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "complete_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "completion",
+        "owner_id": "native-completion",
+        "result": {
+          "result_id": "completed-g1",
+          "owner_id": "native-completion",
+          "evidence": [
+            {
+              "locator": "https://example.test/evidence",
+              "revision": "1"
+            }
+          ],
+          "lifecycle_generation": 1,
+          "accepted_scope": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "delivery_result_ids": [
+            "d1-delivered"
+          ],
+          "outcome": "completed"
+        }
+      }
+    }
+  ]
+}

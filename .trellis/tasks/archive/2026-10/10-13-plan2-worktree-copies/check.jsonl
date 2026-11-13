@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI package/layer scope and required guideline routing."}
+{"file": ".trellis/spec/cli/backend/commands-migrate.md", "reason": "Plan2 complete inventory, ownership, projection, raw modes and replay."}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Immutable Task identity/generation, registered workspaces and common sessions."}
+{"file": ".trellis/spec/cli/backend/delivery-lifecycle.md", "reason": "Schema-2/API-1.0 prospective workflow, selected Delivery and authority."}
+{"file": ".trellis/spec/cli/backend/filesystem-safety.md", "reason": "Contained fixed paths, storage aliases, atomic writes and modes."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Required code quality and forbidden shortcuts."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Meaningful regressions, test isolation and existing quality gates."}
+{"file": ".trellis/spec/cli/unit-test/integration-patterns.md", "reason": "Real command-level fixtures and behavior assertions."}
+{"file": ".trellis/tasks/archive/2026-10/10-13-plan2-worktree-copies/research/source-analysis.md", "reason": "Confirmed source/evidence anchors and bounded defect."}
+{"file": ".trellis/tasks/archive/2026-10/10-13-plan2-worktree-copies/research/registered-copy-review.md", "reason": "Independent binding/group/replay/session contract research."}

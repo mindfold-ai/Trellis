@@ -1,3 +1,4 @@
+import { resolveSupportedPython } from "../utils/python.js";
 /**
  * `trellis workflow` command — list and switch the active `.trellis/workflow.md`.
  *
@@ -23,19 +24,15 @@ import path from "node:path";
 import chalk from "chalk";
 import inquirer from "inquirer";
 
+import { preflightDeliveryWorkflow } from "../utils/delivery-workflow.js";
 import { DIR_NAMES, PATHS } from "../constants/paths.js";
 import { collectMissingAgents } from "../utils/agent-refs.js";
 import { replacePythonCommandLiterals } from "../configurators/shared.js";
-import {
-  computeHash,
-  loadHashes,
-  removeHash,
-  updateHashes,
-} from "../utils/template-hash.js";
+import { computeHash, loadHashes, saveHashes } from "../utils/template-hash.js";
+import { projectWorkflowHashes } from "../utils/workflow-hash-contract.js";
 import {
   listWorkflowTemplates,
   resolveWorkflowTemplate,
-  NATIVE_WORKFLOW_ID,
   WorkflowResolveError,
   type ResolvedWorkflowTemplate,
   type WorkflowTemplateListing,
@@ -142,19 +139,8 @@ async function confirmOverwriteInteractively(): Promise<
 }
 
 function applyHashContract(cwd: string, templateId: string): void {
-  const relPath = PATHS.WORKFLOW_GUIDE_FILE;
-  if (templateId === NATIVE_WORKFLOW_ID) {
-    const filePath = workflowFilePath(cwd);
-    const current = fs.readFileSync(filePath, "utf-8");
-    const files = new Map<string, string>();
-    files.set(relPath, current);
-    updateHashes(cwd, files);
-  } else {
-    // Non-native workflow is user-managed local content. Drop the hash entry
-    // so `trellis update` treats it as modified and does not silently restore
-    // native bytes.
-    removeHash(cwd, relPath);
-  }
+  const current = fs.readFileSync(workflowFilePath(cwd), "utf-8");
+  saveHashes(cwd, projectWorkflowHashes(loadHashes(cwd), templateId, current));
 }
 
 async function writeWorkflow(
@@ -162,7 +148,9 @@ async function writeWorkflow(
   template: ResolvedWorkflowTemplate,
   options: WorkflowCommandOptions,
 ): Promise<void> {
+  resolveSupportedPython();
   const filePath = workflowFilePath(cwd);
+  if (!options.createNew) preflightDeliveryWorkflow(cwd, template.content);
   const dest = path.dirname(filePath);
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });

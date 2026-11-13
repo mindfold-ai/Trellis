@@ -1,0 +1,931 @@
+{
+  "run_id": 39011401555,
+  "head": "520b8d8c863845b15c7eec488ccfcbacda21253c",
+  "local_archive": "/tmp/trellis47-ci-39011401555-1RjyLDs4",
+  "checks": {
+    "archive_digest_matches_github": true,
+    "independently_recomputed_188_exact": true,
+    "all_84_pyc_oids": true,
+    "independently_recomputed_24_exact": true,
+    "all_12_normal_setups_and_exact_inputs": true,
+    "all_raw_process_scopes_present": true,
+    "all_managed_identities_equal": true,
+    "all_frozen_before_copies_unchanged": true
+  },
+  "phases": [
+    {
+      "case": "3-repeated",
+      "phase": "control-before",
+      "exact_head": "501e268cf9f2e3289f2e91c18f9532ff6fd96af0",
+      "paths": 19,
+      "unique_blobs": 16,
+      "unique_body_bytes": 273684,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 16,
+          "python_peak_bytes": 35053568,
+          "git_peak_bytes": 5054464
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 35053568,
+          "git_peak_bytes": 5001216
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 35053568,
+          "git_peak_bytes": 5120000
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 35053568,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 35053568,
+          "git_peak_bytes": 4927488
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 35053568,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 8,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4857856
+        }
+      ]
+    },
+    {
+      "case": "3-repeated",
+      "phase": "after",
+      "exact_head": "501e268cf9f2e3289f2e91c18f9532ff6fd96af0",
+      "paths": 19,
+      "unique_blobs": 16,
+      "unique_body_bytes": 273684,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 15,
+          "python_peak_bytes": 34488320,
+          "git_peak_bytes": 4878336
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 34488320,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 34488320,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 34488320,
+          "git_peak_bytes": 5120000
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 34488320,
+          "git_peak_bytes": 5050368
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 34488320,
+          "git_peak_bytes": 4857856
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 6,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4792320
+        }
+      ]
+    },
+    {
+      "case": "30-repeated",
+      "phase": "control-before",
+      "exact_head": "4180cebbd1a5e21be691e24016f1dabefe8ecf97",
+      "paths": 46,
+      "unique_blobs": 16,
+      "unique_body_bytes": 273684,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 16,
+          "python_peak_bytes": 32985088,
+          "git_peak_bytes": 4857856
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 32985088,
+          "git_peak_bytes": 5124096
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 32985088,
+          "git_peak_bytes": 5120000
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 32985088,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 32985088,
+          "git_peak_bytes": 4984832
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 32985088,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 8,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4849664
+        }
+      ]
+    },
+    {
+      "case": "30-repeated",
+      "phase": "after",
+      "exact_head": "4180cebbd1a5e21be691e24016f1dabefe8ecf97",
+      "paths": 46,
+      "unique_blobs": 16,
+      "unique_body_bytes": 273684,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 15,
+          "python_peak_bytes": 33611776,
+          "git_peak_bytes": 4857856
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 33611776,
+          "git_peak_bytes": 4870144
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 33611776,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 33611776,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 33611776,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 33611776,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 6,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4792320
+        }
+      ]
+    },
+    {
+      "case": "128-repeated",
+      "phase": "control-before",
+      "exact_head": "73530e98dfd85ebb0d668ef04bc05f5060efd7b9",
+      "paths": 128,
+      "unique_blobs": 19,
+      "unique_body_bytes": 12856596,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 16,
+          "python_peak_bytes": 41181184,
+          "git_peak_bytes": 4976640
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 41181184,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 41181184,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 41181184,
+          "git_peak_bytes": 5054464
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 41181184,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 41181184,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 5,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4849664
+        }
+      ]
+    },
+    {
+      "case": "128-repeated",
+      "phase": "after",
+      "exact_head": "73530e98dfd85ebb0d668ef04bc05f5060efd7b9",
+      "paths": 128,
+      "unique_blobs": 19,
+      "unique_body_bytes": 12856596,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 15,
+          "python_peak_bytes": 41238528,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 41238528,
+          "git_peak_bytes": 5120000
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 41238528,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 41238528,
+          "git_peak_bytes": 4997120
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 41238528,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 41238528,
+          "git_peak_bytes": 5111808
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 4,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4845568
+        }
+      ]
+    },
+    {
+      "case": "128-mixed",
+      "phase": "control-before",
+      "exact_head": "421bda9bacbc95ea9aade703a371289191c5976d",
+      "paths": 128,
+      "unique_blobs": 127,
+      "unique_body_bytes": 13078996,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 16,
+          "python_peak_bytes": 41033728,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 41033728,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 41033728,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 41033728,
+          "git_peak_bytes": 4993024
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 11,
+          "python_peak_bytes": 41033728,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 41033728,
+          "git_peak_bytes": 4919296
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 5,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4726784
+        }
+      ]
+    },
+    {
+      "case": "128-mixed",
+      "phase": "after",
+      "exact_head": "421bda9bacbc95ea9aade703a371289191c5976d",
+      "paths": 128,
+      "unique_blobs": 127,
+      "unique_body_bytes": 13078996,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 15,
+          "python_peak_bytes": 41070592,
+          "git_peak_bytes": 4923392
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 41070592,
+          "git_peak_bytes": 5054464
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 41070592,
+          "git_peak_bytes": 4988928
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 41070592,
+          "git_peak_bytes": 4857856
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 10,
+          "python_peak_bytes": 41070592,
+          "git_peak_bytes": 4984832
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 8,
+          "python_peak_bytes": 41070592,
+          "git_peak_bytes": 5042176
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 4,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 4726784
+        }
+      ]
+    },
+    {
+      "case": "10001-repeated",
+      "phase": "control-before",
+      "exact_head": "1858bb965a2208818c3c5d4666535718292b21c7",
+      "paths": 10001,
+      "unique_blobs": 19,
+      "unique_body_bytes": 12856596,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 18,
+          "python_peak_bytes": 51515392,
+          "git_peak_bytes": 8318976
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 49405952,
+          "git_peak_bytes": 9998336
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 13,
+          "python_peak_bytes": 49405952,
+          "git_peak_bytes": 8364032
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 49405952,
+          "git_peak_bytes": 10072064
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 13,
+          "python_peak_bytes": 49405952,
+          "git_peak_bytes": 8396800
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 49405952,
+          "git_peak_bytes": 10137600
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 7,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 7475200
+        }
+      ]
+    },
+    {
+      "case": "10001-repeated",
+      "phase": "after",
+      "exact_head": "1858bb965a2208818c3c5d4666535718292b21c7",
+      "paths": 10001,
+      "unique_blobs": 19,
+      "unique_body_bytes": 12856596,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 17,
+          "python_peak_bytes": 50085888,
+          "git_peak_bytes": 8302592
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 48812032,
+          "git_peak_bytes": 10141696
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 12,
+          "python_peak_bytes": 48812032,
+          "git_peak_bytes": 8298496
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 48812032,
+          "git_peak_bytes": 10006528
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 12,
+          "python_peak_bytes": 48812032,
+          "git_peak_bytes": 8364032
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 10,
+          "python_peak_bytes": 48812032,
+          "git_peak_bytes": 10141696
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 6,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 7528448
+        }
+      ]
+    },
+    {
+      "case": "10001-mixed",
+      "phase": "control-before",
+      "exact_head": "4f96a24e6477291cc8fec30ef3be3b85cf8ae6f9",
+      "paths": 10001,
+      "unique_blobs": 10000,
+      "unique_body_bytes": 33614836,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 18,
+          "python_peak_bytes": 57159680,
+          "git_peak_bytes": 8327168
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 52084736,
+          "git_peak_bytes": 10059776
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 13,
+          "python_peak_bytes": 53043200,
+          "git_peak_bytes": 8376320
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 52117504,
+          "git_peak_bytes": 10203136
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 13,
+          "python_peak_bytes": 52912128,
+          "git_peak_bytes": 8396800
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 52240384,
+          "git_peak_bytes": 10137600
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 7,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 7655424
+        }
+      ]
+    },
+    {
+      "case": "10001-mixed",
+      "phase": "after",
+      "exact_head": "4f96a24e6477291cc8fec30ef3be3b85cf8ae6f9",
+      "paths": 10001,
+      "unique_blobs": 10000,
+      "unique_body_bytes": 33614836,
+      "scopes": [
+        {
+          "operation": "0-manual",
+          "python_count": 11,
+          "git_count": 19,
+          "python_peak_bytes": 56233984,
+          "git_peak_bytes": 8331264
+        },
+        {
+          "operation": "0-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 49307648,
+          "git_peak_bytes": 10067968
+        },
+        {
+          "operation": "1-manual",
+          "python_count": 10,
+          "git_count": 14,
+          "python_peak_bytes": 49561600,
+          "git_peak_bytes": 8527872
+        },
+        {
+          "operation": "1-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 49217536,
+          "git_peak_bytes": 10006528
+        },
+        {
+          "operation": "2-manual",
+          "python_count": 10,
+          "git_count": 14,
+          "python_peak_bytes": 49643520,
+          "git_peak_bytes": 8331264
+        },
+        {
+          "operation": "2-query2",
+          "python_count": 8,
+          "git_count": 12,
+          "python_peak_bytes": 49217536,
+          "git_peak_bytes": 10133504
+        },
+        {
+          "operation": "component",
+          "python_count": 0,
+          "git_count": 8,
+          "python_peak_bytes": 0,
+          "git_peak_bytes": 7700480
+        }
+      ]
+    }
+  ],
+  "timings": [
+    {
+      "case": "128-repeated",
+      "kind": "manual",
+      "before_seconds": 0.853465460999999,
+      "after_seconds": 0.8002187140000103,
+      "improvement_percent": 6.238887152808726,
+      "absolute_cap": 0.6449902493041009
+    },
+    {
+      "case": "128-repeated",
+      "kind": "query2",
+      "before_seconds": 0.774637925499988,
+      "after_seconds": 0.7086789385000003,
+      "improvement_percent": 8.514815093440543,
+      "absolute_cap": 0.5813409617723664
+    },
+    {
+      "case": "128-mixed",
+      "kind": "manual",
+      "before_seconds": 0.8450813749999924,
+      "after_seconds": 0.8153372430000019,
+      "improvement_percent": 3.519676670189398,
+      "absolute_cap": 0.6393437262566294
+    },
+    {
+      "case": "128-mixed",
+      "kind": "query2",
+      "before_seconds": 0.7743191039999999,
+      "after_seconds": 0.7402350960000064,
+      "improvement_percent": 4.401803833060736,
+      "absolute_cap": 0.5728397875354858
+    },
+    {
+      "case": "10001-repeated",
+      "kind": "manual",
+      "before_seconds": 4.919971660000016,
+      "after_seconds": 1.854791399999982,
+      "improvement_percent": 62.300770651187534,
+      "absolute_cap": 2.124481289385585
+    },
+    {
+      "case": "10001-repeated",
+      "kind": "query2",
+      "before_seconds": 4.572528250000005,
+      "after_seconds": 1.5539909530000102,
+      "improvement_percent": 66.01462324480974,
+      "absolute_cap": 1.9938574834319296
+    },
+    {
+      "case": "10001-mixed",
+      "kind": "manual",
+      "before_seconds": 5.220020354500036,
+      "after_seconds": 2.273483432500001,
+      "improvement_percent": 56.446847366407425,
+      "absolute_cap": 2.168253252195427
+    },
+    {
+      "case": "10001-mixed",
+      "kind": "query2",
+      "before_seconds": 4.9027674945000115,
+      "after_seconds": 1.9767419849999897,
+      "improvement_percent": 59.68109874234246,
+      "absolute_cap": 2.015699277183739
+    }
+  ],
+  "artifact": {
+    "id": 12093370531,
+    "node_id": "MDg6QXJ0aWZhY3QxMjA5MzM3MDUzMQ==",
+    "name": "issue47-ci-520b8d8c863845b15c7eec488ccfcbacda21253c-39011401555",
+    "size_in_bytes": 9744907,
+    "url": "https://api.github.com/repos/castbox/Trellis/actions/artifacts/12093370531",
+    "archive_download_url": "https://api.github.com/repos/castbox/Trellis/actions/artifacts/12093370531/zip",
+    "expired": false,
+    "digest": "sha256:a0e627235ff9dd921d549864f00e96648089e65cfe9f4f68f8d0fa91f2e21608",
+    "created_at": "2026-10-17T06:56:45Z",
+    "updated_at": "2026-10-17T06:56:45Z",
+    "expires_at": "2027-01-15T06:50:36Z",
+    "workflow_run": {
+      "id": 39011401555,
+      "repository_id": 1362162045,
+      "head_repository_id": 1362162045,
+      "head_branch": "codex/47-snapshot-hash-reuse",
+      "head_sha": "520b8d8c863845b15c7eec488ccfcbacda21253c"
+    }
+  },
+  "absolute": {
+    "passed": 181,
+    "total": 188,
+    "failures": [
+      {
+        "check": "10001-mixed/manual_median_seconds",
+        "passed": false,
+        "actual": 2.273483432500001,
+        "limit": 2.168253252195427
+      },
+      {
+        "check": "128-mixed/manual_median_seconds",
+        "passed": false,
+        "actual": 0.8153372430000019,
+        "limit": 0.6393437262566294
+      },
+      {
+        "check": "128-mixed/query2_median_seconds",
+        "passed": false,
+        "actual": 0.7402350960000064,
+        "limit": 0.5728397875354858
+      },
+      {
+        "check": "128-mixed/first_record_seconds",
+        "passed": false,
+        "actual": 0.8763055350000002,
+        "limit": 0.8168767245893833
+      },
+      {
+        "check": "128-repeated/manual_median_seconds",
+        "passed": false,
+        "actual": 0.8002187140000103,
+        "limit": 0.6449902493041009
+      },
+      {
+        "check": "128-repeated/query2_median_seconds",
+        "passed": false,
+        "actual": 0.7086789385000003,
+        "limit": 0.5813409617723664
+      },
+      {
+        "check": "128-repeated/first_record_seconds",
+        "passed": false,
+        "actual": 0.8772779980000109,
+        "limit": 0.8252809686586261
+      }
+    ]
+  },
+  "paired": {
+    "passed": 22,
+    "total": 24,
+    "failures": [
+      {
+        "check": "128-mixed/manual_paired_gain",
+        "passed": false,
+        "before_seconds": 0.8450813749999924,
+        "after_seconds": 0.8153372430000019,
+        "after_max_seconds": 0.8028273062499927
+      },
+      {
+        "check": "128-mixed/query2_paired_gain",
+        "passed": false,
+        "before_seconds": 0.7743191039999999,
+        "after_seconds": 0.7402350960000064,
+        "after_max_seconds": 0.7356031487999999
+      }
+    ]
+  },
+  "environment": {
+    "python": {
+      "executable": "/opt/hostedtoolcache/Python/3.14.8/x64/bin/python3.14",
+      "base_executable": "/opt/hostedtoolcache/Python/3.14.8/x64/bin/python",
+      "version": "3.14.8 (main, Oct  1 2026, 02:38:33) [GCC 13.3.0]",
+      "sha256": "a5230d8adbd26c2185d77fb003597c4ee9c44c2369fc179122ff7c3a3a58ae59",
+      "cache_tag": "cpython-314"
+    },
+    "git": {
+      "executable": "/usr/bin/git",
+      "sha256": "d4d2ba562243015206d4248edfec871a74786499292d00ed072dbca2f5ae8073",
+      "version": "git version 2.55.0"
+    },
+    "gnu_time": {
+      "path": "/usr/bin/time",
+      "sha256": "3b11dec50514a8473e9f6efa7a34d584d0657538c09988f61b72d38ad4991a10",
+      "version": "time (GNU Time) UNKNOWN"
+    },
+    "checkout_git_head": "520b8d8c863845b15c7eec488ccfcbacda21253c",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "uname": [
+      "Linux",
+      "runnervm8k3b6",
+      "6.17.0-1022-azure",
+      "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+      "x86_64",
+      "x86_64"
+    ],
+    "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+    "memory_info": "MemTotal:       16373452 kB\nMemFree:        11425400 kB\nMemAvailable:   14830480 kB\nBuffers:          150948 kB\nCached:          3409128 kB\nSwapCached:            0 kB\nActive:           682956 kB\nInactive:        3131500 kB\nActive(anon):     308796 kB\nInactive(anon):        0 kB\nActive(file):     374160 kB\nInactive(file):  3131500 kB\nUnevictable:       46760 kB\nMlocked:           43688 kB\nSwapTotal:       3145724 kB\nSwapFree:        3145724 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:            682852 kB\nWriteback:             0 kB\nAnonPages:        300396 kB\nMapped:           304976 kB\nShmem:             45636 kB\nKReclaimable:     245372 kB\nSlab:             338944 kB\nSReclaimable:     245372 kB\nSUnreclaim:        93572 kB\nKernelStack:        4092 kB\nPageTables:         5904 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    11332448 kB\nCommitted_AS:    1959968 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       39344 kB\nVmallocChunk:          0 kB\nPercpu:             2208 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:     79872 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nBalloon:               0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      121984 kB\nDirectMap2M:     5115904 kB\nDirectMap1G:    13631488 kB\n",
+    "cgroup": "0::/system.slice/hosted-compute-agent.service\n",
+    "cpu_info": "processor\t: 0\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 3240.571\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 0\ncpu cores\t: 2\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 1\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 3237.573\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 0\ncpu cores\t: 2\napicid\t\t: 1\ninitial apicid\t: 1\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 2\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 2445.428\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 1\ncpu cores\t: 2\napicid\t\t: 2\ninitial apicid\t: 2\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 3\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 3244.272\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 1\ncpu cores\t: 2\napicid\t\t: 3\ninitial apicid\t: 3\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\n",
+    "job_environment": {
+      "GITHUB_RUN_ID": "39011401555",
+      "GITHUB_RUN_ATTEMPT": "1",
+      "GITHUB_JOB": "benchmark",
+      "GITHUB_REPOSITORY": "castbox/Trellis",
+      "GITHUB_SHA": "6d3ebc5cfe24ffe885a515e8e5decbc7ea3189b5",
+      "RUNNER_OS": "Linux",
+      "RUNNER_ARCH": "X64",
+      "ImageOS": "ubuntu24",
+      "ImageVersion": "20261012.334.1",
+      "LC_ALL": "C",
+      "LANG": "C",
+      "TZ": null
+    },
+    "pip_freeze": "pip==26.2.1\n",
+    "uid": 1001,
+    "nice": 0
+  },
+  "overall_passed": false,
+  "failure_type": "Complete acceptance performance FAIL; no technical setup failure"
+}

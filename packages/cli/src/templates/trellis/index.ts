@@ -16,7 +16,6 @@
  *   ├── workflow.md           # Workflow guide
  *   ├── config.yaml            # Trellis configuration
  *   ├── gitignore.txt         # .gitignore content
- *   └── gitattributes.txt     # project-root .gitattributes content
  */
 
 import { readFileSync } from "node:fs";
@@ -36,19 +35,28 @@ export const scriptsInit = readTemplate("scripts/__init__.py");
 // Python scripts - common
 export const commonInit = readTemplate("scripts/common/__init__.py");
 export const commonPaths = readTemplate("scripts/common/paths.py");
-export const commonDeveloper = readTemplate("scripts/common/developer.py");
 export const commonGitContext = readTemplate("scripts/common/git_context.py");
 export const commonTaskQueue = readTemplate("scripts/common/task_queue.py");
 export const commonTaskUtils = readTemplate("scripts/common/task_utils.py");
 export const commonActiveTask = readTemplate("scripts/common/active_task.py");
+export const commonSessionStorage = readTemplate(
+  "scripts/common/session_storage.py",
+);
 export const commonCliAdapter = readTemplate("scripts/common/cli_adapter.py");
 export const commonConfig = readTemplate("scripts/common/config.py");
 export const commonIo = readTemplate("scripts/common/io.py");
 export const commonLog = readTemplate("scripts/common/log.py");
 export const commonGit = readTemplate("scripts/common/git.py");
+export const commonGitObjects = readTemplate("scripts/common/git_objects.py");
 export const commonTypes = readTemplate("scripts/common/types.py");
 export const commonTasks = readTemplate("scripts/common/tasks.py");
 export const commonTaskContext = readTemplate("scripts/common/task_context.py");
+export const commonPathBoundary = readTemplate(
+  "scripts/common/path_boundary.py",
+);
+export const commonContinuationContract = readTemplate(
+  "scripts/common/continuation_contract.py",
+);
 export const commonTaskStore = readTemplate("scripts/common/task_store.py");
 export const commonSessionContext = readTemplate(
   "scripts/common/session_context.py",
@@ -63,19 +71,38 @@ export const commonTrellisConfig = readTemplate(
   "scripts/common/trellis_config.py",
 );
 export const commonSafeCommit = readTemplate("scripts/common/safe_commit.py");
+export const commonMaintenance = readTemplate("scripts/common/maintenance.py");
+export const commonRuntimeContract = readTemplate(
+  "scripts/common/runtime_contract.py",
+);
+export const commonDeliverySchema = readTemplate(
+  "scripts/common/delivery_schema.py",
+);
+export const commonDeliveryOperations = readTemplate(
+  "scripts/common/delivery_operations.py",
+);
+export const commonDeliverySession = readTemplate(
+  "scripts/common/delivery_session.py",
+);
+export const commonDeliveryStore = readTemplate(
+  "scripts/common/delivery_store.py",
+);
+export const commonTaskArtifacts = readTemplate(
+  "scripts/common/task_artifacts.py",
+);
 
 // Python scripts - main
-export const getDeveloperScript = readTemplate("scripts/get_developer.py");
-export const initDeveloperScript = readTemplate("scripts/init_developer.py");
 export const taskScript = readTemplate("scripts/task.py");
+export const deliveryScript = readTemplate("scripts/delivery.py");
 export const getContextScript = readTemplate("scripts/get_context.py");
-export const addSessionScript = readTemplate("scripts/add_session.py");
 
 // Configuration files
 export const workflowMdTemplate = readTemplate("workflow.md");
+export const deliveryWorkflowMdTemplate = readTemplate(
+  "workflow-delivery-v1.md",
+);
 export const configYamlTemplate = readTemplate("config.yaml");
 export const gitignoreTemplate = readTemplate("gitignore.txt");
-export const gitattributesTemplate = readTemplate("gitattributes.txt");
 
 // Channel runtime agent definitions (loaded by
 // `packages/cli/src/commands/channel/agent-loader.ts` from `.trellis/agents/`).
@@ -96,32 +123,44 @@ export function getAllScripts(): Map<string, string> {
   // Common
   scripts.set("common/__init__.py", commonInit);
   scripts.set("common/paths.py", commonPaths);
-  scripts.set("common/developer.py", commonDeveloper);
   scripts.set("common/git_context.py", commonGitContext);
   scripts.set("common/task_queue.py", commonTaskQueue);
   scripts.set("common/task_utils.py", commonTaskUtils);
   scripts.set("common/active_task.py", commonActiveTask);
+  scripts.set("common/session_storage.py", commonSessionStorage);
   scripts.set("common/cli_adapter.py", commonCliAdapter);
   scripts.set("common/config.py", commonConfig);
   scripts.set("common/io.py", commonIo);
   scripts.set("common/log.py", commonLog);
   scripts.set("common/git.py", commonGit);
+  scripts.set("common/git_objects.py", commonGitObjects);
   scripts.set("common/types.py", commonTypes);
   scripts.set("common/tasks.py", commonTasks);
   scripts.set("common/task_context.py", commonTaskContext);
+  scripts.set("common/path_boundary.py", commonPathBoundary);
+  scripts.set("common/continuation_contract.py", commonContinuationContract);
   scripts.set("common/task_store.py", commonTaskStore);
   scripts.set("common/session_context.py", commonSessionContext);
   scripts.set("common/packages_context.py", commonPackagesContext);
   scripts.set("common/workflow_phase.py", commonWorkflowPhase);
   scripts.set("common/trellis_config.py", commonTrellisConfig);
   scripts.set("common/safe_commit.py", commonSafeCommit);
+  scripts.set("common/maintenance.py", commonMaintenance);
+  scripts.set("common/runtime_contract.py", commonRuntimeContract);
+  scripts.set("common/delivery_schema.py", commonDeliverySchema);
+  scripts.set("common/delivery_operations.py", commonDeliveryOperations);
+  scripts.set("common/delivery_session.py", commonDeliverySession);
+  scripts.set("common/delivery_store.py", commonDeliveryStore);
+  scripts.set("common/task_artifacts.py", commonTaskArtifacts);
 
   // Main
-  scripts.set("get_developer.py", getDeveloperScript);
-  scripts.set("init_developer.py", initDeveloperScript);
   scripts.set("task.py", taskScript);
+  scripts.set("delivery.py", deliveryScript);
   scripts.set("get_context.py", getContextScript);
-  scripts.set("add_session.py", addSessionScript);
+  scripts.set(
+    "hooks/linear_sync.py",
+    readTemplate("scripts/hooks/linear_sync.py"),
+  );
 
   return scripts;
 }

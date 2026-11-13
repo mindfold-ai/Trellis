@@ -1,0 +1,26 @@
+{
+  "id": "issue-53-python-command-lifecycle",
+  "name": "issue-53-python-command-lifecycle",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "no_issue"
+  },
+  "title": "Issue 53: Python command selection across CLI processes",
+  "description": "Resolve castbox/Trellis#53 including native Windows baseline/candidate CI and Castbox release",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-10-19",
+  "completedAt": "2026-10-19",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "7f050fa11ddd8569e5db4f728ea1b745b7500a98",
+  "pr_url": "https://github.com/castbox/Trellis/pull/54",
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "Issue53 delivered via PR54 and castbox-v0.7.0-castbox.5. Exactmain CI, native comparison, paired package and published download verification passed; see release-evidence.json. No npm/Guru/business deployment.",
+  "meta": {}
+}

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadAgent } from "../../src/commands/channel/agent-loader.js";
 import { assembleContext } from "../../src/commands/channel/context-loader.js";
@@ -19,9 +19,9 @@ function realTmp(): string {
 
 describe("parseChannelTrustSection", () => {
   it("returns empty when channel section absent", () => {
-    expect(parseChannelTrustSection("packages:\n  cli:\n    path: x\n")).toEqual(
-      { trustedDirs: [] },
-    );
+    expect(
+      parseChannelTrustSection("packages:\n  cli:\n    path: x\n"),
+    ).toEqual({ trustedDirs: [] });
   });
 
   it("parses a trusted_context_dirs list", () => {
@@ -44,12 +44,14 @@ describe("parseChannelTrustSection", () => {
 
   it("parses auto_trust_trellis_symlinks true/false", () => {
     expect(
-      parseChannelTrustSection("channel:\n  auto_trust_trellis_symlinks: false\n")
-        .autoTrustSymlinks,
+      parseChannelTrustSection(
+        "channel:\n  auto_trust_trellis_symlinks: false\n",
+      ).autoTrustSymlinks,
     ).toBe(false);
     expect(
-      parseChannelTrustSection("channel:\n  auto_trust_trellis_symlinks: true\n")
-        .autoTrustSymlinks,
+      parseChannelTrustSection(
+        "channel:\n  auto_trust_trellis_symlinks: true\n",
+      ).autoTrustSymlinks,
     ).toBe(true);
   });
 
@@ -139,21 +141,6 @@ describe("resolveTrustedRoots", () => {
   );
 
   it.skipIf(isWin)(
-    "auto-trusts .trellis/workspace when it is a top-level symlink",
-    () => {
-      const extWorkspace = path.join(tmpDir, "ext-workspace");
-      fs.mkdirSync(extWorkspace, { recursive: true });
-      fs.symlinkSync(
-        extWorkspace,
-        path.join(cwd, ".trellis", "workspace"),
-        "dir",
-      );
-      const roots = resolveTrustedRoots(cwd);
-      expect(roots).toEqual([fs.realpathSync(extWorkspace)]);
-    },
-  );
-
-  it.skipIf(isWin)(
     "does not auto-trust when auto_trust_trellis_symlinks is false",
     () => {
       const extTasks = path.join(tmpDir, "ext-tasks");
@@ -168,7 +155,7 @@ describe("resolveTrustedRoots", () => {
   );
 
   it.skipIf(isWin)(
-    "does not auto-trust a nested symlink (only top-level tasks/workspace count)",
+    "does not auto-trust a nested symlink (only top-level tasks count)",
     () => {
       const evilTarget = path.join(tmpDir, "evil");
       fs.mkdirSync(evilTarget, { recursive: true });
@@ -196,6 +183,7 @@ describe("assembleContext with trusted roots (#414 repro)", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -356,7 +344,7 @@ describe("agent-loader honors trusted roots", () => {
   it.skipIf(isWin)(
     "loads an agent reached through a trusted-root .trellis/agents symlink",
     () => {
-      // .trellis itself isn't in the auto-trust list (only tasks/workspace),
+      // .trellis itself isn't in the auto-trust list (only tasks),
       // so exercise the allowlist path instead: symlink .trellis/agents to
       // a dir inside a channel.trusted_context_dirs entry.
       const extRoot = path.join(tmpDir, "ext-root");

@@ -76,8 +76,7 @@ Key distinctions:
   `post` with `--description`.
 - `--text` / `--stdin` / `--text-file` is the **event body** — the comment or
   payload attached to this specific timeline entry.
-- `--labels` and `--assignees` are CSV and **replace** the current value; they
-  do not append.
+- `--labels` is CSV and **replaces** the current value; it does not append.
 - `--summary` is the rolling thread summary. Setting it on `status closed` is
   the standard way to mark a thread resolved with context.
 

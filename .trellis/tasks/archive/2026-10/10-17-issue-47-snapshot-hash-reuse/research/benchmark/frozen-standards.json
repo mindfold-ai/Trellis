@@ -1,0 +1,91 @@
+{
+  "frozen_at_utc": "2026-10-17T05:03:45.451592+00:00",
+  "production_edits_allowed_only_after_this_checkpoint": true,
+  "fork_before": "0e3b23a3045357b76e69ca91e84b97b294dfb147",
+  "guru": "f70b64b026725b27d59fed17ed710cc2f831439f",
+  "cases": {
+    "10001-mixed": {
+      "baseline_sha256": "bd5528940b1f3c4fe2c2e3f8f69b02eb4eb5f943b09730c1157d177a87055671",
+      "paths": 10001,
+      "unique_blobs": 10000,
+      "baseline_median_seconds": {
+        "manual": 3.0975046459934674,
+        "query2": 2.8795703959767707
+      },
+      "after_median_max_seconds": {
+        "manual": 2.168253252195427,
+        "query2": 2.015699277183739
+      },
+      "minimum_whole_wrapper_improvement_percent": 30,
+      "after_fresh_first_manual_max_seconds": 3.49489765597391
+    },
+    "10001-repeated": {
+      "baseline_sha256": "d999ff05ca4a5e83a83edfa2d3d34d9a03a3af8fa48a26d14e5e68bcb59979e0",
+      "paths": 10001,
+      "unique_blobs": 19,
+      "baseline_median_seconds": {
+        "manual": 3.034973270550836,
+        "query2": 2.8483678334741853
+      },
+      "after_median_max_seconds": {
+        "manual": 2.124481289385585,
+        "query2": 1.9938574834319296
+      },
+      "minimum_whole_wrapper_improvement_percent": 30,
+      "after_fresh_first_manual_max_seconds": 3.4363278254459146
+    },
+    "128-mixed": {
+      "baseline_sha256": "71ee40db464938391587269767cf01d55a0fdf8810108de7f8bd94617f90efe6",
+      "paths": 128,
+      "unique_blobs": 127,
+      "baseline_median_seconds": {
+        "manual": 0.67299339605961,
+        "query2": 0.6029892500373535
+      },
+      "after_median_max_seconds": {
+        "manual": 0.6393437262566294,
+        "query2": 0.5728397875354858
+      },
+      "minimum_whole_wrapper_improvement_percent": 5,
+      "after_fresh_first_manual_max_seconds": 0.8168767245893833
+    },
+    "128-repeated": {
+      "baseline_sha256": "8101b3c4bdfaeef913a5206a7e2cb1e5b6cc9b43d5b45428ebe4192bace2f56a",
+      "paths": 128,
+      "unique_blobs": 19,
+      "baseline_median_seconds": {
+        "manual": 0.6789371045306325,
+        "query2": 0.6119378544972278
+      },
+      "after_median_max_seconds": {
+        "manual": 0.6449902493041009,
+        "query2": 0.5813409617723664
+      },
+      "minimum_whole_wrapper_improvement_percent": 5,
+      "after_fresh_first_manual_max_seconds": 0.8252809686586261
+    }
+  },
+  "resource_limits": {
+    "python_each_process_peak_rss_max_bytes": 134217728,
+    "git_each_process_peak_rss_max_bytes": 33554432,
+    "git_successful_blob_body_requests_per_call_max": "unique candidate blob OIDs",
+    "git_successful_body_bytes_per_call_max": "sum of unique candidate blob sizes",
+    "git_max_object_bytes": 4194304,
+    "adapted_snapshot_read_bytes": 0,
+    "content_sha256_per_exact_candidate_call_max": "unique candidate blobs",
+    "aggregate_sha256_per_exact_candidate_call_max": 1,
+    "cross_call_cache": false
+  },
+  "correctness_required": [
+    "unchanged public candidate digest oracle",
+    "all modes and deletions preserved",
+    "invalid paths and duplicate paths rejected independently",
+    "each input independently revalidated including cached commit/object availability",
+    "Git-free and mutable public API compatibility",
+    "manual first recording and idempotent output loss recovery",
+    "query2 exact historical merged fact",
+    "missing object scratch restore and no caller-common fetch",
+    "original48 scope-required tests"
+  ],
+  "timing_method": "1 first-record warmup plus 2 timed public recovery/query2 calls per case; all samples retained; instrumentation identical before/after; fake GitHub protocol and semantic fixtures, network0, not live AI"
+}

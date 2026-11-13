@@ -8,6 +8,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { assertProjectPath } from "./path-boundary.js";
+import { removeOwnedTrellisData } from "./trellis-owned-data.js";
 
 import { DIR_NAMES, FILE_NAMES } from "../constants/paths.js";
 import { ALL_MANAGED_DIRS } from "../configurators/index.js";
@@ -240,6 +242,9 @@ export function buildManagedRemovalPlan(
   hashes: Record<string, string>,
   options: BuildManagedRemovalPlanOptions = {},
 ): ManagedRemovalPlan {
+  if (lstatIfPresent(path.join(cwd, DIR_NAMES.WORKFLOW))?.isSymbolicLink()) {
+    throw new Error("Removal refused for a linked .trellis root.");
+  }
   const structured = buildStructuredFileSpecs();
   const allPosixPaths = Object.keys(hashes);
   const deletions: PlannedDeletion[] = [];
@@ -249,6 +254,7 @@ export function buildManagedRemovalPlan(
     const absPath = options.strictPaths
       ? assertSafeManagedPath(cwd, posixPath)
       : path.join(cwd, ...posixPath.split("/"));
+    assertProjectPath(absPath, cwd);
     const stat = options.strictPaths ? lstatIfPresent(absPath) : null;
     const spec = structured.get(posixPath);
 
@@ -313,6 +319,11 @@ export function executeManagedRemovalPlan(
   let deletedFiles = 0;
   let modifiedFiles = 0;
 
+  // Validate the complete plan before any modification, including linked files.
+  for (const entry of [...plan.modifications, ...plan.deletions]) {
+    assertProjectPath(entry.absPath, cwd);
+  }
+
   for (const modification of plan.modifications) {
     fs.writeFileSync(modification.absPath, modification.result.content);
     modifiedFiles += 1;
@@ -334,8 +345,8 @@ export function executeManagedRemovalPlan(
   if (plan.removeTrellisDir) {
     const trellisDir = path.join(cwd, DIR_NAMES.WORKFLOW);
     if (lstatIfPresent(trellisDir)) {
-      fs.rmSync(trellisDir, { recursive: true, force: true });
-      deletedDirs += 1;
+      removeOwnedTrellisData(trellisDir);
+      if (!lstatIfPresent(trellisDir)) deletedDirs += 1;
     }
   }
 

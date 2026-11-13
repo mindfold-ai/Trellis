@@ -1,0 +1,31 @@
+{
+  "id": "issue-3-remove-developer-identity",
+  "name": "issue-3-remove-developer-identity",
+  "title": "Retire developer identity, workspace and code-graph tooling dependencies (#3)",
+  "description": "Retire developer identity and workspace mechanisms and remove all nonhistorical code-graph integration references; preserve historical records.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "creator": "Wesley Wu",
+  "assignee": "Wesley Wu",
+  "createdAt": "2026-09-11",
+  "completedAt": "2026-09-12",
+  "branch": "codex/issue-3-remove-developer-identity",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "issue": "castbox/Trellis#3",
+    "planning_revision": "5",
+    "issue_updated_at": "2026-09-11T12:31:53Z",
+    "status": "in_progress"
+  }
+}

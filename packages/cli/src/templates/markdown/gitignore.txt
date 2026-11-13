@@ -1,9 +1,6 @@
 # Trellis workflow gitignore
 # Runtime files that should not be committed
 
-# Developer identity (local to each developer)
-.developer
-
 # Current task pointer (local state)
 .current-task
 

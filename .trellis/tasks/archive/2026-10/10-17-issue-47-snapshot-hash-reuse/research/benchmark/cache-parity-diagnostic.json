@@ -1,0 +1,18 @@
+{
+  "delivery_store": {
+    "valid_timestamp_and_size": true,
+    "source_mtime": 1792215567,
+    "source_bytes": 23784,
+    "cache_mtime_header": 1792215567,
+    "cache_size_header": 23784,
+    "dont_write_bytecode": false
+  },
+  "git_objects": {
+    "valid_timestamp_and_size": true,
+    "source_mtime": 1792215745,
+    "source_bytes": 8116,
+    "cache_mtime_header": 1792215745,
+    "cache_size_header": 8116,
+    "dont_write_bytecode": false
+  }
+}

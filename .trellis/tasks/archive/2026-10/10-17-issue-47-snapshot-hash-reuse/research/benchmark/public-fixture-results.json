@@ -1,0 +1,103 @@
+{
+  "runtime_source_hashes": {
+    "delivery_operations.py": "0d22737a1f32554179e7577a3aeb1a508593c1923df4a0cb43d6b787b220b50d",
+    "safe_commit.py": "90a21a901598508475ef08215fcbe68d34d2213802a1940f70e9bb6e62857a60",
+    "session_context.py": "9232f94dad9c576c6ce0dab593d5313306f83fdff179160dafe63181599c4ba5",
+    "active_task.py": "6c433d3efc2b37a45ff1bf310ba8aa040e1259ace2052bd96d50a9af3cc7b00a",
+    "git.py": "2d8f9bd446d94cbc67348aaee25bfab42437677fae08a0f33b33b27d4411fe6d",
+    "git_context.py": "54a387fe7e8789c4c5723a3a077d3fc570cc43afa4dcb0ce0271e09f71767b8d",
+    "task_queue.py": "ecf2962fe1232e9ac37aca9d66acbfe4ad2628af53f09032be917a6ed44f703f",
+    "tasks.py": "b731b920bf90cb8c8a9f090525b58f139cc09a4d640c4cfca6453aa35dcb316e",
+    "session_storage.py": "07e0b45aff78a42217dedfecd5ea3af952b0b1b35797af539c64d0b04b26077b",
+    "config.py": "bb296d39497d7af19b7eb0afb3d5e17794c0221d1a45ec4a60c9ccc014766c64",
+    "task_store.py": "fcbed59b10a90f10fad26f5d5227da3fdf377c9c07cb244464243b68d459f7c1",
+    "packages_context.py": "78f5aa1691ef14574572420760d3bf9ceee30e6eae4e52be303dd98711689fdc",
+    "paths.py": "e33367925875f202078da9b36921c2dfcd510136ee5cf2d758d943eb4f50064e",
+    "task_artifacts.py": "ba36d8fff2b3d4304361add69ca519fa7e7ad280b4559cd2c9dd1e47241cbf05",
+    "log.py": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+    "maintenance.py": "07345928fd631825ac79a5fb949b4cad2b22ea0d198a5b674a02dd1f643d62e2",
+    "git_objects.py": "2ddaa8736bbca4ddcba07efc2443173f3df615c52d471001ba273b0f828847c8",
+    "io.py": "8b3bf67ccb3328951f719b6b062be10b2d1088f8fcefe38ae71384eccdee0dab",
+    "workflow_phase.py": "1372b0d2d01f06e5d8e1dde628c7d76f5f9dae34a011ad87753f2e6bf51b051d",
+    "__init__.py": "585f66ce17aed86f24ad29930b49d2245ad88f106f3d3bcc7b9489e5f8ee35c7",
+    "runtime_contract.py": "f7fd624fcbff6d7ab60285a48346239f449129a5d58a20bee97b5185bbec6d17",
+    "types.py": "5b1ad3ddcdd746971308cb21c0e932999461f88c2bfdb9529a1e29e4d28f3230",
+    "path_boundary.py": "bc34711a2d18fa199a270b00bb50a2746dc82b0a093e3fb34ae314549796d08c",
+    "delivery_schema.py": "efec4f29be5fca19a62195fe3f3ba3add3152945130e7c2f385b9d59bc0221b0",
+    "trellis_config.py": "3120fea197c4615a1c5bef071f9de18982e4196bffa6069a89025959b62379f6",
+    "task_utils.py": "e6435fbb92343ad215a803fa8730db339f9b1d8f498f27b523e9f0070b6495b4",
+    "continuation_contract.py": "82f37aff6c43e7803b99c88b1837c88e8509f366ee5afc3b9291c6626a05cf8d",
+    "cli_adapter.py": "df605f130a68d17db4e15b8c98d22f8c4ca143506bcccc93c4faa166d0f2add5",
+    "task_context.py": "ea2afd8b2512e58618be40b763c6a67d1c238e8af931377df91ab79ce0853cc1",
+    "delivery_session.py": "8b5533722907810665958c3feba48b4c8c32d7d97d842b2d36f920b70bb71f5f",
+    "delivery_store.py": "038d98832a8359b697a5b3757589f9f1461b26d548fc04d29ad2b4e50d082171"
+  },
+  "isolated_guru": "f70b64b026725b27d59fed17ed710cc2f831439f plus isolated-consumer-projection.patch",
+  "results": [
+    {
+      "test_file": "test_manual_recovery.py",
+      "returncode": 0,
+      "command": [
+        "/Users/wumengye/Library/Caches/guru-team/python/f0b89dabd24ef812b1244b8b/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/tmp/trellis-47-residual-after/guru/trellis/skills/guru-team/packages/guru-merge-task-delivery/tests",
+        "-p",
+        "test_manual_recovery.py",
+        "-v"
+      ],
+      "output": "test_actual_head_extra_path_is_recorded_without_rewriting_old_pass (test_manual_recovery.ManualRecoveryTests.test_actual_head_extra_path_is_recorded_without_rewriting_old_pass) ... ok\ntest_all_ci_states_record_real_merge_without_synthesizing_gates (test_manual_recovery.ManualRecoveryTests.test_all_ci_states_record_real_merge_without_synthesizing_gates) ... ok\ntest_base_advance_branch_deletion_and_output_loss_recover_read_only (test_manual_recovery.ManualRecoveryTests.test_base_advance_branch_deletion_and_output_loss_recover_read_only) ... ok\ntest_completion_fixtures_preserve_incomplete_routes_after_real_fact (test_manual_recovery.ManualRecoveryTests.test_completion_fixtures_preserve_incomplete_routes_after_real_fact) ... ok\ntest_public_projection_failure_after_record_recovers_same_fact (test_manual_recovery.ManualRecoveryTests.test_public_projection_failure_after_record_recovers_same_fact) ... ok\ntest_recorded_manual_fact_is_read_by_query2_but_not_query1 (test_manual_recovery.ManualRecoveryTests.test_recorded_manual_fact_is_read_by_query2_but_not_query1) ... ok\ntest_stale_ci_observation_stops_before_recording (test_manual_recovery.ManualRecoveryTests.test_stale_ci_observation_stops_before_recording) ... ok\ntest_unmerged_and_base_mismatch_do_not_record (test_manual_recovery.ManualRecoveryTests.test_unmerged_and_base_mismatch_do_not_record) ... ok\ntest_wrong_pr_selection_and_ambiguous_publication_stay_at_merge (test_manual_recovery.ManualRecoveryTests.test_wrong_pr_selection_and_ambiguous_publication_stay_at_merge) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 39.584s\n\nOK\n"
+    },
+    {
+      "test_file": "test_history_public.py",
+      "returncode": 0,
+      "command": [
+        "/Users/wumengye/Library/Caches/guru-team/python/f0b89dabd24ef812b1244b8b/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/tmp/trellis-47-residual-after/guru/trellis/skills/guru-team/packages/guru-merge-task-delivery/tests",
+        "-p",
+        "test_history_public.py",
+        "-v"
+      ],
+      "output": "test_post_cutoff_identity_failure_is_not_silently_excluded (test_history_public.PublicHistoryTests.test_post_cutoff_identity_failure_is_not_silently_excluded) ... ok\ntest_recorded_merge_on_unrelated_first_parent_line_fails (test_history_public.PublicHistoryTests.test_recorded_merge_on_unrelated_first_parent_line_fails) ... ok\ntest_recorded_successor_is_validated_then_excluded_from_old_cutoff (test_history_public.PublicHistoryTests.test_recorded_successor_is_validated_then_excluded_from_old_cutoff) ... ok\ntest_restored_session_missing_merge_uses_scratch_candidate_context (test_history_public.PublicHistoryTests.test_restored_session_missing_merge_uses_scratch_candidate_context) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 17.355s\n\nOK\n"
+    },
+    {
+      "test_file": "test_history_cutoff.py",
+      "returncode": 0,
+      "command": [
+        "/Users/wumengye/Library/Caches/guru-team/python/f0b89dabd24ef812b1244b8b/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/tmp/trellis-47-residual-after/guru/trellis/skills/guru-team/packages/guru-merge-task-delivery/tests",
+        "-p",
+        "test_history_cutoff.py",
+        "-v"
+      ],
+      "output": "test_complete_unmatched_history_has_valid_empty_result (test_history_cutoff.FixedCutoffTests.test_complete_unmatched_history_has_valid_empty_result) ... ok\ntest_local_complete_objects_are_reused_even_with_stale_or_missing_base_ref (test_history_cutoff.FixedCutoffTests.test_local_complete_objects_are_reused_even_with_stale_or_missing_base_ref) ... ok\ntest_missing_objects_prepared_without_any_caller_or_peer_git_writes (test_history_cutoff.FixedCutoffTests.test_missing_objects_prepared_without_any_caller_or_peer_git_writes) ... ok\ntest_provider_permission_and_network_failures_keep_specific_reasons (test_history_cutoff.FixedCutoffTests.test_provider_permission_and_network_failures_keep_specific_reasons) ... ok\ntest_remote_advance_does_not_replace_cutoff_or_repeat_base_read (test_history_cutoff.FixedCutoffTests.test_remote_advance_does_not_replace_cutoff_or_repeat_base_read) ... ok\ntest_schema1_and_schema2_deliveries_keep_order_and_public_key (test_history_cutoff.FixedCutoffTests.test_schema1_and_schema2_deliveries_keep_order_and_public_key) ... ok\ntest_shallow_successful_rev_list_is_not_complete_history (test_history_cutoff.FixedCutoffTests.test_shallow_successful_rev_list_is_not_complete_history) ... ok\ntest_still_incomplete_preparation_fails_instead_of_empty_success (test_history_cutoff.FixedCutoffTests.test_still_incomplete_preparation_fails_instead_of_empty_success) ... ok\ntest_transport_failure_is_concrete_and_cleans_scratch (test_history_cutoff.FixedCutoffTests.test_transport_failure_is_concrete_and_cleans_scratch) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 5.822s\n\nOK\n"
+    },
+    {
+      "test_file": "test_history.py",
+      "returncode": 0,
+      "command": [
+        "/Users/wumengye/Library/Caches/guru-team/python/f0b89dabd24ef812b1244b8b/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/tmp/trellis-47-residual-after/guru/trellis/skills/guru-team/packages/guru-merge-task-delivery/tests",
+        "-p",
+        "test_history.py",
+        "-v"
+      ],
+      "output": "test_base_or_repository_drift_fails_closed (test_history.DeliveryHistoryTest.test_base_or_repository_drift_fails_closed) ... ok\ntest_pr_body_and_deleted_head_branch_do_not_define_identity (test_history.DeliveryHistoryTest.test_pr_body_and_deleted_head_branch_do_not_define_identity) ... ok\ntest_pr_head_drift_fails_closed (test_history.DeliveryHistoryTest.test_pr_head_drift_fails_closed) ... ok\ntest_schema_two_trailers_keep_public_identity_and_legacy_readable (test_history.DeliveryHistoryTest.test_schema_two_trailers_keep_public_identity_and_legacy_readable) ... ok\ntest_trailer_head_that_is_not_parent_two_fails_closed (test_history.DeliveryHistoryTest.test_trailer_head_that_is_not_parent_two_fails_closed) ... ok\ntest_two_cross_branch_deliveries_are_reconstructed_and_bookkeeping_is_excluded (test_history.DeliveryHistoryTest.test_two_cross_branch_deliveries_are_reconstructed_and_bookkeeping_is_excluded) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 5.249s\n\nOK\n"
+    }
+  ],
+  "passed": true
+}

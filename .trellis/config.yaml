@@ -4,33 +4,13 @@
 # All values have sensible defaults. Only override what you need.
 
 #-------------------------------------------------------------------------------
-# Session Recording
+# Task Archive Auto-Commit
 #-------------------------------------------------------------------------------
 
-# Commit message used when auto-committing journal/index changes
-# after running add_session.py
-session_commit_message: "chore: record journal"
-
-# Maximum lines per journal file before rotating to a new one
-max_journal_lines: 2000
-
-#-------------------------------------------------------------------------------
-# Session Auto-Commit
-#-------------------------------------------------------------------------------
-
-# Auto-commit behavior for session journal + task archive operations.
-# - true (default): scripts auto-stage and auto-commit journal / task changes
-#   after add_session.py / task.py archive runs.
-# - false: scripts do not touch git. Files (journal-*.md, task archive moves)
-#   are still written to disk; you decide whether to git add / commit.
-#
-# Use `false` if your project's .gitignore intentionally excludes `.trellis/`
-# and you want session data kept local-only, or if you prefer to review
-# staged changes manually before each commit.
-#
+# Archive operations auto-commit task changes by default.
+# Set false to review and commit task changes manually.
 # Accepts: true / false / yes / no / 1 / 0 / on / off (case-insensitive).
-#
-# session_auto_commit: true
+# task_auto_commit: true
 
 #-------------------------------------------------------------------------------
 # Task Lifecycle Hooks
@@ -100,11 +80,9 @@ default_package: cli
 # `max_live_workers: 0` disables the spawn-time budget check.
 #
 # `trusted_context_dirs` extends the `--file`/`--jsonl`/`--agent` containment
-# check beyond the worker cwd — useful when `.trellis/tasks` or
-# `.trellis/workspace` is a symlink to an external directory. Realpaths under
-# any listed dir are accepted in addition to cwd.
-# `auto_trust_trellis_symlinks: false` disables the narrow auto-trust of
-# `.trellis/tasks` / `.trellis/workspace` when either is itself a top-level
+# check beyond the worker cwd. Only explicitly trusted roots and the
+# top-level `.trellis/tasks` symlink are automatically eligible.
+# `auto_trust_trellis_symlinks: false` disables trust of that task
 # symlink (auto-trust is on by default).
 #
 channel:
@@ -112,7 +90,7 @@ channel:
     idle_timeout: 5m
     max_live_workers: 6
   # trusted_context_dirs:
-  #   - /work/user/trellis_workspace
+  #   - /work/shared/tasks
   # auto_trust_trellis_symlinks: false
 
 #-------------------------------------------------------------------------------

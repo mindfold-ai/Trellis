@@ -6,7 +6,7 @@ Trellis context injection aims to make AI read the right files at the right time
 
 | Type | Source | Purpose |
 | --- | --- | --- |
-| session context | `.trellis/scripts/get_context.py` | Current developer, git status, active task, active tasks, journal, packages. |
+| session context | `.trellis/scripts/get_context.py` | Git status, current-session task, project tasks, packages. |
 | workflow context | `.trellis/workflow.md` | Current Trellis flow and next action. |
 | spec context | `.trellis/spec/` + task JSONL | Specs that must be followed during implementation/checking. |
 | task context | `.trellis/tasks/<task>/prd.md`, `design.md`, `implement.md`, `research/` | Current task requirements, design, execution plan, and research. |
@@ -20,7 +20,7 @@ Platforms with session-start support inject a Trellis overview when a session st
 - current task status.
 - active tasks.
 - spec index paths.
-- developer identity and git status.
+- checkout and git status.
 
 If the user feels the AI does not know the current task in a new session, first check whether the platform's session-start hook or equivalent mechanism is installed and running.
 

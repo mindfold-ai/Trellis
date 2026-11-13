@@ -1,0 +1,360 @@
+{
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "manual",
+      "local_commit",
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "native-readiness",
+      "publication": "native-publication",
+      "delivery": "native-delivery",
+      "completion": "native-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 1,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "schema_version": "2.0",
+    "accepted_scope": {
+      "locator": "requirements.md",
+      "revision": "revision-scope"
+    },
+    "deliveries": [],
+    "completion_results": [
+      {
+        "result_id": "recovery-complete-0",
+        "owner_id": "native-completion",
+        "evidence": [
+          {
+            "locator": "requirements.md",
+            "revision": "revision-scope"
+          }
+        ],
+        "lifecycle_generation": 0,
+        "accepted_scope": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        },
+        "delivery_result_ids": [],
+        "outcome": "completed"
+      }
+    ],
+    "closure_results": []
+  },
+  "steps": [
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "wrong-owner",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "owner_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "owner_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "other-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "task_identity_mismatch"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "other-scope"
+        }
+      },
+      "expect_error": "stale_lifecycle_generation"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "completion_required"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expected_changed": false
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "complete_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "completion",
+        "owner_id": "native-completion",
+        "result": {
+          "result_id": "recovery-complete-1",
+          "owner_id": "native-completion",
+          "evidence": [
+            {
+              "locator": "requirements.md",
+              "revision": "revision-scope"
+            }
+          ],
+          "lifecycle_generation": 1,
+          "accepted_scope": {
+            "locator": "requirements.md",
+            "revision": "revision-scope"
+          },
+          "delivery_result_ids": [],
+          "outcome": "completed"
+        }
+      },
+      "expected_changed": true
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "stale_lifecycle_generation"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "close_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "closure",
+        "owner_id": "native-closure",
+        "result": {
+          "result_id": "recovery-close-1",
+          "owner_id": "native-closure",
+          "evidence": [
+            {
+              "locator": "requirements.md",
+              "revision": "revision-scope"
+            }
+          ],
+          "lifecycle_generation": 1,
+          "completion_result_id": "recovery-complete-1",
+          "disposition": "no_mutation",
+          "source_result": null
+        }
+      },
+      "expected_changed": true
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "stale_lifecycle_generation"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expected_changed": true
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "stale_lifecycle_generation"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expected_changed": false
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 2,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "revision-scope"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "manual"
+      },
+      "expected_changed": true,
+      "expected_phase": "planning"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "reopen_task",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 1
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "revision-scope"
+        }
+      },
+      "expect_error": "stale_lifecycle_generation"
+    }
+  ]
+}

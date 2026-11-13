@@ -1,0 +1,19 @@
+{
+  "frozen_at_utc": "2026-10-17T01:48:36.173960+00:00",
+  "harness_sha256": "accf0fe622ae1eb88bdfdb24ef5847b6257bf8ce1a7c2b57aad2c62905c2e849",
+  "warmups": 1,
+  "timed_repetitions": 2,
+  "small_scheduling": "sequential task scenarios and128-path Delivery scenarios",
+  "large_scheduling": "three concurrent10001-path Delivery scenarios, identical before and after",
+  "primary_time_ratio_limits": {
+    "task_create": 0.5,
+    "record_delivery_128": 0.5,
+    "record_delivery_10001": 0.2
+  },
+  "unoptimized_entry_regression_limit": "max(1.5*before median,before median+0.25 seconds) for candidate/begin_check/gates/retry",
+  "resource_ceilings_bytes": {
+    "python_individual_max": 268435456,
+    "git_individual_max": 67108864
+  },
+  "note": "Ratios and resource ceilings frozen before remaining baseline completes; numeric per-scenario time ceilings will be materialized from before medians before any production edit. These limits may not be relaxed using after results."
+}

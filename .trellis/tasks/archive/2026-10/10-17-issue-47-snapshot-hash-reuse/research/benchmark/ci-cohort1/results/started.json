@@ -1,0 +1,150 @@
+{
+  "protocol_sha256": "2c3acea9c855001d26d5c6ab2a9f751b41c82f111b7801eda03c7c21e5c60ead",
+  "environment": {
+    "python": {
+      "executable": "/opt/hostedtoolcache/Python/3.14.8/x64/bin/python3.14",
+      "base_executable": "/opt/hostedtoolcache/Python/3.14.8/x64/bin/python",
+      "version": "3.14.8 (main, Oct  1 2026, 02:38:33) [GCC 13.3.0]",
+      "sha256": "a5230d8adbd26c2185d77fb003597c4ee9c44c2369fc179122ff7c3a3a58ae59",
+      "cache_tag": "cpython-314"
+    },
+    "git": {
+      "executable": "/usr/bin/git",
+      "sha256": "d4d2ba562243015206d4248edfec871a74786499292d00ed072dbca2f5ae8073",
+      "version": "git version 2.55.0"
+    },
+    "gnu_time": {
+      "path": "/usr/bin/time",
+      "sha256": "3b11dec50514a8473e9f6efa7a34d584d0657538c09988f61b72d38ad4991a10",
+      "version": "time (GNU Time) UNKNOWN"
+    },
+    "checkout_git_head": "520b8d8c863845b15c7eec488ccfcbacda21253c",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "uname": [
+      "Linux",
+      "runnervm8k3b6",
+      "6.17.0-1022-azure",
+      "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+      "x86_64",
+      "x86_64"
+    ],
+    "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+    "memory_info": "MemTotal:       16373452 kB\nMemFree:        11425400 kB\nMemAvailable:   14830480 kB\nBuffers:          150948 kB\nCached:          3409128 kB\nSwapCached:            0 kB\nActive:           682956 kB\nInactive:        3131500 kB\nActive(anon):     308796 kB\nInactive(anon):        0 kB\nActive(file):     374160 kB\nInactive(file):  3131500 kB\nUnevictable:       46760 kB\nMlocked:           43688 kB\nSwapTotal:       3145724 kB\nSwapFree:        3145724 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:            682852 kB\nWriteback:             0 kB\nAnonPages:        300396 kB\nMapped:           304976 kB\nShmem:             45636 kB\nKReclaimable:     245372 kB\nSlab:             338944 kB\nSReclaimable:     245372 kB\nSUnreclaim:        93572 kB\nKernelStack:        4092 kB\nPageTables:         5904 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    11332448 kB\nCommitted_AS:    1959968 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       39344 kB\nVmallocChunk:          0 kB\nPercpu:             2208 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:     79872 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nBalloon:               0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      121984 kB\nDirectMap2M:     5115904 kB\nDirectMap1G:    13631488 kB\n",
+    "cgroup": "0::/system.slice/hosted-compute-agent.service\n",
+    "cpu_info": "processor\t: 0\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 3240.571\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 0\ncpu cores\t: 2\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 1\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 3237.573\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 0\ncpu cores\t: 2\napicid\t\t: 1\ninitial apicid\t: 1\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 2\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 2445.428\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 1\ncpu cores\t: 2\napicid\t\t: 2\ninitial apicid\t: 2\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 3\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 1\nmodel name\t: AMD EPYC 7763 64-Core Processor\nstepping\t: 1\nmicrocode\t: 0xffffffff\ncpu MHz\t\t: 3244.272\ncache size\t: 512 KB\nphysical id\t: 0\nsiblings\t: 4\ncore id\t\t: 1\ncpu cores\t: 2\napicid\t\t: 3\ninitial apicid\t: 3\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 13\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves user_shstk clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload umip vaes vpclmulqdq rdpid fsrm\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 4890.85\nTLB size\t: 2560 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 48 bits physical, 48 bits virtual\npower management:\n\n",
+    "job_environment": {
+      "GITHUB_RUN_ID": "39011401555",
+      "GITHUB_RUN_ATTEMPT": "1",
+      "GITHUB_JOB": "benchmark",
+      "GITHUB_REPOSITORY": "castbox/Trellis",
+      "GITHUB_SHA": "6d3ebc5cfe24ffe885a515e8e5decbc7ea3189b5",
+      "RUNNER_OS": "Linux",
+      "RUNNER_ARCH": "X64",
+      "ImageOS": "ubuntu24",
+      "ImageVersion": "20261012.334.1",
+      "LC_ALL": "C",
+      "LANG": "C",
+      "TZ": null
+    },
+    "pip_freeze": "pip==26.2.1\n",
+    "uid": 1001,
+    "nice": 0
+  },
+  "started_utc": "2026-10-17T06:51:10.840342+00:00",
+  "host": {
+    "utc": "2026-10-17T06:51:10.851295+00:00",
+    "load_average_1_5_15": [
+      0.54541015625,
+      0.154296875,
+      0.052734375
+    ],
+    "logical_cpu_count": 4,
+    "process_count": 160,
+    "top_cpu_processes": [
+      {
+        "pid": 2182,
+        "ppid": 2164,
+        "cpu_percent": 11.1,
+        "memory_percent": 0.8,
+        "executable": "Runner.Worker"
+      },
+      {
+        "pid": 2645,
+        "ppid": 2644,
+        "cpu_percent": 5.6,
+        "memory_percent": 0.1,
+        "executable": "python"
+      },
+      {
+        "pid": 1,
+        "ppid": 0,
+        "cpu_percent": 5.3,
+        "memory_percent": 0.0,
+        "executable": "systemd"
+      },
+      {
+        "pid": 2164,
+        "ppid": 2092,
+        "cpu_percent": 4.2,
+        "memory_percent": 0.5,
+        "executable": "Runner.Listener"
+      },
+      {
+        "pid": 2127,
+        "ppid": 2125,
+        "cpu_percent": 1.4,
+        "memory_percent": 0.5,
+        "executable": "provjobd2489088"
+      },
+      {
+        "pid": 1441,
+        "ppid": 1042,
+        "cpu_percent": 1.3,
+        "memory_percent": 0.2,
+        "executable": "python3"
+      },
+      {
+        "pid": 47,
+        "ppid": 2,
+        "cpu_percent": 0.9,
+        "memory_percent": 0.0,
+        "executable": "u16:2-kvfree_rcu_reclaim"
+      },
+      {
+        "pid": 23,
+        "ppid": 2,
+        "cpu_percent": 0.8,
+        "memory_percent": 0.0,
+        "executable": "2"
+      },
+      {
+        "pid": 29,
+        "ppid": 2,
+        "cpu_percent": 0.8,
+        "memory_percent": 0.0,
+        "executable": "1"
+      },
+      {
+        "pid": 35,
+        "ppid": 2,
+        "cpu_percent": 0.8,
+        "memory_percent": 0.0,
+        "executable": "3"
+      },
+      {
+        "pid": 156,
+        "ppid": 1,
+        "cpu_percent": 0.7,
+        "memory_percent": 0.1,
+        "executable": "systemd-journal"
+      },
+      {
+        "pid": 12,
+        "ppid": 2,
+        "cpu_percent": 0.6,
+        "memory_percent": 0.0,
+        "executable": "u16:0-kvfree_rcu_reclaim"
+      }
+    ]
+  }
+}

@@ -49,7 +49,7 @@ describe("resolveWorkflowTemplate(marketplace)", () => {
         },
       ],
     };
-    const fakeContent = "# TDD\n\nPhase 2.1 red → green → refactor.\n";
+    const fakeContent = "# TDD\n\nPhase 2.1 red → green → refactor.\nRun pnpm test from the workspace root.\nRead the SQLite write-ahead journal when diagnosing storage failures.\n";
 
     vi.stubGlobal(
       "fetch",

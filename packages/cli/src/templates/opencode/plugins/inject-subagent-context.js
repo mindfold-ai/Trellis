@@ -7,7 +7,7 @@
  */
 
 import { existsSync, readdirSync } from "fs"
-import { join } from "path"
+import { join, relative } from "path"
 import {
   TrellisContext,
   debugLog,
@@ -23,12 +23,43 @@ const AGENTS_REQUIRE_TASK = ["implement", "check"]
 // Match `Active task: <path>` on the first non-empty line of the dispatch
 // prompt. Mirrors the contract in workflow.md's [workflow-state:in_progress]
 // breadcrumb so multi-window users can disambiguate which task is targeted.
-const ACTIVE_TASK_HINT_RE = /^\s*Active task:\s*(\S+)\s*$/m
+const ACTIVE_TASK_HINT_RE = /^[ \t]*Active task:[ \t]*(.+?)[ \t]*$/m
 
 function extractActiveTaskHint(prompt) {
   if (typeof prompt !== "string" || !prompt) return null
   const match = prompt.match(ACTIVE_TASK_HINT_RE)
   return match ? match[1].trim() : null
+}
+
+function checkerProfile(prompt, args) {
+  const values = Object.hasOwn(args, "profile") ? [args.profile] : []
+  values.push(...[...prompt.matchAll(/^Profile: ([a-z_]+)\s*$/gm)].map(match => match[1]))
+  if (!values.length) return "quality"
+  if (new Set(values).size !== 1 || !["quality", "delivery_check", "delivery_review"].includes(values[0])) {
+    throw new Error("invalid_check_profile: conflicting or unsupported explicit profile")
+  }
+  return values[0]
+}
+
+function getTaskScopeQualityContext(ctx, taskDir, metadata) {
+  const parts = [
+    "Context mode: task_scope_only\nQuality/evidence verification only. No formal Delivery context was loaded.\n"
+    + "Do not record lifecycle results, select a Delivery, or use root Task artifacts as Delivery planning.\n"
+    + "If the actual dispatch is delivery_check or delivery_review, stop with delivery_selection_required.\n"
+    + `TaskKey: ${JSON.stringify({ task_id: metadata.id, lifecycle_generation: metadata.lifecycle_generation })}\nAccepted Task scope: ${JSON.stringify(metadata.accepted_scope)}`,
+  ]
+  const scope = metadata.accepted_scope
+  if (scope && !/^[a-z][a-z0-9+.-]*:\/\//i.test(scope.locator)) {
+    const origin = metadata.artifact_origin
+    const taskRoot = relative(ctx.directory, taskDir).split("\\").join("/")
+    const locator = origin && /^sha256:[a-f0-9]{64}$/.test(scope.revision) && scope.locator.startsWith(origin + "/")
+      ? taskRoot + scope.locator.slice(origin.length) : scope.locator
+    const limits = readContextInjectionLimits(ctx.directory)
+    const block = materializeArtifact(ctx.directory, locator, "Accepted Task scope (quality only)",
+      "Task acceptance context; current contents are not a formal gate result", limits, new ContextBudget(limits.max_total_bytes))
+    if (block) parts.push(block)
+  }
+  return parts.join("\n\n")
 }
 
 /**
@@ -43,9 +74,9 @@ function extractActiveTaskHint(prompt) {
  *   4. implement.md if present (execution plan)
  * All blocks share one total budget (issue #441).
  */
-function getImplementContext(ctx, taskDir) {
+function getImplementContext(ctx, taskDir, validatedTaskPath = null) {
   const parts = []
-  const taskDirFull = ctx.resolveTaskDir(taskDir)
+  const taskDirFull = ctx.resolveContextDir(taskDir, validatedTaskPath)
   if (!taskDirFull) return ""
 
   const limits = readContextInjectionLimits(ctx.directory)
@@ -98,9 +129,9 @@ function getImplementContext(ctx, taskDir) {
  * Get context for check agent. `taskDir` may be relative or absolute.
  * Same read order and shared budget as the implement context.
  */
-function getCheckContext(ctx, taskDir) {
+function getCheckContext(ctx, taskDir, validatedTaskPath = null) {
   const parts = []
-  const taskDirFull = ctx.resolveTaskDir(taskDir)
+  const taskDirFull = ctx.resolveContextDir(taskDir, validatedTaskPath)
   if (!taskDirFull) return ""
 
   const limits = readContextInjectionLimits(ctx.directory)
@@ -148,9 +179,9 @@ function getCheckContext(ctx, taskDir) {
 /**
  * Get context for finish phase (final check before PR)
  */
-function getFinishContext(ctx, taskDir) {
+function getFinishContext(ctx, taskDir, validatedTaskPath = null) {
   // Finish reuses check context (same JSONL source)
-  return getCheckContext(ctx, taskDir)
+  return getCheckContext(ctx, taskDir, validatedTaskPath)
 }
 
 
@@ -459,6 +490,7 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
           // Strip "trellis-" prefix added by v0.5.0-beta.5 agent rename migration
           const subagentType = (rawSubagentType || "").replace(/^trellis-/, "")
           const originalPrompt = args.prompt || ""
+          const profile = subagentType === "check" ? checkerProfile(originalPrompt, args) : null
 
           debugLog("inject", "Task tool called, subagent_type:", rawSubagentType)
 
@@ -467,25 +499,21 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
             return
           }
 
-          // Resolve active task in this priority order (only later steps
-          // run when earlier ones miss):
-          //   1. Exact session runtime context lookup for input.sessionID
-          //   2. `Active task: <path>` hint in the dispatch prompt
-          //      (explicit per-dispatch override — beats single-session
-          //      inference so multi-window users can disambiguate)
-          //   3. Single-session fallback — only when exactly 1 session
-          //      runtime file exists locally
+          // Explicit task hints remain local. Only identity-less children may
+          // use the checkout-local compatibility fallback; errors never fall back.
           let taskDir = null
-          let taskSource = null
-
+          let taskCtx = ctx
+          let validatedTaskPath = null
           const contextKey = ctx.getContextKey(input)
-          if (contextKey) {
-            const context = ctx.readContext(contextKey)
-            const exactRef = ctx.normalizeTaskRef(context?.current_task || "")
-            if (exactRef) {
-              taskDir = exactRef
-              taskSource = `session:${contextKey}`
-            }
+          const active = ctx.getActiveTask(input)
+          if (active.error || active.stale) {
+            args.prompt = `${originalPrompt}\n\nTrellis task binding error: ${active.error || "stale binding"}. No task context was loaded.`
+            return
+          }
+          if (active.resolvedTaskPath) {
+            taskDir = active.taskPath
+            taskCtx = new TrellisContext(active.taskWorkspaceRoot)
+            validatedTaskPath = active.resolvedTaskPath
           }
 
           if (!taskDir) {
@@ -496,21 +524,20 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
                 const hintDir = ctx.resolveTaskDir(hintNormalized)
                 if (hintDir && existsSync(hintDir)) {
                   taskDir = hintNormalized
-                  taskSource = "prompt-hint"
                   debugLog("inject", "Resolved task from Active task: hint:", hintNormalized)
                 }
               }
             }
           }
 
-          if (!taskDir) {
+          if (!taskDir && !contextKey) {
             const fallback = ctx._resolveSingleSessionFallback()
             if (fallback?.taskPath) {
-              const fallbackDir = ctx.resolveTaskDir(fallback.taskPath)
+              const fallbackDir = fallback.resolvedTaskPath
               if (fallbackDir && existsSync(fallbackDir)) {
                 taskDir = fallback.taskPath
-                taskSource = fallback.source
-                debugLog("inject", "Resolved task via single-session fallback:", taskDir, "source:", taskSource)
+                taskCtx = new TrellisContext(fallback.taskWorkspaceRoot)
+                debugLog("inject", "Resolved task via single-session fallback:", taskDir, "source:", fallback.source)
               }
             }
           }
@@ -522,10 +549,32 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
               debugLog("inject", "Skipping - no current task")
               return
             }
-            const taskDirFull = ctx.resolveTaskDir(taskDir)
+            const taskDirFull = taskCtx.resolveTaskDir(taskDir, validatedTaskPath)
             if (!taskDirFull || !existsSync(taskDirFull)) {
               debugLog("inject", "Skipping - task directory not found")
               return
+            }
+          }
+
+          if (taskDir) {
+            const metadata = JSON.parse(taskCtx.readFile(join(taskCtx.resolveTaskDir(taskDir, validatedTaskPath), "task.json")) || "{}")
+            if (metadata.schema_version === "2.0") {
+              const query = ctx.getCurrentDelivery(input)
+              if (query.kind === "no_current_delivery" && subagentType === "check" && profile === "quality") {
+                const context = getTaskScopeQualityContext(taskCtx, taskCtx.resolveTaskDir(taskDir, validatedTaskPath), metadata)
+                args.prompt = buildPrompt("check", originalPrompt,
+                  `Caller workspace: ${directory}\nTask workspace: ${taskCtx.directory}\n\n${context}`, false)
+                return
+              }
+              if (!["current", "terminal_delivery"].includes(query.kind)) {
+                output.args.prompt = `Delivery context error: ${JSON.stringify(query)}\n\n${originalPrompt}`
+                return
+              }
+              taskDir = join(taskCtx.resolveTaskDir(taskDir, validatedTaskPath), query.delivery.planning_root)
+              if (!taskCtx.resolveContextDir(taskDir, validatedTaskPath)) {
+                args.prompt = `Delivery context error: invalid planning directory beneath the validated Task\n\n${originalPrompt}`
+                return
+              }
             }
           }
 
@@ -536,15 +585,15 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
           let context = ""
           switch (subagentType) {
             case "implement":
-              context = getImplementContext(ctx, taskDir)
+              context = getImplementContext(taskCtx, taskDir, validatedTaskPath)
               break
             case "check":
               context = isFinish
-                ? getFinishContext(ctx, taskDir)
-                : getCheckContext(ctx, taskDir)
+                ? getFinishContext(taskCtx, taskDir, validatedTaskPath)
+                : getCheckContext(taskCtx, taskDir, validatedTaskPath)
               break
             case "research":
-              context = getResearchContext(ctx, taskDir)
+              context = getResearchContext(taskCtx, taskDir)
               break
           }
 
@@ -553,16 +602,24 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
             return
           }
 
-          const newPrompt = buildPrompt(subagentType, originalPrompt, context, isFinish)
+          const workspaceContext = `Caller workspace: ${directory}\nTask workspace: ${taskCtx.directory}\n\n${context}`
+          const newPrompt = buildPrompt(subagentType, originalPrompt, workspaceContext, isFinish)
 
           // Mutate args in-place — whole-object replacement does NOT work for the task tool
           // because the runtime holds a local reference to the same args object.
-          args.prompt = newPrompt
+          args.prompt = profile === "delivery_review"
+            ? `<!-- trellis-hook-injected -->\nProfile: delivery_review\nIndependent read-only full-range review; do not edit, self-fix, record lifecycle results or dispatch implementation. Report findings to the declared full_review owner.\nRequire exact DeliveryKey, candidate, PlanningRoot and applicable owner inputs.\n\n${workspaceContext}\n\n${originalPrompt}`
+            : profile === "delivery_check"
+              ? `<!-- trellis-hook-injected -->\nProfile: delivery_check\nFollow the active workflow Check owner and exact candidate. Fixes return to implementation for candidate refresh before any pass. Carrier identity grants no additional semantic writer.\n\n${workspaceContext}\n\n${originalPrompt}`
+              : newPrompt
 
           debugLog("inject", "Injected context for", subagentType, "prompt length:", newPrompt.length)
 
         } catch (error) {
           debugLog("inject", "Error in tool.execute.before:", error.message, error.stack)
+          if (output?.args && typeof output.args.prompt === "string") {
+            output.args.prompt += `\n\nTrellis task context error: ${error.message}. No task context was loaded.`
+          }
         }
       }
     }

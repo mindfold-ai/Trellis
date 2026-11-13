@@ -1,0 +1,198 @@
+{
+  "same_dependencies": true,
+  "same_graph_topology_and_cardinality": true,
+  "byte_identical_deterministic_candidate_and_task_data": true,
+  "commit_identity_limitation": "Fresh construction-time Git author/committer timestamps differ; no claim of identical full commit objects. Full commit-body sizes not separately measured. Immutable blob identities and tree modes follow identical bytes/modes.",
+  "scenarios": [
+    {
+      "scenario": "delivery-larger-p10001",
+      "fields": {
+        "paths": {
+          "before": 10001,
+          "after": 10001,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 10001,
+          "after": 10001,
+          "equal": true
+        },
+        "logical_candidate_bytes": {
+          "before": 56367104,
+          "after": 56367104,
+          "equal": true
+        },
+        "max_input_object_bytes": {
+          "before": 4194304,
+          "after": 4194304,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "delivery-larger-p128",
+      "fields": {
+        "paths": {
+          "before": 128,
+          "after": 128,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 128,
+          "after": 128,
+          "equal": true
+        },
+        "logical_candidate_bytes": {
+          "before": 4324352,
+          "after": 4324352,
+          "equal": true
+        },
+        "max_input_object_bytes": {
+          "before": 4194304,
+          "after": 4194304,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p10001",
+      "fields": {
+        "paths": {
+          "before": 10001,
+          "after": 10001,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 1,
+          "after": 1,
+          "equal": true
+        },
+        "logical_candidate_bytes": {
+          "before": 10881088,
+          "after": 10881088,
+          "equal": true
+        },
+        "max_input_object_bytes": {
+          "before": 1088,
+          "after": 1088,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "delivery-repeated-p128",
+      "fields": {
+        "paths": {
+          "before": 128,
+          "after": 128,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 1,
+          "after": 1,
+          "equal": true
+        },
+        "logical_candidate_bytes": {
+          "before": 139264,
+          "after": 139264,
+          "equal": true
+        },
+        "max_input_object_bytes": {
+          "before": 1088,
+          "after": 1088,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "delivery-unique-p10001",
+      "fields": {
+        "paths": {
+          "before": 10001,
+          "after": 10001,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 10001,
+          "after": 10001,
+          "equal": true
+        },
+        "logical_candidate_bytes": {
+          "before": 10241024,
+          "after": 10241024,
+          "equal": true
+        },
+        "max_input_object_bytes": {
+          "before": 1024,
+          "after": 1024,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "delivery-unique-p128",
+      "fields": {
+        "paths": {
+          "before": 128,
+          "after": 128,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 128,
+          "after": 128,
+          "equal": true
+        },
+        "logical_candidate_bytes": {
+          "before": 131072,
+          "after": 131072,
+          "equal": true
+        },
+        "max_input_object_bytes": {
+          "before": 1024,
+          "after": 1024,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "task-h2-p24",
+      "fields": {
+        "heads": {
+          "before": 2,
+          "after": 2,
+          "equal": true
+        },
+        "paths": {
+          "before": 24,
+          "after": 24,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 24,
+          "after": 24,
+          "equal": true
+        }
+      }
+    },
+    {
+      "scenario": "task-h6-p96",
+      "fields": {
+        "heads": {
+          "before": 6,
+          "after": 6,
+          "equal": true
+        },
+        "paths": {
+          "before": 96,
+          "after": 96,
+          "equal": true
+        },
+        "unique_blobs": {
+          "before": 96,
+          "after": 96,
+          "equal": true
+        }
+      }
+    }
+  ]
+}

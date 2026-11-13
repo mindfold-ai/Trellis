@@ -1,0 +1,5 @@
+{"file":".trellis/spec/cli/backend/trellis-core-sdk.md","reason":"Keep the public Core/CLI package and Task v2 boundaries intact."}
+{"file":".trellis/spec/cli/backend/delivery-lifecycle.md","reason":"Preserve declared ownership, historical facts and independent Completion."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Use meaningful bug regressions and existing shared fixture coverage."}
+{"file":".trellis/delivery-contract.md","reason":"Read the public stop, owner and recovery semantics before changing the guard."}
+{"file":".trellis/tasks/10-29-issue-59-stop-unsupported-profiles/research/ownership.md","reason":"Distinguish confirmed public API cause from unresolved Guru migration evidence."}

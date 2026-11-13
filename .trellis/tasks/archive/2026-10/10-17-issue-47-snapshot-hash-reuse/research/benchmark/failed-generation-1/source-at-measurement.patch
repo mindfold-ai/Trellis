@@ -1,0 +1,270 @@
+diff --git a/.trellis/scripts/common/delivery_store.py b/.trellis/scripts/common/delivery_store.py
+index 4310b13a..da771f16 100644
+--- a/.trellis/scripts/common/delivery_store.py
++++ b/.trellis/scripts/common/delivery_store.py
+@@ -24,6 +24,10 @@ def _digest(value: bytes) -> str:
+     return "sha256:" + hashlib.sha256(value).hexdigest()
+ 
+ 
++def _serialize_entries(entries: list) -> str:
++    return json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
++
++
+ @dataclass
+ class _ContentObservation:
+     """Private to one normal local-commit operation, never a validation pass."""
+@@ -63,7 +67,7 @@ class _ContentObservation:
+             return self.hashes[oid]
+ 
+     def content_ref(self, entries: list) -> str:
+-        serialized = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
++        serialized = _serialize_entries(entries)
+         if serialized not in self.aggregates:
+             self.aggregates[serialized] = _digest(serialized.encode("utf-8"))
+         return self.aggregates[serialized]
+@@ -108,6 +112,85 @@ def candidate_content_ref(root: Path, paths: list[str], kind: str | None = None)
+     return _candidate_content_ref(root, paths, kind)
+ 
+ 
++class GitCandidateContent:
++    """Digest exact Git commits within one actual-repository operation.
++
++    Reuse only immutable content facts. Each call checks its paths, commit and
++    object availability independently. Callers retain their expected-digest
++    comparisons. Use a new context when historical preparation changes roots;
++    no_lazy_fetch=True leaves missing-history recovery to that preparation owner.
++    Ordinary candidate_content_ref Path inputs remain mutable observations.
++    """
++
++    def __init__(self, root: Path, *, no_lazy_fetch: bool = False) -> None:
++        self._root = root.resolve()
++        self._env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
++        if no_lazy_fetch:
++            self._env["GIT_NO_LAZY_FETCH"] = "1"
++        self._hashes: dict[str, str] = {}
++        self._aggregates: dict[str, str] = {}
++        self._closed = False
++
++    def __enter__(self) -> GitCandidateContent:
++        self._require_open()
++        return self
++
++    def __exit__(self, *_exception: object) -> None:
++        self.close()
++
++    def close(self) -> None:
++        """Discard operation-local facts; a closed context cannot be reused."""
++        self._hashes.clear()
++        self._aggregates.clear()
++        self._closed = True
++
++    def _require_open(self) -> None:
++        if self._closed:
++            fail("invalid_git_fact", "Git candidate content context is closed")
++
++    def content_ref(self, exact_commit: str, paths: list[str]) -> str:
++        """Hash literal selected paths at a full actual commit OID, including deletions."""
++        self._require_open()
++        if not paths or len(set(paths)) != len(paths):
++            fail("invalid_candidate", "nonempty unique paths required")
++        ordered = sorted(paths)
++        for locator in ordered:
++            relative_path(locator)
++            if _reserved(locator):
++                fail("invalid_candidate", f"lifecycle/private file {locator}")
++        if (not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", exact_commit)
++                or _git(self._root, "cat-file", "-t", exact_commit, env=self._env) != b"commit"
++                or _git(self._root, "rev-parse", "--verify", exact_commit + "^{commit}",
++                        env=self._env).decode() != exact_commit):
++            fail("invalid_git_fact", "candidate must name a full actual commit object OID")
++        try:
++            tree = read_tree(self._root, exact_commit, env=self._env)
++            pending = []
++            reused = []
++            for locator in ordered:
++                entry = tree.get(locator)
++                if entry is None:
++                    continue
++                if entry.kind != "blob" or entry.mode not in ("100644", "100755"):
++                    fail("invalid_git_fact", locator)
++                (reused if entry.oid in self._hashes else pending).append(entry.oid)
++            verify_blob_objects(self._root, reused, env=self._env)
++            self._hashes.update(read_blob_facts(self._root, pending, hash_blob, env=self._env))
++        except (OSError, subprocess.SubprocessError, ValueError) as exc:
++            if isinstance(exc, DeliveryError):
++                raise
++            fail("invalid_git_fact", str(exc))
++        entries = []
++        for locator in ordered:
++            entry = tree.get(locator)
++            entries.append([locator, None, None] if entry is None else
++                           [locator, 0o755 if entry.mode == "100755" else 0o644, self._hashes[entry.oid]])
++        serialized = _serialize_entries(entries)
++        if serialized not in self._aggregates:
++            self._aggregates[serialized] = _digest(serialized.encode("utf-8"))
++        return self._aggregates[serialized]
++
++
+ def _candidate_content_ref(root: Path, paths: list[str], kind: str | None = None,
+                            observation: _ContentObservation | None = None) -> str:
+     if not paths or len(set(paths)) != len(paths):
+@@ -142,11 +225,12 @@ def _candidate_content_ref(root: Path, paths: list[str], kind: str | None = None
+         else:
+             fail("invalid_candidate", f"not a file: {locator}")
+     return (observation.content_ref(entries) if observation is not None
+-            else _digest(json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")))
++            else _digest(_serialize_entries(entries).encode("utf-8")))
+ 
+ 
+-def _git(root: Path, *args: str, binary: bool = False) -> bytes:
+-    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
++def _git(root: Path, *args: str, binary: bool = False, env: dict[str, str] | None = None) -> bytes:
++    if env is None:
++        env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+     try:
+         result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, timeout=20, env=env)
+     except (OSError, subprocess.TimeoutExpired) as exc:
+@@ -208,7 +292,7 @@ def _verify_commit(root: Path, result: dict, observation: _ContentObservation |
+             continue
+         entries.append([locator, 0o755 if entry.mode == "100755" else 0o644, hashes[entry.oid]])
+     content_ref = (observation.content_ref(entries) if observation is not None
+-                   else _digest(json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")))
++                   else _digest(_serialize_entries(entries).encode("utf-8")))
+     if content_ref != result["candidate"]["content_ref"]:
+         fail("candidate_mismatch", "commit tree differs from delivered content")
+ 
+diff --git a/packages/cli/src/templates/trellis/scripts/common/delivery_store.py b/packages/cli/src/templates/trellis/scripts/common/delivery_store.py
+index 4310b13a..da771f16 100644
+--- a/packages/cli/src/templates/trellis/scripts/common/delivery_store.py
++++ b/packages/cli/src/templates/trellis/scripts/common/delivery_store.py
+@@ -24,6 +24,10 @@ def _digest(value: bytes) -> str:
+     return "sha256:" + hashlib.sha256(value).hexdigest()
+ 
+ 
++def _serialize_entries(entries: list) -> str:
++    return json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
++
++
+ @dataclass
+ class _ContentObservation:
+     """Private to one normal local-commit operation, never a validation pass."""
+@@ -63,7 +67,7 @@ class _ContentObservation:
+             return self.hashes[oid]
+ 
+     def content_ref(self, entries: list) -> str:
+-        serialized = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
++        serialized = _serialize_entries(entries)
+         if serialized not in self.aggregates:
+             self.aggregates[serialized] = _digest(serialized.encode("utf-8"))
+         return self.aggregates[serialized]
+@@ -108,6 +112,85 @@ def candidate_content_ref(root: Path, paths: list[str], kind: str | None = None)
+     return _candidate_content_ref(root, paths, kind)
+ 
+ 
++class GitCandidateContent:
++    """Digest exact Git commits within one actual-repository operation.
++
++    Reuse only immutable content facts. Each call checks its paths, commit and
++    object availability independently. Callers retain their expected-digest
++    comparisons. Use a new context when historical preparation changes roots;
++    no_lazy_fetch=True leaves missing-history recovery to that preparation owner.
++    Ordinary candidate_content_ref Path inputs remain mutable observations.
++    """
++
++    def __init__(self, root: Path, *, no_lazy_fetch: bool = False) -> None:
++        self._root = root.resolve()
++        self._env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
++        if no_lazy_fetch:
++            self._env["GIT_NO_LAZY_FETCH"] = "1"
++        self._hashes: dict[str, str] = {}
++        self._aggregates: dict[str, str] = {}
++        self._closed = False
++
++    def __enter__(self) -> GitCandidateContent:
++        self._require_open()
++        return self
++
++    def __exit__(self, *_exception: object) -> None:
++        self.close()
++
++    def close(self) -> None:
++        """Discard operation-local facts; a closed context cannot be reused."""
++        self._hashes.clear()
++        self._aggregates.clear()
++        self._closed = True
++
++    def _require_open(self) -> None:
++        if self._closed:
++            fail("invalid_git_fact", "Git candidate content context is closed")
++
++    def content_ref(self, exact_commit: str, paths: list[str]) -> str:
++        """Hash literal selected paths at a full actual commit OID, including deletions."""
++        self._require_open()
++        if not paths or len(set(paths)) != len(paths):
++            fail("invalid_candidate", "nonempty unique paths required")
++        ordered = sorted(paths)
++        for locator in ordered:
++            relative_path(locator)
++            if _reserved(locator):
++                fail("invalid_candidate", f"lifecycle/private file {locator}")
++        if (not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", exact_commit)
++                or _git(self._root, "cat-file", "-t", exact_commit, env=self._env) != b"commit"
++                or _git(self._root, "rev-parse", "--verify", exact_commit + "^{commit}",
++                        env=self._env).decode() != exact_commit):
++            fail("invalid_git_fact", "candidate must name a full actual commit object OID")
++        try:
++            tree = read_tree(self._root, exact_commit, env=self._env)
++            pending = []
++            reused = []
++            for locator in ordered:
++                entry = tree.get(locator)
++                if entry is None:
++                    continue
++                if entry.kind != "blob" or entry.mode not in ("100644", "100755"):
++                    fail("invalid_git_fact", locator)
++                (reused if entry.oid in self._hashes else pending).append(entry.oid)
++            verify_blob_objects(self._root, reused, env=self._env)
++            self._hashes.update(read_blob_facts(self._root, pending, hash_blob, env=self._env))
++        except (OSError, subprocess.SubprocessError, ValueError) as exc:
++            if isinstance(exc, DeliveryError):
++                raise
++            fail("invalid_git_fact", str(exc))
++        entries = []
++        for locator in ordered:
++            entry = tree.get(locator)
++            entries.append([locator, None, None] if entry is None else
++                           [locator, 0o755 if entry.mode == "100755" else 0o644, self._hashes[entry.oid]])
++        serialized = _serialize_entries(entries)
++        if serialized not in self._aggregates:
++            self._aggregates[serialized] = _digest(serialized.encode("utf-8"))
++        return self._aggregates[serialized]
++
++
+ def _candidate_content_ref(root: Path, paths: list[str], kind: str | None = None,
+                            observation: _ContentObservation | None = None) -> str:
+     if not paths or len(set(paths)) != len(paths):
+@@ -142,11 +225,12 @@ def _candidate_content_ref(root: Path, paths: list[str], kind: str | None = None
+         else:
+             fail("invalid_candidate", f"not a file: {locator}")
+     return (observation.content_ref(entries) if observation is not None
+-            else _digest(json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")))
++            else _digest(_serialize_entries(entries).encode("utf-8")))
+ 
+ 
+-def _git(root: Path, *args: str, binary: bool = False) -> bytes:
+-    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
++def _git(root: Path, *args: str, binary: bool = False, env: dict[str, str] | None = None) -> bytes:
++    if env is None:
++        env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+     try:
+         result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, timeout=20, env=env)
+     except (OSError, subprocess.TimeoutExpired) as exc:
+@@ -208,7 +292,7 @@ def _verify_commit(root: Path, result: dict, observation: _ContentObservation |
+             continue
+         entries.append([locator, 0o755 if entry.mode == "100755" else 0o644, hashes[entry.oid]])
+     content_ref = (observation.content_ref(entries) if observation is not None
+-                   else _digest(json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")))
++                   else _digest(_serialize_entries(entries).encode("utf-8")))
+     if content_ref != result["candidate"]["content_ref"]:
+         fail("candidate_mismatch", "commit tree differs from delivered content")
+ 

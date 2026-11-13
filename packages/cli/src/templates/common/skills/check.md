@@ -1,8 +1,53 @@
 # Code Quality Check
 
+## Active workflow ownership
+
+Before formal work, load the validated Task workspace workflow with:
+
+```bash
+python3 .trellis/scripts/get_context.py --mode runtime-contract
+python3 .trellis/scripts/get_context.py --mode continuation
+```
+
+A declared Delivery contract owns all formal routing. Default quality and
+evidence refresh do not enter that routing or record lifecycle results; they
+may use the verified exact Task's accepted scope and explicitly supplied code
+or evidence even when no Delivery is selected. Stop on malformed or
+unsupported contracts. For formal delivery_check/delivery_review, if the role
+owner differs from this Skill, hand off to
+that declared owner and stop; do not run a parallel native gate. Read
+`.trellis/delivery-contract.md` and the exact current Delivery query before
+recording results. Retain legacy behavior only for verified legacy Tasks or
+Task-free work under an undeclared legacy workflow. A selected schema-2 Task
+with `missing_runtime_contract` is an incompatible runtime and stops; do not
+fall back to root planning. Task-free work creates no formal lifecycle result.
+
+
 Comprehensive quality verification for recently written code. Combines spec compliance, cross-layer safety, and pre-commit checks.
 
 ---
+
+## Profiles
+
+Default `quality` runs the checks below and never records or advances lifecycle.
+With schema-2 noDelivery, use TaskKey/accepted scope and the caller's explicit
+quality/evidence scope. Load relevant specs; do not load root design/implement
+or manifests as replacement Delivery planning, guess a Delivery, or create
+Planning/Check/Review/readiness/Completion results. A task-scope-only injected
+context supplies no formal Delivery authority. Binding/error/stale failures do
+not downgrade to quality with another Task.
+Explicit `delivery_check` follows the active workflow check owner and obligations,
+then records only the actual formal Check result bound to the exact candidate.
+Mechanical fixes require implementation to refresh its candidate and hand back
+to Check; a dirty self-fix cannot pass the old candidate. A pass enters reviewing,
+not readiness or delivery. `delivery_review` is an independent read-only carrier:
+review the complete intended range with current planning and Check, report
+findings only, do not self-fix, record gates or dispatch implementation.
+Both formal profiles require an exact DeliveryKey/generation, current candidate,
+validated PlanningRoot and applicable owner inputs from the actual dispatch or
+current exact query. Missing/stale selection fails closed. An unspecified hook
+envelope, including Codex SubagentStart without a prompt, cannot assert a formal
+profile; the carrier must enforce the actual dispatch profile itself.
 
 ## Step 1: Identify What Changed
 
@@ -13,7 +58,10 @@ git status
 
 ## Step 2: Read Task Artifacts and Applicable Specs
 
-Read the current task artifacts in order:
+For legacy quality, read the current task artifacts below. For schema-2 quality,
+read accepted Task scope and explicit quality/evidence inputs; selected Delivery
+artifacts are optional quality context. For either formal profile, read the
+selected Delivery's artifacts and manifests, plus accepted whole Task scope:
 
 - `prd.md`
 - `design.md` if present

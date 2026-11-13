@@ -1,4 +1,15 @@
-import { execSync } from "node:child_process";
+import { resolveSupportedPython } from "../utils/python.js";
+export {
+  isSupportedPythonVersion,
+  requireSupportedPython,
+  resolveSupportedPython,
+} from "../utils/python.js";
+import { randomUUID, createHash } from "node:crypto";
+import {
+  emptyTaskRecordV2,
+  applyTaskOperation,
+  type TaskRecordV2,
+} from "@mindfoldhq/trellis-core/task/v2";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
@@ -13,10 +24,7 @@ import {
   getConfiguredPlatforms,
   getPlatformsWithPythonHooks,
 } from "../configurators/index.js";
-import {
-  getPythonCommandForPlatform,
-  setResolvedPythonCommand,
-} from "../configurators/shared.js";
+import { replacePythonCommandLiterals } from "../configurators/shared.js";
 import { AI_TOOLS, type CliFlag } from "../types/ai-tools.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../constants/paths.js";
 import { VERSION } from "../constants/version.js";
@@ -28,6 +36,14 @@ import {
   writeFile,
   type WriteMode,
 } from "../utils/file-writer.js";
+import {
+  preflightDeliveryWorkflow,
+  readDeliveryWorkflowContract,
+} from "../utils/delivery-workflow.js";
+import {
+  workflowMdTemplate,
+  deliveryWorkflowMdTemplate,
+} from "../templates/trellis/index.js";
 import { emptyTaskJson, type TaskJson } from "../utils/task-json.js";
 import {
   detectProjectType,
@@ -36,9 +52,16 @@ import {
   type ProjectType,
   type DetectedPackage,
 } from "../utils/project-detector.js";
-import { initializeHashes, removeHash } from "../utils/template-hash.js";
+import {
+  initializeHashes,
+  removeHash,
+  loadHashes,
+  saveHashes,
+} from "../utils/template-hash.js";
 import {
   NATIVE_WORKFLOW_ID,
+  DELIVERY_WORKFLOW_ID,
+  isBundledWorkflow,
   resolveWorkflowTemplate,
 } from "../utils/workflow-resolver.js";
 import {
@@ -66,10 +89,8 @@ import {
 import { setupProxy, maskProxyUrl } from "../utils/proxy.js";
 import { toPosix } from "../utils/posix.js";
 import { updateHashes } from "../utils/template-hash.js";
-
-const MIN_PYTHON_MAJOR = 3;
-const MIN_PYTHON_MINOR = 9;
-const PYTHON_VERSION_RE = /Python (\d+)\.(\d+)/;
+import { writeFileAtomic } from "../utils/atomic-write.js";
+import { assertProjectPath } from "../utils/path-boundary.js";
 
 function collectSpecPaths(cwd: string): Set<string> {
   const specRoot = path.join(cwd, PATHS.SPEC);
@@ -88,178 +109,6 @@ function collectSpecPaths(cwd: string): Set<string> {
   };
   walk(specRoot);
   return paths;
-}
-
-export function isSupportedPythonVersion(versionOutput: string): boolean {
-  const match = versionOutput.match(PYTHON_VERSION_RE);
-  if (!match) return false;
-
-  const major = Number(match[1]);
-  const minor = Number(match[2]);
-  return (
-    major > MIN_PYTHON_MAJOR ||
-    (major === MIN_PYTHON_MAJOR && minor >= MIN_PYTHON_MINOR)
-  );
-}
-
-// Sentinel returned when child_process spawn is blocked by a sandbox / kernel
-// policy (e.g. seccomp inside Codex's Linux sandbox). EPERM/EACCES here mean
-// "the kernel refused the spawn" — NOT "python3 isn't installed". The host
-// usually has python3 on PATH; we just can't probe it from this Node process.
-type PythonProbe = string | null | "sandbox-restricted";
-
-function detectPythonVersion(command: string): PythonProbe {
-  try {
-    return execSync(`${command} --version`, {
-      encoding: "utf-8",
-      stdio: "pipe",
-    }).trim();
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException)?.code;
-    if (code === "EPERM" || code === "EACCES") {
-      return "sandbox-restricted";
-    }
-    return null;
-  }
-}
-
-export function requireSupportedPython(command: string): string {
-  // Final escape hatch — set when the user knows python3 is on PATH but
-  // the probe keeps failing for environment-specific reasons.
-  if (process.env.TRELLIS_SKIP_PYTHON_CHECK === "1") {
-    return `version check skipped (TRELLIS_SKIP_PYTHON_CHECK=1)`;
-  }
-
-  const versionOutput = detectPythonVersion(command);
-
-  if (versionOutput === "sandbox-restricted") {
-    console.warn(
-      chalk.yellow(
-        `⚠ Python version check skipped — sandboxed environment blocked ` +
-          `child_process spawn (EPERM/EACCES). Assuming "${command}" is on ` +
-          `PATH. If init fails later, re-run on the host or set ` +
-          `TRELLIS_SKIP_PYTHON_CHECK=1.`,
-      ),
-    );
-    return `version unknown (sandbox-restricted)`;
-  }
-
-  if (!versionOutput) {
-    throw new Error(
-      `Python command "${command}" not found. Trellis init requires Python ≥ 3.9.`,
-    );
-  }
-
-  if (!isSupportedPythonVersion(versionOutput)) {
-    throw new Error(
-      `${versionOutput} detected via "${command}", but Trellis init requires Python ≥ 3.9.`,
-    );
-  }
-
-  return versionOutput;
-}
-
-/**
- * Candidate Python command list per platform.
- *
- * Windows: `python` is the usual python.org installer choice, but Microsoft
- * Store ships `python3`, and the `py` launcher is `py -3`. We try all three
- * before giving up — fixes #236 where users with only `python3` (not
- * `python`) had `trellis init` fail outright.
- *
- * Non-Windows: `python3` is canonical; `python` is a fallback for systems
- * where Python 3 is the only Python and is named `python` (some Arch
- * configs, conda envs).
- */
-const PYTHON_CANDIDATES: Record<"win32" | "other", readonly string[]> = {
-  win32: ["python", "python3", "py -3"],
-  other: ["python3", "python"],
-};
-
-/**
- * Detect a working Python ≥ 3.9 command on the host platform.
- *
- * Honors `TRELLIS_PYTHON_CMD` (explicit override, no probe) and
- * `TRELLIS_SKIP_PYTHON_CHECK=1` (skip probe, trust platform default).
- *
- * Otherwise tries each candidate in `PYTHON_CANDIDATES` in order and returns
- * the first whose `--version` matches `Python ≥ 3.9`. Caches the result via
- * `setResolvedPythonCommand` so all downstream template / configurator
- * writes pick up the resolved value.
- *
- * Throws a helpful, Windows-aware error if no candidate works.
- */
-export function resolveSupportedPython(): {
-  command: string;
-  version: string;
-} {
-  // Explicit override — user knows their environment.
-  const override = process.env.TRELLIS_PYTHON_CMD?.trim();
-  if (override) {
-    setResolvedPythonCommand(override);
-    return { command: override, version: "set via TRELLIS_PYTHON_CMD" };
-  }
-
-  // Skip probe entirely.
-  if (process.env.TRELLIS_SKIP_PYTHON_CHECK === "1") {
-    const fallback = getPythonCommandForPlatform();
-    setResolvedPythonCommand(fallback);
-    return {
-      command: fallback,
-      version: "version check skipped (TRELLIS_SKIP_PYTHON_CHECK=1)",
-    };
-  }
-
-  const candidates =
-    process.platform === "win32"
-      ? PYTHON_CANDIDATES.win32
-      : PYTHON_CANDIDATES.other;
-
-  const probeFailures: string[] = [];
-  for (const candidate of candidates) {
-    const probe = detectPythonVersion(candidate);
-    if (probe === "sandbox-restricted") {
-      console.warn(
-        chalk.yellow(
-          `⚠ Python version check skipped — sandboxed environment blocked ` +
-            `child_process spawn (EPERM/EACCES). Assuming "${candidate}" is ` +
-            `on PATH. If init fails later, re-run on the host or set ` +
-            `TRELLIS_SKIP_PYTHON_CHECK=1.`,
-        ),
-      );
-      setResolvedPythonCommand(candidate);
-      return {
-        command: candidate,
-        version: "version unknown (sandbox-restricted)",
-      };
-    }
-    if (!probe) {
-      probeFailures.push(`${candidate}: not found`);
-      continue;
-    }
-    if (!isSupportedPythonVersion(probe)) {
-      probeFailures.push(`${candidate}: ${probe} (< 3.9)`);
-      continue;
-    }
-    setResolvedPythonCommand(candidate);
-    return { command: candidate, version: probe };
-  }
-
-  const isWindows = process.platform === "win32";
-  const installHint = isWindows
-    ? `Install Python ≥ 3.9 from https://www.python.org/downloads/windows/ — make sure ` +
-      `"Add Python to PATH" is checked in the installer. Or, if Python is ` +
-      `installed under a different name, set TRELLIS_PYTHON_CMD=<your-cmd> ` +
-      `before re-running init (e.g. \`set TRELLIS_PYTHON_CMD=py -3\`).`
-    : `Install Python ≥ 3.9 from https://www.python.org/downloads/ or via your ` +
-      `package manager. Or set TRELLIS_PYTHON_CMD=<your-cmd> before re-running.`;
-
-  throw new Error(
-    `No supported Python command found. Tried: ${candidates.join(", ")}.\n` +
-      `Probe results:\n  ${probeFailures.join("\n  ")}\n\n` +
-      `Trellis init requires Python ≥ 3.9. ${installHint}\n` +
-      `Last-resort escape hatch: set TRELLIS_SKIP_PYTHON_CHECK=1 to skip the probe entirely.`,
-  );
 }
 
 function getOsDisplayName(
@@ -293,33 +142,15 @@ function logPythonAdaptationNotice(command: string): void {
 const BOOTSTRAP_TASK_NAME = "00-bootstrap-guidelines";
 
 /**
- * Slugify a developer name for safe use in task directory names.
- *
- * Unlike `sanitizePkgName` (which only strips npm @scope/ prefixes), this
- * handles arbitrary developer input: spaces, Unicode letters, punctuation,
- * path separators. Returns "user" fallback when input slugifies to empty.
- *
- * Exported for unit testing; not part of the public API.
- */
-export function slugifyDeveloperName(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
-    .replace(/^-+|-+$/g, "");
-  return slug || "user";
-}
-
-/**
  * Write a task skeleton (task.json + prd.md).
  *
  * Idempotent: if the task dir already exists, returns true without touching
- * anything. Shared by both creator bootstrap and joiner onboarding flows.
+ * anything. Used for the first-install bootstrap task.
  */
 function writeTaskSkeleton(
   cwd: string,
   taskName: string,
-  taskJson: TaskJson,
+  taskJson: TaskJson | TaskRecordV2,
   prdContent: string,
 ): boolean {
   const taskDir = path.join(cwd, PATHS.TASKS, taskName);
@@ -327,25 +158,18 @@ function writeTaskSkeleton(
 
   try {
     fs.mkdirSync(taskDir, { recursive: true });
-    fs.writeFileSync(
+    writeFileAtomic(
       path.join(taskDir, FILE_NAMES.TASK_JSON),
       JSON.stringify(taskJson, null, 2),
-      "utf-8",
     );
-    fs.writeFileSync(path.join(taskDir, FILE_NAMES.PRD), prdContent, "utf-8");
+    writeFileAtomic(path.join(taskDir, FILE_NAMES.PRD), prdContent);
     return true;
   } catch {
     return false;
   }
 }
 
-/**
- * Compute the bootstrap checklist items (previously stored as structured
- * `subtasks: [{name, status}]` in task.json). Per task 04-21-task-schema-unify
- * (D1), these live as markdown `- [ ]` items in prd.md instead, so task.json
- * stays canonical with `subtasks: string[]` (child task dir names, same as
- * task_store.py).
- */
+/** Compute bootstrap checklist items rendered in prd.md. */
 function getBootstrapChecklistItems(
   projectType: ProjectType,
   packages?: DetectedPackage[],
@@ -388,11 +212,21 @@ function getBootstrapPrdContent(
   projectType: ProjectType,
   pythonCmd: string,
   packages?: DetectedPackage[],
+  deliveryWorkflow = false,
 ): string {
   const checklistItems = getBootstrapChecklistItems(projectType, packages);
   const checklistMarkdown = checklistItems
     .map((item) => `- [ ] ${item}`)
     .join("\n");
+  const selectionGuidance = deliveryWorkflow
+    ? "Bind Task selection to a session with Trellis identity. This root PRD is whole-Task scope; selection starts no implementation. Follow the active workflow's declared owners to create/select the exact Delivery before Planning, and load its artifacts and context manifests from its planning_root. Custom owners judge their own accepted scope and Delivery creation; never infer either from this scaffold."
+    : "When they want to work on it, they should start this task from a session that provides Trellis session identity.";
+  const runtimeGuidance = deliveryWorkflow
+    ? "- The active workflow's declared owners control each Delivery's Planning, Implementation, Check and full Review.\n- Each Delivery's `planning_root` contains its `prd.md`, `design.md`, `implement.md` and context manifests.\n- Hooks load the exact selected Delivery's artifacts and manifests; root Task scope remains separate.\n"
+    : "- Every AI coding task spawns two sub-agents: `trellis-implement` (writes code) and `trellis-check` (verifies quality).\n- Each task has `implement.jsonl` / `check.jsonl` manifests listing which spec files to load.\n- The platform hook auto-injects those spec files + the task's `prd.md` into every sub-agent prompt, so the sub-agent codes/reviews per team conventions without anyone pasting them manually.\n";
+  const completionGuidance = deliveryWorkflow
+    ? "When the checklist contains real examples, follow the active workflow's declared Check, full-Review, readiness and delivery owners under the applicable profile. A checklist or gate pass is not delivery or Task Completion.\n\nThe Task Completion owner independently judges the whole accepted scope and required evidence, including historical Deliveries and any remaining work. The Closure owner then records the actual source disposition for that Completion. Archive is permitted only after the matching Completion and Closure; it creates neither. `task.py finish` only clears session selection.\n"
+    : `When the developer confirms the checklist items above are done with real\nexamples (not placeholders), guide them to run:\n\n\`\`\`bash\n${pythonCmd} ./.trellis/scripts/task.py finish\n${pythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines\n\`\`\`\n`;
 
   const header = `# Bootstrap Task: Fill Project Development Guidelines
 
@@ -400,13 +234,12 @@ function getBootstrapPrdContent(
 
 The developer just ran \`trellis init\` on this project for the first time.
 \`.trellis/\` now exists with empty spec scaffolding, and this bootstrap task
-exists under \`.trellis/tasks/\`. When they want to work on it, they should start
-this task from a session that provides Trellis session identity.
+exists under \`.trellis/tasks/\`. ${selectionGuidance}
 
 **Your job**: help them populate \`.trellis/spec/\` with the team's real
 coding conventions. Every future AI session — this project's
 \`trellis-implement\` and \`trellis-check\` sub-agents — auto-loads spec files
-listed in per-task jsonl manifests. Empty spec = sub-agents write generic
+listed in ${deliveryWorkflow ? "Delivery-scoped" : "per-task"} jsonl manifests. Empty spec = sub-agents write generic
 code. Real spec = sub-agents match the team's actual patterns.
 
 Don't dump instructions. Open with a short greeting, figure out if the repo
@@ -503,13 +336,7 @@ is a separate conversation, not a bootstrap concern.
 
 ## Quick explainer of the runtime (share when they ask "why do we need spec at all")
 
-- Every AI coding task spawns two sub-agents: \`trellis-implement\` (writes
-  code) and \`trellis-check\` (verifies quality).
-- Each task has \`implement.jsonl\` / \`check.jsonl\` manifests listing which
-  spec files to load.
-- The platform hook auto-injects those spec files + the task's \`prd.md\`
-  into every sub-agent prompt, so the sub-agent codes/reviews per team
-  conventions without anyone pasting them manually.
+${runtimeGuidance}
 - Source of truth: \`.trellis/spec/\`. That's why filling it well now pays
   off forever.
 
@@ -517,16 +344,10 @@ is a separate conversation, not a bootstrap concern.
 
 ## Completion
 
-When the developer confirms the checklist items above are done with real
-examples (not placeholders), guide them to run:
+${completionGuidance}
 
-\`\`\`bash
-${pythonCmd} ./.trellis/scripts/task.py finish
-${pythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines
-\`\`\`
-
-After archive, every new developer who joins this project will get a
-\`00-join-<slug>\` onboarding task instead of this bootstrap task.
+After archive, these project guidelines are available to every new session.
+Create any additional onboarding task explicitly when it is needed.
 
 ---
 
@@ -569,17 +390,13 @@ etc.) I can pull from, or should I scan the codebase from scratch?"
 }
 
 function getBootstrapTaskJson(
-  developer: string,
   projectType: ProjectType,
   packages?: DetectedPackage[],
 ): TaskJson {
   const today = new Date().toISOString().split("T")[0];
   const relatedFiles = getBootstrapRelatedFiles(projectType, packages);
 
-  // Canonical 24-field shape via emptyTaskJson factory.
-  // Checklist items (previously stored as structured `subtasks`) are now
-  // rendered as `- [ ]` items in prd.md; task.json.subtasks is always
-  // string[] (child task dir names) per the canonical schema.
+  // Canonical task shape via emptyTaskJson factory. Checklist items live in prd.md.
   return emptyTaskJson({
     id: BOOTSTRAP_TASK_NAME,
     name: BOOTSTRAP_TASK_NAME,
@@ -588,8 +405,6 @@ function getBootstrapTaskJson(
     status: "in_progress",
     dev_type: "docs",
     priority: "P1",
-    creator: developer,
-    assignee: developer,
     createdAt: today,
     relatedFiles,
     notes: `First-time setup task created by trellis init (${projectType} project)`,
@@ -601,172 +416,90 @@ function getBootstrapTaskJson(
  */
 function createBootstrapTask(
   cwd: string,
-  developer: string,
   pythonCmd: string,
   projectType: ProjectType,
-  packages?: DetectedPackage[],
+  packages: DetectedPackage[] | undefined,
+  workflowContent: string,
+  nativeBootstrap: boolean,
 ): boolean {
-  const taskJson = getBootstrapTaskJson(developer, projectType, packages);
-  const prdContent = getBootstrapPrdContent(projectType, pythonCmd, packages);
-  return writeTaskSkeleton(cwd, BOOTSTRAP_TASK_NAME, taskJson, prdContent);
-}
-
-// =============================================================================
-// Joiner Onboarding Task Creation
-// =============================================================================
-
-/**
- * task.json factory for joiner onboarding. Mirrors the bootstrap factory but
- * uses dev_type "docs", higher priority "P1", and the developer-specific task
- * name (so multiple joiners in the same checkout don't collide).
- */
-function getJoinerTaskJson(developer: string, taskName: string): TaskJson {
-  const today = new Date().toISOString().split("T")[0];
-  return emptyTaskJson({
-    id: taskName,
-    name: taskName,
-    title: `Joining: Onboard to this Trellis project (${developer})`,
-    description:
-      "Onboard a new developer to an existing Trellis project: learn the workflow, conventions, and find assigned work",
-    status: "in_progress",
-    dev_type: "docs",
-    priority: "P1",
-    creator: developer,
-    assignee: developer,
-    createdAt: today,
-    notes:
-      "Generated by trellis init for a new developer joining an existing Trellis project",
-  });
-}
-
-/**
- * PRD content for joiner onboarding. Kept concise (~80 lines) — deeper
- * guidance lives in skills and docs.
- */
-function getJoinerPrdContent(developer: string, pythonCmd: string): string {
-  const slug = slugifyDeveloperName(developer);
-  return `# Joiner Onboarding Task
-
-**You (the AI) are running this task. The developer does not read this file.**
-
-\`${developer}\` just ran \`trellis init\` on a fresh clone, saw "Developer
-initialized", and will now start asking you questions in chat. This joiner task
-exists under \`.trellis/tasks/\`; when they want to work on it, they should
-start it from a session that provides Trellis session identity.
-
-Your job is to orient them to Trellis. Don't dump all of this at them — open
-with a short greeting, ask where they want to start, and fill in the rest as
-they engage.
-
----
-
-## Topics to cover (adapt order to their questions)
-
-### 1. What Trellis is + the workflow
-
-Trellis is a workflow layer over Claude Code / Cursor / etc. that keeps AI
-agents consistent with project-specific conventions instead of writing generic
-code every session.
-
-- **Three phases**: Plan (brainstorm → \`prd.md\`) → Execute (code + check) →
-  Finish (capture + wrap). Full reference: \`.trellis/workflow.md\`.
-- **Task lifecycle**: planning → in_progress → done → archive, under
-  \`.trellis/tasks/\`.
-- **Core slash commands**:
-  - \`/trellis:continue\` — resume the current session's active task
-  - \`/trellis:finish-work\` — wrap up a finished task
-  - \`/trellis:start\` — session boot from scratch (not needed here; the
-    SessionStart hook does its job automatically)
-
-### 2. Runtime mechanics (explain when they ask "how does it know what to do")
-
-- **SessionStart hook** runs \`get_context.py\` and injects identity, git
-  status, session active task, active tasks, and workflow phase into the AI
-  conversation at every session start.
-- **\`<workflow-state>\` tag** is auto-injected with every user message,
-  carrying the current task + phase hint.
-- **\`/trellis:continue\`** loads the Phase Index, reads \`prd.md\` + recent
-  activity, and routes to the right skill (\`trellis-brainstorm\` for planning,
-  \`trellis-implement\` for coding, \`trellis-check\` for verification).
-- **\`trellis-implement\` sub-agent** is spawned when code needs to be written.
-  The platform hook reads \`{TASK_DIR}/implement.jsonl\` and auto-injects those
-  spec files + \`prd.md\` into the sub-agent's prompt so it codes per project
-  conventions.
-- **\`trellis-check\` sub-agent** follows the same pattern with \`check.jsonl\`
-  — reviews changes against specs, auto-fixes issues, runs lint/typecheck.
-
-File layout (mention when they ask "where does what live"):
-- \`.trellis/.runtime/sessions/<session>.json\` — session active-task state, gitignored
-- \`.trellis/tasks/<task>/{implement,check}.jsonl\` — per-task context manifests
-- \`.trellis/spec/\` — project-wide conventions (source of truth)
-- \`.trellis/workspace/${developer}/journal-*.md\` — their session log,
-  rotated at ~2000 lines
-
-### 3. This project's actual conventions
-
-- Summarize \`.trellis/spec/\` for them — what coding conventions this
-  specific team enforces.
-- Point at the last 5 entries in \`.trellis/tasks/archive/\` as a rhythm
-  example of how people actually work here. **If archive is empty** (the
-  project just started), skip this — don't invent examples.
-- Not your job in this onboarding to teach them the business code itself —
-  the README and their teammates handle that.
-
-### 4. Their assigned work
-
-- Check if \`.trellis/workspace/${developer}/\` already exists — if yes, it's
-  their journal from another machine and worth mentioning.
-- Run \`${pythonCmd} ./.trellis/scripts/task.py list --assignee ${developer}\` to
-  show tasks assigned to them. (Quote the name if it contains spaces.)
-- Remind them that the "My Tasks" section appears in the SessionStart context
-  on every new session.
-
----
-
-## Optional: walk through a small task end-to-end
-
-If they want to practice before touching real work, offer to pick a tiny
-P3 task or a typo fix and run the full cycle together: \`/trellis:continue\`
-→ you implement via sub-agents → \`/trellis:finish-work\`.
-
----
-
-## Completion
-
-When they feel oriented (or after you've covered the four topics with
-reasonable back-and-forth), guide them to run:
-
-\`\`\`bash
-${pythonCmd} ./.trellis/scripts/task.py finish
-${pythonCmd} ./.trellis/scripts/task.py archive 00-join-${slug}
-\`\`\`
-
----
-
-## Suggested opening line
-
-"Welcome! Your \`trellis init\` set me up to onboard you to this project. I
-can walk you through the workflow, show you the runtime mechanics under the
-hood, summarize the team's spec, or jump to what you're already curious about
-— which would you prefer?"
-`;
-}
-
-/**
- * Create joiner onboarding task for a new developer on an existing Trellis
- * project. Task name is slugified to be filesystem-safe for arbitrary
- * developer names (spaces, Unicode, punctuation).
- */
-function createJoinerOnboardingTask(
-  cwd: string,
-  developer: string,
-  pythonCmd: string,
-): boolean {
-  const slug = slugifyDeveloperName(developer);
-  const taskName = `00-join-${slug}`;
-  const taskJson = getJoinerTaskJson(developer, taskName);
-  const prdContent = getJoinerPrdContent(developer, pythonCmd);
-  return writeTaskSkeleton(cwd, taskName, taskJson, prdContent);
+  const legacy = getBootstrapTaskJson(projectType, packages);
+  const contract = readDeliveryWorkflowContract(workflowContent);
+  const prdContent = getBootstrapPrdContent(
+    projectType,
+    pythonCmd,
+    packages,
+    Boolean(contract),
+  );
+  if (!contract)
+    return writeTaskSkeleton(cwd, BOOTSTRAP_TASK_NAME, legacy, prdContent);
+  const {
+    status: _status,
+    commit: _commit,
+    pr_url: _pr,
+    completedAt: _completed,
+    ...metadata
+  } = legacy;
+  // Only the bundled native workflow defines accepted bootstrap scope/profile.
+  // Custom owners must judge their own scope and create a Delivery explicitly.
+  if (
+    !nativeBootstrap ||
+    workflowContent !== replacePythonCommandLiterals(deliveryWorkflowMdTemplate)
+  ) {
+    return writeTaskSkeleton(
+      cwd,
+      BOOTSTRAP_TASK_NAME,
+      emptyTaskRecordV2(metadata),
+      prdContent,
+    );
+  }
+  const authority = {
+    locator: `.trellis/tasks/${BOOTSTRAP_TASK_NAME}/prd.md`,
+    revision: `sha256:${createHash("sha256").update(prdContent).digest("hex")}`,
+  };
+  const deliveryId = randomUUID();
+  const scoped = applyTaskOperation(
+    emptyTaskRecordV2(metadata),
+    {
+      api_version: "1.0",
+      operation: "accept_scope",
+      owner_role: "task_scope",
+      owner_id: contract.owners.task_scope,
+      key: { task_id: BOOTSTRAP_TASK_NAME, lifecycle_generation: 0 },
+      authority,
+    },
+    contract,
+  ).record;
+  const taskJson = applyTaskOperation(
+    scoped,
+    {
+      api_version: "1.0",
+      operation: "create_delivery",
+      owner_role: "creation",
+      owner_id: contract.owners.creation,
+      key: {
+        task_id: BOOTSTRAP_TASK_NAME,
+        lifecycle_generation: 0,
+        delivery_id: deliveryId,
+      },
+      scope_ref: { authority, anchors: ["bootstrap-guidelines"] },
+      profile: "manual",
+    },
+    contract,
+  ).record;
+  if (!writeTaskSkeleton(cwd, BOOTSTRAP_TASK_NAME, taskJson, prdContent))
+    return false;
+  const planningRoot = path.join(
+    cwd,
+    PATHS.TASKS,
+    BOOTSTRAP_TASK_NAME,
+    "deliveries",
+    deliveryId,
+  );
+  fs.mkdirSync(planningRoot, { recursive: true });
+  writeFileAtomic(path.join(planningRoot, "prd.md"), prdContent);
+  for (const manifest of ["implement.jsonl", "check.jsonl"])
+    writeFileAtomic(path.join(planningRoot, manifest), "");
+  return true;
 }
 
 /**
@@ -776,8 +509,7 @@ function createJoinerOnboardingTask(
 async function handleReinit(
   cwd: string,
   options: InitOptions,
-  developerName: string | undefined,
-  pythonCmd: string,
+  workflowIsManaged: boolean,
 ): Promise<boolean> {
   const TOOLS = getInitToolChoices();
   const configuredPlatforms = getConfiguredPlatforms(cwd);
@@ -791,17 +523,14 @@ async function handleReinit(
   ).map((t) => t.key);
 
   let doAddPlatforms = explicitTools.length > 0;
-  let doAddDeveloper = !!options.user;
   let platformsToAdd: string[] = explicitTools;
 
   // No explicit flags → show menu
-  if (!doAddPlatforms && !doAddDeveloper) {
+  if (!doAddPlatforms) {
     if (options.yes) {
       console.log(chalk.gray(`Already initialized with: ${configuredNames}`));
       console.log(
-        chalk.gray(
-          "Use platform flags (e.g., --codex) or -u <name> to add platforms/developer.",
-        ),
+        chalk.gray("Use platform flags (e.g., --codex) to add platforms."),
       );
       return true;
     }
@@ -817,10 +546,6 @@ async function handleReinit(
         message: "Trellis is already initialized. What would you like to do?",
         choices: [
           { name: "Add AI platform(s)", value: "add-platform" },
-          {
-            name: "Set up developer identity on this device",
-            value: "add-developer",
-          },
           { name: "Full re-initialize", value: "full" },
         ],
       },
@@ -830,7 +555,6 @@ async function handleReinit(
       return false; // Fall through to full init
     }
     if (action === "add-platform") doAddPlatforms = true;
-    if (action === "add-developer") doAddDeveloper = true;
   }
 
   // --- Add platforms ---
@@ -910,65 +634,11 @@ async function handleReinit(
       trackedPaths: reinitWritten,
       merge: true,
     });
+    if (!workflowIsManaged) removeHash(cwd, PATHS.WORKFLOW_GUIDE_FILE);
     if (hashedCount > 0) {
       console.log(
         chalk.gray(`📋 Tracking ${hashedCount} template files for updates`),
       );
-    }
-  }
-
-  // --- Add developer ---
-  if (doAddDeveloper) {
-    let devName = developerName;
-    if (!devName) {
-      devName = await askInput("Your name: ");
-      while (!devName) {
-        console.log(chalk.yellow("Name is required"));
-        devName = await askInput("Your name: ");
-      }
-    }
-
-    // Capture pre-init state: if .developer did not exist before we ran
-    // init_developer.py, this checkout had no identity → treat as a new
-    // joiner onboarding onto an existing Trellis project.
-    const hadDeveloperFileBefore = fs.existsSync(
-      path.join(cwd, DIR_NAMES.WORKFLOW, FILE_NAMES.DEVELOPER),
-    );
-
-    try {
-      const scriptPath = path.join(cwd, PATHS.SCRIPTS, "init_developer.py");
-      execSync(`${pythonCmd} "${scriptPath}" "${devName}"`, {
-        cwd,
-        stdio: "pipe",
-      });
-      console.log(chalk.green(`✓ Developer "${devName}" initialized`));
-    } catch {
-      console.log(
-        chalk.yellow("⚠ Could not initialize developer. Run manually:"),
-      );
-      console.log(
-        chalk.gray(
-          `  ${pythonCmd} .trellis/scripts/init_developer.py ${devName}`,
-        ),
-      );
-    }
-
-    // Create joiner onboarding task for fresh checkouts (no prior .developer).
-    // Runs outside the init_developer try/catch so failures surface as warnings.
-    if (!hadDeveloperFileBefore) {
-      try {
-        if (!createJoinerOnboardingTask(cwd, devName, pythonCmd)) {
-          console.warn(
-            chalk.yellow("⚠ Failed to create joiner onboarding task"),
-          );
-        }
-      } catch (err) {
-        console.warn(
-          chalk.yellow(
-            `⚠ Joiner onboarding setup failed: ${err instanceof Error ? err.message : String(err)}`,
-          ),
-        );
-      }
     }
   }
 
@@ -1027,7 +697,6 @@ interface InitOptions {
   kimi?: boolean;
   snow?: boolean;
   yes?: boolean;
-  user?: string;
   force?: boolean;
   skipExisting?: boolean;
   template?: string;
@@ -1055,6 +724,7 @@ const _cliFlagCheck: _AssertCliFlagsInOptions = true;
  */
 function writeMonorepoConfig(cwd: string, packages: DetectedPackage[]): void {
   const configPath = path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
+  assertProjectPath(configPath, cwd);
   let content = "";
 
   try {
@@ -1119,12 +789,67 @@ export async function init(options: InitOptions): Promise<void> {
 
   const cwd = process.cwd();
   const isFirstInit = !fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW));
-  // Captured here (before createWorkflowStructure + init_developer run) so
-  // the three-branch dispatch at the bottom can tell "fresh clone joiner"
-  // (.trellis/ exists, .developer missing) apart from "creator first init".
-  const hadDeveloperFileAtStart = fs.existsSync(
-    path.join(cwd, DIR_NAMES.WORKFLOW, FILE_NAMES.DEVELOPER),
-  );
+  if (!isFirstInit) {
+    const versionPath = path.join(cwd, DIR_NAMES.WORKFLOW, ".version");
+    assertProjectPath(versionPath, cwd);
+    const installedVersion = fs.existsSync(versionPath)
+      ? fs.readFileSync(versionPath, "utf8").trim()
+      : "unknown";
+    if (installedVersion !== VERSION) {
+      throw new Error(
+        `Unsupported installed Trellis version ${installedVersion}. Initialize a new project with Trellis ${VERSION}; this version does not reinitialize earlier installations.`,
+      );
+    }
+  }
+  const existingWorkflow = path.join(cwd, PATHS.WORKFLOW_GUIDE_FILE);
+  assertProjectPath(existingWorkflow, cwd);
+  const workflowIdInput = options.workflow?.trim();
+  const workflowId =
+    workflowIdInput && workflowIdInput.length > 0
+      ? workflowIdInput
+      : DELIVERY_WORKFLOW_ID;
+  let workflowIsManaged = isBundledWorkflow(workflowId);
+  let workflowMdOverride: string | undefined = deliveryWorkflowMdTemplate;
+  let preserveExistingWorkflow = false;
+  let retainedWorkflowHash: string | undefined;
+  if (options.workflow || options.workflowSource) {
+    const resolved = await resolveWorkflowTemplate(workflowId, {
+      source: options.workflowSource,
+    });
+    workflowMdOverride = resolved.content;
+    if (resolved.id !== NATIVE_WORKFLOW_ID) {
+      console.log(
+        chalk.blue(`🧭 Using workflow template: ${chalk.cyan(resolved.id)}`),
+      );
+    }
+  }
+
+  if (!options.workflow && !options.workflowSource && !isFirstInit) {
+    const existingContent = fs.readFileSync(existingWorkflow, "utf8");
+    const existingWorkflowHash = loadHashes(cwd)[PATHS.WORKFLOW_GUIDE_FILE];
+    workflowMdOverride = existingContent;
+    // Retain the actual installed authority, including managed legacy bytes.
+    // A fresh-install default is not authority to change an existing workflow
+    // or claim ownership of user-managed content.
+    workflowIsManaged = Boolean(existingWorkflowHash);
+    retainedWorkflowHash = existingWorkflowHash;
+    preserveExistingWorkflow = true;
+  }
+  if (
+    !isFirstInit &&
+    !options.force &&
+    (options.workflow || options.workflowSource) &&
+    fs.existsSync(existingWorkflow) &&
+    fs.readFileSync(existingWorkflow, "utf8") !==
+      (workflowMdOverride ?? workflowMdTemplate)
+  ) {
+    throw new Error(
+      "workflow_activation_required: use trellis workflow --template <id> to switch the active workflow; non-forced reinit preserves existing workflow content",
+    );
+  }
+  preflightDeliveryWorkflow(cwd, workflowMdOverride ?? workflowMdTemplate, {
+    installingRuntime: true,
+  });
 
   // Generate ASCII art banner dynamically using FIGlet "Rebel" font
   const banner = figlet.textSync("Trellis", { font: "Rebel" });
@@ -1157,27 +882,6 @@ export async function init(options: InitOptions): Promise<void> {
   }
   setWriteMode(writeMode);
 
-  // Detect developer name from git config or options
-  let developerName = options.user;
-  if (!developerName) {
-    // Only detect from git if current directory is a git repo
-    const isGitRepo = fs.existsSync(path.join(cwd, ".git"));
-    if (isGitRepo) {
-      try {
-        developerName = execSync("git config user.name", {
-          cwd,
-          encoding: "utf-8",
-        }).trim();
-      } catch {
-        // Git not available or no user.name configured
-      }
-    }
-  }
-
-  if (developerName) {
-    console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
-  }
-
   const { command: pythonCmd } = resolveSupportedPython();
 
   // ==========================================================================
@@ -1187,8 +891,9 @@ export async function init(options: InitOptions): Promise<void> {
   // Aborted-init recovery (issue #204): if .trellis/ exists but tasks/ is
   // empty, the previous init never reached bootstrap creation. Fall through
   // to the full flow so the main-dispatch tasksEmpty fallback fires —
-  // handleReinit's joiner branch would otherwise mis-route the recovery.
+  // the add-platform fast path would otherwise skip bootstrap recovery.
   const tasksDirEarly = path.join(cwd, PATHS.TASKS);
+  assertProjectPath(tasksDirEarly, cwd);
   const tasksEmptyEarly =
     !fs.existsSync(tasksDirEarly) || fs.readdirSync(tasksDirEarly).length === 0;
   const hasTemplateRequest = !!options.template || !!options.registry;
@@ -1200,32 +905,14 @@ export async function init(options: InitOptions): Promise<void> {
     !tasksEmptyEarly &&
     !hasTemplateRequest
   ) {
-    const reinitDone = await handleReinit(
-      cwd,
-      options,
-      developerName,
-      pythonCmd,
-    );
+    const reinitDone = await handleReinit(cwd, options, workflowIsManaged);
     if (reinitDone) return;
     // reinitDone === false means user chose "full re-initialize" → fall through
   }
 
-  if (!developerName && !options.yes) {
-    // Ask for developer name if not detected and not in yes mode
-    console.log(
-      chalk.gray(
-        "\nTrellis supports team collaboration - each developer has their own\n" +
-          `workspace directory (${PATHS.WORKSPACE}/{name}/) to track AI sessions.\n` +
-          "Tip: Usually this is your git username (git config user.name).\n",
-      ),
-    );
-    developerName = await askInput("Your name: ");
-    while (!developerName) {
-      console.log(chalk.yellow("Name is required"));
-      developerName = await askInput("Your name: ");
-    }
-    console.log(chalk.blue("👤 Developer:"), chalk.gray(developerName));
-  }
+  const needsBootstrap =
+    (isFirstInit || tasksEmptyEarly) &&
+    !fs.existsSync(path.join(cwd, PATHS.TASKS, BOOTSTRAP_TASK_NAME));
 
   // Detect project type (silent - no output)
   const detectedType = detectProjectType(cwd);
@@ -1880,26 +1567,8 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   // ==========================================================================
-  // Resolve workflow template (default: native bundled)
+  // Resolve workflow template (fresh-install default: native-delivery-v1)
   // ==========================================================================
-
-  const workflowIdInput = options.workflow?.trim();
-  const workflowId =
-    workflowIdInput && workflowIdInput.length > 0
-      ? workflowIdInput
-      : NATIVE_WORKFLOW_ID;
-  let workflowMdOverride: string | undefined;
-  if (workflowId !== NATIVE_WORKFLOW_ID || options.workflowSource) {
-    const resolved = await resolveWorkflowTemplate(workflowId, {
-      source: options.workflowSource,
-    });
-    if (resolved.id !== NATIVE_WORKFLOW_ID) {
-      workflowMdOverride = resolved.content;
-      console.log(
-        chalk.blue(`🧭 Using workflow template: ${chalk.cyan(resolved.id)}`),
-      );
-    }
-  }
 
   // ==========================================================================
   // Create Workflow Structure
@@ -1920,6 +1589,7 @@ export async function init(options: InitOptions): Promise<void> {
       packages: monorepoPackages,
       remoteSpecPackages,
       workflowMdOverride,
+      preserveExistingWorkflow,
     });
 
     // Write monorepo packages to config.yaml (non-destructive patch)
@@ -1930,6 +1600,7 @@ export async function init(options: InitOptions): Promise<void> {
 
     // Write version file for update tracking
     const versionPath = path.join(cwd, DIR_NAMES.WORKFLOW, ".version");
+    assertProjectPath(versionPath, cwd);
     fs.writeFileSync(versionPath, VERSION);
 
     // Configure selected tools by copying entire directories (dogfooding)
@@ -1973,6 +1644,7 @@ export async function init(options: InitOptions): Promise<void> {
   if (useRemoteTemplate) {
     const specFilesToHash = new Map<string, string>();
     for (const relativePath of collectSpecPaths(cwd)) {
+      assertProjectPath(path.join(cwd, relativePath), cwd);
       const content = fs.readFileSync(path.join(cwd, relativePath), "utf-8");
       specFilesToHash.set(relativePath, content);
     }
@@ -1986,68 +1658,34 @@ export async function init(options: InitOptions): Promise<void> {
     );
   }
 
-  // Non-native workflow is user-managed local content. Drop the
-  // `.trellis/workflow.md` hash entry so `trellis update` classifies it as
-  // modified and does not silently restore native bytes. See design.md
-  // "Durable-state contract".
-  if (workflowMdOverride !== undefined && workflowId !== NATIVE_WORKFLOW_ID) {
+  // The recursive hash initialization must not claim ownership of preserved
+  // custom content. Only an explicit bundled selection transfers that ownership.
+  if (!workflowIsManaged) {
     removeHash(cwd, PATHS.WORKFLOW_GUIDE_FILE);
+  } else if (preserveExistingWorkflow && retainedWorkflowHash) {
+    // Reinitializing other files must not adopt local workflow edits as a
+    // pristine managed baseline. Retain the exact original receipt value.
+    const hashes = loadHashes(cwd);
+    hashes[PATHS.WORKFLOW_GUIDE_FILE] = retainedWorkflowHash;
+    saveHashes(cwd, hashes);
   }
 
-  // Initialize developer identity (silent - no output)
-  if (developerName) {
-    try {
-      const scriptPath = path.join(cwd, PATHS.SCRIPTS, "init_developer.py");
-      execSync(`${pythonCmd} "${scriptPath}" "${developerName}"`, {
-        cwd,
-        stdio: "pipe", // Silent
-      });
-    } catch {
-      // Silent failure - user can run init_developer.py manually
-    }
-
-    // Three-branch dispatch using flags captured at init() start (before
-    // createWorkflowStructure/init_developer ran, so they reflect the disk
-    // state of the user's checkout, not the state this init just produced):
-    //   isFirstInit=true                       → creator bootstrap (new project)
-    //   isFirstInit=false + no .developer file → joiner onboarding (fresh clone)
-    //   isFirstInit=false + .developer exists  → same-dev re-init, no task
-    //
-    // Tasks-empty fallback (issue #204): if .trellis/ exists but tasks dir is
-    // empty, the previous init aborted before creating the bootstrap task. Run
-    // bootstrap creation regardless of isFirstInit. writeTaskSkeleton is
-    // idempotent so repeated triggers are safe.
-    //
-    // Runs OUTSIDE the init_developer try/catch (which uses stdio: "pipe")
-    // so joiner failures surface as warnings instead of being silently
-    // swallowed.
-    const tasksDir = path.join(cwd, PATHS.TASKS);
-    const tasksEmpty =
-      !fs.existsSync(tasksDir) || fs.readdirSync(tasksDir).length === 0;
-
-    if (isFirstInit || tasksEmpty) {
-      createBootstrapTask(
-        cwd,
-        developerName,
-        pythonCmd,
-        projectType,
-        monorepoPackages,
-      );
-    } else if (!hadDeveloperFileAtStart) {
-      try {
-        if (!createJoinerOnboardingTask(cwd, developerName, pythonCmd)) {
-          console.warn(
-            chalk.yellow("⚠ Failed to create joiner onboarding task"),
-          );
-        }
-      } catch (err) {
-        console.warn(
-          chalk.yellow(
-            `⚠ Joiner onboarding setup failed: ${err instanceof Error ? err.message : String(err)}`,
-          ),
-        );
-      }
-    }
+  if (
+    needsBootstrap &&
+    !createBootstrapTask(
+      cwd,
+      pythonCmd,
+      projectType,
+      monorepoPackages,
+      fs.readFileSync(existingWorkflow, "utf8"),
+      // Explicit identity or retained managed ownership authorizes the native
+      // policy; matching template bytes alone never grants custom ownership.
+      workflowIsManaged &&
+        (workflowId === DELIVERY_WORKFLOW_ID ||
+          (!options.workflow && !options.workflowSource)),
+    )
+  ) {
+    throw new Error("Could not create bootstrap task.");
   }
 }
 

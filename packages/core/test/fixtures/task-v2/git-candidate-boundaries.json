@@ -1,0 +1,517 @@
+{
+  "workflow": {
+    "delivery_api": "1.0",
+    "task_schema": "2.0",
+    "profiles": [
+      "manual",
+      "local_commit",
+      "pull_request"
+    ],
+    "owners": {
+      "task_scope": "native-task_scope",
+      "creation": "native-creation",
+      "planning": "native-planning",
+      "implementation": "native-implementation",
+      "check": "native-check",
+      "full_review": "native-full_review",
+      "readiness": "native-readiness",
+      "publication": "native-publication",
+      "delivery": "native-delivery",
+      "completion": "native-completion",
+      "closure": "native-closure"
+    }
+  },
+  "initial": {
+    "id": "fixture-task",
+    "name": "fixture",
+    "lifecycle_generation": 0,
+    "source": {
+      "kind": "no_issue"
+    },
+    "title": "Two slices",
+    "description": "",
+    "dev_type": null,
+    "scope": null,
+    "package": null,
+    "priority": "P2",
+    "createdAt": "2026-10-12",
+    "base_branch": null,
+    "worktree_path": null,
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {},
+    "schema_version": "2.0",
+    "accepted_scope": null,
+    "deliveries": [],
+    "completion_results": [],
+    "closure_results": []
+  },
+  "steps": [
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "accept_scope",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0
+        },
+        "owner_role": "task_scope",
+        "owner_id": "native-task_scope",
+        "authority": {
+          "locator": "requirements.md",
+          "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "local_commit"
+      },
+      "expected_phase": "planning"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "HEAD",
+            "base_ref": null
+          },
+          "commit": "HEAD"
+        }
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "main",
+            "base_ref": null
+          },
+          "commit": "main"
+        }
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "candidate-tag",
+            "base_ref": null
+          },
+          "commit": "candidate-tag"
+        }
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "aaaaaaaaaaaa",
+            "base_ref": null
+          },
+          "commit": "aaaaaaaaaaaa"
+        }
+      },
+      "expect_error": "invalid_record"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_ref": null
+          },
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expected_phase": "delivered"
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_ref": null
+          },
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expected_changed": false
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "create_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "22222222-2222-4222-8222-222222222222"
+        },
+        "owner_role": "creation",
+        "owner_id": "native-creation",
+        "scope_ref": {
+          "authority": {
+            "locator": "requirements.md",
+            "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "anchors": [
+            "R1"
+          ]
+        },
+        "profile": "local_commit"
+      }
+    },
+    {
+      "operation": {
+        "api_version": "1.0",
+        "operation": "record_delivery",
+        "key": {
+          "task_id": "fixture-task",
+          "lifecycle_generation": 0,
+          "delivery_id": "22222222-2222-4222-8222-222222222222"
+        },
+        "expected_phase": "planning",
+        "historical_success": true,
+        "owner_role": "delivery",
+        "owner_id": "native-delivery",
+        "result": {
+          "result_id": "exact-sha256-outcome",
+          "owner_id": "native-delivery",
+          "evidence": [
+            {
+              "locator": "https://example.test/commit",
+              "revision": "1"
+            }
+          ],
+          "profile": "local_commit",
+          "candidate": {
+            "kind": "git",
+            "content_ref": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "paths": [
+              "artifact.txt"
+            ],
+            "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "base_ref": null
+          },
+          "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "expected_phase": "delivered"
+    }
+  ],
+  "hash_cases": [
+    {
+      "name": "git-0o600",
+      "kind": "git",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 384
+      },
+      "content_ref": "sha256:eae66158eab4b8d0515659e490a043ca1f2bc20c69bbb675579391ebbd1762ad"
+    },
+    {
+      "name": "git_free-0o600",
+      "kind": "git_free",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 384
+      },
+      "content_ref": "sha256:9224443cfcfdeb4dbf567bec3073ab4ab2c33b435c6bee4672e6a44f267c2230"
+    },
+    {
+      "name": "git-0o640",
+      "kind": "git",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 416
+      },
+      "content_ref": "sha256:eae66158eab4b8d0515659e490a043ca1f2bc20c69bbb675579391ebbd1762ad"
+    },
+    {
+      "name": "git_free-0o640",
+      "kind": "git_free",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 416
+      },
+      "content_ref": "sha256:b26a1a2227da9c017c74dc550bfb79a32095369efb0b4fedba32cfcbe63023b2"
+    },
+    {
+      "name": "git-0o700",
+      "kind": "git",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 448
+      },
+      "content_ref": "sha256:8436a3b8fa84a473238e20e41f7a6430bd4949b30fb8e1ccf4dd62bb39e92468"
+    },
+    {
+      "name": "git_free-0o700",
+      "kind": "git_free",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 448
+      },
+      "content_ref": "sha256:1a88f69dba96de72f7583aced19cf1abdab49077774adefaa6c616bd9fde764e"
+    },
+    {
+      "name": "git-0o750",
+      "kind": "git",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 488
+      },
+      "content_ref": "sha256:8436a3b8fa84a473238e20e41f7a6430bd4949b30fb8e1ccf4dd62bb39e92468"
+    },
+    {
+      "name": "git_free-0o750",
+      "kind": "git_free",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 488
+      },
+      "content_ref": "sha256:d35fab9b976f355222a95c2cecd5c45024f21749d05816e4b0bfbfa13154be3c"
+    },
+    {
+      "name": "git-0o610",
+      "kind": "git",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 392
+      },
+      "content_ref": "sha256:eae66158eab4b8d0515659e490a043ca1f2bc20c69bbb675579391ebbd1762ad"
+    },
+    {
+      "name": "git_free-0o610",
+      "kind": "git_free",
+      "paths": [
+        "artifact.txt"
+      ],
+      "files": {
+        "artifact.txt": "permission-sensitive\n"
+      },
+      "modes": {
+        "artifact.txt": 392
+      },
+      "content_ref": "sha256:37771a027b88024725f5f74985433703e934da27191b58a79d5fc38091d68e60"
+    }
+  ]
+}

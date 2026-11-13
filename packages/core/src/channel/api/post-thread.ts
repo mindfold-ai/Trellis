@@ -15,7 +15,6 @@ const VALID_ACTIONS: ReadonlySet<PostThreadOptions["action"]> = new Set([
   "comment",
   "status",
   "labels",
-  "assignees",
   "summary",
   "processed",
 ]);
@@ -39,7 +38,7 @@ export async function postThread(
       `Invalid thread action '${opts.action}'. Must be one of: ${[...VALID_ACTIONS].join(", ")}`,
     );
   }
-  await readForumChannelEvents(opts.channel, ref.project, "post");
+  await readForumChannelEvents(opts.channel, ref.project, "post", opts.cwd);
   const thread = resolveThreadKey(opts.action, opts.thread);
   const event = await appendEvent(
     opts.channel,
@@ -58,7 +57,6 @@ export async function postThread(
         : {}),
       ...(opts.status !== undefined ? { status: opts.status } : {}),
       ...(opts.labels !== undefined ? { labels: opts.labels } : {}),
-      ...(opts.assignees !== undefined ? { assignees: opts.assignees } : {}),
       ...(opts.summary !== undefined ? { summary: opts.summary } : {}),
       ...(opts.context !== undefined && opts.context.length > 0
         ? { context: opts.context }
@@ -67,6 +65,7 @@ export async function postThread(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   );
   return event as ThreadChannelEvent;
 }
@@ -97,6 +96,7 @@ export async function renameThread(
     opts.channel,
     ref.project,
     "thread rename",
+    opts.cwd,
   );
   const oldKey = normalizeThreadKey(opts.thread);
   const newKey = normalizeThreadKey(opts.newThread);
@@ -141,6 +141,7 @@ export async function renameThread(
       ...(opts.meta !== undefined ? { meta: opts.meta } : {}),
     },
     ref.project,
+    opts.cwd,
   );
   return event as ThreadChannelEvent;
 }

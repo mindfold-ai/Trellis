@@ -2,7 +2,7 @@
  * Integration tests for the uninstall uncommitted-data guard (audit 🔴-7).
  *
  * `trellis uninstall` deletes the whole .trellis/ tree — including
- * user-authored specs, task PRDs, and journals — with no backup. When those
+ * user-authored specs and task PRDs — with no backup. When those
  * hold uncommitted work, a scripted `--yes` run must fail closed rather than
  * silently destroy them.
  *
@@ -67,7 +67,11 @@ describe.skipIf(!canRun)("uninstall uncommitted-data guard", () => {
       value: true,
     });
     delete process.env.TRELLIS_ALLOW_DIRTY_UNINSTALL;
-    await init({ yes: true, claude: true, force: true });
+    await init({
+      yes: true,
+      claude: true,
+      force: true,
+    });
   });
 
   afterEach(() => {
@@ -96,16 +100,44 @@ describe.skipIf(!canRun)("uninstall uncommitted-data guard", () => {
     expect(collectUncommittedTrellisData(tmpDir)).toEqual([]);
   });
 
+  it.each([false, true])(
+    "ignores and preserves unknown files (tracked=%s)",
+    async (tracked) => {
+      git(tmpDir, "add", "-A");
+      git(tmpDir, "commit", "-q", "-m", "trellis");
+      const file = path.join(
+        tmpDir,
+        ".trellis",
+        "custom",
+        "arbitrary",
+        "data.md",
+      );
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "original data");
+      if (tracked) {
+        git(tmpDir, "add", "-f", "--", ".trellis/custom/arbitrary/data.md");
+        git(tmpDir, "commit", "-q", "-m", "fixture data");
+      }
+      fs.writeFileSync(file, "changed data");
+      expect(collectUncommittedTrellisData(tmpDir)).toEqual([]);
+      await uninstall({ yes: true });
+      expect(fs.readFileSync(file, "utf-8")).toBe("changed data");
+      expect(fs.existsSync(path.join(tmpDir, ".trellis", "scripts"))).toBe(
+        false,
+      );
+    },
+  );
+
   it("refuses --yes uninstall while user data is uncommitted, leaving .trellis intact", async () => {
     const specFile = path.join(tmpDir, ".trellis", "spec", "my-rules.md");
     fs.mkdirSync(path.dirname(specFile), { recursive: true });
     fs.writeFileSync(specFile, "unsaved work");
 
-    const exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(((code?: number) => {
-        throw new Error(`process.exit(${code ?? 0})`);
-      }) as never);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
+      code?: number,
+    ) => {
+      throw new Error(`process.exit(${code ?? 0})`);
+    }) as never);
 
     await expect(uninstall({ yes: true })).rejects.toThrow("process.exit(1)");
     expect(exitSpy).toHaveBeenCalledWith(1);

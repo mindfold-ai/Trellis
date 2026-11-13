@@ -1,0 +1,4 @@
+{"file":".trellis/spec/cli/backend/release-process.md","reason":"Use the Castbox paired attachment-only route and final artifact publication boundaries."}
+{"file":".trellis/spec/cli/backend/trellis-core-sdk.md","reason":"Preserve exact Core/CLI package names, boundary and workspace dependency semantics."}
+{"file":".trellis/spec/cli/backend/installed-version.md","reason":"Verify actual installed version and same-version reapplication behavior."}
+{"file":".trellis/spec/cli/unit-test/conventions.md","reason":"Use existing meaningful package/install regressions and avoid mirrored version assertions."}

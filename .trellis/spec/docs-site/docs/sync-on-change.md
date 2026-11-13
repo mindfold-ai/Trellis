@@ -216,7 +216,7 @@ Scope: any edit to `packages/cli/src/templates/trellis/config.yaml`, config read
 ### Grep command
 
 ```bash
-cd docs-site && grep -rln "config.yaml\|session_auto_commit\|codex.dispatch_mode\|update.skip" \
+cd docs-site && grep -rln "config.yaml\|task_auto_commit\|codex.dispatch_mode\|update.skip" \
   --include="*.mdx" --include="docs.json" \
   | grep -v "node_modules/"
 ```
