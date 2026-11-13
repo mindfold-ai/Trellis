@@ -93,6 +93,86 @@ ${body}
 }
 
 describe("repository-scoped session task bindings", () => {
+  it("reuses workspace observations only within one resolution and rereads ordinary peer errors", () => {
+    probe(`
+from common.session_storage import repository_facts, workspace_roots, validate_workspace
+linked = worktree(primary, 'linked space')
+directory = task(linked)
+start(linked, 'one', directory)
+common = Path(git(primary, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
+session = common / 'trellis/sessions/codex_one.json'
+before = session.read_bytes()
+calls = []
+def audit(event, args):
+    if event == 'subprocess.Popen' and Path(str(args[0])).name == 'git':
+        calls.append(args[1])
+sys.addaudithook(audit)
+facts = repository_facts(primary)
+assert workspace_roots(facts) == tuple(sorted((primary, linked)))
+observed = list(calls)
+assert {row[2] for row in calls if '--show-toplevel' in row} == {str(primary), str(linked)}
+assert len([row for row in calls if '--show-toplevel' in row]) == 2
+assert workspace_roots(facts) == tuple(sorted((primary, linked)))
+alias = base / 'primary alias'
+alias.symlink_to(primary, target_is_directory=True)
+assert validate_workspace(alias, facts) == primary
+assert calls == observed, calls
+# A later independent resolution must discover an ordinary broken peer entry.
+(linked / '.git').write_text('gitdir: ' + str(base / 'missing-gitdir') + '\\n')
+active = resolve(primary)
+assert active.stale and active.task_path is None and 'git_discovery_failed' in active.error, active
+assert session.read_bytes() == before
+`);
+  });
+
+  it("discovers nested project suffixes and unborn repositories without requiring HEAD", () => {
+    probe(`
+from common.session_storage import repository_facts, workspace_roots
+unborn = base / 'unborn space'
+unborn.mkdir()
+git(unborn, 'init', '-q')
+install(unborn)
+facts = repository_facts(unborn)
+assert facts.git_root == unborn and workspace_roots(facts) == (unborn,)
+linked = worktree(primary, 'nested peer')
+for root in (primary, linked):
+    install(root / 'nested space')
+nested = primary / 'nested space'
+facts = repository_facts(nested)
+assert facts.git_root == primary
+assert workspace_roots(facts) == tuple(sorted((nested, linked / 'nested space')))
+`);
+  });
+
+  it("uses branch registrations to narrow candidates and verifies the selected actual branch", () => {
+    probe(`
+linked = worktree(primary, 'linked space')
+other = worktree(primary, 'other')
+git(linked, 'switch', '-q', '-c', 'current-task')
+directory = task(linked)
+start(linked, 'one', directory)
+common = Path(git(primary, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
+binding = common / 'trellis/task-branches/same/0.json'
+binding.parent.mkdir(parents=True)
+binding.write_text(json.dumps(dict(schema_version='1.0', task_id='same', lifecycle_generation=0,
+                                  binding_revision=1, branch_name='current-task')))
+before = binding.read_bytes()
+calls = []
+def audit(event, args):
+    if event == 'subprocess.Popen' and Path(str(args[0])).name == 'git':
+        calls.append(args[1])
+sys.addaudithook(audit)
+active = resolve(primary)
+assert active.error is None and active.resolved_task_path == directory, active
+assert [row[2] for row in calls if row[3:] == ['branch', '--show-current']] == [str(linked)]
+# A normal forced checkout of an already checked-out branch remains ambiguous.
+git(other, 'switch', '--ignore-other-worktrees', 'current-task')
+active = resolve(primary)
+assert active.stale and 'current_task_checkout_unresolved' in active.error, active
+assert binding.read_bytes() == before
+`);
+  });
+
   it("creates through the real CLI beside mixed historical worktree metadata without changing history", () => {
     probe(`
 historical = worktree(primary, 'historical')

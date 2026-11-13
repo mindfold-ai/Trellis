@@ -136,6 +136,74 @@ Wrong: validate every raw path as live, or skip any path whose Git query fails.
 Correct: filter the explicitly obsolete record under the closed conditions,
 then strictly validate every remaining workspace and the exact selected Task.
 
+## Resolution-local Git identity observations
+
+### 1. Scope / Trigger
+
+Native context, session and explicit Task resolution can enumerate many normal
+registered worktrees. Reduce repeated Git process work without changing which
+eligible workspaces must be validated.
+
+### 2. Signatures
+
+Keep the existing `repository_facts(root)`, `validate_workspace(root, facts)`,
+`workspace_roots(facts)` and `resolve_task_identity(...)` calling contracts.
+Private observation fields belong to one returned facts object, with compatible
+defaults for existing internal construction. No public session/binding schema,
+Task field, CLI flag or persistent cache is added.
+
+### 3. Contracts
+
+Combine toplevel/common-dir observations in one Git call where supported. Do
+not require an existing HEAD for repository discovery. Reuse successful identity
+observations only for the same normalized root within that resolution context;
+a new resolution reads live facts again. Do not retain a process-global cache
+or reuse a Task record as authority. Writers retain their existing preconditions.
+
+Validate every eligible peer, including project-suffix containment, nearest
+registered root and common-dir identity. Preserve the exact prunable and Git-free
+rules above. Reusing observations does not authorize skipping a corrupt or
+foreign peer, repairing metadata, or selecting another Task after failure.
+
+The already required complete NUL-delimited worktree list may identify binding
+branch candidates. Require one eligible candidate and independently verify its
+actual branch before returning the selected Task workspace. Detached/unborn
+repositories remain valid where the original entry does not require that branch.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Repeated root within the same resolution | Reuse its checked Git identity; preserve remaining filesystem checks. |
+| New resolution after ordinary Git/branch state change | Reread facts; previous observations do not establish current authority. |
+| Missing/invalid binding or no unique branch candidate | Preserve the existing binding/checkout refusal. |
+| Candidate branch differs from its live checkout | Refuse selection; do not infer authority from topology alone. |
+| Eligible corrupt/foreign peer or failed Git query | Preserve error rather than no-task or best-effort discovery. |
+
+### 5. Good / Base / Bad Cases
+
+Good: a large normal topology resolves the same exact Task with fewer Git
+processes. Base: a newly initialized repository needs no HEAD to discover its
+root. Bad: use a cached successful result after a later branch change.
+
+### 6. Tests Required
+
+Exercise actual native key-miss, cross-checkout binding and explicit Task
+selection at small and representative multi-worktree scale. Count actual Git
+calls as directed evidence and independently assert correct output/refusals.
+Retain existing stale/generation, corrupt/foreign, prunable, Git-free and
+session-isolation coverage. Check observation lifetime across separate calls
+and shipped/dogfood byte parity. Wall time is local performance evidence, not
+a universal latency assertion or a substitute for identity checks.
+
+### 7. Wrong vs Correct
+
+Wrong: return a bound workspace before validating other eligible peers, or skip
+active identity resolution for `runtime-contract` to make it faster.
+
+Correct: group/reuse necessary facts inside one resolution, validate the same
+eligible peers and independently verify the selected branch.
+
 ## Archive and Paths
 
 Archive stages only the selected task and its destination. User-owned task

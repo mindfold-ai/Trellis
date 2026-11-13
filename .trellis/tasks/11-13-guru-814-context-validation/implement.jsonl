@@ -1,0 +1,11 @@
+{"file": ".trellis/spec/cli/backend/index.md", "reason": "Locate package responsibilities and mandatory applicable guidelines."}
+{"file": ".trellis/spec/cli/backend/task-lifecycle.md", "reason": "Preserve session identity, strict worktree validation, prunable and Git-free contracts."}
+{"file": ".trellis/spec/cli/backend/script-conventions.md", "reason": "Python 3.9 support, script owners, subprocess behavior and shipped/dogfood parity."}
+{"file": ".trellis/spec/cli/backend/commands-maintain.md", "reason": "Keep native tools probes, original operation and candidate/source recovery contracts."}
+{"file": ".trellis/spec/cli/backend/quality-guidelines.md", "reason": "Apply CLI quality, error and type/lint rules to actual changed code."}
+{"file": ".trellis/spec/cli/unit-test/index.md", "reason": "Use relevant test infrastructure and review prerequisites."}
+{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Isolate fixture environment and assert real behavior without duplicate or tautological coverage."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Select shared cross-platform and reuse thinking for the affected boundaries."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing owners and preserve one implementation contract."}
+{"file": ".trellis/spec/guides/cross-platform-thinking-guide.md", "reason": "Keep path, interpreter and subprocess compatibility."}
+{"file": ".trellis/tasks/11-13-guru-814-context-validation/research/context-performance.md", "reason": "Read actual call graph, conservative optimization and original recovery compatibility limits."}

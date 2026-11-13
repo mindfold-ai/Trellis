@@ -1,0 +1,30 @@
+{
+  "id": "guru-814-context-validation",
+  "name": "guru-814-context-validation",
+  "lifecycle_generation": 0,
+  "source": {
+    "kind": "issue",
+    "repo_ref": "castbox/guru-trellis",
+    "number": 814,
+    "disposition": "reference_only"
+  },
+  "title": "修复原生 context 多工作区开销与工具校验失配",
+  "description": "为 castbox/guru-trellis#814 提供 Fork 前置修复：减少正常多工作区 context 身份解析的重复 Git 开销，保留必要身份拒绝和有限工具校验，验证原事务恢复。下游采用、验收与完成由 #814 独立承担。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": "cli",
+  "priority": "P2",
+  "createdAt": "2026-11-13",
+  "completedAt": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {},
+  "branch": "codex/guru-814-context-validation"
+}

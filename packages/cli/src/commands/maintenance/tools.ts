@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { z } from "zod";
 import { compareVersions } from "../../utils/compare-versions.js";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { VERSION } from "../../constants/version.js";
 import { getConfiguredPlatforms } from "../../configurators/index.js";
 import {
@@ -489,6 +489,17 @@ export async function validateToolsSelection(
   }
 }
 
+function nativeProbeOutcome(result: SpawnSyncReturns<string>): string {
+  if (result.error) {
+    return (result.error as NodeJS.ErrnoException).code === "ETIMEDOUT"
+      ? "timeout (10000 ms budget)"
+      : "could not execute (10000 ms budget)";
+  }
+  return result.status === 0
+    ? "invalid response"
+    : `exit ${result.status ?? "unavailable"} (10000 ms budget)`;
+}
+
 /** Actual installed native capability, invoked by the common apply/resume engine. */
 export function validateToolsInstallation(
   plan: PreparedMaintenancePlan,
@@ -528,7 +539,7 @@ export function validateToolsInstallation(
   )
     failure(
       "incomplete_operation",
-      `target native contract failed: ${result.error?.message ?? result.stderr}`,
+      `target native contract failed: ${nativeProbeOutcome(result)}`,
     );
   const declared = readDeliveryWorkflowContract(
     fs.readFileSync(path.join(root, workflowPath), "utf8"),
@@ -555,6 +566,6 @@ export function validateToolsInstallation(
   if (context.error || (context.status !== 0 && !pendingMaintenance))
     failure(
       "incomplete_operation",
-      `target native context failed: ${context.error?.message ?? context.stderr}`,
+      `target native context failed: ${nativeProbeOutcome(context)}`,
     );
 }

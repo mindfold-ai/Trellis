@@ -6,7 +6,7 @@ import os
 import re
 import subprocess
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +28,13 @@ class RepositoryFacts:
     common_dir: Path | None
     worktrees: tuple[Path, ...]
     git_root: Path | None = None
+    # Successful identity reads belong only to this synchronous resolution.
+    _workspace_identities: dict[Path, tuple[Path, Path]] = field(
+        default_factory=dict, compare=False, repr=False,
+    )
+    _worktree_branches: dict[Path, str] = field(
+        default_factory=dict, compare=False, repr=False,
+    )
 
 
 @dataclass(frozen=True)
@@ -66,31 +73,30 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout
 
 
-def _common_dir(root: Path) -> Path:
-    value = _git(root, "rev-parse", "--git-common-dir").rstrip("\r\n")
-    if not value:
+def _workspace_identity(root: Path) -> tuple[Path, Path]:
+    output = _git(root, "rev-parse", "--show-toplevel", "--git-common-dir")
+    values = output.rstrip("\r\n").split("\n")
+    if len(values) != 2 or not all(values):
         raise SessionBindingError(
-            f"git_discovery_failed: empty common directory: {root}"
+            f"git_discovery_failed: incomplete workspace identity: {root}"
         )
-    return (root / value).resolve()
+    return Path(values[0]).resolve(), (root / values[1]).resolve()
 
 
 def repository_facts(root: Path) -> RepositoryFacts:
     root = root.resolve()
     apparent_git = any(os.path.lexists(p / ".git") for p in (root, *root.parents))
     try:
-        common = _common_dir(root)
+        git_root, common = _workspace_identity(root)
     except SessionBindingError as exc:
         if apparent_git or "not a git repository" not in str(exc):
             raise
         facts = RepositoryFacts(root, None, (), root)
         validate_workspace(root, facts)
         return facts
-    git_root = Path(
-        _git(root, "rev-parse", "--show-toplevel").rstrip("\r\n")
-    ).resolve()
     output = _git(root, "worktree", "list", "--porcelain", "-z")
     registered: list[Path] = []
+    branches: dict[Path, str] = {}
     # With -z each field is NUL-terminated and an empty field ends a record.
     # A stale registration can retain .trellis after its Git entry disappears.
     # Only Git's explicit prunable marker plus an absent .git permits skipping
@@ -107,10 +113,14 @@ def repository_facts(root: Path) -> RepositoryFacts:
         if worktree != git_root and prunable and not os.path.lexists(worktree / ".git"):
             continue
         registered.append(worktree)
+        for value in fields[1:]:
+            if value.startswith("branch refs/heads/"):
+                branches[worktree] = value[len("branch refs/heads/"):]
     worktrees = tuple(dict.fromkeys(registered))
     if git_root not in worktrees:
         raise SessionBindingError(f"unregistered_workspace: {root}")
-    facts = RepositoryFacts(root, common, worktrees, git_root)
+    facts = RepositoryFacts(root, common, worktrees, git_root,
+                            {root: (git_root, common)}, branches)
     validate_workspace(root, facts)
     return facts
 
@@ -118,24 +128,28 @@ def repository_facts(root: Path) -> RepositoryFacts:
 def validate_workspace(root: Path, facts: RepositoryFacts) -> Path:
     root = root.resolve()
     require_project_path(root / ".trellis", root)
+    identity = None
     if facts.common_dir is None:
         if root != facts.invocation_root:
             raise SessionBindingError(f"foreign_workspace: {root}")
     else:
-        top = Path(
-            _git(root, "rev-parse", "--show-toplevel").rstrip("\r\n")
-        ).resolve()
+        identity = facts._workspace_identities.get(root)
+        if identity is None:
+            identity = _workspace_identity(root)
+        top, common = identity
         if top not in facts.worktrees:
             raise SessionBindingError(f"unregistered_workspace: {root}")
         containing = [p for p in facts.worktrees if p == root or p in root.parents]
         if not containing or max(containing, key=lambda p: len(p.parts)) != top:
             raise SessionBindingError(f"unregistered_workspace: {root}")
-        if _common_dir(root) != facts.common_dir:
+        if common != facts.common_dir:
             raise SessionBindingError(f"common_dir_mismatch: {root}")
         if root != top and top not in root.parents:
             raise SessionBindingError(f"invalid_workspace: {root}")
     if not (root / ".trellis").is_dir():
         raise SessionBindingError(f"missing_workspace: {root}")
+    if identity is not None:
+        facts._workspace_identities[root] = identity
     return root
 
 
@@ -176,9 +190,11 @@ def _bound_task_workspace(
         raise SessionBindingError(f"invalid_task_branch_binding: {path}")
     matches = [
         workspace for workspace in workspaces
-        if _git(workspace, "branch", "--show-current").strip() == binding["branch_name"]
+        if facts._worktree_branches.get(facts._workspace_identities[workspace][0])
+        == binding["branch_name"]
     ]
-    if len(matches) != 1:
+    if (len(matches) != 1
+            or _git(matches[0], "branch", "--show-current").strip() != binding["branch_name"]):
         raise SessionBindingError(f"current_task_checkout_unresolved: {path}")
     return matches[0]
 

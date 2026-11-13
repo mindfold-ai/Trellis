@@ -656,6 +656,79 @@ operation. Guru separately owns historical qualification and next-owner routing.
 Tools inspect/prepare/application and applied recovery/resume use the [shared Python selection contract](./configurator-shared.md#scenario-python-selection-across-process-boundaries-issue-53). Resolve automatic selection before tools mutation; postvalidation uses executable/argv, including the real Windows launcher. Preserve other maintenance kinds and existing operation identity/staleness contracts.
 
 
+## Native tools deadlines and original-operation recovery
+
+### 1. Scope / Trigger
+
+Apply when tools postvalidation runs native contract/context probes, including
+normal repositories with many registered worktrees, and when a caller loses
+output or reaches its outer wait limit.
+
+### 2. Signatures
+
+Keep `validateToolsInstallation(plan, command?)` and public
+`applyMaintenance`, `recoverMaintenance({recovery_ref})` and
+`resumeMaintenance({recovery_ref})` contracts unchanged. Native probes use
+the selected Python executable/argv, not an assumed shell alias.
+
+### 3. Contracts
+
+Both delivery-contract and native-context probes retain finite 10000 ms limits.
+Declared workflows use `get_context.py --mode runtime-contract --json`;
+undeclared workflows use its existing full `--json` path. Preserve actual
+installed validation and supported maintenance-required handling. A failed probe
+does not establish `applied`. Reduce repeated identity work before considering
+any separately justified budget change.
+
+An outer wait ending with a live process handle is not executor termination.
+Continue observing that original executor before invoking recovery. After an
+actual failure or lost output, use its exact original recovery reference and
+frozen plan. Preserve operation ID, source/candidate checks, original preimages
+and later-work refusals. The existing phase `applying` precedes writes;
+`applied` follows successful postvalidation.
+
+Changing CLI/Core builds remains `candidate_mismatch`, even at the same version.
+This contract adds no cross-candidate recovery adapter. Never rewrite a receipt,
+replace an operation or prepare again to make a failed first operation appear
+successful. Keep the first failure when a later recovery succeeds.
+
+Diagnostics identify the probe and necessary failure class without environment,
+configuration, session payload or raw sensitive stderr dumps. Keep existing
+public error/result structure and `incomplete_operation` meaning.
+
+### 4. Validation & Error Matrix
+
+| Observation | Required behavior |
+| --- | --- |
+| Outer caller returns a live handle | Wait on that original handle; do not run a second executor. |
+| Native postvalidation fails after writes | Retain original operation and failure; do not claim terminal success. |
+| Same fixed candidate and original ref | Recover/retry through original validation and pending-write rules. |
+| Changed candidate or later owned edits | Preserve `candidate_mismatch` or `later_work_conflict`; no source substitution. |
+
+### 5. Good / Base / Bad Cases
+
+Good: recover the actual same-ref result after output loss. Base: normal tools
+apply validates both actual installed probes. Bad: extend an outer wait or
+replace the prepared operation and describe it as a native timeout repair.
+
+### 6. Tests Required
+
+Use one matching packed CLI/Core pair and the real public tools entry. Prepare
+once and prove apply/recover/resume identity and target-native output, preserving
+relevant Task/session/peer bytes and rollback anchors. Retain candidate and
+later-work refusal tests. Record native elapsed time and Git call sources on a
+normal representative topology. If no natural internal timeout occurs, report
+non-reproduction and same-ref recovery separately; do not inject sleeps or edit
+checkpoint state to claim the historical failure was recovered.
+
+### 7. Wrong vs Correct
+
+Wrong: start a new prepare while the original executor still runs, or change
+the candidate fingerprint in its saved plan.
+
+Correct: establish the original executor's outcome, preserve its first failure,
+then inspect/recover/resume the original ref under its unchanged prerequisites.
+
 ## Native Windows tools file modes
 
 When preparing tools-install target snapshots, preserve the actual existing file
