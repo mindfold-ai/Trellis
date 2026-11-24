@@ -953,6 +953,8 @@ describe("opencode inject-subagent-context (issue #264)", () => {
 
     expect(output.args.prompt).toContain("<!-- trellis-hook-injected -->");
     expect(output.args.prompt).toContain("# Research Agent Task");
+    expect(output.args.prompt).toContain("Use the available web search or documentation tools");
+    expect(output.args.prompt).not.toContain("mcp__exa__");
   });
 
   it("skips when no task can be resolved through any path", async () => {
