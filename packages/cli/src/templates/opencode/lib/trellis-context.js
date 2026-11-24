@@ -6,7 +6,7 @@
  */
 
 import { existsSync, readFileSync, appendFileSync, readdirSync, realpathSync, statSync } from "fs"
-import { isAbsolute, join, relative } from "path"
+import { isAbsolute, join, relative, sep } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
 import { createHash } from "crypto"
@@ -289,7 +289,7 @@ function materializeDirectory(basePath, dirPath, reason, limits, budget, maxFile
   }
 
   for (const filename of files.slice(0, maxFiles)) {
-    const relativePath = join(dirPath, filename)
+    const relativePath = join(dirPath, filename).replaceAll(sep, "/")
     const block = materializeFile(basePath, relativePath, reason, limits, budget)
     if (block) blocks.push(block)
   }
