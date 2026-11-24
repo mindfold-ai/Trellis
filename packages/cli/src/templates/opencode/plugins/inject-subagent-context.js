@@ -204,7 +204,7 @@ function getResearchContext(ctx) {
 - Spec files: \`.trellis/spec/**/*.md\`
 - Known issues: \`.trellis/big-question/\`
 - Code search: Use Glob and Grep tools
-- Tech solutions: Use mcp__exa__web_search_exa or mcp__exa__get_code_context_exa`)
+- Tech solutions: Use the available web search or documentation tools`)
 
   return parts.join("\n\n")
 }
