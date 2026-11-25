@@ -31,6 +31,7 @@ Trellis workflow skills usually share one semantic set: brainstorm, before-dev, 
 | GitHub Copilot | `.github/skills/`, `.github/prompts/` |
 | Factory Droid | `.factory/skills/`, `.factory/commands/` |
 | Pi Agent | `.agents/skills/` |
+| PI-Desktop | `.agents/skills/` |
 | Reasonix | `.reasonix/skills/` |
 | ZCode | `.zcode/skills/`, `.zcode/commands/` |
 | Kimi Code | `.agents/skills/`, `.kimi-code/skills/` (commands delivered as `/skill:trellis-*` skills) |

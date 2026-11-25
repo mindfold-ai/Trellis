@@ -44,7 +44,7 @@
 | **Task-centered workflow** | Keep PRDs, implementation context, review context, and task status in `.trellis/tasks/` so AI work stays structured. |
 | **Project memory** | Journals in `.trellis/workspace/` preserve what happened last time, so each new session starts with real context. |
 | **Team-shared standards** | Specs live in the repo, so one person's hard-won workflow or rule can benefit the whole team. |
-| **Multi-platform setup** | Bring the same Trellis structure to 22 AI coding platforms instead of rebuilding your workflow per tool. |
+| **Multi-platform setup** | Bring the same Trellis structure to 23 AI coding platforms instead of rebuilding your workflow per tool. |
 
 ## Prerequisites:
 
@@ -65,6 +65,32 @@ trellis init --cursor --opencode --codex -u your-name
 ```
 
 See the [Quick Start](https://docs.trytrellis.app/start/install-and-first-task) and [Supported Platforms](https://docs.trytrellis.app/advanced/multi-platform) guides for setup details.
+
+## PI-Desktop
+
+[PI-Desktop](https://github.com/vastsa/PI-Desktop) is the desktop host for the pi
+agent. It resolves project slash templates from `.pi/prompts` and indexes
+`.agents/skills/**`, but it loads neither project extensions nor project
+sub-agents — those only exist globally — so Trellis ships a plugin wrapper for
+the extension and installs the three roles into the global sub-agent directory:
+
+```bash
+trellis init --pi-desktop -u your-name
+trellis pi-desktop install        # quit PI-Desktop first; --dry-run previews
+```
+
+`install` copies `.pi-desktop/trellis/` into the host plugin store, registers one
+project-scoped row in `~/.pi-desktop/plugins/registry.json`, registers the
+repository's skills in `agent-capabilities/skills.json`, and writes
+`~/.agents/subagents/trellis-{implement,check,research}.md` — the only directory
+the host scans for sub-agents — in the host's own frontmatter shape
+(`tools: [Read, …]`, case-sensitive) with a scope guard that keeps each role
+inert outside a Trellis repository.
+
+`trellis pi-desktop status` reports registration and install drift, and
+`trellis pi-desktop uninstall` reverses all of it. Re-run `install` after
+`trellis update` to push regenerated files. `--skip-subagents` and
+`--agents-dir` control the global sub-agent write.
 
 ## How to Use
 

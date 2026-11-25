@@ -12,6 +12,7 @@ import {
   configurePlatform,
   getConfiguredPlatforms,
   getPlatformsWithPythonHooks,
+  PLATFORM_IDS,
 } from "../configurators/index.js";
 import {
   getPythonCommandForPlatform,
@@ -1019,6 +1020,7 @@ interface InitOptions {
   droid?: boolean;
   dsh?: boolean;
   pi?: boolean;
+  "pi-desktop"?: boolean;
   reasonix?: boolean;
   zcode?: boolean;
   trae?: boolean;
@@ -1115,6 +1117,20 @@ export async function init(options: InitOptions): Promise<void> {
   if (options.windsurf) {
     options.devin = true;
     delete options.windsurf;
+  }
+
+  // Commander camelCases multi-word flags (`--pi-desktop` → `piDesktop`) while
+  // the platform registry keys InitOptions by the flag string. Mirror the
+  // camelCase value onto the flag key so `options[t.key]` in explicitTools and
+  // every later lookup see the same answer.
+  for (const id of PLATFORM_IDS) {
+    const flag = AI_TOOLS[id].cliFlag;
+    const camel = flag.replace(/-([a-z0-9])/g, (_, ch: string) =>
+      ch.toUpperCase(),
+    );
+    if (camel === flag) continue;
+    const raw = options as unknown as Record<string, unknown>;
+    if (raw[camel] !== undefined) raw[flag] = raw[camel];
   }
 
   const cwd = process.cwd();

@@ -193,9 +193,13 @@ describe("trellis template constants", () => {
       grok: "Grok",
       kimi: "Kimi Code",
     };
-    // Pi templates keep a pull-based fallback, but workflow 2.1 routes Pi
-    // through the extension-backed context path.
-    const extensionBackedPreludeFallbackPlatforms = new Set<AITool>(["pi"]);
+    // Pi and PI-Desktop ship pull-based agent definitions as a fallback, but
+    // workflow 2.1 routes both through the extension-backed context path
+    // (PI-Desktop reuses Pi's marker block in workflow.md).
+    const extensionBackedPreludeFallbackPlatforms = new Set<AITool>([
+      "pi",
+      "pi-desktop",
+    ]);
     // Codex retains a child-side prelude as a compatibility fallback, but
     // its primary workflow route is the native SubagentStart hook block.
     const nativePushPreludeFallbackPlatforms = new Set<AITool>(["codex"]);

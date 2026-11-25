@@ -157,6 +157,9 @@ _PLATFORM_MARKER_LABELS: dict[str, str] = {
     "kimi": "Kimi Code",
     "omp": "Oh My Pi",
     "dsh": "DeepSeek Harness",
+    # PI-Desktop shares Pi's marker block: both hosts dispatch sub-agents from
+    # `.pi/agents/` and inject context from the agent extension.
+    "pi-desktop": "Pi",
 }
 
 

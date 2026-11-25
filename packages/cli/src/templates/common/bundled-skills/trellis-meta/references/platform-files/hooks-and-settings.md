@@ -27,6 +27,7 @@ Common files:
 | GitHub Copilot | `.github/copilot/hooks.json` |
 | Factory Droid | `.factory/settings.json` |
 | Pi Agent | `.pi/settings.json`, `.pi/extensions/trellis/` |
+| PI-Desktop | `.pi-desktop/trellis/` (plugin wrapper; no `settings.json`) |
 | Trae IDE | `.trae/hooks.json` |
 
 Reasonix is a pull-based platform whose agent files contain prelude instructions to read context after startup. ZCode uses `.zcode/config.json` with shared hooks, including PreToolUse for sub-agent prompt injection. Kimi Code is likewise pull-based and has no project-level settings/hooks file Trellis writes (hooks live only in the user-level `~/.kimi-code/config.toml`), so its agent prompts ship as skills and `.kimi-code/agents/` sub-agent definitions with the same prelude.

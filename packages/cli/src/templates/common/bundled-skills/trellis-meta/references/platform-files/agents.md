@@ -32,6 +32,7 @@ Agent files should not become generic chat prompts. They should define input sou
 | CodeBuddy | `.codebuddy/agents/trellis-*.md` |
 | Factory Droid | `.factory/droids/trellis-*.md` |
 | Pi Agent | `.pi/agents/trellis-*.md` |
+| PI-Desktop | `.pi/agents/trellis-*.md` |
 | Reasonix | `.reasonix/skills/trellis-*/SKILL.md` (subagent frontmatter) |
 | ZCode | `.zcode/agents/trellis-*.md` |
 | Kimi Code | `.kimi-code/agents/trellis-*.md` (custom sub-agents; the same prompts also ship as `.kimi-code/skills/trellis-*/SKILL.md`) |

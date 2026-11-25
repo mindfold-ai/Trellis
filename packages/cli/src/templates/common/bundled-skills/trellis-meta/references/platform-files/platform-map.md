@@ -21,6 +21,7 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | Factory Droid | `--droid` | `.factory/` | `.factory/skills/` | `.factory/droids/` | `.factory/hooks/` + settings |
 | DeepSeek Harness (dsh) | `--dsh` | `.dsh/` | `.agents/skills/` (shared) + `.dsh/skills/` (entry skills) | None (workflow skills run implement/check inline) | None (class-2 pull-based; no project hooks/settings) |
 | Pi Agent | `--pi` | `.pi/` | `.agents/skills/` | `.pi/agents/` | `.pi/extensions/trellis/` (native `trellis_subagent` tool) + `.pi/settings.json` |
+| PI-Desktop | `--pi-desktop` | `.pi-desktop/` | `.agents/skills/` | `.pi/agents/` | `.pi-desktop/trellis/` (host plugin wrapper, registered via its `manifest.json`) |
 | Trae IDE | `--trae` | `.trae/` | `.trae/skills/` | `.trae/agents/` | `.trae/hooks/` + `.trae/hooks.json` |
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | `.zcode/hooks/` + `.zcode/config.json` (SessionStart + UserPromptSubmit + PreToolUse Agent/Task); sub-agents use hook-injected context |
@@ -45,6 +46,7 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 - GitHub Copilot
 - Factory Droid
 - Pi Agent
+- PI-Desktop (`.pi/agents/`; dispatch via the host `Task` tool)
 - Trae IDE
 - Reasonix (delivered as skills with `runAs: subagent` under `.reasonix/skills/`, not as a separate `agents/` directory)
 - ZCode
@@ -59,6 +61,7 @@ When changing implementation/check/research behavior, look for the corresponding
 Some platforms expose a first-class tool that the host runtime understands. The model calls it like any other tool and the host renders progress cards, validates the agent name against `.<platform>/agents/`, and enforces dispatch modes.
 
 - Pi Agent — `trellis_subagent` tool, defined in `.pi/extensions/trellis/index.ts`. Supports `single` / `parallel` / `chain` dispatch modes and emits live `trellis-subagent-progress` events.
+- PI-Desktop — host `Task` tool, wired by the plugin at `.pi-desktop/trellis/agent/index.ts`; the shell tool is `Bash`.
 
 When changing sub-agent dispatch behavior on these platforms, edit the extension file, **not** the agent markdown — the agent markdown defines responsibilities, but the host extension owns dispatch, validation, and progress rendering.
 
@@ -74,7 +77,7 @@ When changing behavior, inspect workflows and skills first. Do not assume Trelli
 
 ### Shared `.agents/skills/`
 
-Codex, Gemini CLI, Pi Agent, Kimi Code, and DeepSeek Harness (dsh) write the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it. ZCode keeps Trellis-managed skills under `.zcode/skills/`.
+Codex, Gemini CLI, Pi Agent, PI-Desktop, Kimi Code, and DeepSeek Harness (dsh) write the shared `.agents/skills/` layer. Some tools that support agentskills.io can also read this directory. If the user wants multiple compatible tools to share one skill, consider `.agents/skills/` first, but do not assume every platform reads it. ZCode keeps Trellis-managed skills under `.zcode/skills/`.
 
 ## Decision Rules When Modifying Platform Files
 
@@ -110,3 +113,20 @@ Extension-backed platform. OMP native provider auto-discovers all subdirectories
 
 No `settings.json` — OMP scans `.omp/` subdirectories automatically.
 No Python hooks — hook-equivalent behavior lives in the TypeScript extension.
+
+### `.pi-desktop/` — PI-Desktop
+
+Extension-backed platform that reuses the Pi Agent surface: prompts from `.pi/prompts/`, sub-agents from `.pi/agents/`, skills from `.agents/skills/`.
+
+```text
+.pi-desktop/
+└── trellis/
+    ├── manifest.json      # Plugin manifest (`contributes.agentExtensions`)
+    ├── main.js            # Plugin entry point
+    └── agent/
+        └── index.ts       # Host agent extension (context injection)
+```
+
+No `settings.json` — the host loads the plugin through `manifest.json`.
+No Python hooks — hook-equivalent behavior lives in `agent/index.ts`, which runs before `Bash` commands and sub-agent runs.
+Sub-agents are dispatched through the host `Task` tool; the shell tool is `Bash` (the shell behind it is user-configurable). `trellis pi-desktop {install,status,uninstall}` manages the plugin; global sub-agents live in `~/.agents/subagents`.

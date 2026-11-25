@@ -1,9 +1,12 @@
 import {
   existsSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
   realpathSync,
   statSync,
+  unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -1767,9 +1770,114 @@ async function runSubagent(
   }
 }
 
+// ── Host detection ─────────────────────────────────────────────────────
+/**
+ * PI-Desktop loads this module through a plugin's `contributes.agentExtensions`
+ * and exposes host API groups (`pi.agent`, `pi.commands`, `pi.session`, …) that
+ * the pi CLI's ExtensionAPI does not have. The desktop host ships no `pi`
+ * binary to spawn and dispatches sub-agents through its own `Task` tool.
+ */
+function isDesktopHost(pi: unknown): boolean {
+  const host = (pi ?? {}) as { agent?: unknown };
+  return typeof host.agent === "object" && host.agent !== null;
+}
+
+/** Repo-relative task directory (the `task.py current` form) for a session key. */
+function taskRef(root: string, key: string | null): string | null {
+  const dir = readTaskDir(root, key);
+  if (!dir) return null;
+  const rel = relative(root, dir).replace(/\\/g, "/");
+  return rel.startsWith("..") || isAbsolute(rel) ? null : rel;
+}
+
+// ── Desktop shell bridge ───────────────────────────────────────────────
+// PI-Desktop runs shell commands through a shell the user picks (PowerShell,
+// cmd, git-bash or bash) and `tool_call` never reports which one, so rewriting
+// the command with `export VAR=…` would corrupt it in three of the four.
+// Trellis already ships a dialect-free bridge for this: the `task.py` session
+// subcommands accept a short-lived runtime ticket written just before the
+// command runs (templates/shared-hooks/inject-shell-session-context.py).
+const SHELL_TICKET_TTL_SECONDS = 30;
+const TASK_SESSION_SUBCOMMANDS = ["start", "current", "finish"];
+
+/** The `task.py start|current|finish` calls a shell command makes. */
+function taskSubcommands(command: string): JsonObject[] {
+  const tokens = (command.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map((token) =>
+    token.replace(/^["']|["']$/g, ""),
+  );
+  const found: JsonObject[] = [];
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const script = (tokens[i] ?? "").replace(/\\/g, "/").split("/").pop();
+    if (script !== "task.py") continue;
+    const name = tokens[i + 1] ?? "";
+    if (!TASK_SESSION_SUBCOMMANDS.includes(name)) continue;
+    const item: JsonObject = { name };
+    const ref = tokens[i + 2];
+    if (name === "start" && ref) item.task_ref = ref;
+    found.push(item);
+  }
+  return found;
+}
+
+/**
+ * Hand this session's identity to the `task.py` command about to run.
+ *
+ * `active_task._lookup_shell_ticket_context_key` honours a ticket only while it
+ * is fresh, was written for this repo, and names the subcommand now running;
+ * it refuses the whole lookup when two live tickets disagree, so two concurrent
+ * windows degrade instead of inheriting each other's pointer. Expired tickets
+ * are pruned here, live ones never — the same contract as the shared hook.
+ */
+function writeShellTicket(root: string, key: string | null, command: string) {
+  if (!key) return;
+  const subcommands = taskSubcommands(command);
+  if (subcommands.length === 0) return;
+  const dir = join(root, ".trellis", ".runtime", "shell-tickets");
+  const now = Date.now() / 1000;
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch {
+    return;
+  }
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith(".json")) continue;
+    const path = join(dir, name);
+    let expired = false;
+    try {
+      expired = num((JSON.parse(readText(path)) as JsonObject).expires_at_epoch) < now;
+    } catch {
+      continue;
+    }
+    if (expired) {
+      try {
+        unlinkSync(path);
+      } catch {}
+    }
+  }
+  const digest = hash(`${key}\0${command}\0${now}`).slice(0, 16);
+  const ticket: JsonObject = {
+    platform: "pi-desktop",
+    context_key: key,
+    cwd: root,
+    host_cwd: root,
+    command,
+    subcommands,
+    created_at_epoch: now,
+    expires_at_epoch: now + SHELL_TICKET_TTL_SECONDS,
+  };
+  try {
+    writeFileSync(
+      join(dir, `${Math.round(now * 1000)}-${digest}.json`),
+      `${JSON.stringify(ticket, null, 2)}\n`,
+    );
+  } catch {}
+}
+
 // ── Extension ──────────────────────────────────────────────────────────
 export default function trellisExtension(pi: {
   registerTool?: (tool: JsonObject) => void;
+  /** PI-Desktop host API group; absent in the pi CLI. */
+  agent?: unknown;
   registerShortcut?: (
     key: string,
     opts: {
@@ -1789,6 +1897,7 @@ export default function trellisExtension(pi: {
   const root = resolveRoot();
   const procKey = `pi_process_${hash([root, process.pid, Date.now(), randomBytes(8).toString("hex")].join(":"))}`;
   let curKey: string | null = null;
+  const desktopHost = isDesktopHost(pi);
 
   const getKey = (input?: unknown, ctx?: PiExtensionContext) => {
     const k = contextKey(input, ctx) ?? curKey ?? procKey;
@@ -1864,8 +1973,11 @@ export default function trellisExtension(pi: {
     handler: async (ctx: PiExtensionContext) => toggleDetail(ctx),
   });
 
-  // Tool registration
-  pi.registerTool?.({
+  // Tool registration (pi CLI only): the runner spawns a `pi` binary, which
+  // PI-Desktop does not ship — the host runs Trellis roles through its own
+  // `Task` tool, and this tool would only fail there.
+  const registerTool = desktopHost ? undefined : pi.registerTool?.bind(pi);
+  registerTool?.({
     name: "trellis_subagent",
     label: "Trellis Subagent",
     description: "Run a Trellis project sub-agent with active task context.",
@@ -2039,13 +2151,44 @@ export default function trellisExtension(pi: {
   pi.on?.("tool_call", (event, ctx) => {
     const k = getKey(event, ctx);
     const ev = event as { toolName?: string; input?: JsonObject };
+    // The pi CLI spells the shell tool `bash`; PI-Desktop capitalizes every
+    // host tool it exposes (`Bash`, `Read`, `Task`). Either spelling can only
+    // ever be a shell call, so both are accepted and the host decides the
+    // transport below.
+    const shellCall = ev.toolName === "bash" || ev.toolName === "Bash";
     if (
-      ev.toolName === "bash" &&
+      shellCall &&
       isObj(ev.input) &&
       typeof ev.input.command === "string" &&
       !cmdHasTrellisCtx(ev.input.command)
-    )
-      ev.input.command = `export TRELLIS_CONTEXT_ID=${shellQuote(k)}; ${ev.input.command}`;
+    ) {
+      if (desktopHost) {
+        // The host's shell is user-configurable (PowerShell, cmd, git-bash,
+        // bash) and `tool_call` does not report which, so an `export` prefix
+        // would corrupt the command in three of the four. Hand the identity
+        // over through the runtime ticket instead.
+        writeShellTicket(resolveRoot(ctx), k, ev.input.command);
+      } else {
+        ev.input.command = `export TRELLIS_CONTEXT_ID=${shellQuote(k)}; ${ev.input.command}`;
+      }
+    }
+
+    // PI-Desktop dispatches Trellis roles through its own `Task` tool (the
+    // `.pi/agents/*.md` types it discovered). The workflow contract requires
+    // every dispatch prompt to start with `Active task: …`; `trellis_subagent`
+    // adds that line itself, the host does not, so supply it before the child
+    // goes looking for context.
+    if (desktopHost && ev.toolName === "Task" && isObj(ev.input)) {
+      const prompt = ev.input.prompt;
+      const ref = taskRef(resolveRoot(ctx), k);
+      if (
+        ref &&
+        typeof prompt === "string" &&
+        !/^\s*Active task:/i.test(prompt)
+      ) {
+        ev.input.prompt = `Active task: ${ref}\n\n${prompt}`;
+      }
+    }
   });
   // Preserve progress details from execute(); mark failed subagent results through
   // the official tool_result patch hook instead of throwing away renderer details.

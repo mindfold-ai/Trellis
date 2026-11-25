@@ -88,6 +88,7 @@ If a command only repeats workflow rules, prefer making it reference/read `.trel
 | GitHub Copilot | `.github/skills/`, `.github/prompts/` |
 | Factory Droid | `.factory/skills/`, `.factory/commands/` |
 | Pi Agent | `.agents/skills/` |
+| PI-Desktop | `.agents/skills/` |
 | Reasonix | `.reasonix/skills/` (no separate commands dir; slash commands built into the platform) |
 | ZCode | `.zcode/skills/`, `.zcode/commands/` |
 | Kilo / Antigravity / Devin | workflows + skills |

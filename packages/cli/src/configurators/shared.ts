@@ -6,6 +6,7 @@
  */
 
 import type { TemplateContext } from "../types/ai-tools.js";
+import { VERSION } from "../constants/version.js";
 
 /**
  * Per-platform configure options threaded from `trellis init` flags.
@@ -108,6 +109,7 @@ const RE_CMD_REF = /\{\{CMD_REF:([\w][\w-]*)\}\}/g;
 const RE_EXECUTOR_AI = /\{\{EXECUTOR_AI\}\}/g;
 const RE_USER_ACTION_LABEL = /\{\{USER_ACTION_LABEL\}\}/g;
 const RE_CLI_FLAG = /\{\{CLI_FLAG\}\}/g;
+const RE_TRELLIS_VERSION = /\{\{TRELLIS_VERSION\}\}/g;
 const RE_BLANK_LINES = /\n{3,}/g;
 
 const CONDITIONAL_FLAGS = ["AGENT_CAPABLE", "HAS_HOOKS"] as const;
@@ -134,6 +136,10 @@ export function resolvePlaceholders(
   let result = replacePythonCommandLiterals(
     content.replace(RE_PYTHON_CMD, getPythonCommandForPlatform()),
   );
+
+  // The plugin manifest carries the CLI version so a PI-Desktop install row
+  // reports the same number as `.trellis/.version`.
+  result = result.replace(RE_TRELLIS_VERSION, VERSION);
 
   if (!context) return result;
 

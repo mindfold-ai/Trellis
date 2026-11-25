@@ -37,6 +37,7 @@ import { collectCopilotTemplates } from "./copilot.js";
 import { collectDroidTemplates } from "./droid.js";
 import { collectDshTemplates } from "./dsh.js";
 import { collectPiTemplates } from "./pi.js";
+import { collectPiDesktopTemplates } from "./pi-desktop.js";
 import { collectReasonixTemplates } from "./reasonix.js";
 import { collectZcodeTemplates, configureZcode } from "./zcode.js";
 import { collectTraeTemplates } from "./trae.js";
@@ -101,6 +102,7 @@ const PLATFORM_FUNCTIONS: Record<AITool, PlatformFunctions> = {
   droid: fromTemplates(collectDroidTemplates),
   dsh: fromTemplates(collectDshTemplates),
   pi: fromTemplates(collectPiTemplates),
+  "pi-desktop": fromTemplates(collectPiDesktopTemplates),
   reasonix: fromTemplates(collectReasonixTemplates),
   zcode: { configure: configureZcode, collectTemplates: collectZcodeTemplates },
   trae: fromTemplates(collectTraeTemplates),
@@ -140,14 +142,26 @@ export function getConfiguredPlatforms(cwd: string): Set<AITool> {
   const hashes = loadHashes(cwd);
 
   for (const id of PLATFORM_IDS) {
-    const configDir = AI_TOOLS[id].configDir;
-    const templates = collectPlatformTemplates(id);
-    const hasTrackedTemplate = [...(templates?.keys() ?? [])].some(
-      (relativePath) =>
-        (relativePath === configDir ||
-          relativePath.startsWith(`${configDir}/`)) &&
-        hashes[relativePath] !== undefined,
-    );
+    // Two platforms may share a directory: `pi-desktop` also writes
+    // `.pi/prompts` and `.pi/agents`, so "any tracked path under configDir"
+    // would report a `pi` install that does not exist. Platforms that set
+    // `detectionPaths` are recognized only by files no other platform writes.
+    const detectionPaths = AI_TOOLS[id].detectionPaths;
+    let hasTrackedTemplate: boolean;
+    if (detectionPaths && detectionPaths.length > 0) {
+      hasTrackedTemplate = detectionPaths.some(
+        (relativePath) => hashes[relativePath] !== undefined,
+      );
+    } else {
+      const configDir = AI_TOOLS[id].configDir;
+      const templates = collectPlatformTemplates(id);
+      hasTrackedTemplate = [...(templates?.keys() ?? [])].some(
+        (relativePath) =>
+          (relativePath === configDir ||
+            relativePath.startsWith(`${configDir}/`)) &&
+          hashes[relativePath] !== undefined,
+      );
+    }
     if (hasTrackedTemplate) {
       platforms.add(id);
     }

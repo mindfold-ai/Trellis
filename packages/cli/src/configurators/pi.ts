@@ -28,9 +28,18 @@ function resolvePiCommands(): ReturnType<typeof resolveCommands> {
 }
 
 /**
- * The Pi file set — written at init and diffed by `trellis update`.
+ * The file surface PI-Desktop shares with Pi Agent.
+ *
+ * PI-Desktop reads project slash templates from `.pi/prompts`, turns
+ * `.pi/agents/*.md` into sub-agent types, and indexes `.agents/skills/**`, so
+ * these files are useful to both hosts and must stay byte-identical when both
+ * platforms are configured. They are therefore always rendered from *pi's*
+ * template context: `{{CLI_FLAG}}` only appears in
+ * `get_context.py --platform …` and both ids resolve to workflow.md's `Pi`
+ * marker block (`_PLATFORM_MARKER_LABELS`), so the rendering is correct for
+ * either host and identical on disk.
  */
-export function collectPiTemplates(): Map<string, string> {
+export function collectPiSurface(): Map<string, string> {
   const files = new Map<string, string>();
   const ctx = AI_TOOLS.pi.templateContext;
 
@@ -54,12 +63,25 @@ export function collectPiTemplates(): Map<string, string> {
     files.set(`.pi/agents/${agent.name}.md`, agent.content);
   }
 
+  return files;
+}
+
+/**
+ * The Pi Agent file set — written at init and diffed by `trellis update`.
+ * Pi additionally loads a project extension and reads `.pi/settings.json`;
+ * PI-Desktop does neither, so those two files stay here rather than in
+ * {@link collectPiSurface}.
+ */
+export function collectPiTemplates(): Map<string, string> {
+  const files = collectPiSurface();
+  const ctx = AI_TOOLS.pi.templateContext;
+
   files.set(".pi/extensions/trellis/index.ts", getExtensionTemplate());
 
   const settings = getSettingsTemplate();
   files.set(
     `.pi/${settings.targetPath}`,
-    resolvePlaceholders(settings.content),
+    resolvePlaceholders(settings.content, ctx),
   );
 
   return files;

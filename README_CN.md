@@ -66,6 +66,29 @@ trellis init --cursor --opencode --codex -u your-name
 
 查看 [快速开始](https://docs.trytrellis.app/zh/start/install-and-first-task) 与 [支持平台](https://docs.trytrellis.app/zh/advanced/multi-platform) 指南以了解详细配置步骤。
 
+## PI-Desktop
+
+[PI-Desktop](https://github.com/vastsa/PI-Desktop) 是 pi agent 的桌面宿主。它会从
+`.pi/prompts` 解析项目级 slash 模板、索引 `.agents/skills/**`，但**不读**项目级扩展，也
+**不读**项目级子 agent（只有全局目录生效），所以 Trellis 额外生成插件封装，并把三个角色
+写进宿主的全局子 agent 目录：
+
+```bash
+trellis init --pi-desktop -u your-name
+trellis pi-desktop install        # 先退出 PI-Desktop；--dry-run 可预览
+```
+
+`install` 会把 `.pi-desktop/trellis/` 复制进宿主插件目录，在
+`~/.pi-desktop/plugins/registry.json` 注册一条以项目为作用域的记录，把仓库里的技能注册到
+`agent-capabilities/skills.json`，并写入
+`~/.agents/subagents/trellis-{implement,check,research}.md`——宿主唯一扫描的子 agent 目录
+——使用宿主认的 frontmatter（`tools: [Read, …]`，大小写敏感），附一段作用域守卫，让这些角色
+在非 Trellis 仓库里自动拒绝执行。
+
+`trellis pi-desktop status` 查看注册状态与安装漂移，`trellis pi-desktop uninstall` 反向
+清理。执行 `trellis update` 后重新跑一次 `install` 即可推给宿主。`--skip-subagents` 可跳过
+全局子 agent 写入，`--agents-dir` 可改写入位置。
+
 ## 如何使用
 
 使用流程非常简单：

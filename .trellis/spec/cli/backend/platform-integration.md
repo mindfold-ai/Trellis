@@ -1067,6 +1067,88 @@ child.stdin?.end(prompt);
 Resolve npm-shim installs through the real JS entrypoint when possible, keep `pi` as the compatibility fallback, and transport generated prompts through stdin.
 
 ---
+## Scenario: PI-Desktop Host Plugin Bridge
+
+### 1. Scope / Trigger
+
+`pi-desktop` (`--pi-desktop`) targets [PI-Desktop](https://github.com/vastsa/PI-Desktop),
+the Electron host for the pi agent. The host resolves project slash templates from
+`<project>/.pi/prompts` and indexes `<project>/.agents/skills/**` as project-scoped
+user skills. It loads neither project extensions (`.pi/extensions/**` is inert) nor
+project sub-agents (`~/.agents/subagents` is the only scan root), so Trellis wraps
+the extension in a plugin and installs the roles globally.
+
+### 2. Signatures
+
+| Artifact | Path | Owner |
+| --- | --- | --- |
+| Shared pi surface | `.pi/prompts/**`, `.pi/agents/**`, `.agents/skills/**` | `collectPiSurface()` in `configurators/pi.ts`, rendered with **pi's** context |
+| Plugin wrapper | `.pi-desktop/trellis/{manifest.json,main.js,agent/index.ts}` | `configurators/pi-desktop.ts` |
+| Install bridge | `trellis pi-desktop install\|status\|uninstall` | `commands/pi-desktop/**` |
+| Global sub-agents | `~/.agents/subagents/trellis-{implement,check,research}.md` | `templates/pi-desktop/subagents.ts`, written by `commands/pi-desktop` install/uninstall |
+
+### 3. Contracts
+
+- `configDir` is `.pi-desktop`, and `extraManagedPaths: [".pi"]` declares the shared
+  layer so every collected path is a managed path (`configurators/index.test.ts`).
+- The shared surface is rendered from `AI_TOOLS.pi.templateContext`, so both platforms
+  write byte-identical files (`templates/pi-desktop.test.ts`). `{{CLI_FLAG}}` only
+  reaches `get_context.py --platform …`, and `_PLATFORM_MARKER_LABELS["pi-desktop"] =
+  "Pi"` maps it onto workflow.md's Pi marker block.
+- `agent/index.ts` is the pi extension template verbatim — one source, two hosts.
+- The host has **no** project-level sub-agent discovery (`loadGlobalSubagents` only)
+  and validates `tools` case-sensitively against `Read, Glob, Grep,
+  BrowserPreview, Bash, Edit, Write`. A verbatim copy of `.pi/agents/*.md`
+  (`tools: read, …`) is rejected as "`tools` lists no usable tool", so `install`
+  translates the three roles into `~/.agents/subagents/`, marks them
+  `<!-- trellis-managed: pi-desktop -->`, and prepends the scope guard that keeps
+  them inert outside a `.trellis/` project. `uninstall` deletes marked files only.
+- Detection: `pi` sets `detectionPaths: [".pi/settings.json",
+  ".pi/extensions/trellis/index.ts"]`; without it a PI-Desktop-only repository would
+  also report `pi` as configured in `getConfiguredPlatforms`.
+- The agent extension gates on the host API group (`typeof pi.agent === "object"` means
+  PI-Desktop). There it does not register `trellis_subagent` (the host ships no pi
+  binary to spawn) and instead prefixes `Active task: <path>` onto the host's `Task`
+  tool input, so the pull-based agent definitions receive the contract line.
+- The host names its shell tool `Bash` (capital B — every host tool is capitalised) and
+  runs commands through a shell the user configures (PowerShell, cmd, git-bash, bash),
+  which `tool_call` does not report. So the desktop branch never rewrites the command:
+  an `export` prefix would corrupt it in three of the four dialects. It writes the
+  shared shell ticket instead (`.trellis/.runtime/shell-tickets/`, see "Shell-ticket
+  bridge"), which is dialect-free because no shell ever sees it. The pi CLI keeps the
+  `export TRELLIS_CONTEXT_ID=…` prefix, whose shell is always bash.
+- Host state is written only under the data directory (`--data-dir` >
+  `PI_DESKTOP_DATA_DIR` > `~/.pi-desktop`): one row in `plugins/registry.json`
+  (scope `projects`), the plugin copy in `plugins/installed/local.trellis/`, and the
+  repository's skills in `agent-capabilities/skills.json`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Behavior |
+| --- | --- |
+| Missing `.pi-desktop/trellis/manifest.json` | Abort with a `trellis init --pi-desktop` hint |
+| Manifest id / schema / permission invalid | Abort before writing anything |
+| `plugins/registry.json` is not a JSON array | Abort, file stays byte-identical |
+| `agent-capabilities/skills.json` is not a JSON array | Abort, file stays byte-identical |
+| PI-Desktop is running | Abort unless `--force`; dry runs are always allowed |
+| `--dry-run` | Zero writes, same report shape |
+
+### 5. Tests Required
+
+`test/templates/pi-desktop.test.ts` (file set, byte-identity, extension host branch),
+`test/commands/pi-desktop.test.ts` (install / idempotency / scope union / guards /
+uninstall / status), plus the existing `registry-invariants` and `configurators`
+invariants.
+
+### 6. Wrong vs Correct
+
+| Wrong | Correct |
+| --- | --- |
+| Copy the extension into `templates/pi-desktop/` | Reuse `getExtensionTemplate()` so a fix lands once |
+| Write `.pi/**` without declaring it | `extraManagedPaths: [".pi"]` so uninstall/ablate and the path invariant agree |
+| Detect `pi` by `.pi/prompts` | Use `detectionPaths`; that directory is shared |
+
+---
 
 ## What You DON'T Need to Update
 
@@ -1103,6 +1185,7 @@ These are now **automatically derived** from the registry:
 | Droid       | `/trellis:xxx`                                                         | Markdown (`.md`)                                              | `/trellis:finish-work` |
 | Devin       | `/trellis-xxx`                                                         | Markdown (`.md`) + `SKILL.md`                                 | `/trellis-finish-work` |
 | Pi Agent    | `/trellis-xxx` prompt templates + `/skill:<name>` skills               | Markdown (`.md`) + `SKILL.md` + TypeScript extension          | `/trellis-finish-work` |
+| PI-Desktop  | `/trellis-xxx` prompt templates + `/skill:<name>` skills               | Markdown (`.md`) + `SKILL.md` + TypeScript extension          | `/trellis-finish-work` |
 | Trae IDE    | `/trellis-xxx` commands + skills                                       | Markdown (`.md` with frontmatter) + `SKILL.md` + `hooks.json` | `/trellis-finish-work` |
 | Oh My Pi    | `/trellis-xxx`                                                         | Markdown (`.md` with YAML frontmatter) + TypeScript extension | `/trellis-finish-work` |
 | Kimi Code   | `/skill:trellis-<name>` skills                                         | Markdown (`SKILL.md`)                                         | `/skill:trellis-finish-work` |
@@ -1143,7 +1226,7 @@ Trellis sub-agents (implement / check / research) need task context (`prd.md` + 
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | **Class-1** — Hook-inject      | Native hook or plugin fires at sub-agent start and injects context before the child runs, either by rewriting the spawn prompt or adding developer context                                                        | Claude Code, Cursor, OpenCode, Kiro, CodeBuddy, Codex, Factory Droid, ZCode, Snow CLI |
 | **Class-2** — Pull-based       | Platform lacks a Trellis-supported native sub-agent context injection hook; Trellis injects a "Required: Load Trellis Context First" prelude into each definition so the sub-agent reads context at startup     | Gemini CLI, Qoder, Copilot, Reasonix, Trae IDE, Grok Build, Kimi Code  |
-| **Class-3** — Extension-backed | Platform exposes hook-equivalent events and custom tools through a project-local TypeScript extension; Trellis owns the sub-agent tool and the context injection path                                          | Pi Agent, Oh My Pi                                           |
+| **Class-3** — Extension-backed | Platform exposes hook-equivalent events and custom tools through a project-local TypeScript extension; Trellis owns the sub-agent tool and the context injection path                                          | Pi Agent, PI-Desktop, Oh My Pi                                |
 
 ### Class-1 — Hook-inject (9 platforms)
 
@@ -1217,7 +1300,7 @@ Sub-agents on class-2 platforms run as **separate sessions** with their own sess
 
 When changing the prelude, the dispatch protocol, or the `session-fallback` semantics, all three layers must stay aligned. `regression.test.ts > [issue-225]` and `regression.test.ts > [session-fallback]` are the contract tests; `templates/trellis.test.ts > [issue-225]` asserts the workflow.md breadcrumb still carries the protocol. Manual e2e runbook lives in the historical task `.trellis/tasks/<archive>/05-04-fix-codex-subagent-missing-active-task/manual-verify.md`.
 
-### Class-3 — Extension-backed (2 platforms)
+### Class-3 — Extension-backed (3 platforms)
 
 Platform can expose hook-equivalent events and custom tools through a project-local extension. Trellis owns the sub-agent tool and the context injection path. Unlike class-1 (which only handles sub-agent context) and class-2 (which only handles sub-agent prelude), class-3 owns hidden persistent custom-message context injection and per-Bash-tool-call session-identity prefixing through the platform extension API.
 
@@ -1225,6 +1308,7 @@ Platform can expose hook-equivalent events and custom tools through a project-lo
 | -------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pi Agent | `.pi/extensions/trellis/index.ts` events + `trellis_subagent` tool | extension builds full prompt/context from `.pi/agents/*.md`, `prd.md`, `design.md` if present, `implement.md` if present, and JSONL-referenced files via `buildContext()`; preserves startup/full task context through `before_agent_start.systemPrompt` and persists compact workflow/session context through a hidden `before_agent_start.message` custom message; agent definitions also receive the pull-based prelude as a fallback |
 | Oh My Pi | `.omp/extensions/trellis/index.ts` events                          | extension resolves a session-scoped context key from the OMP runtime, injects session/task context through extension events, and keeps JSONL-referenced files jailed inside the project root                                                                                                                                                                                                       |
+| PI-Desktop | `.pi-desktop/trellis/agent/index.ts` (host plugin `agentExtensions`) | reuses the Pi extension byte for byte through the host plugin bridge; the extension skips the spawn-based `trellis_subagent` tool, prefixes `Active task: …` onto the host's `Task` tool input, and hands session identity to `task.py` through the shared shell ticket because the host shell is user-configurable |
 
 See **"Class-3 injection points (Pi extension)"** and **"Cross-platform consistency invariant"** below for the runtime contract details.
 
@@ -1237,7 +1321,7 @@ See **"Class-3 injection points (Pi extension)"** and **"Cross-platform consiste
 | `input`                 | not registered for Trellis runtime context             | n/a                                        | Trellis must not rewrite submitted user text; context identity is resolved in `before_agent_start` and `tool_call` where it is needed                                                                          |
 | `before_agent_start`    | `pi.on?.("before_agent_start", …)`                   | every agent invocation (main + sub-agents) | preserves `systemPrompt` with startup/full task context only, and additionally returns `message: { customType: "trellis-runtime-context", display: false, content }` containing compact `<workflow-state>` + `<session-overview>`; Pi wraps the message as a persisted `role: "custom"` session message |
 | `context`               | `pi.on?.("context", …)`                              | before each LLM call                       | preserves existing context-key establishment only; must not append request-local Trellis runtime messages because they are not persisted and can move between turns                                           |
-| `tool_call` (Bash)      | `pi.on?.("tool_call", …)`                            | every Bash tool call                       | mutates `event.input.command` in place via `injectTrellisContextIntoBash()` to prefix `export TRELLIS_CONTEXT_ID=<context-key>;` so child Python scripts (e.g. `task.py current`) inherit session identity      |
+| `tool_call` (Bash)      | `pi.on?.("tool_call", …)`                            | every Bash tool call                       | pi CLI: mutates `event.input.command` in place via `injectTrellisContextIntoBash()` to prefix `export TRELLIS_CONTEXT_ID=<context-key>;` so child Python scripts (e.g. `task.py current`) inherit session identity. PI-Desktop: leaves `event.input.command` untouched and writes the shell ticket for the three `task.py` session subcommands (`start`, `current`, `finish`) instead, because the host shell is user-configurable and the event does not report which one it is |
 | `trellis_subagent` tool | `pi.registerTool?.({ name: "trellis_subagent", … })` | extension load time (once)                 | `promptSnippet` and `promptGuidelines` carry `SUBAGENT_DISPATCH_PROTOCOL` so the model sees the dispatch contract before it ever calls the tool                                                                 |
 
 `TurnContextCache` (in `index.ts.txt`) memoizes the per-turn context-key → `{workflowState, sessionOverview}` pair so `before_agent_start` does not double-spawn the default `get_context.py` session-context call. The cache key is the resolved context key; entries are short-lived (one turn/request window).

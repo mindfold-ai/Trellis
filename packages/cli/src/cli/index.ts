@@ -13,6 +13,7 @@ import {
   WorkflowCommandError,
 } from "../commands/workflow.js";
 import { registerChannelCommand } from "../commands/channel/index.js";
+import { registerPiDesktopCommand } from "../commands/pi-desktop/index.js";
 import { DIR_NAMES } from "../constants/paths.js";
 import { PACKAGE_NAME, VERSION } from "../constants/version.js";
 import { compareVersions } from "../utils/compare-versions.js";
@@ -87,6 +88,10 @@ program
   .option("--droid", "Include Factory Droid commands")
   .option("--dsh", "Include DeepSeek Harness (dsh) skills")
   .option("--pi", "Include Pi Agent extension assets")
+  .option(
+    "--pi-desktop",
+    "Include the PI-Desktop plugin, prompts and sub-agents",
+  )
   .option("--reasonix", "Include Reasonix skills")
   .option("--zcode", "Include ZCode commands")
   .option("--omp", "Include Oh My Pi extension assets")
@@ -395,5 +400,6 @@ program
   });
 
 registerChannelCommand(program);
+registerPiDesktopCommand(program);
 
 program.parse();

@@ -23,6 +23,7 @@ export type AITool =
   | "droid"
   | "dsh"
   | "pi"
+  | "pi-desktop"
   | "reasonix"
   | "zcode"
   | "trae"
@@ -51,6 +52,7 @@ export type TemplateDir =
   | "droid"
   | "dsh"
   | "pi"
+  | "pi-desktop"
   | "reasonix"
   | "zcode"
   | "trae"
@@ -79,6 +81,7 @@ export type CliFlag =
   | "droid"
   | "dsh"
   | "pi"
+  | "pi-desktop"
   | "reasonix"
   | "zcode"
   | "trae"
@@ -147,6 +150,12 @@ export interface AIToolConfig {
   supportsAgentSkills?: boolean;
   /** Additional managed paths beyond configDir (e.g., .github/hooks for Copilot) */
   extraManagedPaths?: string[];
+  /**
+   * Paths that identify this platform when another platform shares its config
+   * directory. When set, `getConfiguredPlatforms` requires a tracked hash for
+   * one of these instead of any file under `configDir`.
+   */
+  detectionPaths?: string[];
   /** CLI flag name for --flag options (e.g., "claude" for --claude) */
   cliFlag: CliFlag;
   /** Whether this tool is checked by default in interactive init prompt */
@@ -442,6 +451,9 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     cliFlag: "pi",
     defaultChecked: false,
     hasPythonHooks: false,
+    // `pi-desktop` writes the same `.pi/prompts` and `.pi/agents` files, so
+    // detection keys off the two files only the pi CLI reads.
+    detectionPaths: [".pi/settings.json", ".pi/extensions/trellis/index.ts"],
     templateContext: {
       cmdRefPrefix: "/trellis-",
       executorAI: "Bash scripts or tool calls",
@@ -449,6 +461,44 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
       agentCapable: true,
       hasHooks: true,
       cliFlag: "pi",
+    },
+  },
+  /**
+   * PI-Desktop — the Electron host for the pi agent (vastsa/PI-Desktop).
+   *
+   * The host resolves project slash templates from `.pi/prompts`, reads
+   * `.pi/agents/*.md` as sub-agent types, and indexes `.agents/skills/**`, so
+   * this platform reuses pi's prompts/agents/skills verbatim. That shared
+   * surface is rendered from `collectPiSurface()` with *pi's* context, which
+   * keeps the two platforms byte-identical on the paths they both write.
+   *
+   * What the host does NOT do is load project extensions:
+   * `.pi/extensions/trellis/index.ts` is inert until it is imported. This
+   * platform therefore also generates a PI-Desktop plugin wrapper under
+   * `.pi-desktop/trellis/`, and `trellis pi-desktop install` registers it in
+   * `~/.pi-desktop/plugins/registry.json`.
+   *
+   * `configDir` is `.pi-desktop`, not `.pi`: the registry requires unique
+   * config dirs, and the plugin wrapper is the only artifact this platform
+   * owns exclusively — the `.pi/**` layer is shared with `pi`.
+   */
+  "pi-desktop": {
+    name: "PI-Desktop",
+    templateDirs: ["common", "pi", "pi-desktop"],
+    configDir: ".pi-desktop",
+    supportsAgentSkills: true,
+    /** `.pi/**` (prompts + sub-agent definitions) is shared with the `pi` platform. */
+    extraManagedPaths: [".pi"],
+    cliFlag: "pi-desktop",
+    defaultChecked: false,
+    hasPythonHooks: false,
+    templateContext: {
+      cmdRefPrefix: "/trellis-",
+      executorAI: "Bash scripts or tool calls",
+      userActionLabel: "Slash commands",
+      agentCapable: true,
+      hasHooks: true,
+      cliFlag: "pi-desktop",
     },
   },
   reasonix: {

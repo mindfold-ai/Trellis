@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "local.trellis",
+  "name": "Trellis",
+  "version": "{{TRELLIS_VERSION}}",
+  "description": "Trellis workflow runtime for PI-Desktop. Ships the pi agent extension that injects Trellis session context, the per-turn workflow-state breadcrumb, and the Trellis context id shell tools need.",
+  "main": "main.js",
+  "permissions": ["agent.extension"],
+  "contributes": {
+    "agentExtensions": ["agent/index.ts"]
+  }
+}
